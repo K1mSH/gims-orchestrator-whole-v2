@@ -1,0 +1,83 @@
+package com.sync.agent.bojo.config;
+
+import com.sync.agent.common.controller.DataSourceProvider;
+import com.sync.agent.common.pipeline.PipelineRunner;
+import com.sync.agent.common.repository.SyncLogRepository;
+import com.sync.agent.common.step.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Configuration;
+
+import javax.annotation.PostConstruct;
+import java.util.List;
+
+/**
+ * SND 파이프라인 설정
+ *
+ * Target → IF_SND 추출
+ */
+@Slf4j
+@Configuration
+@RequiredArgsConstructor
+public class SndPipelineConfig {
+
+    private final AgentConfigLoader agentConfigLoader;
+    private final PipelineRegistry pipelineRegistry;
+    private final DataSourceProvider dataSourceProvider;
+    private final SyncLogRepository syncLogRepository;
+
+    @PostConstruct
+    public void registerSndPipelines() {
+        List<AgentDefinition> sndDefs = agentConfigLoader.getAgentsByType("SND");
+        log.info("Registering {} SND pipelines", sndDefs.size());
+
+        for (AgentDefinition def : sndDefs) {
+            try {
+                PipelineRunner runner = createSndRunner(def);
+                pipelineRegistry.register(def.getAgentId(), "SND", runner);
+                log.info("Registered SND pipeline: {}", def.getAgentId());
+            } catch (Exception e) {
+                log.error("Failed to register SND pipeline: {}", def.getAgentId(), e);
+            }
+        }
+    }
+
+    private PipelineRunner createSndRunner(AgentDefinition def) {
+        AgentDefinition.TableConfig jewonCfg = def.getJewon();
+        AgentDefinition.TableConfig obsvCfg = def.getObsvdata();
+
+        // Step 1: 제원 추출
+        ExtractStepConfig jewonConfig = ExtractStepConfig.builder()
+                .stepId("jewon-snd-extract")
+                .stepName("제원 데이터 송신 추출")
+                .extractType(ExtractType.SIMPLE_COPY)
+                .sourceTable(jewonCfg.getSourceTable())
+                .targetIfTable(jewonCfg.getTargetTable())
+                .primaryKeyColumn(jewonCfg.getPrimaryKey())
+                .fullCopy(jewonCfg.isFullCopy())
+                .build();
+        SourceToIfExtractStep jewonStep = new SourceToIfExtractStep(
+                jewonConfig, dataSourceProvider, syncLogRepository);
+
+        // Step 2: 관측데이터 추출
+        int lookbackValue = def.getLookback() != null ? def.getLookback().getValue() : 3;
+        String lookbackUnit = def.getLookback() != null ? def.getLookback().getUnit() : "HOURS";
+
+        ExtractStepConfig obsvConfig = ExtractStepConfig.builder()
+                .stepId("obsvdata-snd-extract")
+                .stepName("관측데이터 송신 추출")
+                .extractType(ExtractType.SIMPLE_COPY)
+                .sourceTable(obsvCfg.getSourceTable())
+                .targetIfTable(obsvCfg.getTargetTable())
+                .primaryKeyColumn(obsvCfg.getPrimaryKey())
+                .dateColumn(obsvCfg.getDateColumn())
+                .timeColumn(obsvCfg.getTimeColumn())
+                .lookbackValue(lookbackValue)
+                .lookbackUnit(ExtractStepConfig.LookbackUnit.valueOf(lookbackUnit))
+                .build();
+        SourceToIfExtractStep obsvStep = new SourceToIfExtractStep(
+                obsvConfig, dataSourceProvider, syncLogRepository);
+
+        return new PipelineRunner(def.getAgentId(), List.of(jewonStep, obsvStep));
+    }
+}

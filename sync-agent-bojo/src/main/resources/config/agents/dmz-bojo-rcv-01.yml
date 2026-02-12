@@ -1,0 +1,17 @@
+agent-id: dmz-bojo-rcv-01
+type: RCV
+jewon:
+  source-table: sec_jewon_view
+  target-table: if_rsv_sec_jewon
+  primary-key: obsv_code
+  full-copy: true
+  skip-source-status-update: true
+obsvdata:
+  source-table: sec_obsvdata_view
+  target-table: if_rsv_sec_obsvdata
+  primary-key: obsv_code,obsv_date,obsv_time
+  date-column: obsv_date
+  time-column: obsv_time
+link:
+  use-link-table: true
+  table-name: link_ngwis

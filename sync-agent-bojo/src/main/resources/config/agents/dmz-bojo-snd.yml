@@ -1,0 +1,13 @@
+agent-id: dmz-bojo-snd
+type: SND
+jewon:
+  source-table: sec_jewon
+  target-table: if_snd_sec_jewon
+  primary-key: obsv_code
+  full-copy: true
+obsvdata:
+  source-table: sec_obsvdata
+  target-table: if_snd_sec_obsvdata
+  primary-key: obsv_code,obsv_date,obsv_time
+  date-column: obsv_date
+  time-column: obsv_time

@@ -1,0 +1,10 @@
+agent-id: dmz-bojo-loader
+type: LOADER
+if-table:
+  jewon: if_rsv_sec_jewon
+  obsvdata: if_rsv_sec_obsvdata
+target-table:
+  jewon: sec_jewon
+  obsvdata: sec_obsvdata
+step:
+  batch-size: 100

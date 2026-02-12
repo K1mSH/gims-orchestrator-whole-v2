@@ -1,0 +1,74 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.sync'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    // Spring Web (for RestTemplate/WebClient) - Spring 5.3.x for Boot 2.7.x
+    implementation 'org.springframework:spring-web:5.3.27'
+
+    // Spring Boot autoconfigure (for @ConfigurationProperties - provided by Boot apps)
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure:2.7.12'
+
+    // Spring Data JPA (for execution logging entities)
+    api 'org.springframework.data:spring-data-jpa:2.7.12'
+    api 'org.hibernate:hibernate-core:5.6.15.Final'
+    api 'javax.persistence:javax.persistence-api:2.2'
+
+    // Spring TX (for @Transactional)
+    implementation 'org.springframework:spring-tx:5.3.27'
+
+    // Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.5'
+
+    // Jasypt (암호화)
+    implementation 'org.jasypt:jasypt:1.9.3'
+
+    // HikariCP
+    implementation 'com.zaxxer:HikariCP:4.0.3'
+
+    // Spring JDBC
+    implementation 'org.springframework:spring-jdbc:5.3.27'
+
+    // SLF4J
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+
+    // Test
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'com.sync'
+            artifactId = 'sync-agent-common'
+            version = '1.0.0-SNAPSHOT'
+        }
+    }
+}
