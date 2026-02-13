@@ -17,7 +17,7 @@ import java.util.Map;
  * 통합 Agent 파이프라인 컨트롤러
  *
  * Orchestrator로부터 실행 트리거를 받아 파이프라인 실행
- * agentId를 통해 RCV/Loader/SND 파이프라인을 라우팅
+ * agentCode를 통해 RCV/Loader/SND 파이프라인을 라우팅
  */
 @Slf4j
 @RestController
@@ -41,29 +41,29 @@ public class PipelineController {
 
         try {
             String executionId = (String) request.get("executionId");
-            String agentId = (String) request.get("agentId");
+            String agentCode = (String) request.get("agentCode");
 
-            // agentId 검증
-            if (agentId == null && executionId != null && executionId.contains("_")) {
-                agentId = executionId.substring(0, executionId.lastIndexOf('_'));
+            // agentCode 검증
+            if (agentCode == null && executionId != null && executionId.contains("_")) {
+                agentCode = executionId.substring(0, executionId.lastIndexOf('_'));
             }
 
-            if (agentId == null) {
+            if (agentCode == null) {
                 response.put("accepted", false);
-                response.put("message", "agentId is required");
+                response.put("message", "agentCode is required");
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // 등록된 agentId인지 확인
-            if (!pipelineRegistry.getRegisteredAgentIds().contains(agentId)) {
+            // 등록된 agentCode인지 확인
+            if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
                 response.put("accepted", false);
-                response.put("message", "Unknown agentId: " + agentId + ". Registered: " + pipelineRegistry.getRegisteredAgentIds());
+                response.put("message", "Unknown agentCode: " + agentCode + ". Registered: " + pipelineRegistry.getRegisteredAgentCodes());
                 return ResponseEntity.badRequest().body(response);
             }
 
             // params 구성
             Map<String, Object> params = new HashMap<>(request);
-            params.put("agentId", agentId);
+            params.put("agentCode", agentCode);
 
             // 시간 범위 설정
             if (request.get("startTime") != null && request.get("endTime") != null) {
@@ -85,11 +85,11 @@ public class PipelineController {
 
             response.put("accepted", true);
             response.put("executionId", executionId);
-            response.put("agentId", agentId);
-            response.put("agentType", pipelineRegistry.getAgentType(agentId));
+            response.put("agentCode", agentCode);
+            response.put("agentType", pipelineRegistry.getAgentType(agentCode));
             response.put("message", "Pipeline execution started");
 
-            log.info("[Bojo] Pipeline execution accepted: executionId={}, agentId={}", executionId, agentId);
+            log.info("[Bojo] Pipeline execution accepted: executionId={}, agentCode={}", executionId, agentCode);
 
             return ResponseEntity.accepted().body(response);
 
@@ -107,7 +107,7 @@ public class PipelineController {
     @PostMapping("/resync")
     public ResponseEntity<Map<String, Object>> resync(@RequestBody Map<String, Object> request) {
         String executionId = (String) request.get("executionId");
-        String agentId = (String) request.get("agentId");
+        String agentCode = (String) request.get("agentCode");
 
         String startDateStr = (String) request.get("resyncStartDate");
         String endDateStr = (String) request.get("resyncEndDate");
@@ -118,7 +118,7 @@ public class PipelineController {
         }
 
         Map<String, Object> params = new HashMap<>(request);
-        params.put("agentId", agentId);
+        params.put("agentCode", agentCode);
 
         try {
             java.sql.Date resyncStartDate = java.sql.Date.valueOf(startDateStr);
@@ -144,7 +144,7 @@ public class PipelineController {
         return ResponseEntity.ok(Map.of(
                 "message", "Resync pipeline started",
                 "executionId", executionId != null ? executionId : "auto-generated",
-                "agentId", agentId != null ? agentId : "unknown",
+                "agentCode", agentCode != null ? agentCode : "unknown",
                 "resyncPeriod", startDateStr + " ~ " + endDateStr
         ));
     }

@@ -1,4 +1,4 @@
-agent-id: dmz-bojo-rcv-10
+agent-code: dmz-bojo-rcv-daejeon
 type: RCV
 jewon:
   source-table: sec_jewon_view

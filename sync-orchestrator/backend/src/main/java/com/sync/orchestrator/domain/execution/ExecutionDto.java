@@ -16,18 +16,20 @@ public class ExecutionDto {
     @AllArgsConstructor
     @Builder
     public static class AgentExecutionSummary {
-        private String agentId;
+        private Long agentId;
+        private String agentCode;
         private String agentName;
         private String zone;
         private ExecutionStatus lastExecutionStatus;
         private LocalDateTime lastRunAt;
         private AgentStatus agentStatus;
 
-        public static AgentExecutionSummary of(String agentId, String agentName, String zone,
+        public static AgentExecutionSummary of(Long agentId, String agentCode, String agentName, String zone,
                                                ExecutionStatus lastExecutionStatus, LocalDateTime lastRunAt,
                                                AgentStatus agentStatus) {
             return AgentExecutionSummary.builder()
                     .agentId(agentId)
+                    .agentCode(agentCode)
                     .agentName(agentName)
                     .zone(zone)
                     .lastExecutionStatus(lastExecutionStatus)
@@ -119,7 +121,8 @@ public class ExecutionDto {
     @Builder
     public static class TriggerResponse {
         private String executionId;
-        private String agentId;
+        private Long agentId;
+        private String agentCode;
         private String status;
         private LocalDateTime startTime;  // 사용된 시작 시간
         private LocalDateTime endTime;    // 사용된 종료 시간
@@ -135,7 +138,7 @@ public class ExecutionDto {
     @Builder
     public static class HistoryResponse {
         private String executionId;
-        private String agentId;
+        private String agentCode;
         private String agentName;
         private String agentType;
         private ExecutionStatus status;
@@ -151,7 +154,7 @@ public class ExecutionDto {
         public static HistoryResponse from(ExecutionHistory history) {
             return HistoryResponse.builder()
                     .executionId(history.getExecutionId())
-                    .agentId(history.getAgentId())
+                    .agentCode(history.getAgentCode())
                     .agentName(history.getAgentName())
                     .agentType(history.getAgentType())
                     .status(history.getStatus())

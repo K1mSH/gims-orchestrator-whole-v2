@@ -51,9 +51,9 @@ public class ExecutionService {
      * Agent별 실행 이력 조회 (Agent DB에서)
      */
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> findByAgentIdFromAgent(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public List<Map<String, Object>> findByAgentIdFromAgent(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         try {
             String url = agent.getEndpointUrl() + "/api/execution-data";
@@ -62,7 +62,7 @@ public class ExecutionService {
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody() != null ? response.getBody() : List.of();
         } catch (Exception e) {
-            log.error("Failed to fetch executions from agent: {}", agentId, e);
+            log.error("Failed to fetch executions from agent: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -83,7 +83,8 @@ public class ExecutionService {
             }
 
             return ExecutionDto.AgentExecutionSummary.of(
-                    agent.getAgentId(),
+                    agent.getId(),
+                    agent.getAgentCode(),
                     agent.getAgentName(),
                     agent.getZone(),
                     lastStatus,
@@ -98,9 +99,7 @@ public class ExecutionService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getExecutionDetail(String executionId) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         try {
             String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId;
@@ -109,7 +108,7 @@ public class ExecutionService {
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch execution detail from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to fetch execution detail from agent: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
         }
     }
@@ -120,9 +119,7 @@ public class ExecutionService {
     @SuppressWarnings("unchecked")
     public Map<String, Object> getExecutionData(String executionId, String dataType,
                                                  ExecutionDto.TableDataSearchParams searchParams) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         try {
             StringBuilder endpoint = new StringBuilder("/api/execution-data/").append(executionId);
@@ -146,29 +143,8 @@ public class ExecutionService {
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch execution data from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to fetch execution data from agent: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
-        }
-    }
-
-    /**
-     * Step 로그 조회 (Agent DB에서)
-     */
-    @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> getStepLogs(String executionId) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
-
-        try {
-            String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/steps";
-            log.info("Fetching step logs from agent: {}", url);
-
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
-            return response.getBody();
-        } catch (Exception e) {
-            log.error("Failed to fetch step logs from agent: {}", agent.getAgentId(), e);
-            return List.of();
         }
     }
 
@@ -177,9 +153,7 @@ public class ExecutionService {
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getTableStats(String executionId) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         try {
             String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables";
@@ -188,7 +162,7 @@ public class ExecutionService {
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch table stats from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to fetch table stats from agent: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -198,9 +172,7 @@ public class ExecutionService {
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getTableRecords(String executionId, String tableName) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         try {
             String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables/" + tableName;
@@ -209,7 +181,7 @@ public class ExecutionService {
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch table records from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to fetch table records from agent: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -219,9 +191,7 @@ public class ExecutionService {
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getTableFailedRecords(String executionId, String tableName) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         try {
             String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables/" + tableName + "/failed";
@@ -230,7 +200,7 @@ public class ExecutionService {
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch table failed records from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to fetch table failed records from agent: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -240,34 +210,27 @@ public class ExecutionService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> traceBySourcePk(String executionId, String pkValue, String pkColumn, String sourceTable, String ifTableName, String targetTableName) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         // ifTableName, targetTableName이 없으면 Agent의 테이블 매핑에서 자동으로 찾기
         String resolvedIfTableName = ifTableName;
         String resolvedTargetTableName = targetTableName;
 
         if ((resolvedIfTableName == null || resolvedIfTableName.isBlank()) && agent.getAgentTables() != null) {
-            // Agent의 TARGET 테이블 중 sourceTable과 관련된 것 찾기
-            // TARGET 타입 테이블이 IF 테이블 역할 (relay의 경우)
             for (AgentTable at : agent.getAgentTables()) {
                 if (at.getTableType() == AgentTable.TableType.TARGET) {
                     DatasourceTable dt = datasourceTableRepository.findById(at.getDatasourceTableId()).orElse(null);
                     if (dt != null && sourceTable != null) {
-                        String tableName = dt.getTableName();
-                        // sourceTable 이름이 포함된 TARGET 테이블 찾기 (예: SEC_JEWON_VIEW → sec_jewon)
-                        // toLowerCase() 후 _view 제거하면 대소문자 모두 처리됨
+                        String tableName2 = dt.getTableName();
                         String sourceBase = sourceTable.toLowerCase().replace("_view", "");
-                        if (tableName.toLowerCase().contains(sourceBase)) {
-                            resolvedIfTableName = tableName;
+                        if (tableName2.toLowerCase().contains(sourceBase)) {
+                            resolvedIfTableName = tableName2;
                             break;
                         }
                     }
                 }
             }
         }
-        // targetTableName은 optional - Agent에서 처리
 
         try {
             UriComponentsBuilder builder = UriComponentsBuilder
@@ -290,20 +253,17 @@ public class ExecutionService {
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to trace data from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to trace data from agent: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
         }
     }
 
     /**
      * Target에서 Source로 역추적 (sourceRefs 기반)
-     * Agent에 프록시하여 Source 테이블에서 원본 레코드 조회
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> traceToSource(String executionId, String sourceRefs, String sourceTable) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = findAgentByExecutionId(executionId);
 
         try {
             UriComponentsBuilder builder = UriComponentsBuilder
@@ -321,63 +281,8 @@ public class ExecutionService {
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to trace source from agent: {}", agent.getAgentId(), e);
+            log.error("Failed to trace source from agent: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
-        }
-    }
-
-    /**
-     * 레코드 처리 이력 조회 (Agent 프록시)
-     * Agent의 sync_record_history 테이블에서 특정 레코드의 처리 이력 조회
-     */
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> getRecordHistory(String executionId, String tableName, String recordKey) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
-
-        try {
-            UriComponentsBuilder builder = UriComponentsBuilder
-                    .fromHttpUrl(agent.getEndpointUrl())
-                    .path("/api/execution-data/record-history")
-                    .queryParam("tableName", tableName)
-                    .queryParam("recordKey", recordKey);
-
-            String url = builder.toUriString();
-            log.info("Fetching record history from agent: {}", url);
-
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-            return response.getBody();
-        } catch (Exception e) {
-            log.error("Failed to fetch record history from agent: {}", agent.getAgentId(), e);
-            return Map.of("error", e.getMessage(), "histories", List.of(), "count", 0);
-        }
-    }
-
-    /**
-     * 실행 ID별 처리 이력 조회 (Agent 프록시)
-     * Agent의 sync_record_history에서 해당 실행이 처리한 모든 레코드 이력 조회
-     */
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> getRecordHistoryByExecution(String executionId) {
-        String agentId = extractAgentIdFromExecutionId(executionId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
-
-        try {
-            UriComponentsBuilder builder = UriComponentsBuilder
-                    .fromHttpUrl(agent.getEndpointUrl())
-                    .path("/api/execution-data/record-history/by-execution")
-                    .queryParam("executionId", executionId);
-
-            String url = builder.toUriString();
-            log.info("Fetching record history by execution from agent: {}", url);
-
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-            return response.getBody();
-        } catch (Exception e) {
-            log.error("Failed to fetch record history by execution from agent: {}", agent.getAgentId(), e);
-            return Map.of("error", e.getMessage(), "executionId", executionId, "totalCount", 0, "tables", List.of());
         }
     }
 
@@ -385,71 +290,66 @@ public class ExecutionService {
      * 실행 트리거 - Agent에 실행 요청 (기본 lookback 사용, MANUAL 트리거)
      */
     @Transactional
-    public ExecutionDto.TriggerResponse triggerExecution(String agentId) {
-        return triggerExecution(agentId, null, null, "MANUAL");
+    public ExecutionDto.TriggerResponse triggerExecution(Long id) {
+        return triggerExecution(id, null, null, "MANUAL");
     }
 
     /**
      * 실행 트리거 - Agent에 실행 요청 (triggeredBy 지정)
      */
     @Transactional
-    public ExecutionDto.TriggerResponse triggerExecution(String agentId, String triggeredBy) {
-        return triggerExecution(agentId, null, null, triggeredBy);
+    public ExecutionDto.TriggerResponse triggerExecution(Long id, String triggeredBy) {
+        return triggerExecution(id, null, null, triggeredBy);
     }
 
     /**
      * 실행 트리거 - Agent에 실행 요청 (시간 범위 지정, MANUAL 트리거)
-     * executionId 형식: {agentId}_{uuid}
-     *
-     * @param startTime 동기화 시작 시간 (null이면 기본 lookback 사용)
-     * @param endTime   동기화 종료 시간 (null이면 현재 시간)
+     * executionId 형식: {agentCode}_{uuid}
      */
     @Transactional
-    public ExecutionDto.TriggerResponse triggerExecution(String agentId, LocalDateTime startTime, LocalDateTime endTime) {
-        return triggerExecution(agentId, startTime, endTime, "MANUAL");
+    public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime) {
+        return triggerExecution(id, startTime, endTime, "MANUAL");
     }
 
     /**
      * 실행 트리거 - Agent에 실행 요청 (시간 범위, 필터, 트리거 유형 지정)
      */
     @Transactional
-    public ExecutionDto.TriggerResponse triggerExecution(String agentId, LocalDateTime startTime, LocalDateTime endTime,
+    public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                           List<Map<String, Object>> filters, String triggeredBy) {
-        return triggerExecutionInternal(agentId, startTime, endTime, filters, triggeredBy);
+        return triggerExecutionInternal(id, startTime, endTime, filters, triggeredBy);
     }
 
     /**
      * 실행 트리거 - Agent에 실행 요청 (시간 범위 및 트리거 유형 지정)
-     * executionId 형식: {agentId}_{uuid}
-     *
-     * @param startTime   동기화 시작 시간 (null이면 기본 lookback 사용)
-     * @param endTime     동기화 종료 시간 (null이면 현재 시간)
-     * @param triggeredBy 트리거 유형 (MANUAL, SCHEDULE, CHAIN)
+     * executionId 형식: {agentCode}_{uuid}
      */
     @Transactional
-    public ExecutionDto.TriggerResponse triggerExecution(String agentId, LocalDateTime startTime, LocalDateTime endTime, String triggeredBy) {
-        return triggerExecutionInternal(agentId, startTime, endTime, null, triggeredBy);
+    public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime, String triggeredBy) {
+        return triggerExecutionInternal(id, startTime, endTime, null, triggeredBy);
     }
 
     /**
      * 실행 트리거 내부 구현
      */
     @Transactional
-    public ExecutionDto.TriggerResponse triggerExecutionInternal(String agentId, LocalDateTime startTime, LocalDateTime endTime,
+    public ExecutionDto.TriggerResponse triggerExecutionInternal(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                                   List<Map<String, Object>> filters, String triggeredBy) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        String agentCode = agent.getAgentCode();
 
         if (agent.getStatus() == AgentStatus.OFFLINE) {
-            throw new IllegalStateException("Agent is offline: " + agentId);
+            throw new IllegalStateException("Agent is offline: " + agentCode);
         }
 
         if (agent.getStatus() == AgentStatus.RUNNING) {
-            throw new IllegalStateException("Agent is already running: " + agentId);
+            throw new IllegalStateException("Agent is already running: " + agentCode);
         }
 
-        // executionId 형식: {agentId}_{uuid}
-        String executionId = agentId + "_" + UUID.randomUUID().toString();
+        // executionId 형식: {agentCode}_{uuid}
+        String executionId = agentCode + "_" + UUID.randomUUID().toString();
 
         // Agent 상태를 RUNNING으로 변경
         agent.setStatus(AgentStatus.RUNNING);
@@ -463,11 +363,11 @@ public class ExecutionService {
             // Datasource 연결 정보 전체를 조회해서 Agent에 전달
             Map<String, Object> request = new java.util.HashMap<>();
             request.put("executionId", executionId);
-            request.put("agentId", agentId);  // 통합 Agent에서 파이프라인 라우팅에 사용
+            request.put("agentCode", agentCode);
+            request.put("agentType", agent.getAgentType().name());
             request.put("triggeredBy", triggeredBy != null ? triggeredBy : "MANUAL");
 
             // 시간 범위 파라미터 (지정된 경우에만 전달)
-            // ISO_LOCAL_DATE_TIME 형식으로 초까지 포함해서 전달 (초 생략 방지)
             java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
             if (startTime != null) {
                 request.put("startTime", startTime.format(formatter));
@@ -487,18 +387,13 @@ public class ExecutionService {
                 request.put("sourceDatabaseName", sourceDatasource.getDatabaseName());
                 request.put("sourceUsername", credentialEncryptor.decrypt(sourceDatasource.getUsername()));
                 request.put("sourcePassword", credentialEncryptor.decrypt(sourceDatasource.getPassword()));
-                // Source DB의 네트워크 Zone (Agent Chain 추적용)
                 request.put("sourceZone", sourceDatasource.getZone());
-                // sourceRef용 숫자 ID 및 Zone shortCode
                 request.put("sourceDatasourceDbId", sourceDatasource.getId());
                 String zoneShortCode = zoneConfigRepository.findShortCodeByZone(sourceDatasource.getZone());
                 request.put("sourceZoneShortCode", zoneShortCode != null ? zoneShortCode : "U");
 
-                // Source 테이블 ID 목록 (테이블명 -> tableId 매핑)
-                // SOURCE 타입 테이블 우선, 없으면 TARGET도 포함 (snd-relay 케이스)
+                // Source 테이블 ID 목록
                 Map<String, Long> sourceTableIds = new java.util.HashMap<>();
-
-                // 1차: SOURCE 타입 테이블 수집
                 agent.getAgentTables().stream()
                         .filter(t -> t.getTableType() == AgentTable.TableType.SOURCE)
                         .forEach(at -> {
@@ -506,7 +401,6 @@ public class ExecutionService {
                                     .ifPresent(dt -> sourceTableIds.put(dt.getTableName(), dt.getId()));
                         });
 
-                // 2차: SOURCE가 비어있으면 TARGET도 포함 (snd-relay는 TARGET에서 읽어서 IF로 보냄)
                 if (sourceTableIds.isEmpty()) {
                     agent.getAgentTables().stream()
                             .filter(t -> t.getTableType() == AgentTable.TableType.TARGET)
@@ -538,7 +432,7 @@ public class ExecutionService {
             }
 
             log.info("Triggering execution on agent: {} with executionId: {}, source: {} (zone={}), target: {}, timeRange: {} ~ {}",
-                    agentId, executionId, agent.getSourceDatasourceId(), request.get("sourceZone"), agent.getTargetDatasourceId(),
+                    agentCode, executionId, agent.getSourceDatasourceId(), request.get("sourceZone"), agent.getTargetDatasourceId(),
                     startTime != null ? startTime : "default", endTime != null ? endTime : "now");
             ResponseEntity<Void> response = restTemplate.postForEntity(url, request, Void.class);
 
@@ -548,14 +442,15 @@ public class ExecutionService {
 
             return ExecutionDto.TriggerResponse.builder()
                     .executionId(executionId)
-                    .agentId(agentId)
+                    .agentId(id)
+                    .agentCode(agentCode)
                     .status("RUNNING")
                     .startTime(startTime)
                     .endTime(endTime)
                     .build();
 
         } catch (Exception e) {
-            log.error("Failed to trigger execution on agent: {}", agentId, e);
+            log.error("Failed to trigger execution on agent: {}", agentCode, e);
 
             // Agent 상태 복구
             agent.setStatus(AgentStatus.ONLINE);
@@ -567,15 +462,24 @@ public class ExecutionService {
     }
 
     /**
-     * executionId에서 agentId 추출
-     * 형식: {agentId}_{uuid}
+     * executionId에서 agentCode 추출
+     * 형식: {agentCode}_{uuid}
      */
-    public String extractAgentIdFromExecutionId(String executionId) {
+    public String extractAgentCodeFromExecutionId(String executionId) {
         int lastUnderscoreIndex = executionId.lastIndexOf('_');
         if (lastUnderscoreIndex == -1) {
             throw new IllegalArgumentException("Invalid executionId format: " + executionId);
         }
         return executionId.substring(0, lastUnderscoreIndex);
+    }
+
+    /**
+     * executionId에서 Agent 조회 (agentCode 기반)
+     */
+    private Agent findAgentByExecutionId(String executionId) {
+        String agentCode = extractAgentCodeFromExecutionId(executionId);
+        return agentRepository.findByAgentCode(agentCode)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentCode));
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================
@@ -599,12 +503,21 @@ public class ExecutionService {
     }
 
     /**
-     * Agent별 실행 이력 조회 (Orchestrator DB에서)
+     * Agent별 실행 이력 조회 (Orchestrator DB에서, agentCode 기반)
      */
-    public List<ExecutionDto.HistoryResponse> getHistoryByAgent(String agentId) {
-        return executionHistoryRepository.findByAgentIdOrderByStartedAtDesc(agentId).stream()
+    public List<ExecutionDto.HistoryResponse> getHistoryByAgentCode(String agentCode) {
+        return executionHistoryRepository.findByAgentCodeOrderByStartedAtDesc(agentCode).stream()
                 .map(ExecutionDto.HistoryResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Agent별 실행 이력 조회 (Agent Long ID 기반)
+     */
+    public List<ExecutionDto.HistoryResponse> getHistoryByAgent(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+        return getHistoryByAgentCode(agent.getAgentCode());
     }
 
     /**
@@ -618,8 +531,10 @@ public class ExecutionService {
     /**
      * Agent별 실행 이력 페이징 조회
      */
-    public Page<ExecutionDto.HistoryResponse> getHistoryByAgentPaged(String agentId, Pageable pageable) {
-        return executionHistoryRepository.findByAgentIdOrderByStartedAtDesc(agentId, pageable)
+    public Page<ExecutionDto.HistoryResponse> getHistoryByAgentPaged(Long id, Pageable pageable) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+        return executionHistoryRepository.findByAgentCodeOrderByStartedAtDesc(agent.getAgentCode(), pageable)
                 .map(ExecutionDto.HistoryResponse::from);
     }
 

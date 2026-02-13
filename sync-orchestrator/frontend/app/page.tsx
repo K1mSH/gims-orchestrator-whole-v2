@@ -2,9 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { executionApi, executionHistoryApi, AgentExecutionSummary } from '@/lib/api';
-import type { ExecutionHistory, ExecutionDashboardStats } from '@/types';
+import type { ExecutionHistory, ExecutionDashboardStats, AgentType } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import Link from 'next/link';
+
+const AGENT_TYPE_LABELS: Record<AgentType, string> = {
+  RCV: '수신(RCV)',
+  SND: '송신(SND)',
+  LOADER: 'Loader',
+};
 
 export default function DashboardPage() {
   const [execStats, setExecStats] = useState<ExecutionDashboardStats | null>(null);
@@ -110,6 +116,9 @@ export default function DashboardPage() {
                       <Link href={`/agents/${agent.agentId}`}>
                         {agent.agentName}
                       </Link>
+                      <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-400)' }}>
+                        {agent.agentCode}
+                      </span>
                     </td>
                     <td>{agent.zone}</td>
                     <td>
@@ -167,11 +176,8 @@ export default function DashboardPage() {
                       </Link>
                     </td>
                     <td>
-                      <span className={`agent-type-badge agent-type-${history.agentType?.toLowerCase().replace('_', '-') || 'unknown'}`}>
-                        {history.agentType === 'RELAY' ? 'Relay' :
-                         history.agentType === 'LOADER_CUSTOM' ? 'Loader' :
-                         history.agentType === 'LOADER_STANDARD' ? 'Loader' :
-                         history.agentType || '-'}
+                      <span className={`agent-type-badge agent-type-${history.agentType?.toLowerCase() || 'unknown'}`}>
+                        {history.agentType ? (AGENT_TYPE_LABELS[history.agentType] || history.agentType) : '-'}
                       </span>
                     </td>
                     <td>

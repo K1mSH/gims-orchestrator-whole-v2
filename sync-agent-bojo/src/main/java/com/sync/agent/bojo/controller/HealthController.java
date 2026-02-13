@@ -37,9 +37,9 @@ public class HealthController {
         result.put("registeredAgents", pipelineRegistry.size());
 
         // Agent 목록 (타입별)
-        Set<String> rcvAgents = pipelineRegistry.getAgentIdsByType("RCV");
-        Set<String> loaderAgents = pipelineRegistry.getAgentIdsByType("LOADER");
-        Set<String> sndAgents = pipelineRegistry.getAgentIdsByType("SND");
+        Set<String> rcvAgents = pipelineRegistry.getAgentCodesByType("RCV");
+        Set<String> loaderAgents = pipelineRegistry.getAgentCodesByType("LOADER");
+        Set<String> sndAgents = pipelineRegistry.getAgentCodesByType("SND");
 
         result.put("rcvAgents", rcvAgents);
         result.put("loaderAgents", loaderAgents);

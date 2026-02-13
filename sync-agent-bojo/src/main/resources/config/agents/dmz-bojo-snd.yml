@@ -1,4 +1,4 @@
-agent-id: dmz-bojo-snd
+agent-code: dmz-bojo-snd
 type: SND
 jewon:
   source-table: sec_jewon

@@ -24,8 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 통합 파이프라인 서비스
  *
- * agentId를 params에서 받아 PipelineRegistry에서 적절한 Runner를 선택
- * OrchestratorClient는 실행마다 agentId로 새로 생성 (stateless)
+ * agentCode를 params에서 받아 PipelineRegistry에서 적절한 Runner를 선택
+ * OrchestratorClient는 실행마다 agentCode로 새로 생성 (stateless)
  */
 @Slf4j
 @Service
@@ -47,7 +47,7 @@ public class PipelineService {
 
     /**
      * 파이프라인 실행 (Orchestrator에서 호출)
-     * agentId를 params에서 추출하여 적절한 Runner 선택
+     * agentCode를 params에서 추출하여 적절한 Runner 선택
      */
     @Async("pipelineExecutor")
     public void executeAsync(String executionId, Map<String, Object> params) {
@@ -55,44 +55,44 @@ public class PipelineService {
                 ? UUID.randomUUID().toString()
                 : executionId;
 
-        // agentId 추출
-        String agentId = (String) params.get("agentId");
-        if (agentId == null) {
-            // executionId에서 추출 시도 (형식: {agentId}_{uuid})
+        // agentCode 추출
+        String agentCode = (String) params.get("agentCode");
+        if (agentCode == null) {
+            // executionId에서 추출 시도 (형식: {agentCode}_{uuid})
             if (finalExecutionId.contains("_")) {
-                agentId = finalExecutionId.substring(0, finalExecutionId.lastIndexOf('_'));
+                agentCode = finalExecutionId.substring(0, finalExecutionId.lastIndexOf('_'));
             }
         }
 
-        if (agentId == null) {
-            log.error("agentId not found in params or executionId: {}", finalExecutionId);
+        if (agentCode == null) {
+            log.error("agentCode not found in params or executionId: {}", finalExecutionId);
             return;
         }
 
-        final String finalAgentId = agentId;
+        final String finalAgentCode = agentCode;
 
         try {
-            log.info("[Bojo] Starting pipeline: executionId={}, agentId={}", finalExecutionId, finalAgentId);
+            log.info("[Bojo] Starting pipeline: executionId={}, agentCode={}", finalExecutionId, finalAgentCode);
 
-            PipelineRunner baseRunner = pipelineRegistry.getRunner(finalAgentId);
+            PipelineRunner baseRunner = pipelineRegistry.getRunner(finalAgentCode);
 
-            // OrchestratorClient 생성 (실행마다, 해당 agentId로)
-            OrchestratorClient orchestratorClient = new OrchestratorClient(orchestratorUrl, finalAgentId);
+            // OrchestratorClient 생성 (실행마다, 해당 agentCode로)
+            OrchestratorClient orchestratorClient = new OrchestratorClient(orchestratorUrl, finalAgentCode);
             CompositeStepCallback callback = new CompositeStepCallback(stepLogService, orchestratorClient);
             PipelineRunner runner = baseRunner.withProgressCallback(callback);
 
-            executeWithRunner(runner, orchestratorClient, finalExecutionId, finalAgentId, params);
+            executeWithRunner(runner, orchestratorClient, finalExecutionId, finalAgentCode, params);
         } catch (Exception e) {
             log.error("[Bojo] Pipeline failed before runner: {} - {}", finalExecutionId, e.getMessage(), e);
-            notifyFailure(finalAgentId, finalExecutionId, e.getMessage());
+            notifyFailure(finalAgentCode, finalExecutionId, e.getMessage());
         } catch (Error err) {
             log.error("[Bojo] CRITICAL ERROR: {} - {}", finalExecutionId, err.getMessage(), err);
-            notifyFailure(finalAgentId, finalExecutionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
+            notifyFailure(finalAgentCode, finalExecutionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
         }
     }
 
     private void executeWithRunner(PipelineRunner runner, OrchestratorClient orchestratorClient,
-                                    String executionId, String agentId, Map<String, Object> params) {
+                                    String executionId, String agentCode, Map<String, Object> params) {
         PipelineResult result = null;
         try {
             // ThreadLocal에 현재 파이프라인의 datasource 연결 정보 설정
@@ -104,7 +104,7 @@ public class PipelineService {
                     targetInfo.getDatasourceId(), targetInfo.getHost(), targetInfo.getPort());
 
             // 로컬 DB에 실행 시작 기록
-            executionService.startExecution(executionId, agentId, sourceInfo.getDatasourceId(), targetInfo.getDatasourceId());
+            executionService.startExecution(executionId, agentCode, sourceInfo.getDatasourceId(), targetInfo.getDatasourceId());
 
             // Orchestrator에 시작 알림
             String triggeredBy = params.get("triggeredBy") != null ? params.get("triggeredBy").toString() : "MANUAL";
@@ -175,9 +175,9 @@ public class PipelineService {
                 .build();
     }
 
-    private void notifyFailure(String agentId, String executionId, String errorMessage) {
+    private void notifyFailure(String agentCode, String executionId, String errorMessage) {
         try {
-            OrchestratorClient client = new OrchestratorClient(orchestratorUrl, agentId);
+            OrchestratorClient client = new OrchestratorClient(orchestratorUrl, agentCode);
             client.notifyFinished(buildFailedResult(executionId, errorMessage));
         } catch (Exception e) {
             log.error("[Bojo] Failed to notify orchestrator about failure: {}", e.getMessage());

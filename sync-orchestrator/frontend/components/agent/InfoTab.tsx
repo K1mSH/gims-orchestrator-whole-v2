@@ -13,9 +13,9 @@ const ZONE_LABELS: Record<Zone, string> = {
 };
 
 const AGENT_TYPE_LABELS: Record<AgentType, string> = {
-  RELAY: 'Relay (추출 전달)',
-  LOADER_STANDARD: 'Loader 표준 (컬럼 매핑)',
-  LOADER_CUSTOM: 'Loader 커스텀 (로직 구현)',
+  RCV: '수신(RCV)',
+  SND: '송신(SND)',
+  LOADER: 'Loader',
 };
 
 /**
@@ -300,7 +300,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   const [agentForm, setAgentForm] = useState({
     agentName: agent.agentName,
     zone: agent.zone,
-    agentType: agent.agentType || 'LOADER_CUSTOM' as AgentType,
+    agentType: agent.agentType || 'LOADER' as AgentType,
     endpointUrl: agent.endpointUrl,
     description: agent.description || '',
     sourceDatasourceId: agent.sourceDatasourceId || '',
@@ -336,7 +336,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
     setAgentForm({
       agentName: agent.agentName,
       zone: agent.zone,
-      agentType: agent.agentType || 'LOADER_CUSTOM' as AgentType,
+      agentType: agent.agentType || 'LOADER' as AgentType,
       endpointUrl: agent.endpointUrl,
       description: agent.description || '',
       sourceDatasourceId: agent.sourceDatasourceId || '',
@@ -375,7 +375,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   const handleRefreshExecutionParams = async () => {
     setRefreshingParams(true);
     try {
-      const params = await agentApi.refreshExecutionParams(agent.agentId);
+      const params = await agentApi.refreshExecutionParams(agent.id);
       setExecutionParams(params);
       onUpdate();
     } catch (error) {
@@ -389,7 +389,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   const handleAgentUpdate = async () => {
     setSubmitting(true);
     try {
-      await agentApi.update(agent.agentId, agentForm);
+      await agentApi.update(agent.id, agentForm);
       setEditMode(false);
       onUpdate();
     } catch (error) {
@@ -415,7 +415,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
       }
 
       const createData: ScheduleCreateRequest = {
-        agentId: agent.agentId,
+        agentId: agent.id,
         cronExpression: newSchedule.cronExpression,
         isEnabled: newSchedule.isEnabled,
         executionOptions,
@@ -500,9 +500,9 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
 
         {!editMode ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-            <div><strong>Agent ID:</strong> {agent.agentId}</div>
+            <div><strong>Agent Code:</strong> {agent.agentCode}</div>
             <div><strong>이름:</strong> {agent.agentName}</div>
-            <div><strong>Agent 타입:</strong> <span style={{ padding: '0.25rem 0.5rem', background: agent.agentType === 'RELAY' ? 'var(--success-bg, #d4edda)' : agent.agentType === 'LOADER_STANDARD' ? 'var(--primary-bg, #e3f2fd)' : 'var(--warning-bg, #fff3cd)', borderRadius: '0.25rem', fontSize: '0.875rem' }}>{AGENT_TYPE_LABELS[agent.agentType as AgentType] || agent.agentType}</span></div>
+            <div><strong>Agent 타입:</strong> <span style={{ padding: '0.25rem 0.5rem', background: agent.agentType === 'RCV' ? '#ede9fe' : agent.agentType === 'LOADER' ? '#d1fae5' : '#fef3c7', borderRadius: '0.25rem', fontSize: '0.875rem' }}>{AGENT_TYPE_LABELS[agent.agentType as AgentType] || agent.agentType}</span></div>
             <div><strong>망구분:</strong> <span className={`zone-${agent.zone.toLowerCase().replace('_', '-')}`}>{ZONE_LABELS[agent.zone as Zone]}</span></div>
             <div><strong>Endpoint URL:</strong> {agent.endpointUrl}</div>
             <div><strong>활성화:</strong> {agent.isActive ? '예' : '아니오'}</div>
@@ -520,9 +520,9 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
               <div className="form-group">
                 <label className="form-label">Agent 타입</label>
                 <select className="form-select" value={agentForm.agentType} onChange={(e) => setAgentForm({ ...agentForm, agentType: e.target.value as AgentType })}>
-                  <option value="RELAY">Relay (추출 전달)</option>
-                  <option value="LOADER_STANDARD">Loader 표준 (컬럼 매핑)</option>
-                  <option value="LOADER_CUSTOM">Loader 커스텀 (로직 구현)</option>
+                  <option value="RCV">수신(RCV) - 외부 Source → IF</option>
+                  <option value="LOADER">Loader - IF → Target 적재</option>
+                  <option value="SND">송신(SND) - 내부 Target → IF</option>
                 </select>
               </div>
               <div className="form-group">

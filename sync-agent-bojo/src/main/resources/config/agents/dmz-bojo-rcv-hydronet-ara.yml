@@ -1,4 +1,4 @@
-agent-id: dmz-bojo-rcv-01
+agent-code: dmz-bojo-rcv-hydronet-ara
 type: RCV
 jewon:
   source-table: sec_jewon_view

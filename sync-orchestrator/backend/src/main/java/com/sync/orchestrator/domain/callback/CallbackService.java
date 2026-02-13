@@ -31,13 +31,13 @@ public class CallbackService {
      */
     @Transactional
     public void handleStarted(CallbackDto.StartedRequest request) {
-        // executionId에서 실제 agentId 추출 (executionId = {agentId}_{uuid} 형식)
-        String agentId = extractAgentIdFromExecutionId(request.getExecutionId());
-        log.info("Received started callback: executionId={}, extractedAgentId={} (requestAgentId={})",
-                request.getExecutionId(), agentId, request.getAgentId());
+        // executionId에서 agentCode 추출 (executionId = {agentCode}_{uuid} 형식)
+        String agentCode = extractAgentCodeFromExecutionId(request.getExecutionId());
+        log.info("Received started callback: executionId={}, extractedAgentCode={} (requestAgentId={})",
+                request.getExecutionId(), agentCode, request.getAgentId());
 
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = agentRepository.findByAgentCode(agentCode)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentCode));
 
         // Agent 상태 업데이트
         agent.setStatus(AgentStatus.RUNNING);
@@ -47,7 +47,7 @@ public class CallbackService {
         // ExecutionHistory 생성 (RUNNING 상태)
         ExecutionHistory history = ExecutionHistory.builder()
                 .executionId(request.getExecutionId())
-                .agentId(agentId)
+                .agentCode(agentCode)
                 .agentName(agent.getAgentName())
                 .agentType(agent.getAgentType() != null ? agent.getAgentType().name() : null)
                 .status(ExecutionStatus.RUNNING)
@@ -56,7 +56,7 @@ public class CallbackService {
                 .build();
         executionHistoryRepository.save(history);
 
-        log.info("Agent status updated to RUNNING, ExecutionHistory created: {}", agentId);
+        log.info("Agent status updated to RUNNING, ExecutionHistory created: {}", agentCode);
     }
 
     /**
@@ -66,13 +66,13 @@ public class CallbackService {
      */
     @Transactional
     public void handleFinished(CallbackDto.FinishedRequest request) {
-        // executionId에서 실제 agentId 추출 (executionId = {agentId}_{uuid} 형식)
-        String agentId = extractAgentIdFromExecutionId(request.getExecutionId());
-        log.info("Received finished callback: executionId={}, extractedAgentId={}, status={}",
-                request.getExecutionId(), agentId, request.getStatus());
+        // executionId에서 agentCode 추출 (executionId = {agentCode}_{uuid} 형식)
+        String agentCode = extractAgentCodeFromExecutionId(request.getExecutionId());
+        log.info("Received finished callback: executionId={}, extractedAgentCode={}, status={}",
+                request.getExecutionId(), agentCode, request.getStatus());
 
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+        Agent agent = agentRepository.findByAgentCode(agentCode)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentCode));
 
         // Agent 상태 업데이트
         if (agent.getStatus() == AgentStatus.RUNNING) {
@@ -85,7 +85,7 @@ public class CallbackService {
         ExecutionHistory history = executionHistoryRepository.findById(request.getExecutionId())
                 .orElse(ExecutionHistory.builder()
                         .executionId(request.getExecutionId())
-                        .agentId(agentId)
+                        .agentCode(agentCode)
                         .agentName(agent.getAgentName())
                         .build());
 
@@ -99,14 +99,14 @@ public class CallbackService {
         executionHistoryRepository.save(history);
 
         log.info("Agent status updated to ONLINE, ExecutionHistory updated: {} -> {}",
-                agentId, request.getStatus());
+                agentCode, request.getStatus());
     }
 
     /**
-     * executionId에서 agentId 추출
-     * 형식: {agentId}_{uuid}
+     * executionId에서 agentCode 추출
+     * 형식: {agentCode}_{uuid}
      */
-    private String extractAgentIdFromExecutionId(String executionId) {
+    private String extractAgentCodeFromExecutionId(String executionId) {
         if (executionId == null) {
             throw new IllegalArgumentException("executionId is null");
         }
@@ -117,18 +117,4 @@ public class CallbackService {
         return executionId.substring(0, lastUnderscoreIndex);
     }
 
-    /**
-     * 실시간 Step 진행 상황 콜백 처리
-     * - 로그만 기록 (실행 데이터는 Agent DB에 저장됨)
-     * - 추후 WebSocket을 통한 실시간 UI 업데이트에 활용 가능
-     */
-    @Transactional
-    public void handleStep(CallbackDto.StepCallbackRequest request) {
-        log.info("Received step callback: executionId={}, stepId={}, status={}, order={}/{}",
-                request.getExecutionId(), request.getStepId(), request.getStatus(),
-                request.getStepOrder(), request.getTotalSteps());
-
-        // Step 데이터는 Agent DB에 저장됨
-        // 여기서는 로그만 기록하고, 추후 WebSocket으로 프론트엔드에 실시간 전송 가능
-    }
 }

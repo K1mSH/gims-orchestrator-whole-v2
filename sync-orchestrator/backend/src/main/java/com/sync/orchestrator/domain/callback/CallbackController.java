@@ -39,15 +39,4 @@ public class CallbackController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
-
-    @PostMapping("/step")
-    public ResponseEntity<?> handleStep(@RequestBody CallbackDto.StepCallbackRequest request) {
-        try {
-            callbackService.handleStep(request);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Failed to handle step callback", e);
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
 }

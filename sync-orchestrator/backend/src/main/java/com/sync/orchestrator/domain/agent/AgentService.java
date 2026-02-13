@@ -11,9 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import javax.persistence.EntityManager;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,25 +38,34 @@ public class AgentService {
                 .collect(Collectors.toList());
     }
 
-    public AgentDto.Response findById(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public AgentDto.Response findById(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+        return AgentDto.Response.from(agent);
+    }
+
+    public AgentDto.Response findByAgentCode(String agentCode) {
+        Agent agent = agentRepository.findByAgentCode(agentCode)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentCode));
         return AgentDto.Response.from(agent);
     }
 
     @Transactional
     public AgentDto.Response create(AgentDto.CreateRequest request) {
-        if (agentRepository.existsById(request.getAgentId())) {
-            throw new IllegalArgumentException("Agent already exists: " + request.getAgentId());
+        // agentCode 중복 체크
+        String agentCode = request.getAgentCode();
+        if (agentRepository.findByAgentCode(agentCode).isPresent()) {
+            throw new IllegalArgumentException("이미 등록된 agentCode입니다: " + agentCode);
         }
 
         Agent agent = Agent.builder()
-                .agentId(request.getAgentId())
+                .agentCode(agentCode)
                 .agentName(request.getAgentName())
                 .endpointUrl(request.getEndpointUrl())
                 .zone(request.getZone())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
-                .agentType(request.getAgentType() != null ? request.getAgentType() : AgentType.LOADER_CUSTOM)
+                .agentType(request.getAgentType())
+                .datasourceTag(request.getDatasourceTag())
                 .sourceDatasourceId(request.getSourceDatasourceId())
                 .targetDatasourceId(request.getTargetDatasourceId())
                 .description(request.getDescription())
@@ -73,6 +80,84 @@ public class AgentService {
 
         Agent saved = agentRepository.save(agent);
         return AgentDto.Response.from(saved);
+    }
+
+    /**
+     * Agent 프로세스의 /health 엔드포인트를 호출하여 사용 가능한 agentCode 목록을 조회
+     * 이미 DB에 등록된 코드에는 registered=true 표시
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> discoverAgents(String endpointUrl) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("endpointUrl", endpointUrl);
+
+        try {
+            String healthUrl = endpointUrl.endsWith("/") ? endpointUrl + "health" : endpointUrl + "/health";
+            log.info("Discovering agents from: {}", healthUrl);
+
+            ResponseEntity<Map> response = restTemplate.getForEntity(healthUrl, Map.class);
+            Map<String, Object> healthData = response.getBody();
+
+            if (healthData == null) {
+                result.put("error", "Empty response from agent");
+                return result;
+            }
+
+            String zone = (String) healthData.get("zone");
+            result.put("zone", zone);
+
+            // 이미 등록된 agentCode 목록 조회
+            Set<String> registeredCodes = agentRepository.findAll().stream()
+                    .map(Agent::getAgentCode)
+                    .collect(Collectors.toSet());
+
+            List<Map<String, Object>> agents = new ArrayList<>();
+
+            // RCV agents
+            Collection<String> rcvAgents = (Collection<String>) healthData.get("rcvAgents");
+            if (rcvAgents != null) {
+                for (String code : rcvAgents) {
+                    agents.add(Map.of(
+                            "agentCode", code,
+                            "type", "RCV",
+                            "registered", registeredCodes.contains(code)
+                    ));
+                }
+            }
+
+            // Loader agents
+            Collection<String> loaderAgents = (Collection<String>) healthData.get("loaderAgents");
+            if (loaderAgents != null) {
+                for (String code : loaderAgents) {
+                    agents.add(Map.of(
+                            "agentCode", code,
+                            "type", "LOADER",
+                            "registered", registeredCodes.contains(code)
+                    ));
+                }
+            }
+
+            // SND agents
+            Collection<String> sndAgents = (Collection<String>) healthData.get("sndAgents");
+            if (sndAgents != null) {
+                for (String code : sndAgents) {
+                    agents.add(Map.of(
+                            "agentCode", code,
+                            "type", "SND",
+                            "registered", registeredCodes.contains(code)
+                    ));
+                }
+            }
+
+            result.put("agents", agents);
+            log.info("Discovered {} agents from {}", agents.size(), endpointUrl);
+
+        } catch (Exception e) {
+            log.error("Failed to discover agents from {}: {}", endpointUrl, e.getMessage());
+            result.put("error", "Agent 연결 실패: " + e.getMessage());
+        }
+
+        return result;
     }
 
     private void addExecutionParams(Agent agent, List<AgentDto.ExecutionParamInput> params) {
@@ -96,9 +181,9 @@ public class AgentService {
      * Agent API에서 실행 파라미터 메타데이터 가져오기 (프록시)
      */
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> fetchExecutionParamsFromAgent(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public List<Map<String, Object>> fetchExecutionParamsFromAgent(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         try {
             String url = agent.getEndpointUrl() + "/api/pipeline/execution-params";
@@ -107,7 +192,7 @@ public class AgentService {
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody() != null ? response.getBody() : List.of();
         } catch (Exception e) {
-            log.error("Failed to fetch execution params from agent: {}", agentId, e);
+            log.error("Failed to fetch execution params from agent: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -115,9 +200,9 @@ public class AgentService {
     /**
      * DB에 저장된 Agent 실행 파라미터 조회
      */
-    public List<AgentDto.ExecutionParamResponse> getExecutionParams(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public List<AgentDto.ExecutionParamResponse> getExecutionParams(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         return agent.getExecutionParams().stream()
                 .map(AgentDto.ExecutionParamResponse::from)
@@ -129,12 +214,12 @@ public class AgentService {
      */
     @Transactional
     @SuppressWarnings("unchecked")
-    public List<AgentDto.ExecutionParamResponse> refreshExecutionParams(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public List<AgentDto.ExecutionParamResponse> refreshExecutionParams(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         // Agent API에서 가져오기
-        List<Map<String, Object>> fetched = fetchExecutionParamsFromAgent(agentId);
+        List<Map<String, Object>> fetched = fetchExecutionParamsFromAgent(id);
 
         // 기존 파라미터 제거
         agent.getExecutionParams().clear();
@@ -174,9 +259,9 @@ public class AgentService {
     }
 
     @Transactional
-    public AgentDto.Response update(String agentId, AgentDto.UpdateRequest request) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public AgentDto.Response update(Long id, AgentDto.UpdateRequest request) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         if (request.getAgentName() != null) {
             agent.setAgentName(request.getAgentName());
@@ -192,6 +277,9 @@ public class AgentService {
         }
         if (request.getAgentType() != null) {
             agent.setAgentType(request.getAgentType());
+        }
+        if (request.getDatasourceTag() != null) {
+            agent.setDatasourceTag(request.getDatasourceTag());
         }
         if (request.getSourceDatasourceId() != null) {
             agent.setSourceDatasourceId(request.getSourceDatasourceId());
@@ -209,7 +297,6 @@ public class AgentService {
         // 테이블 목록 업데이트 (전달된 경우에만)
         if (request.getSourceTableIds() != null || request.getTargetTableIds() != null) {
             agent.getAgentTables().clear();
-            // orphanRemoval로 인한 DELETE가 INSERT보다 먼저 실행되도록 flush
             entityManager.flush();
             addAgentTables(agent, request.getSourceTableIds(), AgentTable.TableType.SOURCE);
             addAgentTables(agent, request.getTargetTableIds(), AgentTable.TableType.TARGET);
@@ -226,17 +313,17 @@ public class AgentService {
     }
 
     @Transactional
-    public void delete(String agentId) {
-        if (!agentRepository.existsById(agentId)) {
-            throw new IllegalArgumentException("Agent not found: " + agentId);
+    public void delete(Long id) {
+        if (!agentRepository.existsById(id)) {
+            throw new IllegalArgumentException("Agent not found: " + id);
         }
-        agentRepository.deleteById(agentId);
+        agentRepository.deleteById(id);
     }
 
     @Transactional
-    public AgentDto.HealthCheckResponse healthCheck(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public AgentDto.HealthCheckResponse healthCheck(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         AgentStatus previousStatus = agent.getStatus();
         AgentStatus newStatus = AgentStatus.OFFLINE;
@@ -244,11 +331,10 @@ public class AgentService {
 
         try {
             String healthUrl = agent.getEndpointUrl() + "/health";
-            log.info("Health check for agent {}: {}", agentId, healthUrl);
+            log.info("Health check for agent {} ({}): {}", agent.getAgentCode(), id, healthUrl);
 
             ResponseEntity<String> response = restTemplate.getForEntity(healthUrl, String.class);
             if (response.getStatusCode().is2xxSuccessful()) {
-                // Agent가 응답하면 ONLINE (RUNNING 상태였어도 실제로는 실행 완료된 것)
                 newStatus = AgentStatus.ONLINE;
                 if (previousStatus == AgentStatus.RUNNING) {
                     message = "Agent is online (recovered from RUNNING state)";
@@ -258,43 +344,42 @@ public class AgentService {
             } else {
                 message = "Agent returned non-2xx status";
             }
-            log.info("Health check result for agent {}: {} (was {})", agentId, newStatus, previousStatus);
+            log.info("Health check result for agent {}: {} (was {})", agent.getAgentCode(), newStatus, previousStatus);
         } catch (Exception e) {
-            log.warn("Health check failed for agent {}: {}", agentId, e.getMessage());
+            log.warn("Health check failed for agent {}: {}", agent.getAgentCode(), e.getMessage());
             message = "Connection failed: " + e.getMessage();
             newStatus = AgentStatus.OFFLINE;
         }
 
-        // 상태 업데이트
         agent.setStatus(newStatus);
         agentRepository.save(agent);
 
         return AgentDto.HealthCheckResponse.builder()
-                .agentId(agentId)
+                .id(id)
+                .agentCode(agent.getAgentCode())
                 .status(newStatus)
                 .message(message)
                 .build();
     }
 
     @Transactional
-    public void updateStatus(String agentId, AgentStatus status) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public void updateStatus(Long id, AgentStatus status) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
         agent.setStatus(status);
         agentRepository.save(agent);
     }
 
     /**
      * Agent의 source DB에 테스트 데이터 생성 요청
-     * Datasource 연결 정보 전체를 전달
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> generateTestData(String agentId, int count) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public Map<String, Object> generateTestData(Long id, int count) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         if (agent.getSourceDatasourceId() == null) {
-            return Map.of("error", "Source datasource not configured for agent: " + agentId);
+            return Map.of("error", "Source datasource not configured for agent: " + agent.getAgentCode());
         }
 
         Datasource datasource = datasourceRepository.findById(agent.getSourceDatasourceId())
@@ -302,31 +387,29 @@ public class AgentService {
 
         try {
             String url = agent.getEndpointUrl() + "/api/test/generate-data?count=" + count;
-            log.info("Requesting test data generation for agent {}: {}", agentId, url);
+            log.info("Requesting test data generation for agent {}: {}", agent.getAgentCode(), url);
 
-            // 연결 정보 전체를 body로 전달
             Map<String, Object> request = buildDatasourceRequest(datasource);
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            log.info("Test data generation result for agent {}: {}", agentId, response.getBody());
+            log.info("Test data generation result for agent {}: {}", agent.getAgentCode(), response.getBody());
 
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to generate test data for agent {}: {}", agentId, e.getMessage());
+            log.error("Failed to generate test data for agent {}: {}", agent.getAgentCode(), e.getMessage());
             return Map.of("error", e.getMessage());
         }
     }
 
     /**
      * Agent의 source DB 테스트 데이터 정리 요청
-     * Datasource 연결 정보 전체를 전달
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> clearTestData(String agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+    public Map<String, Object> clearTestData(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         if (agent.getSourceDatasourceId() == null) {
-            return Map.of("error", "Source datasource not configured for agent: " + agentId);
+            return Map.of("error", "Source datasource not configured for agent: " + agent.getAgentCode());
         }
 
         Datasource datasource = datasourceRepository.findById(agent.getSourceDatasourceId())
@@ -334,14 +417,13 @@ public class AgentService {
 
         try {
             String url = agent.getEndpointUrl() + "/api/test/clear-data";
-            log.info("Requesting test data clear for agent {}: {}", agentId, url);
+            log.info("Requesting test data clear for agent {}: {}", agent.getAgentCode(), url);
 
-            // 연결 정보 전체를 body로 전달 (POST로 변경)
             Map<String, Object> request = buildDatasourceRequest(datasource);
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
             return response.getBody() != null ? response.getBody() : Map.of("message", "Test data cleared");
         } catch (Exception e) {
-            log.error("Failed to clear test data for agent {}: {}", agentId, e.getMessage());
+            log.error("Failed to clear test data for agent {}: {}", agent.getAgentCode(), e.getMessage());
             return Map.of("error", e.getMessage());
         }
     }

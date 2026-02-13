@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "execution_history", indexes = {
-    @Index(name = "idx_execution_history_agent", columnList = "agent_id"),
+    @Index(name = "idx_execution_history_agent", columnList = "agent_code"),
     @Index(name = "idx_execution_history_status", columnList = "status"),
     @Index(name = "idx_execution_history_started", columnList = "started_at DESC")
 })
@@ -27,8 +27,8 @@ public class ExecutionHistory {
     @Column(name = "execution_id", length = 100)
     private String executionId;
 
-    @Column(name = "agent_id", length = 50, nullable = false)
-    private String agentId;
+    @Column(name = "agent_code", length = 50, nullable = false)
+    private String agentCode;
 
     @Column(name = "agent_name", length = 100)
     private String agentName;
@@ -63,5 +63,5 @@ public class ExecutionHistory {
     private String triggeredBy = "MANUAL";  // MANUAL, SCHEDULE, CHAIN
 
     @Column(name = "agent_type", length = 30)
-    private String agentType;  // RELAY, LOADER_STANDARD, LOADER_CUSTOM
+    private String agentType;  // RCV, SND, LOADER
 }

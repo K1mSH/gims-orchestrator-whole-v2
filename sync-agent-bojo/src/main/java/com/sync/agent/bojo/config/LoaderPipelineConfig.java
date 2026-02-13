@@ -30,11 +30,11 @@ public class LoaderPipelineConfig {
 
         for (AgentDefinition def : loaderDefs) {
             try {
-                PipelineRunner runner = new PipelineRunner(def.getAgentId(), List.of(daejeonLoadStep));
-                pipelineRegistry.register(def.getAgentId(), "LOADER", runner);
-                log.info("Registered Loader pipeline: {}", def.getAgentId());
+                PipelineRunner runner = new PipelineRunner(def.getAgentCode(), List.of(daejeonLoadStep));
+                pipelineRegistry.register(def.getAgentCode(), "LOADER", runner);
+                log.info("Registered Loader pipeline: {}", def.getAgentCode());
             } catch (Exception e) {
-                log.error("Failed to register Loader pipeline: {}", def.getAgentId(), e);
+                log.error("Failed to register Loader pipeline: {}", def.getAgentCode(), e);
             }
         }
     }

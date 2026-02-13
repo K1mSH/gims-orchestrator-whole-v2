@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { executionApi, datasourceApi, ExecutionDataSummary, TableData, TableDataParams, TraceResult, RecordHistory, RecordHistoryResponse, ExecutionRecordHistoryResponse, ExecutionRecordHistoryTableSummary } from '@/lib/api';
-import type { ExecutionDetail, TableStats, StepLog } from '@/types';
+import { executionApi, datasourceApi, ExecutionDataSummary, TableData, TableDataParams, TraceResult } from '@/lib/api';
+import type { ExecutionDetail, TableStats } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 
 // 선택된 테이블 (tableName + tableType 조합으로 유니크하게 식별)
@@ -29,7 +29,6 @@ export default function ExecutionDetailPage() {
   const [executionDetail, setExecutionDetail] = useState<ExecutionDetail | null>(null);
   const [summary, setSummary] = useState<ExecutionDataSummary | null>(null);
   const [tableStats, setTableStats] = useState<TableStats[]>([]);
-  const [stepLogs, setStepLogs] = useState<StepLog[]>([]);
   const [selectedTable, setSelectedTable] = useState<SelectedTable>(null);
   const [tableData, setTableData] = useState<TableData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,13 +46,6 @@ export default function ExecutionDetailPage() {
   const [traceResult, setTraceResult] = useState<TraceResult | null>(null);
   const [traceLoading, setTraceLoading] = useState(false);
 
-  // 레코드 처리 이력 상태 (행 클릭 트레이스용)
-  const [recordHistory, setRecordHistory] = useState<RecordHistory[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-
-  // 실행 ID별 처리 이력 (이 실행이 처리한 레코드 - 이전 실행 조회용)
-  const [execRecordHistory, setExecRecordHistory] = useState<ExecutionRecordHistoryResponse | null>(null);
-  const [execHistoryLoading, setExecHistoryLoading] = useState(false);
 
   // execution_id가 덮어씌워진 실행인지 여부 (IF 테이블에서 fallbackMode 감지 시 set)
   const [isOverwrittenExecution, setIsOverwrittenExecution] = useState(false);
@@ -92,26 +84,6 @@ export default function ExecutionDetailPage() {
         }
       }
 
-      // Agent DB에서 Step 로그 조회
-      try {
-        const steps = await executionApi.getStepLogs(executionId);
-        setStepLogs(steps);
-      } catch {
-        console.log('Step logs not available from agent');
-      }
-
-      // 실행 ID별 처리 이력 조회 (이전 실행에서도 보이도록)
-      if (detail.status !== 'RUNNING') {
-        setExecHistoryLoading(true);
-        try {
-          const history = await executionApi.getRecordHistoryByExecution(executionId);
-          setExecRecordHistory(history);
-        } catch {
-          console.log('Execution record history not available');
-        } finally {
-          setExecHistoryLoading(false);
-        }
-      }
     } catch (error) {
       console.error('실행 정보 조회 실패:', error);
     } finally {
@@ -203,15 +175,13 @@ export default function ExecutionDetailPage() {
     if (expandedRowPk === rowId) {
       setExpandedRowPk(null);
       setTraceResult(null);
-      setRecordHistory([]);
+
       return;
     }
 
     setExpandedRowPk(rowId);
     setTraceLoading(true);
     setTraceResult(null);
-    setRecordHistory([]);
-    setHistoryLoading(true);
 
     try {
       let result;
@@ -227,7 +197,6 @@ export default function ExecutionDetailPage() {
         const sourceRefs = row.sourceRefs as string || row.source_refs as string;
         if (!sourceRefs) {
           setTraceResult({ error: 'sourceRefs가 없습니다.' });
-          setHistoryLoading(false);
           return;
         }
         // IF 테이블명을 전달하여 SOURCE 테이블 추론
@@ -243,33 +212,7 @@ export default function ExecutionDetailPage() {
       setTraceLoading(false);
     }
 
-    // 레코드 처리 이력 조회 (병렬)
-    try {
-      // recordKey 추출: obsv_code 우선, 없으면 첫 번째 컬럼 값
-      const recordKey = String(row.obsv_code ?? row.OBSV_CODE ?? row[tableData.columns[0]] ?? '');
-      let histTableName = selectedTable?.tableName ?? '';
-
-      // SOURCE 테이블 클릭 시 → 대응하는 IF 테이블명으로 변환 (sync_record_history는 IF 테이블명으로 기록됨)
-      if (selectedTable?.tableType === 'SOURCE' && histTableName) {
-        const baseName = histTableName.toLowerCase().replace('_view', '');
-        const ifTable = tableStats.find(s =>
-          s.tableType === 'TARGET_IF' && s.tableName.toLowerCase().includes(baseName)
-        );
-        if (ifTable) {
-          histTableName = ifTable.tableName;
-        }
-      }
-
-      if (recordKey && histTableName) {
-        const histResponse = await executionApi.getRecordHistory(executionId, histTableName, recordKey);
-        setRecordHistory(histResponse.histories || []);
-      }
-    } catch (error) {
-      console.log('처리 이력 조회 실패:', error);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [executionId, selectedTable, expandedRowPk, tableData, tableStats]);
+  }, [executionId, selectedTable, expandedRowPk, tableData]);
 
   useEffect(() => {
     fetchExecution();
@@ -344,10 +287,9 @@ export default function ExecutionDetailPage() {
     return <div className="empty-state">실행 정보를 찾을 수 없습니다</div>;
   }
 
-  // 모든 Step에서 건수 합계 (여러 step이 있을 수 있음)
-  const totalReadCount = stepLogs.reduce((sum, s) => sum + (s.readCount ?? 0), 0);
-  const totalWriteCount = stepLogs.reduce((sum, s) => sum + (s.writeCount ?? 0), 0);
-  const totalSkipCount = stepLogs.reduce((sum, s) => sum + (s.skipCount ?? 0), 0);
+  const totalReadCount = executionDetail.totalReadCount ?? 0;
+  const totalWriteCount = executionDetail.totalWriteCount ?? 0;
+  const totalSkipCount = executionDetail.totalSkipCount ?? 0;
 
   // 현재 선택된 테이블의 타입
   const selectedTableStat = selectedTable
@@ -445,52 +387,6 @@ export default function ExecutionDetailPage() {
         )}
       </div>
 
-      {/* Step 로그 */}
-      {stepLogs.length > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h2 className="card-title" style={{ marginBottom: '1rem' }}>Step 실행 로그</h2>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>순서</th>
-                  <th>Step 이름</th>
-                  <th>상태</th>
-                  <th>읽기</th>
-                  <th>쓰기</th>
-                  <th>스킵</th>
-                  <th>소요시간</th>
-                  <th>시작</th>
-                  <th>종료</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stepLogs.map((step, idx) => {
-                  const durationMs = step.startedAt && step.finishedAt
-                    ? new Date(step.finishedAt).getTime() - new Date(step.startedAt).getTime()
-                    : null;
-                  return (
-                    <tr key={step.stepLogId || idx}>
-                      <td>{step.stepOrder}</td>
-                      <td><code>{step.stepName}</code></td>
-                      <td><StatusBadge status={step.status} /></td>
-                      <td>{step.readCount ?? '-'}</td>
-                      <td>{step.writeCount ?? '-'}</td>
-                      <td>{step.skipCount ?? '-'}</td>
-                      <td style={{ fontWeight: 500 }}>
-                        {durationMs !== null ? `${(durationMs / 1000).toFixed(2)}초` : '-'}
-                      </td>
-                      <td style={{ fontSize: '0.85rem' }}>{step.startedAt ? new Date(step.startedAt).toLocaleTimeString('ko-KR') : '-'}</td>
-                      <td style={{ fontSize: '0.85rem' }}>{step.finishedAt ? new Date(step.finishedAt).toLocaleTimeString('ko-KR') : '-'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* 테이블별 처리 현황 */}
       {executionDetail.status !== 'RUNNING' && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -582,123 +478,6 @@ export default function ExecutionDetailPage() {
               </table>
             </div>
           </div>
-      )}
-
-      {/* 이 실행이 처리한 레코드 이력 (sync_record_history 기반) */}
-      {executionDetail.status !== 'RUNNING' && execRecordHistory && execRecordHistory.totalCount > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h2 className="card-title" style={{ marginBottom: '1rem' }}>
-            처리 레코드 이력
-            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--gray-500)', marginLeft: '0.75rem' }}>
-              이 실행이 처리한 레코드 {execRecordHistory.totalCount}건
-            </span>
-          </h2>
-          <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
-            UPSERT로 IF 테이블 데이터가 최신 실행으로 덮어씌워져도, 이 실행에서 처리한 레코드 이력은 여기서 확인할 수 있습니다.
-          </div>
-          {execRecordHistory.tables.map((tableSummary) => (
-            <div key={tableSummary.tableName} style={{
-              marginBottom: '1rem',
-              padding: '0.75rem 1rem',
-              background: 'var(--gray-50)',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--gray-200)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <code style={{ fontSize: '0.9rem', fontWeight: 600 }}>{tableSummary.tableName}</code>
-                <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>
-                  {tableSummary.count}건
-                </span>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {tableSummary.insertCount > 0 && (
-                    <span style={{
-                      padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.7rem', fontWeight: 600,
-                      background: 'var(--green-100)', color: 'var(--green-700)',
-                    }}>
-                      INSERT {tableSummary.insertCount}
-                    </span>
-                  )}
-                  {tableSummary.updateCount > 0 && (
-                    <span style={{
-                      padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.7rem', fontWeight: 600,
-                      background: 'var(--yellow-100)', color: 'var(--yellow-700)',
-                    }}>
-                      UPDATE {tableSummary.updateCount}
-                    </span>
-                  )}
-                  {tableSummary.upsertCount > 0 && (
-                    <span style={{
-                      padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontSize: '0.7rem', fontWeight: 600,
-                      background: 'var(--blue-100)', color: 'var(--blue-700)',
-                    }}>
-                      UPSERT {tableSummary.upsertCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {/* 레코드 목록 (최대 20건까지 표시) */}
-              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                <table style={{ fontSize: '0.8rem', width: '100%' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ padding: '0.3rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--gray-100)' }}>record_key</th>
-                      <th style={{ padding: '0.3rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--gray-100)' }}>action</th>
-                      <th style={{ padding: '0.3rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--gray-100)' }}>step</th>
-                      <th style={{ padding: '0.3rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--gray-100)' }}>처리 시각</th>
-                      <th style={{ padding: '0.3rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--gray-100)' }}>source_refs</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(tableSummary.histories || []).slice(0, 50).map((h) => (
-                      <tr key={h.id}>
-                        <td style={{ padding: '0.3rem 0.5rem', fontFamily: 'monospace' }}>{h.recordKey}</td>
-                        <td style={{ padding: '0.3rem 0.5rem' }}>
-                          <span style={{
-                            padding: '0.1rem 0.3rem', borderRadius: '0.2rem', fontSize: '0.7rem', fontWeight: 600,
-                            background: h.action === 'INSERT' ? 'var(--green-100)' : h.action === 'UPDATE' ? 'var(--yellow-100)' : 'var(--blue-100)',
-                            color: h.action === 'INSERT' ? 'var(--green-700)' : h.action === 'UPDATE' ? 'var(--yellow-700)' : 'var(--blue-700)',
-                          }}>
-                            {h.action}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.3rem 0.5rem', color: 'var(--gray-500)' }}>{h.stepId}</td>
-                        <td style={{ padding: '0.3rem 0.5rem', color: 'var(--gray-500)' }}>
-                          {h.processedAt ? new Date(h.processedAt).toLocaleString('ko-KR') : '-'}
-                        </td>
-                        <td style={{ padding: '0.3rem 0.5rem', fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--gray-500)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {h.sourceRefs || '-'}
-                        </td>
-                      </tr>
-                    ))}
-                    {(tableSummary.histories || []).length > 50 && (
-                      <tr>
-                        <td colSpan={5} style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--gray-400)', fontStyle: 'italic' }}>
-                          ...외 {(tableSummary.histories || []).length - 50}건 더
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 실행이 처리한 레코드가 없을 때 (이전 실행) */}
-      {executionDetail.status !== 'RUNNING' && !execHistoryLoading && execRecordHistory && execRecordHistory.totalCount === 0 && tableStats.length > 0 && (
-        <div style={{
-          marginBottom: '1.5rem',
-          padding: '1rem',
-          background: 'var(--gray-50)',
-          borderRadius: '0.5rem',
-          border: '1px solid var(--gray-200)',
-          color: 'var(--gray-500)',
-          fontSize: '0.9rem',
-          textAlign: 'center',
-        }}>
-          이 실행의 레코드 이력이 없습니다. (sync_record_history 기능이 추가되기 이전의 실행일 수 있습니다)
-        </div>
       )}
 
       {/* 선택된 테이블의 실제 데이터 (가로 크기 고정, 세로는 자유) */}
@@ -1070,76 +849,6 @@ export default function ExecutionDetailPage() {
                                     </div>
                                   )}
 
-                                  {/* 처리 이력 섹션 */}
-                                  <div style={{ marginTop: '1rem', borderTop: '1px solid var(--gray-200)', paddingTop: '1rem' }}>
-                                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--gray-700)' }}>
-                                      처리 이력 {!historyLoading && `(${recordHistory.length}건)`}
-                                    </h4>
-                                    {historyLoading ? (
-                                      <div style={{ color: 'var(--gray-500)', fontSize: '0.85rem' }}>이력 로딩중...</div>
-                                    ) : recordHistory.length === 0 ? (
-                                      <div style={{ color: 'var(--gray-400)', fontSize: '0.85rem', fontStyle: 'italic' }}>처리 이력이 없습니다</div>
-                                    ) : (
-                                      <div style={{ position: 'relative', paddingLeft: '1.5rem' }}>
-                                        {/* 타임라인 세로선 */}
-                                        <div style={{
-                                          position: 'absolute',
-                                          left: '0.45rem',
-                                          top: '0.5rem',
-                                          bottom: '0.5rem',
-                                          width: '2px',
-                                          background: 'var(--gray-300)',
-                                        }} />
-                                        {recordHistory.map((h, i) => (
-                                          <div key={h.id} style={{
-                                            position: 'relative',
-                                            marginBottom: i < recordHistory.length - 1 ? '0.75rem' : 0,
-                                            paddingLeft: '0.75rem',
-                                          }}>
-                                            {/* 타임라인 점 */}
-                                            <div style={{
-                                              position: 'absolute',
-                                              left: '-1.25rem',
-                                              top: '0.35rem',
-                                              width: '10px',
-                                              height: '10px',
-                                              borderRadius: '50%',
-                                              background: h.executionId === executionId ? 'var(--blue-500)' : 'var(--gray-400)',
-                                              border: '2px solid white',
-                                              boxShadow: '0 0 0 1px var(--gray-300)',
-                                            }} />
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
-                                              <span style={{ color: 'var(--gray-500)', minWidth: '130px' }}>
-                                                {h.processedAt ? new Date(h.processedAt).toLocaleString('ko-KR') : '-'}
-                                              </span>
-                                              <span style={{
-                                                padding: '0.1rem 0.4rem',
-                                                borderRadius: '0.25rem',
-                                                fontSize: '0.7rem',
-                                                fontWeight: 600,
-                                                background: h.action === 'INSERT' ? 'var(--green-100)' : h.action === 'UPDATE' ? 'var(--yellow-100)' : 'var(--blue-100)',
-                                                color: h.action === 'INSERT' ? 'var(--green-700)' : h.action === 'UPDATE' ? 'var(--yellow-700)' : 'var(--blue-700)',
-                                              }}>
-                                                {h.action}
-                                              </span>
-                                              <code style={{
-                                                fontSize: '0.7rem',
-                                                color: h.executionId === executionId ? 'var(--blue-600)' : 'var(--gray-500)',
-                                                fontWeight: h.executionId === executionId ? 600 : 400,
-                                              }}>
-                                                {h.executionId}
-                                              </code>
-                                              {h.stepId && (
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--gray-400)' }}>
-                                                  step: {h.stepId}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
                                 </div>
                               </td>
                             </tr>

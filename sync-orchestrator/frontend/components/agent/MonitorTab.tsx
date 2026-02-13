@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import type { Agent, ExecutionDetail, StepLog } from '@/types';
+import type { Agent, ExecutionDetail } from '@/types';
 import { executionApi } from '@/lib/api';
 import StatusBadge from '@/components/StatusBadge';
 
@@ -13,21 +13,18 @@ interface MonitorTabProps {
 
 export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabProps) {
   const [execution, setExecution] = useState<ExecutionDetail | null>(null);
-  const [stepLogs, setStepLogs] = useState<StepLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [completed, setCompleted] = useState(false); // 완료 상태 플래그
+  const [completed, setCompleted] = useState(false);
   const prevStatusRef = useRef<string | null>(null);
 
   const fetchData = async () => {
     try {
-      const executions = await executionApi.getByAgent(agent.agentId);
+      const executions = await executionApi.getByAgent(agent.id);
 
       if (agent.status === 'RUNNING') {
         const running = executions.find(e => e.status === 'RUNNING');
         if (running) {
           setExecution(running);
-          const logs = await executionApi.getStepLogs(running.executionId);
-          setStepLogs(logs as unknown as StepLog[]);
         }
       }
     } catch (error) {
@@ -40,27 +37,23 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
   // 실행 중일 때만 폴링 (진입 시 즉시 1회 + 이후 3초마다)
   useEffect(() => {
     if (agent.status === 'RUNNING' && !completed) {
-      fetchData(); // 즉시 1회 실행
-      const interval = setInterval(fetchData, 3000); // 이후 3초마다
+      fetchData();
+      const interval = setInterval(fetchData, 3000);
       return () => clearInterval(interval);
     } else {
-      // RUNNING이 아닐 때도 초기 로드 1회
       fetchData();
     }
-  }, [agent.status, completed, agent.agentId]);
+  }, [agent.status, completed, agent.id]);
 
   // 상태 변경 감지 (RUNNING → 완료)
   useEffect(() => {
     if (prevStatusRef.current === 'RUNNING' && agent.status !== 'RUNNING') {
-      // 완료됨 - 마지막 데이터 1회 조회
       const fetchFinal = async () => {
         try {
-          const executions = await executionApi.getByAgent(agent.agentId);
+          const executions = await executionApi.getByAgent(agent.id);
           const latest = executions[0];
           if (latest) {
             setExecution(latest);
-            const logs = await executionApi.getStepLogs(latest.executionId);
-            setStepLogs(logs as unknown as StepLog[]);
           }
           setCompleted(true);
           onExecutionComplete?.();
@@ -71,7 +64,7 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
       fetchFinal();
     }
     prevStatusRef.current = agent.status;
-  }, [agent.status, agent.agentId, onExecutionComplete]);
+  }, [agent.status, agent.id, onExecutionComplete]);
 
   if (loading) {
     return (
@@ -84,7 +77,7 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
     );
   }
 
-  // 실행 완료 상태""
+  // 실행 완료 상태
   if (completed && execution) {
     return (
       <div className="card" style={{
@@ -100,11 +93,18 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
           <StatusBadge status={execution.status as 'SUCCESS' | 'FAILED' | 'RUNNING'} />
         </div>
         <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
             {execution.status === 'SUCCESS'
               ? '파이프라인이 성공적으로 완료되었습니다!'
               : '파이프라인 실행 중 오류가 발생했습니다.'}
           </p>
+          {execution.status === 'SUCCESS' && (
+            <p style={{ fontSize: '0.9rem', color: 'var(--gray-600)', marginBottom: '1rem' }}>
+              읽기: {execution.totalReadCount ?? 0}건, 쓰기: {execution.totalWriteCount ?? 0}건
+              {execution.totalSkipCount ? `, 스킵: ${execution.totalSkipCount}건` : ''}
+              {execution.durationMs != null ? ` (${(execution.durationMs / 1000).toFixed(1)}s)` : ''}
+            </p>
+          )}
           <Link
             href={`/executions/${execution.executionId}`}
             className="btn btn-primary"
@@ -128,12 +128,7 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
     );
   }
 
-  // 실행 중 상태 - 실시간 진행률 표시
-  const totalSteps = stepLogs.length > 0 ? (stepLogs[0].totalSteps || stepLogs.length) : 0;
-  const completedSteps = stepLogs.filter(s => s.status === 'SUCCESS' || s.status === 'FAILED').length;
-  const currentRunningStep = stepLogs.find(s => s.status === 'RUNNING');
-  const hasStepLogs = stepLogs.length > 0;
-
+  // 실행 중 상태
   return (
     <div className="card" style={{ background: 'var(--blue-50)', border: '2px solid var(--blue-200)' }}>
       <div className="card-header">
@@ -147,98 +142,28 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
           <div><strong>시작 시간:</strong> {new Date(execution.startedAt).toLocaleString('ko-KR')}</div>
         </div>
 
-        {/* 전체 진행률 */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <strong>전체 진행률</strong>
-            <span>{hasStepLogs ? `${completedSteps}/${totalSteps} Steps` : '초기화 중...'}</span>
-          </div>
-          <div style={{ background: 'var(--gray-200)', borderRadius: '9999px', height: '8px', overflow: 'hidden' }}>
-            <div style={{
-              background: 'var(--primary)',
-              height: '100%',
-              width: hasStepLogs && totalSteps > 0 ? `${(completedSteps / totalSteps) * 100}%` : '0%',
-              transition: 'width 0.3s'
-            }} />
-          </div>
-        </div>
-
-        {/* 현재 진행중인 Step */}
-        {currentRunningStep && (
-          <div style={{
-            background: 'var(--blue-100)',
-            border: '2px solid var(--blue-300)',
-            borderRadius: '0.5rem',
-            padding: '1rem',
-            marginBottom: '1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem'
-          }}>
-            <div className="spinner" style={{ width: '24px', height: '24px' }} />
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--blue-700)' }}>
-                현재 Step: {currentRunningStep.stepName || currentRunningStep.stepId}
-              </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--blue-600)' }}>
-                Step {currentRunningStep.stepOrder}/{totalSteps} 처리 중...
-              </div>
+        {/* 진행 중 애니메이션 */}
+        <div style={{
+          background: 'var(--blue-100)',
+          border: '2px solid var(--blue-300)',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          justifyContent: 'center',
+        }}>
+          <div className="spinner" style={{ width: '24px', height: '24px' }} />
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--blue-700)' }}>
+              파이프라인 처리 중...
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--blue-600)', marginTop: '0.25rem' }}>
+              {execution.totalReadCount != null
+                ? `읽기: ${execution.totalReadCount}건, 쓰기: ${execution.totalWriteCount ?? 0}건`
+                : '데이터 처리 대기 중...'}
             </div>
           </div>
-        )}
-
-        {/* Step별 상태 */}
-        <div>
-          <strong style={{ display: 'block', marginBottom: '1rem' }}>Step 진행 상황</strong>
-          {!hasStepLogs ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
-              <div className="spinner" style={{ width: '32px', height: '32px', margin: '0 auto 1rem' }} />
-              <p>Step 정보를 기다리는 중...</p>
-            </div>
-          ) : (
-            stepLogs.map((step, index) => (
-              <div key={step.stepLogId || `step-${index}`} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                padding: '1rem',
-                background: step.status === 'RUNNING' ? 'var(--blue-100)' : 'white',
-                borderRadius: '0.5rem',
-                marginBottom: '0.5rem',
-                border: step.status === 'RUNNING' ? '2px solid var(--blue-300)' : '1px solid var(--gray-200)',
-              }}>
-                <div style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: step.status === 'SUCCESS' ? 'var(--green-500)'
-                    : step.status === 'FAILED' ? 'var(--red-500)'
-                    : step.status === 'RUNNING' ? 'var(--blue-500)'
-                    : 'var(--gray-300)',
-                  color: 'white', fontSize: '0.8rem', fontWeight: 'bold'
-                }}>
-                  {step.status === 'SUCCESS' ? '✓' : step.status === 'FAILED' ? '✕' : step.stepOrder || index + 1}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {step.stepName || step.stepId}
-                  </div>
-                  {(step.status === 'SUCCESS' || step.status === 'FAILED') && (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
-                      {step.readCount != null && `읽기: ${step.readCount}건`}
-                      {step.writeCount != null && `, 쓰기: ${step.writeCount}건`}
-                      {step.skipCount != null && step.skipCount > 0 && `, 건너뛰기: ${step.skipCount}건`}
-                    </div>
-                  )}
-                  {step.status === 'FAILED' && step.errorMessage && (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--red-500)', marginTop: '0.25rem' }}>
-                      오류: {step.errorMessage}
-                    </div>
-                  )}
-                </div>
-                <StatusBadge status={step.status} />
-              </div>
-            ))
-          )}
         </div>
       </div>
     </div>

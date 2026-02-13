@@ -40,10 +40,10 @@ public class RcvPipelineConfig {
         for (AgentDefinition def : rcvDefs) {
             try {
                 PipelineRunner runner = createRcvRunner(def);
-                pipelineRegistry.register(def.getAgentId(), "RCV", runner);
-                log.info("Registered RCV pipeline: {}", def.getAgentId());
+                pipelineRegistry.register(def.getAgentCode(), "RCV", runner);
+                log.info("Registered RCV pipeline: {}", def.getAgentCode());
             } catch (Exception e) {
-                log.error("Failed to register RCV pipeline: {}", def.getAgentId(), e);
+                log.error("Failed to register RCV pipeline: {}", def.getAgentCode(), e);
             }
         }
     }
@@ -111,6 +111,6 @@ public class RcvPipelineConfig {
             steps = List.of(jewonStep, obsvStep);
         }
 
-        return new PipelineRunner(def.getAgentId(), steps);
+        return new PipelineRunner(def.getAgentCode(), steps);
     }
 }

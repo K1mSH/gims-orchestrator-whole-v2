@@ -1,6 +1,7 @@
 package com.sync.orchestrator.domain.agent;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -15,15 +16,17 @@ public class AgentDto {
     @Builder
     public static class CreateRequest {
         @NotBlank
-        private String agentId;
+        private String agentCode;
         @NotBlank
         private String agentName;
         @NotBlank
         private String endpointUrl;
         @NotBlank
         private String zone;
-        private Boolean isActive;
+        @NotNull
         private AgentType agentType;
+        private String datasourceTag;
+        private Boolean isActive;
         private String sourceDatasourceId;
         private String targetDatasourceId;
         private String description;
@@ -45,6 +48,7 @@ public class AgentDto {
         private String zone;
         private Boolean isActive;
         private AgentType agentType;
+        private String datasourceTag;
         private String sourceDatasourceId;
         private String targetDatasourceId;
         private String description;
@@ -106,12 +110,14 @@ public class AgentDto {
     @AllArgsConstructor
     @Builder
     public static class Response {
-        private String agentId;
+        private Long id;
+        private String agentCode;
         private String agentName;
         private String endpointUrl;
         private String zone;
         private Boolean isActive;
         private AgentType agentType;
+        private String datasourceTag;
         private String sourceDatasourceId;
         private String targetDatasourceId;
         private String description;
@@ -139,12 +145,14 @@ public class AgentDto {
                     .toList();
 
             return Response.builder()
-                    .agentId(agent.getAgentId())
+                    .id(agent.getId())
+                    .agentCode(agent.getAgentCode())
                     .agentName(agent.getAgentName())
                     .endpointUrl(agent.getEndpointUrl())
                     .zone(agent.getZone())
                     .isActive(agent.getIsActive())
                     .agentType(agent.getAgentType())
+                    .datasourceTag(agent.getDatasourceTag())
                     .sourceDatasourceId(agent.getSourceDatasourceId())
                     .targetDatasourceId(agent.getTargetDatasourceId())
                     .description(agent.getDescription())
@@ -165,7 +173,8 @@ public class AgentDto {
     @AllArgsConstructor
     @Builder
     public static class HealthCheckResponse {
-        private String agentId;
+        private Long id;
+        private String agentCode;
         private AgentStatus status;
         private String message;
     }

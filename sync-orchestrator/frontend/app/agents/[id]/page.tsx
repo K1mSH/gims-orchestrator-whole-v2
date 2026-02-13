@@ -21,8 +21,7 @@ type TabType = 'info' | 'monitor' | 'history';
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  // URL에서 인코딩된 한글/공백을 디코딩 (이중 인코딩 방지)
-  const agentId = decodeURIComponent(params.id as string);
+  const agentId = Number(params.id);
 
   const [activeTab, setActiveTab] = useState<TabType>('info');
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -70,13 +69,12 @@ export default function AgentDetailPage() {
     if (agent?.status === 'RUNNING') {
       const interval = setInterval(async () => {
         const updatedAgent = await agentApi.getById(agentId);
-        // 상태가 RUNNING에서 다른 상태로 변경되면 전체 데이터 갱신
         if (updatedAgent.status !== 'RUNNING') {
-          fetchData(); // executions 포함 전체 갱신
+          fetchData();
         } else {
           setAgent(updatedAgent);
         }
-      }, 30000); // 30초마다 Agent 상태 갱신
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [agent?.status, agentId, fetchData]);
@@ -94,7 +92,6 @@ export default function AgentDetailPage() {
 
   const handleTriggerExecution = async (withOptions: boolean = false) => {
     const hasTimeRange = withOptions && useTimeRange && (startTime || endTime);
-    // 활성화된 필터 수집
     const filters: ExecutionFilter[] = [];
     if (withOptions) {
       Object.entries(activeFilters).forEach(([paramId, f]) => {

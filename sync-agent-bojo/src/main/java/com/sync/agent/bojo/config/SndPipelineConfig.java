@@ -34,10 +34,10 @@ public class SndPipelineConfig {
         for (AgentDefinition def : sndDefs) {
             try {
                 PipelineRunner runner = createSndRunner(def);
-                pipelineRegistry.register(def.getAgentId(), "SND", runner);
-                log.info("Registered SND pipeline: {}", def.getAgentId());
+                pipelineRegistry.register(def.getAgentCode(), "SND", runner);
+                log.info("Registered SND pipeline: {}", def.getAgentCode());
             } catch (Exception e) {
-                log.error("Failed to register SND pipeline: {}", def.getAgentId(), e);
+                log.error("Failed to register SND pipeline: {}", def.getAgentCode(), e);
             }
         }
     }
@@ -78,6 +78,6 @@ public class SndPipelineConfig {
         SourceToIfExtractStep obsvStep = new SourceToIfExtractStep(
                 obsvConfig, dataSourceProvider, syncLogRepository);
 
-        return new PipelineRunner(def.getAgentId(), List.of(jewonStep, obsvStep));
+        return new PipelineRunner(def.getAgentCode(), List.of(jewonStep, obsvStep));
     }
 }

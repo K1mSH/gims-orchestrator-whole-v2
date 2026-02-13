@@ -14,7 +14,7 @@ import java.util.Map;
 @Setter
 public class AgentDefinition {
 
-    private String agentId;
+    private String agentCode;
     private String type;  // RCV, LOADER, SND
 
     // RCV/SND 공통 설정

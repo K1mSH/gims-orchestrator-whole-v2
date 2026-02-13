@@ -35,9 +35,9 @@ public class AgentConfigLoader {
                 try (InputStream is = resource.getInputStream()) {
                     Map<String, Object> data = yaml.load(is);
                     AgentDefinition def = parseAgentDefinition(data);
-                    if (def != null && def.getAgentId() != null) {
+                    if (def != null && def.getAgentCode() != null) {
                         agentDefinitions.add(def);
-                        log.info("Loaded agent config: {} (type={})", def.getAgentId(), def.getType());
+                        log.info("Loaded agent config: {} (type={})", def.getAgentCode(), def.getType());
                     }
                 } catch (Exception e) {
                     log.error("Failed to load agent config: {}", resource.getFilename(), e);
@@ -53,7 +53,7 @@ public class AgentConfigLoader {
     @SuppressWarnings("unchecked")
     private AgentDefinition parseAgentDefinition(Map<String, Object> data) {
         AgentDefinition def = new AgentDefinition();
-        def.setAgentId((String) data.get("agent-id"));
+        def.setAgentCode((String) data.get("agent-code"));
         def.setType((String) data.get("type"));
 
         // jewon

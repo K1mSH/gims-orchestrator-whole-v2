@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { chainApi, agentApi } from '@/lib/api';
-import type { AgentChain, Agent, Zone } from '@/types';
+import type { AgentChain, Agent, AgentChainCreateRequest } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 
 const ZONE_LABELS: Record<string, string> = {
@@ -89,12 +89,15 @@ export default function ChainsPage() {
           <div key={chain.id} className="card">
             <div className="card-header">
               <div>
-                <h2 className="card-title">{chain.name}</h2>
+                <h2 className="card-title">{chain.chainName}</h2>
                 {chain.description && (
                   <p style={{ color: 'var(--gray-500)', marginTop: '0.25rem' }}>
                     {chain.description}
                   </p>
                 )}
+                <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>
+                  {chain.triggerType === 'SEQUENTIAL' ? '순차 실행' : '개별 실행'}
+                </span>
               </div>
               <div>
                 <StatusBadge status={chain.isActive ? 'ONLINE' : 'OFFLINE'} />
@@ -103,20 +106,20 @@ export default function ChainsPage() {
 
             <div className="chain-flow">
               {chain.members
-                .sort((a, b) => a.sequence - b.sequence)
+                .sort((a, b) => a.seqOrder - b.seqOrder)
                 .map((member, index) => (
                   <div key={member.id} style={{ display: 'flex', alignItems: 'center' }}>
                     {index > 0 && <span className="chain-arrow">→</span>}
                     <div className="chain-node">
-                      <strong>{member.agent?.agentName || `Agent ${member.agentId}`}</strong>
+                      <strong>{member.agentName || `Agent #${member.agentId}`}</strong>
                       <span
-                        className={`zone-${member.agent?.zone?.toLowerCase().replace('_', '-') || ''}`}
+                        className={`zone-${member.zone?.toLowerCase().replace('_', '-') || ''}`}
                         style={{ fontSize: '0.75rem' }}
                       >
-                        {member.agent ? ZONE_LABELS[member.agent.zone] || member.agent.zone : '-'}
+                        {ZONE_LABELS[member.zone] || member.zone || '-'}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-                        순서 #{member.sequence}
+                        순서 #{member.seqOrder}
                       </span>
                     </div>
                   </div>
@@ -152,39 +155,50 @@ function ChainForm({
   onSuccess: () => void;
 }) {
   const [formData, setFormData] = useState({
-    name: '',
+    chainId: '',
+    chainName: '',
     description: '',
-    isActive: true,
-    memberAgentIds: [] as string[],
+    triggerType: 'SEQUENTIAL' as 'INDIVIDUAL' | 'SEQUENTIAL',
+    selectedAgentIds: [] as number[],
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const handleAgentToggle = (agentId: string) => {
+  const handleAgentToggle = (agentId: number) => {
     setFormData((prev) => {
-      const ids = prev.memberAgentIds.includes(agentId)
-        ? prev.memberAgentIds.filter((id) => id !== agentId)
-        : [...prev.memberAgentIds, agentId];
-      return { ...prev, memberAgentIds: ids };
+      const ids = prev.selectedAgentIds.includes(agentId)
+        ? prev.selectedAgentIds.filter((id) => id !== agentId)
+        : [...prev.selectedAgentIds, agentId];
+      return { ...prev, selectedAgentIds: ids };
     });
   };
 
   const moveAgent = (index: number, direction: 'up' | 'down') => {
-    const newIds = [...formData.memberAgentIds];
+    const newIds = [...formData.selectedAgentIds];
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= newIds.length) return;
     [newIds[index], newIds[newIndex]] = [newIds[newIndex], newIds[index]];
-    setFormData({ ...formData, memberAgentIds: newIds });
+    setFormData({ ...formData, selectedAgentIds: newIds });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.memberAgentIds.length < 2) {
+    if (formData.selectedAgentIds.length < 2) {
       alert('최소 2개 이상의 Agent를 선택해주세요.');
       return;
     }
     setSubmitting(true);
     try {
-      await chainApi.create(formData);
+      const createData: AgentChainCreateRequest = {
+        chainId: formData.chainId,
+        chainName: formData.chainName,
+        description: formData.description || undefined,
+        triggerType: formData.triggerType,
+        members: formData.selectedAgentIds.map((agentId, index) => ({
+          agentId,
+          seqOrder: index + 1,
+        })),
+      };
+      await chainApi.create(createData);
       onSuccess();
     } catch (error) {
       console.error('체인 등록 실패:', error);
@@ -201,15 +215,37 @@ function ChainForm({
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group">
+            <label className="form-label">체인 ID</label>
+            <input
+              type="text"
+              className="form-input"
+              value={formData.chainId}
+              onChange={(e) => setFormData({ ...formData, chainId: e.target.value })}
+              placeholder="order-sync-chain"
+              required
+            />
+          </div>
+          <div className="form-group">
             <label className="form-label">체인명</label>
             <input
               type="text"
               className="form-input"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={formData.chainName}
+              onChange={(e) => setFormData({ ...formData, chainName: e.target.value })}
               placeholder="주문 동기화 체인"
               required
             />
+          </div>
+          <div className="form-group">
+            <label className="form-label">실행 방식</label>
+            <select
+              className="form-select"
+              value={formData.triggerType}
+              onChange={(e) => setFormData({ ...formData, triggerType: e.target.value as 'INDIVIDUAL' | 'SEQUENTIAL' })}
+            >
+              <option value="SEQUENTIAL">순차 실행</option>
+              <option value="INDIVIDUAL">개별 실행</option>
+            </select>
           </div>
           <div className="form-group">
             <label className="form-label">설명</label>
@@ -230,7 +266,7 @@ function ChainForm({
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {agents.map((agent) => (
               <label
-                key={agent.agentId}
+                key={agent.id}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -243,10 +279,13 @@ function ChainForm({
               >
                 <input
                   type="checkbox"
-                  checked={formData.memberAgentIds.includes(agent.agentId)}
-                  onChange={() => handleAgentToggle(agent.agentId)}
+                  checked={formData.selectedAgentIds.includes(agent.id)}
+                  onChange={() => handleAgentToggle(agent.id)}
                 />
                 {agent.agentName}
+                <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>
+                  ({agent.agentCode})
+                </span>
                 <span
                   className={`zone-${agent.zone.toLowerCase().replace('_', '-')}`}
                   style={{ fontSize: '0.75rem' }}
@@ -258,12 +297,12 @@ function ChainForm({
           </div>
         </div>
 
-        {formData.memberAgentIds.length > 0 && (
+        {formData.selectedAgentIds.length > 0 && (
           <div className="form-group">
             <label className="form-label">실행 순서</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {formData.memberAgentIds.map((agentId, index) => {
-                const agent = agents.find((a) => a.agentId === agentId);
+              {formData.selectedAgentIds.map((agentId, index) => {
+                const agent = agents.find((a) => a.id === agentId);
                 return (
                   <div
                     key={agentId}
@@ -290,7 +329,7 @@ function ChainForm({
                       type="button"
                       className="btn btn-secondary btn-sm"
                       onClick={() => moveAgent(index, 'down')}
-                      disabled={index === formData.memberAgentIds.length - 1}
+                      disabled={index === formData.selectedAgentIds.length - 1}
                     >
                       ↓
                     </button>

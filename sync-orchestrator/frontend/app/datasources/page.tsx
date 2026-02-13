@@ -579,6 +579,8 @@ function TableManagementModal({
 
   useEffect(() => {
     fetchRegisteredTables();
+    // 모달 최초 오픈 시 테이블 목록 자동 검색
+    searchTablesFromDb('');
   }, [datasource.datasourceId]);
 
   const fetchRegisteredTables = async () => {
@@ -592,22 +594,24 @@ function TableManagementModal({
     }
   };
 
-  const [tableSearchQuery, setTableSearchQuery] = useState('');
-
-  // 테이블 검색 (버튼 클릭 시)
-  const handleSearchTables = async () => {
-    console.log('handleSearchTables called with query:', tableSearchQuery);
+  // 실제 DB에서 테이블 검색
+  const searchTablesFromDb = async (query: string) => {
     setLoadingTables(true);
     try {
-      const results = await datasourceApi.searchTables(datasource.datasourceId, tableSearchQuery);
-      console.log('searchTables results:', results);
+      const results = await datasourceApi.searchTables(datasource.datasourceId, query);
       setAllTables(results);
     } catch (error) {
       console.error('테이블 검색 실패:', error);
-      alert('테이블 검색에 실패했습니다.');
     } finally {
       setLoadingTables(false);
     }
+  };
+
+  const [tableSearchQuery, setTableSearchQuery] = useState('');
+
+  // 테이블 검색 (버튼 클릭 시)
+  const handleSearchTables = () => {
+    searchTablesFromDb(tableSearchQuery);
   };
 
   // 테이블 선택 시 컬럼 자동 로드
@@ -686,8 +690,8 @@ function TableManagementModal({
       setSelectedTable(null);
       setAllColumns([]);
       setSelectedColumns([]);
-      setAllTables([]);
       fetchRegisteredTables();
+      searchTablesFromDb(tableSearchQuery);
     } catch (error) {
       console.error('테이블 등록 실패:', error);
       alert('테이블 등록에 실패했습니다.');
@@ -701,6 +705,7 @@ function TableManagementModal({
     try {
       await datasourceApi.deleteTable(datasource.datasourceId, tableId);
       fetchRegisteredTables();
+      searchTablesFromDb(tableSearchQuery);
     } catch (error) {
       console.error('테이블 삭제 실패:', error);
       alert('테이블 삭제에 실패했습니다.');

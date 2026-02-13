@@ -25,9 +25,9 @@ public class ExecutionController {
     /**
      * Agent별 실행 이력 조회 (Agent DB에서)
      */
-    @GetMapping("/agent/{agentId}")
-    public ResponseEntity<List<Map<String, Object>>> getExecutionsByAgent(@PathVariable String agentId) {
-        return ResponseEntity.ok(executionService.findByAgentIdFromAgent(agentId));
+    @GetMapping("/agent/{id}")
+    public ResponseEntity<List<Map<String, Object>>> getExecutionsByAgent(@PathVariable Long id) {
+        return ResponseEntity.ok(executionService.findByAgentIdFromAgent(id));
     }
 
     /**
@@ -43,16 +43,16 @@ public class ExecutionController {
      * - body 없이 호출: 기본 lookback 사용 (증분 동기화)
      * - body에 startTime/endTime 지정: 해당 범위 재동기화
      */
-    @PostMapping("/{agentId}/run")
+    @PostMapping("/{id}/run")
     public ResponseEntity<ExecutionDto.TriggerResponse> triggerExecution(
-            @PathVariable String agentId,
+            @PathVariable Long id,
             @RequestBody(required = false) ExecutionDto.TriggerRequest request) {
         if (request != null && (request.getStartTime() != null || request.getEndTime() != null || request.getFilters() != null)) {
             return ResponseEntity.ok(executionService.triggerExecution(
-                    agentId, request.getStartTime(), request.getEndTime(),
+                    id, request.getStartTime(), request.getEndTime(),
                     request.getFilters(), "MANUAL"));
         }
-        return ResponseEntity.ok(executionService.triggerExecution(agentId));
+        return ResponseEntity.ok(executionService.triggerExecution(id));
     }
 
     /**
@@ -72,14 +72,6 @@ public class ExecutionController {
             @PathVariable String dataType,
             ExecutionDto.TableDataSearchParams searchParams) {
         return ResponseEntity.ok(executionService.getExecutionData(executionId, dataType, searchParams));
-    }
-
-    /**
-     * Step 로그 조회 (Agent DB에서)
-     */
-    @GetMapping("/{executionId}/steps")
-    public ResponseEntity<List<Map<String, Object>>> getStepLogs(@PathVariable String executionId) {
-        return ResponseEntity.ok(executionService.getStepLogs(executionId));
     }
 
     /**
@@ -135,27 +127,6 @@ public class ExecutionController {
         return ResponseEntity.ok(executionService.traceToSource(executionId, sourceRefs, sourceTable));
     }
 
-    /**
-     * 레코드 처리 이력 조회 (Agent 프록시)
-     */
-    @GetMapping("/{executionId}/record-history")
-    public ResponseEntity<Map<String, Object>> getRecordHistory(
-            @PathVariable String executionId,
-            @RequestParam String tableName,
-            @RequestParam String recordKey) {
-        return ResponseEntity.ok(executionService.getRecordHistory(executionId, tableName, recordKey));
-    }
-
-    /**
-     * 실행 ID별 처리 이력 조회 (Agent 프록시)
-     * 이전 실행에서 처리한 레코드 이력을 조회 (UPSERT로 IF테이블 데이터가 덮어씌워진 경우에도 확인 가능)
-     */
-    @GetMapping("/{executionId}/record-history/by-execution")
-    public ResponseEntity<Map<String, Object>> getRecordHistoryByExecution(
-            @PathVariable String executionId) {
-        return ResponseEntity.ok(executionService.getRecordHistoryByExecution(executionId));
-    }
-
     // ==================== ExecutionHistory 관련 API ====================
 
     /**
@@ -177,9 +148,9 @@ public class ExecutionController {
     /**
      * Agent별 실행 이력 조회 (Orchestrator DB)
      */
-    @GetMapping("/history/agent/{agentId}")
-    public ResponseEntity<List<ExecutionDto.HistoryResponse>> getHistoryByAgent(@PathVariable String agentId) {
-        return ResponseEntity.ok(executionService.getHistoryByAgent(agentId));
+    @GetMapping("/history/agent/{id}")
+    public ResponseEntity<List<ExecutionDto.HistoryResponse>> getHistoryByAgent(@PathVariable Long id) {
+        return ResponseEntity.ok(executionService.getHistoryByAgent(id));
     }
 
     /**

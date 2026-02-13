@@ -1,6 +1,7 @@
 package com.sync.orchestrator.domain.schedule;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -13,8 +14,8 @@ public class ScheduleDto {
     @AllArgsConstructor
     @Builder
     public static class CreateRequest {
-        @NotBlank
-        private String agentId;
+        @NotNull
+        private Long agentId;
         @NotBlank
         private String cronExpression;
         private Boolean isEnabled;
@@ -39,7 +40,8 @@ public class ScheduleDto {
     @Builder
     public static class Response {
         private Long scheduleId;
-        private String agentId;
+        private Long agentId;
+        private String agentCode;
         private String agentName;
         private String cronExpression;
         private Boolean isEnabled;
@@ -49,7 +51,8 @@ public class ScheduleDto {
         public static Response from(Schedule schedule) {
             return Response.builder()
                     .scheduleId(schedule.getScheduleId())
-                    .agentId(schedule.getAgent().getAgentId())
+                    .agentId(schedule.getAgent().getId())
+                    .agentCode(schedule.getAgent().getAgentCode())
                     .agentName(schedule.getAgent().getAgentName())
                     .cronExpression(schedule.getCronExpression())
                     .isEnabled(schedule.getIsEnabled())

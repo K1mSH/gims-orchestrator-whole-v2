@@ -10,60 +10,60 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * PipelineRegistry - agentId -> PipelineRunner 라우팅
+ * PipelineRegistry - agentCode -> PipelineRunner 라우팅
  *
  * 12개 논리적 Agent를 하나의 물리적 앱에서 관리
- * 각 Agent는 고유한 agentId와 PipelineRunner를 가짐
+ * 각 Agent는 고유한 agentCode와 PipelineRunner를 가짐
  */
 @Slf4j
 @Component
 public class PipelineRegistry {
 
     private final Map<String, PipelineRunner> runners = new ConcurrentHashMap<>();
-    private final Map<String, String> agentTypes = new ConcurrentHashMap<>();  // agentId -> "RCV"/"LOADER"/"SND"
+    private final Map<String, String> agentTypes = new ConcurrentHashMap<>();  // agentCode -> "RCV"/"LOADER"/"SND"
 
     /**
      * PipelineRunner 등록
      */
-    public void register(String agentId, String agentType, PipelineRunner runner) {
-        runners.put(agentId, runner);
-        agentTypes.put(agentId, agentType);
-        log.info("Registered pipeline: agentId={}, type={}", agentId, agentType);
+    public void register(String agentCode, String agentType, PipelineRunner runner) {
+        runners.put(agentCode, runner);
+        agentTypes.put(agentCode, agentType);
+        log.info("Registered pipeline: agentCode={}, type={}", agentCode, agentType);
     }
 
     /**
-     * agentId로 PipelineRunner 조회
+     * agentCode로 PipelineRunner 조회
      */
-    public PipelineRunner getRunner(String agentId) {
-        PipelineRunner runner = runners.get(agentId);
+    public PipelineRunner getRunner(String agentCode) {
+        PipelineRunner runner = runners.get(agentCode);
         if (runner == null) {
-            throw new IllegalArgumentException("Unknown agentId: " + agentId + ". Registered: " + runners.keySet());
+            throw new IllegalArgumentException("Unknown agentCode: " + agentCode + ". Registered: " + runners.keySet());
         }
         return runner;
     }
 
     /**
-     * agentId의 Agent 타입 조회
+     * agentCode의 Agent 타입 조회
      */
-    public String getAgentType(String agentId) {
-        String type = agentTypes.get(agentId);
+    public String getAgentType(String agentCode) {
+        String type = agentTypes.get(agentCode);
         if (type == null) {
-            throw new IllegalArgumentException("Unknown agentId: " + agentId);
+            throw new IllegalArgumentException("Unknown agentCode: " + agentCode);
         }
         return type;
     }
 
     /**
-     * 등록된 모든 agentId 목록
+     * 등록된 모든 agentCode 목록
      */
-    public Set<String> getRegisteredAgentIds() {
+    public Set<String> getRegisteredAgentCodes() {
         return Collections.unmodifiableSet(runners.keySet());
     }
 
     /**
-     * 특정 타입의 agentId 목록
+     * 특정 타입의 agentCode 목록
      */
-    public Set<String> getAgentIdsByType(String type) {
+    public Set<String> getAgentCodesByType(String type) {
         return agentTypes.entrySet().stream()
                 .filter(e -> type.equals(e.getValue()))
                 .map(Map.Entry::getKey)

@@ -21,8 +21,12 @@ import java.util.List;
 public class Agent {
 
     @Id
-    @Column(name = "agent_id", length = 50)
-    private String agentId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "agent_code", length = 50, nullable = false, unique = true)
+    private String agentCode;
 
     @Column(name = "agent_name", length = 100, nullable = false)
     private String agentName;
@@ -38,9 +42,11 @@ public class Agent {
     private Boolean isActive = true;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "agent_type", length = 20)
-    @Builder.Default
-    private AgentType agentType = AgentType.LOADER_CUSTOM;
+    @Column(name = "agent_type", length = 20, nullable = false)
+    private AgentType agentType;
+
+    @Column(name = "datasource_tag", length = 50)
+    private String datasourceTag;
 
     @Column(name = "source_datasource_id", length = 50)
     private String sourceDatasourceId;

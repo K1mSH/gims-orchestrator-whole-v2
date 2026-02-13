@@ -81,13 +81,14 @@ public class ScheduleExecutor {
         }
 
         try {
-            String agentId = schedule.getAgent().getAgentId();
+            Long agentId = schedule.getAgent().getId();
+            String agentCode = schedule.getAgent().getAgentCode();
             String cronExpression = schedule.getCronExpression();
 
             log.info("Registering schedule: id={}, agent={}, cron={}",
-                    schedule.getScheduleId(), agentId, cronExpression);
+                    schedule.getScheduleId(), agentCode, cronExpression);
 
-            Runnable task = () -> executeAgent(schedule.getScheduleId(), agentId);
+            Runnable task = () -> executeAgent(schedule.getScheduleId(), agentId, agentCode);
             CronTrigger trigger = new CronTrigger(cronExpression);
 
             ScheduledFuture<?> future = taskScheduler.schedule(task, trigger);
@@ -123,8 +124,8 @@ public class ScheduleExecutor {
      * 필터 JSON 형식: {"filters":[{"paramId":"obsv-code","value":"GPM-123"}]}
      */
     @SuppressWarnings("unchecked")
-    private void executeAgent(Long scheduleId, String agentId) {
-        log.info("Scheduled execution triggered: scheduleId={}, agentId={}", scheduleId, agentId);
+    private void executeAgent(Long scheduleId, Long agentId, String agentCode) {
+        log.info("Scheduled execution triggered: scheduleId={}, agent={}", scheduleId, agentCode);
 
         try {
             Schedule schedule = scheduleRepository.findById(scheduleId).orElse(null);
@@ -138,7 +139,7 @@ public class ScheduleExecutor {
                     if (filtersObj instanceof java.util.List) {
                         executionService.triggerExecution(agentId, null, null,
                                 (java.util.List<java.util.Map<String, Object>>) filtersObj, "SCHEDULE");
-                        log.info("Scheduled execution started with filters: agentId={}", agentId);
+                        log.info("Scheduled execution started with filters: agent={}", agentCode);
                         return;
                     }
                 } catch (Exception e) {
@@ -147,9 +148,9 @@ public class ScheduleExecutor {
             }
 
             executionService.triggerExecution(agentId, "SCHEDULE");
-            log.info("Scheduled execution started successfully: agentId={}", agentId);
+            log.info("Scheduled execution started successfully: agent={}", agentCode);
         } catch (Exception e) {
-            log.error("Scheduled execution failed: agentId={}, error={}", agentId, e.getMessage(), e);
+            log.error("Scheduled execution failed: agent={}, error={}", agentCode, e.getMessage(), e);
         }
     }
 

@@ -50,10 +50,10 @@ public class Datasource {
     @Column(name = "database_name", length = 100, nullable = false)
     private String databaseName;
 
-    @Column(name = "username", length = 100, nullable = false)
+    @Column(name = "username", length = 512, nullable = false)
     private String username;
 
-    @Column(name = "password", length = 500, nullable = false)
+    @Column(name = "password", length = 1024, nullable = false)
     private String password;
 
     @Column(name = "description", columnDefinition = "TEXT")

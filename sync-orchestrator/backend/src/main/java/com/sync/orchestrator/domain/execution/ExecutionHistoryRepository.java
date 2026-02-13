@@ -19,12 +19,12 @@ public interface ExecutionHistoryRepository extends JpaRepository<ExecutionHisto
     /**
      * Agent별 실행 이력 조회
      */
-    List<ExecutionHistory> findByAgentIdOrderByStartedAtDesc(String agentId);
+    List<ExecutionHistory> findByAgentCodeOrderByStartedAtDesc(String agentCode);
 
     /**
      * Agent별 최근 N개 실행 이력
      */
-    List<ExecutionHistory> findTop10ByAgentIdOrderByStartedAtDesc(String agentId);
+    List<ExecutionHistory> findTop10ByAgentCodeOrderByStartedAtDesc(String agentCode);
 
     /**
      * 상태별 실행 이력 조회
@@ -50,7 +50,7 @@ public interface ExecutionHistoryRepository extends JpaRepository<ExecutionHisto
     /**
      * Agent별 페이징 조회
      */
-    Page<ExecutionHistory> findByAgentIdOrderByStartedAtDesc(String agentId, Pageable pageable);
+    Page<ExecutionHistory> findByAgentCodeOrderByStartedAtDesc(String agentCode, Pageable pageable);
 
     /**
      * 오늘 실행 횟수

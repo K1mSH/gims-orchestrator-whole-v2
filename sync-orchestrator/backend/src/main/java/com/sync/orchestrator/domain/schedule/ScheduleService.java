@@ -32,8 +32,8 @@ public class ScheduleService {
         return ScheduleDto.Response.from(schedule);
     }
 
-    public List<ScheduleDto.Response> findByAgentId(String agentId) {
-        return scheduleRepository.findByAgentAgentId(agentId).stream()
+    public List<ScheduleDto.Response> findByAgentId(Long agentId) {
+        return scheduleRepository.findByAgentId(agentId).stream()
                 .map(ScheduleDto.Response::from)
                 .collect(Collectors.toList());
     }
@@ -54,7 +54,7 @@ public class ScheduleService {
 
         // 스케줄 등록
         log.info("Registering new schedule: id={}, agent={}, cron={}",
-                saved.getScheduleId(), agent.getAgentId(), saved.getCronExpression());
+                saved.getScheduleId(), agent.getAgentCode(), saved.getCronExpression());
         scheduleExecutor.registerSchedule(saved);
 
         return ScheduleDto.Response.from(saved);

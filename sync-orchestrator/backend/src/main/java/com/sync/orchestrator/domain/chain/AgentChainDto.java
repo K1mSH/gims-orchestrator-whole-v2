@@ -44,8 +44,8 @@ public class AgentChainDto {
     @AllArgsConstructor
     @Builder
     public static class MemberRequest {
-        @NotBlank
-        private String agentId;
+        @NotNull
+        private Long agentId;
         @NotNull
         private Integer seqOrder;
     }
@@ -84,7 +84,8 @@ public class AgentChainDto {
     @Builder
     public static class MemberResponse {
         private Long id;
-        private String agentId;
+        private Long agentId;
+        private String agentCode;
         private String agentName;
         private String zone;
         private Integer seqOrder;
@@ -92,7 +93,8 @@ public class AgentChainDto {
         public static MemberResponse from(AgentChainMember member) {
             return MemberResponse.builder()
                     .id(member.getId())
-                    .agentId(member.getAgent().getAgentId())
+                    .agentId(member.getAgent().getId())
+                    .agentCode(member.getAgent().getAgentCode())
                     .agentName(member.getAgent().getAgentName())
                     .zone(member.getAgent().getZone())
                     .seqOrder(member.getSeqOrder())

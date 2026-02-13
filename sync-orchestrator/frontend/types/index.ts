@@ -1,44 +1,58 @@
 // Agent 관련 타입
 export type AgentStatus = 'ONLINE' | 'OFFLINE' | 'RUNNING';
-export type AgentType = 'RELAY' | 'LOADER_STANDARD' | 'LOADER_CUSTOM';
+export type AgentType = 'RCV' | 'SND' | 'LOADER';
 
 export interface Agent {
-  agentId: string;
+  id: number;
+  agentCode: string;
   agentName: string;
   endpointUrl: string;
   zone: string;
   isActive: boolean;
   agentType: AgentType;
+  datasourceTag: string | null;
   sourceDatasourceId: string | null;
   targetDatasourceId: string | null;
   description: string | null;
   status: AgentStatus;
   createdAt: string | null;
-  // 마지막 실행 정보 (상세 counts는 Agent API에서 조회)
   lastExecutedAt: string | null;
   lastExecutionStatus: string | null;
-  // 선택된 테이블 ID 목록
   sourceTableIds: number[];
   targetTableIds: number[];
-  // 실행 파라미터
   executionParams: ExecutionParamResponse[];
 }
 
 export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
 
 export interface AgentCreateRequest {
-  agentId: string;
+  agentCode: string;
   agentName: string;
   endpointUrl: string;
   zone: string;
+  agentType: AgentType;
+  datasourceTag?: string;
   isActive?: boolean;
-  agentType?: AgentType;
   sourceDatasourceId?: string;
   targetDatasourceId?: string;
   description?: string;
   sourceTableIds?: number[];
   targetTableIds?: number[];
   executionParams?: ExecutionParamInput[];
+}
+
+// Agent 조회(Discover) 관련 타입
+export interface DiscoverAgent {
+  agentCode: string;
+  type: AgentType;
+  registered: boolean;
+}
+
+export interface DiscoverResponse {
+  endpointUrl: string;
+  zone: string;
+  agents: DiscoverAgent[];
+  error?: string;
 }
 
 // 실행 파라미터 관련 타입
@@ -79,7 +93,8 @@ export interface ExecutionFilter {
 }
 
 export interface HealthCheckResponse {
-  agentId: string;
+  id: number;
+  agentCode: string;
   status: AgentStatus;
   message: string;
 }
@@ -87,7 +102,8 @@ export interface HealthCheckResponse {
 // Schedule 관련 타입
 export interface Schedule {
   scheduleId: number;
-  agentId: string;
+  agentId: number;
+  agentCode: string;
   agentName: string;
   cronExpression: string;
   isEnabled: boolean;
@@ -96,7 +112,7 @@ export interface Schedule {
 }
 
 export interface ScheduleCreateRequest {
-  agentId: string;
+  agentId: number;
   cronExpression: string;
   isEnabled?: boolean;
   executionOptions?: string;
@@ -116,7 +132,8 @@ export type ExecutionStatus = 'RUNNING' | 'SUCCESS' | 'FAILED';
  */
 export interface TriggerResponse {
   executionId: string;
-  agentId: string;
+  agentId: number;
+  agentCode: string;
   status: string;
   startTime?: string;
   endTime?: string;
@@ -132,24 +149,6 @@ export interface ExecutionDetail {
   totalWriteCount: number | null;
   totalSkipCount: number | null;
   durationMs: number | null;
-  errorMessage: string | null;
-  startedAt: string;
-  finishedAt: string | null;
-}
-
-/**
- * Step 로그 (Agent DB에서 조회)
- */
-export interface StepLog {
-  stepLogId: number;
-  stepId: string;
-  stepName: string;
-  stepOrder: number;
-  totalSteps: number | null;
-  status: ExecutionStatus;
-  readCount: number | null;
-  writeCount: number | null;
-  skipCount: number | null;
   errorMessage: string | null;
   startedAt: string;
   finishedAt: string | null;
@@ -180,8 +179,10 @@ export interface SyncLog {
 // Agent Chain 관련 타입
 export interface AgentChain {
   id: number;
-  name: string;
+  chainId: string;
+  chainName: string;
   description: string | null;
+  triggerType: 'INDIVIDUAL' | 'SEQUENTIAL';
   isActive: boolean;
   members: AgentChainMember[];
   createdAt: string;
@@ -190,18 +191,19 @@ export interface AgentChain {
 
 export interface AgentChainMember {
   id: number;
-  chainId: number;
-  agentId: string;
-  agent?: Agent;
-  sequence: number;
-  waitForCompletion: boolean;
+  agentId: number;
+  agentCode: string;
+  agentName: string;
+  zone: string;
+  seqOrder: number;
 }
 
 export interface AgentChainCreateRequest {
-  name: string;
+  chainId: string;
+  chainName: string;
   description?: string;
-  isActive: boolean;
-  memberAgentIds: string[];
+  triggerType: 'INDIVIDUAL' | 'SEQUENTIAL';
+  members: { agentId: number; seqOrder: number }[];
 }
 
 // API Response 타입
@@ -218,22 +220,10 @@ export interface PageResponse<T> {
   number: number;
 }
 
-// Dashboard 타입
-export interface DashboardStats {
-  totalAgents: number;
-  onlineAgents: number;
-  offlineAgents: number;
-  errorAgents: number;
-  totalSchedules: number;
-  activeSchedules: number;
-  todayExecutions: number;
-  failedExecutions: number;
-}
-
 // 실행 이력 (Orchestrator 중앙 관리용)
 export interface ExecutionHistory {
   executionId: string;
-  agentId: string;
+  agentCode: string;
   agentName: string;
   agentType: AgentType | null;
   status: ExecutionStatus;
