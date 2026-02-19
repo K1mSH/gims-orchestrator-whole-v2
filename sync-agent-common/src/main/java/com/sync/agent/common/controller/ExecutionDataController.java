@@ -161,8 +161,9 @@ public class ExecutionDataController {
                         "Source 테이블이 존재하지 않습니다: " + tableName));
             }
 
-            // 테이블명을 PostgreSQL 안전 형식으로 (대소문자 유지를 위해 큰따옴표)
-            String quotedTableName = "\"" + actualTableName + "\"";
+            // 테이블명을 DB 안전 형식으로 (대소문자 유지를 위해 인용)
+            String srcDbType = dataSourceProvider.getDbType(datasourceId);
+            String quotedTableName = qi(actualTableName, srcDbType);
 
             // SOURCE 테이블은 execution_id 필터링 안 함
             // (외부 시스템이거나, 다른 agent가 생성한 데이터일 수 있음)
@@ -784,32 +785,56 @@ public class ExecutionDataController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Source 테이블이 존재하지 않습니다: " + sourceTable));
             }
 
-            // 테이블명을 PostgreSQL 안전 형식으로 (대소문자 유지를 위해 큰따옴표)
-            String quotedTableName = "\"" + actualTableName + "\"";
+            // DB 타입에 따라 식별자 인용 방식 결정
+            String sourceDbType = dataSourceProvider.getDbType(datasourceId);
+            String quotedTableName = qi(actualTableName, sourceDbType);
 
-            // PK 컬럼명 찾기 (id 또는 ID)
-            String pkColumn = findPkColumn(sourceJdbc, actualTableName);
-            log.debug("Using pkColumn: {} for table: {}", pkColumn, actualTableName);
+            // PK 컬럼 목록 감지 (JDBC 메타데이터 기반, 복합 PK 지원)
+            List<String> pkColumns = findPkColumns(sourceJdbc, actualTableName, sourceDbType);
+            log.debug("Using pkColumns: {} for table: {}", pkColumns, actualTableName);
 
             List<Map<String, Object>> sourceRecords = new ArrayList<>();
             for (String pk : pkValues) {
                 try {
-                    // PK 타입 변환 (숫자면 Long, 아니면 String)
-                    Object pkTyped;
-                    try {
-                        pkTyped = Long.parseLong(pk);
-                    } catch (NumberFormatException e) {
-                        pkTyped = pk;
-                    }
+                    // 복합 PK 여부 확인: pk에 "|"가 포함되면 복합 PK
+                    if (pk.contains("|") && pkColumns.size() > 1) {
+                        // 복합 PK: "DJ-DJC-G1-0001|2026-02-19|00:00:00" → 각 컬럼에 매핑
+                        String[] pkParts = pk.split("\\|");
+                        if (pkParts.length != pkColumns.size()) {
+                            log.warn("Composite PK part count mismatch: pk parts={}, columns={}",
+                                    pkParts.length, pkColumns.size());
+                            continue;
+                        }
 
-                    // 쿼리 실행 (quoted 테이블명 + 실제 PK 컬럼명)
-                    String sql = String.format("SELECT * FROM %s WHERE \"%s\" = ?", quotedTableName, pkColumn);
-                    log.debug("Executing trace-source query: {} with pk={}", sql, pkTyped);
+                        StringBuilder whereClause = new StringBuilder();
+                        List<Object> params = new ArrayList<>();
+                        for (int i = 0; i < pkColumns.size(); i++) {
+                            if (i > 0) whereClause.append(" AND ");
+                            whereClause.append(qi(pkColumns.get(i), sourceDbType)).append(" = ?");
+                            params.add(typedValue(pkParts[i]));
+                        }
 
-                    List<Map<String, Object>> records = sourceJdbc.queryForList(sql, pkTyped);
-                    if (!records.isEmpty()) {
-                        log.debug("Found {} records for pk={}", records.size(), pk);
-                        sourceRecords.addAll(records);
+                        String sql = String.format("SELECT * FROM %s WHERE %s", quotedTableName, whereClause);
+                        log.debug("Executing composite PK trace-source query: {} with params={}", sql, params);
+
+                        List<Map<String, Object>> records = sourceJdbc.queryForList(sql, params.toArray());
+                        if (!records.isEmpty()) {
+                            log.debug("Found {} records for composite pk={}", records.size(), pk);
+                            sourceRecords.addAll(records);
+                        }
+                    } else {
+                        // 단일 PK
+                        String pkColumn = pkColumns.isEmpty() ? "id" : pkColumns.get(0);
+                        Object pkTyped = typedValue(pk);
+
+                        String sql = String.format("SELECT * FROM %s WHERE %s = ?", quotedTableName, qi(pkColumn, sourceDbType));
+                        log.debug("Executing trace-source query: {} with pk={}", sql, pkTyped);
+
+                        List<Map<String, Object>> records = sourceJdbc.queryForList(sql, pkTyped);
+                        if (!records.isEmpty()) {
+                            log.debug("Found {} records for pk={}", records.size(), pk);
+                            sourceRecords.addAll(records);
+                        }
                     }
                 } catch (Exception e) {
                     log.warn("Failed to query source record for pk={}: {}", pk, e.getMessage());
@@ -819,8 +844,9 @@ public class ExecutionDataController {
             // SND Relay 특수 처리: Source에서 못 찾으면 IF 테이블에서 비즈니스 키로 재조회
             if (sourceRecords.isEmpty() && isSndRelay && originalIfTable != null) {
                 log.debug("SND Relay: Source lookup failed, trying business key fallback...");
-                sourceRecords = traceSourceBySndBusinessKey(sourceJdbc, quotedTableName, pkColumn,
-                        originalIfTable, pkValues, executionId);
+                String sndPkColumn = pkColumns.isEmpty() ? "id" : pkColumns.get(0);
+                sourceRecords = traceSourceBySndBusinessKey(sourceJdbc, quotedTableName, sndPkColumn,
+                        originalIfTable, pkValues, executionId, sourceDbType);
             }
 
             result.put("sourceRecords", sourceRecords);
@@ -909,7 +935,8 @@ public class ExecutionDataController {
      */
     private List<Map<String, Object>> traceSourceBySndBusinessKey(
             JdbcTemplate sourceJdbc, String quotedSourceTable, String pkColumn,
-            String ifTableName, List<String> pkValues, String executionId) {
+            String ifTableName, List<String> pkValues, String executionId,
+            String sourceDbType) {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -949,7 +976,7 @@ public class ExecutionDataController {
                             Object value = findValueIgnoreCase(ifRecord, ukCol);
                             if (value == null) { allFound = false; break; }
                             if (i > 0) whereClause.append(" AND ");
-                            whereClause.append("\"").append(ukCol).append("\" = ?");
+                            whereClause.append(qi(ukCol, sourceDbType)).append(" = ?");
                             params.add(value);
                         }
 
@@ -1013,9 +1040,10 @@ public class ExecutionDataController {
             }
 
             // Source 테이블에서 PK로 레코드 조회
+            String srcDbType = dataSourceProvider.getDbType(datasourceId);
             String sourceSql = String.format(
-                    "SELECT * FROM \"%s\" WHERE \"%s\" = ?",
-                    actualSourceTable, pkColumn);
+                    "SELECT * FROM %s WHERE %s = ?",
+                    qi(actualSourceTable, srcDbType), qi(pkColumn, srcDbType));
             List<Map<String, Object>> sourceRecords = sourceJdbc.queryForList(sourceSql, pkValue);
 
             if (sourceRecords.isEmpty()) {
@@ -1077,26 +1105,51 @@ public class ExecutionDataController {
      */
     private List<String> getUniqueKeyColumns(JdbcTemplate jdbcTemplate, String tableName) {
         try {
-            // 첫 번째 non-PK 유니크 인덱스의 컬럼 조회
-            String sql = "SELECT a.attname " +
-                    "FROM pg_index i " +
-                    "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) " +
-                    "WHERE i.indexrelid = (" +
-                    "  SELECT i2.indexrelid FROM pg_index i2 " +
-                    "  WHERE i2.indrelid = ?::regclass " +
-                    "  AND i2.indisunique = true AND i2.indisprimary = false " +
-                    "  ORDER BY i2.indexrelid LIMIT 1" +
-                    ") " +
-                    "ORDER BY array_position(i.indkey, a.attnum)";
-            List<String> columns = jdbcTemplate.queryForList(sql, String.class, tableName);
-            if (!columns.isEmpty()) {
-                log.debug("Unique key columns for '{}': {}", tableName, columns);
+            // JDBC 표준 메타데이터로 유니크 인덱스 컬럼 조회 (DB 독립)
+            java.sql.Connection conn = jdbcTemplate.getDataSource().getConnection();
+            try {
+                java.sql.DatabaseMetaData metaData = conn.getMetaData();
+                String catalog = conn.getCatalog();
+
+                // PK 컬럼 먼저 수집 (제외용)
+                Set<String> pkCols = new HashSet<>();
+                try (java.sql.ResultSet pkRs = metaData.getPrimaryKeys(catalog, null, tableName)) {
+                    while (pkRs.next()) {
+                        pkCols.add(pkRs.getString("COLUMN_NAME"));
+                    }
+                }
+
+                // 유니크 인덱스 컬럼 조회 (non-PK)
+                Map<String, List<String>> indexColumns = new LinkedHashMap<>();
+                try (java.sql.ResultSet rs = metaData.getIndexInfo(catalog, null, tableName, true, false)) {
+                    while (rs.next()) {
+                        String indexName = rs.getString("INDEX_NAME");
+                        String colName = rs.getString("COLUMN_NAME");
+                        if (indexName == null || colName == null) continue;
+                        // PK 인덱스 제외
+                        if (pkCols.contains(colName) && indexColumns.getOrDefault(indexName, List.of()).isEmpty()) {
+                            // PK만으로 구성된 인덱스는 건너뜀
+                        }
+                        indexColumns.computeIfAbsent(indexName, k -> new ArrayList<>()).add(colName);
+                    }
+                }
+
+                // PK 컬럼만으로 구성된 인덱스 제외하고 첫 번째 유니크 인덱스 선택
+                for (Map.Entry<String, List<String>> entry : indexColumns.entrySet()) {
+                    List<String> cols = entry.getValue();
+                    boolean allPk = cols.stream().allMatch(pkCols::contains);
+                    if (!allPk) {
+                        log.debug("Unique key columns for '{}': {} (index: {})", tableName, cols, entry.getKey());
+                        return cols;
+                    }
+                }
+            } finally {
+                conn.close();
             }
-            return columns;
         } catch (Exception e) {
             log.warn("Failed to get unique key columns for table '{}': {}", tableName, e.getMessage());
-            return List.of();
         }
+        return List.of();
     }
 
     /**
@@ -1111,25 +1164,52 @@ public class ExecutionDataController {
     }
 
     /**
-     * 테이블에서 PK 컬럼명 찾기 (id, ID 등)
+     * 테이블에서 PK 컬럼 목록 찾기 (JDBC DatabaseMetaData 활용)
+     * SourceToIfStep.detectSourcePrimaryKey() 패턴 재사용
+     * 복합 PK 지원: obsv_code, obsv_date, obsv_time 등
      */
-    private String findPkColumn(JdbcTemplate jdbcTemplate, String tableName) {
+    private List<String> findPkColumns(JdbcTemplate jdbcTemplate, String tableName, String dbType) {
+        List<String> pkColumns = new ArrayList<>();
         try {
-            String sql = String.format("SELECT * FROM \"%s\" LIMIT 1", tableName);
-            List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
-            if (!result.isEmpty()) {
-                Set<String> columns = result.get(0).keySet();
-                // id, ID, Id 등 대소문자 변형 찾기
-                for (String col : columns) {
-                    if (col.equalsIgnoreCase("id")) {
-                        return col;
+            java.sql.Connection conn = jdbcTemplate.getDataSource().getConnection();
+            try {
+                java.sql.DatabaseMetaData metaData = conn.getMetaData();
+                String catalog = conn.getCatalog();
+                String[] variants = {tableName, tableName.toLowerCase(), tableName.toUpperCase()};
+                for (String variant : variants) {
+                    try (java.sql.ResultSet rs = metaData.getPrimaryKeys(catalog, null, variant)) {
+                        while (rs.next()) {
+                            String colName = rs.getString("COLUMN_NAME");
+                            int keySeq = rs.getInt("KEY_SEQ");
+                            while (pkColumns.size() < keySeq) pkColumns.add(null);
+                            pkColumns.set(keySeq - 1, colName);
+                        }
+                    }
+                    if (!pkColumns.isEmpty()) {
+                        pkColumns.removeIf(java.util.Objects::isNull);
+                        break;
                     }
                 }
+            } finally {
+                conn.close();
             }
         } catch (Exception e) {
-            log.warn("Failed to find pk column for table: {}", tableName);
+            log.warn("Failed to detect PK from metadata for table: {}", tableName);
         }
-        return "id"; // 기본값
+        // fallback: 첫 번째 컬럼 사용
+        if (pkColumns.isEmpty()) {
+            try {
+                String sql = String.format("SELECT * FROM %s LIMIT 1", qi(tableName, dbType));
+                List<Map<String, Object>> sample = jdbcTemplate.queryForList(sql);
+                if (!sample.isEmpty()) {
+                    pkColumns.add(sample.get(0).keySet().iterator().next());
+                }
+            } catch (Exception e) {
+                log.warn("Fallback PK detection also failed for table: {}", tableName);
+            }
+        }
+        log.debug("Detected PK columns for '{}': {}", tableName, pkColumns);
+        return pkColumns;
     }
 
     /**
@@ -1151,9 +1231,14 @@ public class ExecutionDataController {
                 for (String ref : refs) {
                     String trimmed = ref.trim().replace("\"", "");
                     // E:datasourceId:tableId:pk 또는 D:datasourceId:tableId:pk
-                    String[] parts = trimmed.split(":");
+                    // limit=4 필수: pk에 ":"가 포함될 수 있음 (예: 시간값 00:00:00)
+                    String[] parts = trimmed.split(":", 4);
                     if (parts.length >= 4) {
-                        pks.add(parts[3]); // pk는 마지막 부분
+                        // tbId=0 경고 (소스 테이블 미등록 상태)
+                        if ("0".equals(parts[2])) {
+                            log.warn("sourceRef has tbId=0 (source table not registered): {}", trimmed);
+                        }
+                        pks.add(parts[3]); // pk는 4번째 이후 전체 (복합PK도 포함)
                     }
                 }
             } else {
@@ -1167,7 +1252,63 @@ public class ExecutionDataController {
         return pks;
     }
 
+    // ==================== DB Dialect Helpers ====================
+
+    private static boolean isMysql(String dbType) {
+        return "MYSQL".equalsIgnoreCase(dbType) || "MARIADB".equalsIgnoreCase(dbType);
+    }
+
+    /** Quoted Identifier: MySQL → backtick, others → double-quote */
+    private static String qi(String name, String dbType) {
+        if (isMysql(dbType)) return "`" + name + "`";
+        return "\"" + name + "\"";
+    }
+
+    /** JdbcTemplate으로부터 DB 타입을 추론 (JDBC URL 기반) */
+    private static String detectDbType(JdbcTemplate jdbcTemplate) {
+        try {
+            java.sql.Connection conn = jdbcTemplate.getDataSource().getConnection();
+            try {
+                String url = conn.getMetaData().getURL();
+                if (url != null) {
+                    if (url.startsWith("jdbc:mysql")) return "MYSQL";
+                    if (url.startsWith("jdbc:mariadb")) return "MARIADB";
+                    if (url.startsWith("jdbc:oracle")) return "ORACLE";
+                    if (url.startsWith("jdbc:postgresql")) return "POSTGRESQL";
+                    if (url.startsWith("jdbc:sqlserver")) return "MSSQL";
+                }
+            } finally {
+                conn.close();
+            }
+        } catch (Exception e) { /* ignore */ }
+        return "POSTGRESQL"; // default
+    }
+
     // ==================== Helper Methods ====================
+
+    /**
+     * PK 값 타입 변환
+     * - 숫자면 Long
+     * - yyyy-MM-dd 형식이면 java.sql.Date
+     * - HH:mm:ss 형식이면 java.sql.Time
+     * - 그 외 String
+     */
+    private Object typedValue(String value) {
+        if (value == null) return null;
+        // Long
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) { /* not a number */ }
+        // Date (yyyy-MM-dd)
+        if (value.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return java.sql.Date.valueOf(value);
+        }
+        // Time (HH:mm:ss)
+        if (value.matches("\\d{2}:\\d{2}:\\d{2}")) {
+            return java.sql.Time.valueOf(value);
+        }
+        return value;
+    }
 
     private Map<String, Object> buildPageResult(String tableName, List<String> columns,
                                                  List<Map<String, Object>> data,
@@ -1201,8 +1342,8 @@ public class ExecutionDataController {
 
     private List<String> getTableColumns(JdbcTemplate jdbcTemplate, String tableName) {
         try {
-            // 테이블명을 큰따옴표로 감싸서 대소문자 유지
-            String sql = String.format("SELECT * FROM \"%s\" LIMIT 1", tableName);
+            String dbType = detectDbType(jdbcTemplate);
+            String sql = String.format("SELECT * FROM %s LIMIT 1", qi(tableName, dbType));
             List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
             if (!result.isEmpty()) {
                 return new ArrayList<>(result.get(0).keySet());
@@ -1234,12 +1375,16 @@ public class ExecutionDataController {
             return "";
         }
 
+        String dbType = detectDbType(jdbcTemplate);
+        String castType = isMysql(dbType) ? "CHAR" : "TEXT";
+        String likeOp = isMysql(dbType) ? "LIKE" : "ILIKE";
+
         // 특정 컬럼 검색
         if (searchColumn != null && !searchColumn.isBlank()) {
             String actualColumn = findActualColumnName(jdbcTemplate, tableName, searchColumn);
             if (actualColumn != null) {
                 params.add("%" + search + "%");
-                return " AND CAST(\"" + actualColumn + "\" AS TEXT) ILIKE ?";
+                return " AND CAST(" + qi(actualColumn, dbType) + " AS " + castType + ") " + likeOp + " ?";
             }
             return "";
         }
@@ -1257,7 +1402,7 @@ public class ExecutionDataController {
             if (!first) {
                 searchClause.append(" OR ");
             }
-            searchClause.append("CAST(\"").append(col).append("\" AS TEXT) ILIKE ?");
+            searchClause.append("CAST(").append(qi(col, dbType)).append(" AS ").append(castType).append(") ").append(likeOp).append(" ?");
             params.add("%" + search + "%");
             first = false;
         }
@@ -1288,8 +1433,9 @@ public class ExecutionDataController {
 
         // 정렬 방향 검증
         String direction = "asc".equalsIgnoreCase(sortDirection) ? "ASC" : "DESC";
+        String dbType = detectDbType(jdbcTemplate);
 
-        return String.format("ORDER BY \"%s\" %s", actualColumn, direction);
+        return String.format("ORDER BY %s %s", qi(actualColumn, dbType), direction);
     }
 
     /**
@@ -1298,7 +1444,8 @@ public class ExecutionDataController {
      */
     private String findActualColumnName(JdbcTemplate jdbcTemplate, String tableName, String columnName) {
         try {
-            String sql = String.format("SELECT * FROM \"%s\" LIMIT 1", tableName);
+            String dbType = detectDbType(jdbcTemplate);
+            String sql = String.format("SELECT * FROM %s LIMIT 1", qi(tableName, dbType));
             List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
             if (!result.isEmpty()) {
                 // 대소문자 무시 비교로 실제 컬럼명 찾기
@@ -1325,10 +1472,14 @@ public class ExecutionDataController {
      * PostgreSQL의 information_schema에서 테이블명을 조회하여 대소문자가 다른 테이블도 찾을 수 있음
      */
     private String findActualTableName(JdbcTemplate jdbcTemplate, String tableName) {
+        String dbType = detectDbType(jdbcTemplate);
         try {
-            // PostgreSQL: information_schema에서 대소문자 무시하고 테이블 찾기
+            // information_schema에서 대소문자 무시하고 테이블 찾기
+            String schemaFilter = isMysql(dbType)
+                    ? "TABLE_SCHEMA = DATABASE()"
+                    : "table_schema = 'public'";
             String sql = "SELECT table_name FROM information_schema.tables " +
-                        "WHERE table_schema = 'public' AND LOWER(table_name) = LOWER(?)";
+                        "WHERE " + schemaFilter + " AND LOWER(table_name) = LOWER(?)";
             List<String> tables = jdbcTemplate.queryForList(sql, String.class, tableName);
             if (!tables.isEmpty()) {
                 String actualName = tables.get(0);
@@ -1341,14 +1492,14 @@ public class ExecutionDataController {
             log.warn("Failed to find table name in information_schema: {}", e.getMessage());
             // 대체: 직접 SELECT 시도
             try {
-                String sql = String.format("SELECT 1 FROM \"%s\" LIMIT 1", tableName);
+                String sql = String.format("SELECT 1 FROM %s LIMIT 1", qi(tableName, dbType));
                 jdbcTemplate.queryForList(sql);
                 return tableName;
             } catch (Exception e2) {
                 // 대문자로도 시도
                 try {
                     String upperName = tableName.toUpperCase();
-                    String sql = String.format("SELECT 1 FROM \"%s\" LIMIT 1", upperName);
+                    String sql = String.format("SELECT 1 FROM %s LIMIT 1", qi(upperName, dbType));
                     jdbcTemplate.queryForList(sql);
                     return upperName;
                 } catch (Exception e3) {

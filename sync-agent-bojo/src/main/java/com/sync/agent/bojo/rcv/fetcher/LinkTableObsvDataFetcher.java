@@ -22,7 +22,7 @@ import java.util.Map;
  *    - 해당 시점 이후 데이터만 Source DB에서 조회
  * 3. 모든 결과를 합쳐서 반환
  *
- * 기존 고정 lookback(3시간) 방식 대신 link 테이블 기반 증분 동기화 사용
+ * link 테이블 기반 증분 동기화 사용
  */
 @Slf4j
 public class LinkTableObsvDataFetcher implements DataFetcher {
@@ -52,6 +52,17 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
         this.linkTable = linkTable;
     }
 
+    // ==================== SQL 방언 헬퍼 ====================
+
+    private static boolean isMysql(String dbType) {
+        return "MYSQL".equalsIgnoreCase(dbType) || "MARIADB".equalsIgnoreCase(dbType);
+    }
+
+    private static String qi(String name, String dbType) {
+        if (isMysql(dbType)) return "`" + name + "`";
+        return "\"" + name + "\"";
+    }
+
     @Override
     public List<Map<String, Object>> fetch(StepContext context) {
         log.info("[LinkTableFetcher] 시작 - link 테이블 기반 증분 동기화");
@@ -61,6 +72,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
         JdbcTemplate sourceJdbc = dataSourceProvider.getJdbcTemplate(sourceDsId);
         JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
+        String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
 
         // 수동 시간 지정이 있는 경우 기존 방식 사용 (전체 시간 범위 조회)
         LocalDateTime paramStartTime = context.getParam("startTime");
@@ -71,13 +83,13 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
         if (paramStartTime != null && paramEndTime != null) {
             log.info("[LinkTableFetcher] 수동 시간 지정 모드: {} ~ {}", paramStartTime, paramEndTime);
-            return fetchByTimeRange(sourceJdbc, paramStartTime, paramEndTime, filterObsvCode);
+            return fetchByTimeRange(sourceJdbc, paramStartTime, paramEndTime, filterObsvCode, sourceDbType);
         }
 
         List<Map<String, Object>> allRecords = new ArrayList<>();
 
         // 1. 제원 테이블에서 obsv_code 목록 조회
-        List<String> obsvCodes = getObsvCodeList(sourceJdbc);
+        List<String> obsvCodes = getObsvCodeList(sourceJdbc, sourceDbType);
         log.info("[LinkTableFetcher] 제원 테이블에서 {} 개의 obsv_code 조회됨", obsvCodes.size());
 
         // obsv_code 필터 적용 (in-memory)
@@ -134,18 +146,18 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                 }
 
                 // Source에서 최소 날짜 조회 (첫 동기화 또는 date=NULL인 경우)
-                LinkData minData = getMinDateFromSource(sourceJdbc, obsvCode);
+                LinkData minData = getMinDateFromSource(sourceJdbc, obsvCode, sourceDbType);
                 if (minData == null) {
                     log.info("[LinkTableFetcher] {} - Source obsvdata에 데이터 없음, 스킵", obsvCode);
                     continue;
                 }
                 lastDate = minData.obsvDate;
-                lastTime = "000000";
+                lastTime = "00:00:00";
                 log.info("[LinkTableFetcher] {} - 첫 동기화, 최소 날짜부터: {} {}", obsvCode, lastDate, lastTime);
             }
 
             // 2-2. Source에서 해당 시점 이후 데이터 조회
-            List<Map<String, Object>> records = getObsvDataAfterLink(sourceJdbc, obsvCode, lastDate, lastTime);
+            List<Map<String, Object>> records = getObsvDataAfterLink(sourceJdbc, obsvCode, lastDate, lastTime, sourceDbType);
 
             if (!records.isEmpty()) {
                 allRecords.addAll(records);
@@ -168,18 +180,17 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
     /**
      * 제원 테이블에서 obsv_code 목록 조회
-     * PostgreSQL 대소문자 처리: 대문자/소문자 둘 다 시도
+     * DB 타입별 식별자 인용 처리
      */
-    private List<String> getObsvCodeList(JdbcTemplate sourceJdbc) {
-        // 1. 대문자로 먼저 시도 (PostgreSQL에서 일반적)
+    private List<String> getObsvCodeList(JdbcTemplate sourceJdbc, String dbType) {
         String[] tableVariants = {jewonTable.toUpperCase(), jewonTable, jewonTable.toLowerCase()};
         String[] columnVariants = {keyColumn.toUpperCase(), keyColumn, keyColumn.toLowerCase()};
 
         for (String table : tableVariants) {
             for (String column : columnVariants) {
                 try {
-                    String sql = String.format("SELECT \"%s\" FROM \"%s\" ORDER BY \"%s\"",
-                            column, table, column);
+                    String sql = String.format("SELECT %s FROM %s ORDER BY %s",
+                            qi(column, dbType), qi(table, dbType), qi(column, dbType));
                     log.debug("[LinkTableFetcher] 제원 조회 시도: {}", sql);
                     List<String> result = sourceJdbc.queryForList(sql, String.class);
                     if (!result.isEmpty()) {
@@ -234,7 +245,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                 return null;
             }
 
-            return new LinkData(obsvCode, date, time != null ? time : "000000");
+            return new LinkData(obsvCode, date, time != null ? time : "00:00:00");
         } catch (Exception e) {
             log.debug("[LinkTableFetcher] link 테이블 조회 실패 (테이블 없을 수 있음): {}", e.getMessage());
             return null;
@@ -243,18 +254,23 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
     /**
      * Source에서 해당 obsv_code의 최소 날짜/시간 조회 (첫 동기화용)
-     * 대소문자 변형 시도
+     * DB 타입별 식별자 인용 처리
      */
-    private LinkData getMinDateFromSource(JdbcTemplate sourceJdbc, String obsvCode) {
+    private LinkData getMinDateFromSource(JdbcTemplate sourceJdbc, String obsvCode, String dbType) {
         String[] tableVariants = {obsvdataTable.toUpperCase(), obsvdataTable, obsvdataTable.toLowerCase()};
 
         for (String table : tableVariants) {
             try {
+                // 컬럼 case를 테이블 variant에 맞춤
+                String colCase = table.equals(obsvdataTable.toUpperCase()) ? "upper" : "lower";
+                String kc = qi(colCase.equals("upper") ? keyColumn.toUpperCase() : keyColumn.toLowerCase(), dbType);
+                String dc = qi(colCase.equals("upper") ? dateColumn.toUpperCase() : dateColumn.toLowerCase(), dbType);
+                String tc = qi(colCase.equals("upper") ? timeColumn.toUpperCase() : timeColumn.toLowerCase(), dbType);
+
                 String sql = String.format(
-                        "SELECT \"%s\", MIN(\"%s\") as min_date, MIN(\"%s\") as min_time " +
-                                "FROM \"%s\" WHERE \"%s\" = ? GROUP BY \"%s\"",
-                        keyColumn.toUpperCase(), dateColumn.toUpperCase(), timeColumn.toUpperCase(),
-                        table, keyColumn.toUpperCase(), keyColumn.toUpperCase());
+                        "SELECT %s, MIN(%s) as min_date, MIN(%s) as min_time " +
+                                "FROM %s WHERE %s = ? GROUP BY %s",
+                        kc, dc, tc, qi(table, dbType), kc, kc);
 
                 List<Map<String, Object>> results = sourceJdbc.queryForList(sql, obsvCode);
                 if (results.isEmpty()) {
@@ -272,7 +288,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                 // 날짜 형식 정리 (YYYYMMDD 형태로)
                 date = date.replaceAll("-", "");
 
-                return new LinkData(obsvCode, date, time != null ? time.replaceAll(":", "") : "000000");
+                return new LinkData(obsvCode, date, time != null ? time : "00:00:00");
             } catch (Exception e) {
                 log.debug("[LinkTableFetcher] Source 최소 날짜 조회 시도 실패: {} - {}", table, e.getMessage());
             }
@@ -284,33 +300,43 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
     /**
      * Source에서 link 시점 이후 데이터 조회 (원본 getObsvdata 로직)
-     * 대소문자 변형 시도
-     *
-     * 원본 SQL:
-     * WHERE obsv_code = ? AND (obsv_date > ? OR (obsv_date = ? AND obsv_time > ?))
-     *
-     * PostgreSQL: DATE 타입과 비교하려면 TO_DATE() 사용 필요
+     * DB 타입별 SQL 생성: PostgreSQL(TO_DATE, ::text), MySQL(STR_TO_DATE, CAST)
      */
     private List<Map<String, Object>> getObsvDataAfterLink(
-            JdbcTemplate sourceJdbc, String obsvCode, String lastDate, String lastTime) {
+            JdbcTemplate sourceJdbc, String obsvCode, String lastDate, String lastTime,
+            String dbType) {
 
         String[] tableVariants = {obsvdataTable.toUpperCase(), obsvdataTable, obsvdataTable.toLowerCase()};
 
         for (String table : tableVariants) {
             try {
-                // PostgreSQL용 쿼리: DATE + TIME 비교
-                // 날짜는 TO_DATE()로 변환, 시간은 문자열 비교
-                // >= 사용: 동일 시점 레코드도 포함 (UPSERT가 중복 처리)
-                String sql = String.format(
-                        "SELECT * FROM \"%s\" WHERE \"%s\" = ? " +
-                                "AND ((\"%s\" = TO_DATE(?, 'YYYYMMDD') AND \"%s\"::text >= ?) " +
-                                "OR \"%s\" > TO_DATE(?, 'YYYYMMDD')) " +
-                                "ORDER BY \"%s\", \"%s\"",
-                        table,
-                        keyColumn.toUpperCase(),
-                        dateColumn.toUpperCase(), timeColumn.toUpperCase(),
-                        dateColumn.toUpperCase(),
-                        dateColumn.toUpperCase(), timeColumn.toUpperCase());
+                // 컬럼 case를 테이블 variant에 맞춤
+                String colCase = table.equals(obsvdataTable.toUpperCase()) ? "upper" : "lower";
+                String kc, dc, tc;
+                String sql;
+                if (isMysql(dbType)) {
+                    // MySQL: STR_TO_DATE, CAST
+                    kc = qi(keyColumn, dbType);
+                    dc = qi(dateColumn, dbType);
+                    tc = qi(timeColumn, dbType);
+                    sql = String.format(
+                            "SELECT * FROM %s WHERE %s = ? " +
+                                    "AND ((%s = STR_TO_DATE(?, '%%Y%%m%%d') AND CAST(%s AS CHAR) >= ?) " +
+                                    "OR %s > STR_TO_DATE(?, '%%Y%%m%%d')) " +
+                                    "ORDER BY %s, %s",
+                            qi(table, dbType), kc, dc, tc, dc, dc, tc);
+                } else {
+                    // PostgreSQL: TO_DATE, ::text - 컬럼 case를 테이블에 맞춤
+                    kc = qi(colCase.equals("upper") ? keyColumn.toUpperCase() : keyColumn.toLowerCase(), dbType);
+                    dc = qi(colCase.equals("upper") ? dateColumn.toUpperCase() : dateColumn.toLowerCase(), dbType);
+                    tc = qi(colCase.equals("upper") ? timeColumn.toUpperCase() : timeColumn.toLowerCase(), dbType);
+                    sql = String.format(
+                            "SELECT * FROM %s WHERE %s = ? " +
+                                    "AND ((%s = TO_DATE(?, 'YYYYMMDD') AND %s::text >= ?) " +
+                                    "OR %s > TO_DATE(?, 'YYYYMMDD')) " +
+                                    "ORDER BY %s, %s",
+                            qi(table, dbType), kc, dc, tc, dc, dc, tc);
+                }
 
                 // 파라미터: obsvCode, lastDate(for =), lastTime, lastDate(for >)
                 List<Map<String, Object>> result = sourceJdbc.queryForList(sql, obsvCode, lastDate, lastTime, lastDate);
@@ -326,43 +352,55 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
     /**
      * 수동 시간 지정 시 사용하는 전체 시간 범위 조회
-     * 대소문자 변형 시도 및 TO_DATE() 사용
-     * obsv_code 파라미터가 있으면 추가 WHERE 조건 적용
+     * DB 타입별 날짜 함수 사용: PostgreSQL(TO_DATE), MySQL(STR_TO_DATE)
      */
     private List<Map<String, Object>> fetchByTimeRange(
             JdbcTemplate sourceJdbc, LocalDateTime startTime, LocalDateTime endTime,
-            String filterObsvCode) {
+            String filterObsvCode, String dbType) {
 
         String startDate = String.format("%04d%02d%02d",
                 startTime.getYear(), startTime.getMonthValue(), startTime.getDayOfMonth());
         String endDate = String.format("%04d%02d%02d",
                 endTime.getYear(), endTime.getMonthValue(), endTime.getDayOfMonth());
 
-        // obsv_code 필터 조건 생성
-        StringBuilder filterClause = new StringBuilder();
-        List<Object> filterParams = new ArrayList<>();
-        if (filterObsvCode != null && !filterObsvCode.isBlank()) {
-            if (filterObsvCode.contains(",")) {
-                String[] values = filterObsvCode.split(",");
-                String placeholders = String.join(", ", java.util.Collections.nCopies(values.length, "?"));
-                filterClause.append(" AND \"").append(keyColumn.toUpperCase()).append("\" IN (").append(placeholders).append(")");
-                for (String v : values) filterParams.add(v.trim());
-            } else {
-                filterClause.append(" AND \"").append(keyColumn.toUpperCase()).append("\" = ?");
-                filterParams.add(filterObsvCode.trim());
-            }
-        }
-
         String[] tableVariants = {obsvdataTable.toUpperCase(), obsvdataTable, obsvdataTable.toLowerCase()};
 
         for (String table : tableVariants) {
             try {
-                // PostgreSQL: DATE 타입과 비교하려면 TO_DATE() 사용
-                String sql = String.format(
-                        "SELECT * FROM \"%s\" WHERE \"%s\" >= TO_DATE(?, 'YYYYMMDD') AND \"%s\" <= TO_DATE(?, 'YYYYMMDD')%s ORDER BY \"%s\", \"%s\"",
-                        table, dateColumn.toUpperCase(), dateColumn.toUpperCase(),
-                        filterClause,
-                        dateColumn.toUpperCase(), timeColumn.toUpperCase());
+                // 컬럼 case를 테이블 variant에 맞춤
+                String colCase = table.equals(obsvdataTable.toUpperCase()) ? "upper" : "lower";
+
+                // obsv_code 필터 조건 생성
+                StringBuilder filterClause = new StringBuilder();
+                List<Object> filterParams = new ArrayList<>();
+                if (filterObsvCode != null && !filterObsvCode.isBlank()) {
+                    String colName = isMysql(dbType) ? keyColumn
+                            : (colCase.equals("upper") ? keyColumn.toUpperCase() : keyColumn.toLowerCase());
+                    if (filterObsvCode.contains(",")) {
+                        String[] values = filterObsvCode.split(",");
+                        String placeholders = String.join(", ", java.util.Collections.nCopies(values.length, "?"));
+                        filterClause.append(" AND ").append(qi(colName, dbType)).append(" IN (").append(placeholders).append(")");
+                        for (String v : values) filterParams.add(v.trim());
+                    } else {
+                        filterClause.append(" AND ").append(qi(colName, dbType)).append(" = ?");
+                        filterParams.add(filterObsvCode.trim());
+                    }
+                }
+
+                String sql;
+                if (isMysql(dbType)) {
+                    String dc = qi(dateColumn, dbType);
+                    String tc = qi(timeColumn, dbType);
+                    sql = String.format(
+                            "SELECT * FROM %s WHERE %s >= STR_TO_DATE(?, '%%Y%%m%%d') AND %s <= STR_TO_DATE(?, '%%Y%%m%%d')%s ORDER BY %s, %s",
+                            qi(table, dbType), dc, dc, filterClause, dc, tc);
+                } else {
+                    String dc = qi(colCase.equals("upper") ? dateColumn.toUpperCase() : dateColumn.toLowerCase(), dbType);
+                    String tc = qi(colCase.equals("upper") ? timeColumn.toUpperCase() : timeColumn.toLowerCase(), dbType);
+                    sql = String.format(
+                            "SELECT * FROM %s WHERE %s >= TO_DATE(?, 'YYYYMMDD') AND %s <= TO_DATE(?, 'YYYYMMDD')%s ORDER BY %s, %s",
+                            qi(table, dbType), dc, dc, filterClause, dc, tc);
+                }
 
                 List<Object> allParams = new ArrayList<>();
                 allParams.add(startDate);

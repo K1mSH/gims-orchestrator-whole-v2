@@ -429,10 +429,12 @@ public class DatasourceService {
             try (Connection conn = DriverManager.getConnection(jdbcUrl, decryptedUsername, decryptedPassword)) {
                 DatabaseMetaData metaData = conn.getMetaData();
 
+                // MySQL은 catalog에 DB명을 지정해야 해당 DB 테이블만 반환
+                String catalog = datasource.getDbType() == DbType.MYSQL ? datasource.getDatabaseName() : null;
                 String[] types = {"TABLE", "VIEW"};
                 String searchPattern = query != null && !query.isEmpty() ? "%" + query.toUpperCase() + "%" : "%";
 
-                try (ResultSet rs = metaData.getTables(null, null, searchPattern, types)) {
+                try (ResultSet rs = metaData.getTables(catalog, null, searchPattern, types)) {
                     int count = 0;
                     while (rs.next() && count < 100) {
                         results.add(DatasourceDto.TableSearchResult.builder()
@@ -519,15 +521,18 @@ public class DatasourceService {
             try (Connection conn = DriverManager.getConnection(jdbcUrl, decryptedUsername, decryptedPassword)) {
                 DatabaseMetaData metaData = conn.getMetaData();
 
+                // MySQL은 catalog에 DB명을 지정해야 해당 DB 테이블만 반환
+                String catalog = datasource.getDbType() == DbType.MYSQL ? datasource.getDatabaseName() : null;
+
                 Set<String> pkColumns = new HashSet<>();
-                try (ResultSet pkRs = metaData.getPrimaryKeys(null, null, tableName)) {
+                try (ResultSet pkRs = metaData.getPrimaryKeys(catalog, null, tableName)) {
                     while (pkRs.next()) {
                         pkColumns.add(pkRs.getString("COLUMN_NAME"));
                     }
                 }
 
                 String columnPattern = query != null && !query.isEmpty() ? "%" + query.toUpperCase() + "%" : "%";
-                try (ResultSet rs = metaData.getColumns(null, null, tableName, columnPattern)) {
+                try (ResultSet rs = metaData.getColumns(catalog, null, tableName, columnPattern)) {
                     while (rs.next()) {
                         String columnName = rs.getString("COLUMN_NAME");
                         results.add(DatasourceDto.ColumnSearchResult.builder()

@@ -171,8 +171,9 @@ sync-agent-bojo/
   - jewon: UPSERT (`fullCopy=true`, `ON CONFLICT DO UPDATE`)
   - obsvdata: INSERT (`ON CONFLICT DO NOTHING`)
 - `LinkTableObsvDataFetcher`: link_ngwis 기반 증분 조회 또는 기간 지정 조회
-- `LinkTableUpdateStep`: 동기화 완료 후 link_ngwis 업데이트
+- `LinkTableUpdateStep`: 동기화 완료 후 link_ngwis 업데이트 (PG: `ON CONFLICT`, MySQL: `ON DUPLICATE KEY UPDATE`)
 - `skipSourceStatusUpdate=true`: 외부 DB(VIEW)라 Source 상태 업데이트 안함
+- **Multi-DB 지원**: PostgreSQL, MySQL/MariaDB 모두 동작 (SQL 방언 자동 분기)
 
 **핵심 파일:**
 ```
@@ -251,9 +252,10 @@ sync-agent-bojo/src/main/java/com/sync/agent/bojo/
 | 실행 트리거 | 웹 UI에서 클릭 한 번으로 동기화 실행 |
 | 실시간 모니터링 | 실행 중인 작업의 진행 상황 확인 |
 | 실행 이력 조회 | 과거 실행 기록과 성공/실패 통계 확인 |
-| 데이터 추적 (Trace) | 특정 데이터가 어디서 왔고 어디까지 처리되었는지 추적 |
+| 데이터 추적 (Trace) | 특정 데이터가 어디서 왔고 어디까지 처리되었는지 추적 (단일/복합 PK 지원) |
 | 기간 지정 실행 | UI에서 날짜 범위를 지정하여 재동기화 실행 |
 | **스케줄러** | Agent별 자동 실행 주기를 cron 표현식으로 커스텀 설정 |
+| **소스 테이블 자동 등록** | 실행 트리거 시 Agent API로 테이블 정보 조회 → `datasource_table`, `agent_table` 자동 생성 |
 
 **스케줄러 기능 상세:**
 | 기능 | 설명 |
@@ -285,11 +287,15 @@ sync-orchestrator/
 **역할:** 모든 Agent가 공유하는 공통 로직
 
 **핵심 컴포넌트:**
-- `SourceToIfExtractStep`: Source → IF 추출 공통 로직
+- `SourceToIfStep`: Source → IF 추출 공통 로직 (Multi-DB 지원: `isMysql()`/`qi()` 방언 분기)
 - `ExtractStepConfig`: Step 설정 (아래 옵션 참조)
 - `IfTableService`: IF 테이블 상태 관리
 - `IfTableUtils`: IF 테이블 유틸리티
-- `ExecutionDataController`: 실행 데이터 조회 API
+- `ExecutionDataController`: 실행 데이터 조회 API (Tracing, Multi-DB 지원)
+  - PK 자동 감지: JDBC `DatabaseMetaData.getPrimaryKeys()` (단일/복합 PK)
+  - 유니크 키 감지: JDBC `getIndexInfo()` (SND Business Key fallback)
+  - SQL 방언 분기: 식별자 인용(`"` vs `` ` ``), 검색(`ILIKE` vs `LIKE`), 스키마(`public` vs `DATABASE()`)
+  - `detectDbType()`: JDBC URL에서 DB 종류 자동 감지
 
 **ExtractStepConfig 주요 옵션:**
 | 옵션 | 기본값 | 설명 |
@@ -389,12 +395,24 @@ Target: PENDING (Loader 적재) → SYNCED (SND 처리 후)
 - 해당 시점 이후 데이터만 Source에서 추출
 - 동기화 완료 후 link_ngwis 업데이트 (**더 최신 데이터일 때만**)
 
-**업데이트 조건:**
+**업데이트 조건 (더 최신 데이터일 때만):**
+
+PostgreSQL:
 ```sql
--- 새 날짜가 더 크거나, 날짜가 같으면 새 시간이 더 클 때만 업데이트
+INSERT INTO link_ngwis (...) VALUES (...)
+ON CONFLICT (obsv_code) DO UPDATE SET ...
 WHERE link_ngwis.obsv_date < EXCLUDED.obsv_date
    OR (link_ngwis.obsv_date = EXCLUDED.obsv_date
        AND link_ngwis.obsv_time < EXCLUDED.obsv_time)
+```
+
+MySQL:
+```sql
+INSERT INTO link_ngwis (...) VALUES (...)
+ON DUPLICATE KEY UPDATE
+  obsv_date = IF(obsv_date IS NULL OR obsv_date < VALUES(obsv_date)
+    OR (obsv_date = VALUES(obsv_date) AND obsv_time < VALUES(obsv_time)),
+    VALUES(obsv_date), obsv_date), ...
 ```
 
 ---
@@ -503,18 +521,29 @@ WHERE execution_id = 'exec-xxx-yyy';
 - 외부 시스템 담당자에게 "이 row에 문제가 있다"고 정확히 전달 가능
 - 데이터 정합성 검증 시 원본과 비교 가능
 
-**형식:** JSON 객체
+**형식:** JSON 배열 (v2)
 ```json
-{
-  "DMZ_ENT1": ["dmz_ent1_ds:SEC_JEWON:GPM-1234-5678-00001"]
-}
+["E:8:26:DJ-DJC-G1-0001"]
+["E:8:27:DJ-DJC-G1-0001|2026-02-19|01:00:00"]
 ```
 
-**구성:**
-- Key: Zone 식별자 (예: DMZ_ENT1)
-- Value: `datasource_id:table_name:primary_key` 배열
+**구성:** `zone:datasourceId:tableId:primaryKey`
+- zone: E(External), D(DMZ), I(Internal)
+- datasourceId: Orchestrator `datasource` 테이블의 ID (숫자)
+- tableId: Orchestrator `datasource_table` 테이블의 ID (숫자, 자동 등록)
+- primaryKey: 레코드의 PK값 (복합 PK는 `|` 구분)
+
+**복합 PK 예시:**
+- 단일 PK (제원): `E:8:26:DJ-DJC-G1-0001` → `obsv_code`
+- 복합 PK (관측데이터): `E:8:27:DJ-DJC-G1-0001|2026-02-19|01:00:00` → `obsv_code|obsv_date|obsv_time`
 
 **데이터 흐름:** Source → IF_RSV → Target까지 그대로 전달되어 어디서든 원본 추적 가능
+
+**자동 테이블 등록:** Orchestrator가 실행 트리거 시 `sourceTableIds`가 비어있으면:
+1. Agent API `GET /api/pipeline/{agentCode}/tables` 호출
+2. `datasource_table` 자동 생성 (tableId 부여)
+3. `agent_table` SOURCE 매핑 자동 생성
+4. 이후 source_refs에 정상 tableId 기록 (tbId=0 방지)
 
 ---
 
@@ -566,9 +595,11 @@ WHERE execution_id = 'exec-xxx-yyy';
 - Source 데이터 변경 시 항상 Target에 반영되어야 함
 - INSERT ONLY 방식은 변경된 데이터를 놓칠 수 있음
 
-**구현 (`SourceToIfExtractStep.java`):**
+**구현 (`SourceToIfStep.java`):**
 ```java
-// 항상 UPSERT 사용 (ON CONFLICT DO UPDATE)
+// 항상 UPSERT 사용
+// PostgreSQL: ON CONFLICT DO UPDATE
+// MySQL: ON DUPLICATE KEY UPDATE
 String insertSql = buildUpsertSql(actualTargetIfTable, columns);
 ```
 
@@ -703,3 +734,4 @@ RCV 기간지정 → IF_RSV(RESYNC) → Loader 일반 → Target(RESYNC) → SND
 | 2026-02-06 | RESYNC 상태 추가 (파이프라인 전체 UPSERT 전파) |
 | 2026-02-09 | sync_record_history 이력 테이블 추가 (UPSERT 이력 보존) |
 | 2026-02-12 | v2 통합 아키텍처 반영: 3개 분리 모듈 → sync-agent-bojo 1개 통합, RSV→RCV 명칭 변경, PipelineRegistry/AgentConfigLoader 추가, 파일 기반 Agent 설정 |
+| 2026-02-19 | Tracing 기능 강화: 복합 PK 지원, JDBC 메타데이터 기반 PK 자동 감지, source_refs 형식 업데이트 (JSON배열), 소스 테이블 자동 등록, MySQL/PG 호환성 (SQL 방언 분기) |

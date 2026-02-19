@@ -17,10 +17,6 @@ import java.util.Map;
  * 관측데이터 동기화 완료 후 link_ngwis 테이블 업데이트
  * - IF 테이블에서 각 obsv_code별 max(obsv_date, obsv_time) 조회
  * - link_ngwis 테이블에 UPSERT (있으면 UPDATE, 없으면 INSERT)
- *
- * 원본 로직:
- * - INSERT INTO link_ngwis(obsv_code, obsv_date, obsv_time, update_time) VALUES (?, ?, ?, sysdate)
- * - UPDATE link_ngwis SET obsv_date = ?, obsv_time = ?, update_time = sysdate WHERE obsv_code = ?
  */
 @Slf4j
 public class LinkTableUpdateStep implements StepExecutor {
@@ -55,18 +51,22 @@ public class LinkTableUpdateStep implements StepExecutor {
         return STEP_NAME;
     }
 
+    private static boolean isMysql(String dbType) {
+        return "MYSQL".equalsIgnoreCase(dbType) || "MARIADB".equalsIgnoreCase(dbType);
+    }
+
     @Override
     public StepResult execute(StepContext context) {
         long startTime = System.currentTimeMillis();
         int updateCount = 0;
-        int insertCount = 0;
 
         try {
             String targetDsId = dataSourceProvider.getTargetDatasourceId();
+            String dbType = dataSourceProvider.getDbType(targetDsId);
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
 
             // 1. Link 테이블 존재 확인 및 생성
-            ensureLinkTableExists(targetJdbc);
+            ensureLinkTableExists(targetJdbc, dbType);
 
             // 2. IF 테이블에서 현재 실행 ID로 동기화된 데이터의 obsv_code별 max(date, time) 조회
             String executionId = context.getExecutionId();
@@ -97,8 +97,7 @@ public class LinkTableUpdateStep implements StepExecutor {
                     continue;
                 }
 
-                // UPSERT: PostgreSQL ON CONFLICT 사용
-                int affected = upsertLinkRecord(targetJdbc, obsvCode, obsvDate, obsvTime);
+                int affected = upsertLinkRecord(targetJdbc, obsvCode, obsvDate, obsvTime, dbType);
                 if (affected > 0) {
                     updateCount++;
                 }
@@ -109,7 +108,7 @@ public class LinkTableUpdateStep implements StepExecutor {
             return StepResult.builder()
                     .stepId(STEP_ID)
                     .status(Status.SUCCESS)
-                    .readCount(maxRecords.size())
+                    .readCount(0)
                     .writeCount(updateCount)
                     .skipCount(0)
                     .durationMs(System.currentTimeMillis() - startTime)
@@ -126,15 +125,19 @@ public class LinkTableUpdateStep implements StepExecutor {
     /**
      * Link 테이블이 없으면 생성
      */
-    private void ensureLinkTableExists(JdbcTemplate targetJdbc) {
+    private void ensureLinkTableExists(JdbcTemplate targetJdbc, String dbType) {
+        String timestampDefault = isMysql(dbType)
+                ? "update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                : "update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP";
+
         String createSql = String.format(
                 "CREATE TABLE IF NOT EXISTS %s (" +
                         "%s VARCHAR(50) PRIMARY KEY, " +
                         "%s DATE, " +
                         "%s VARCHAR(10), " +
-                        "update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        "%s" +
                         ")",
-                linkTable, keyColumn, dateColumn, timeColumn);
+                linkTable, keyColumn, dateColumn, timeColumn, timestampDefault);
 
         try {
             targetJdbc.execute(createSql);
@@ -148,7 +151,6 @@ public class LinkTableUpdateStep implements StepExecutor {
      * IF 테이블에서 현재 실행에서 동기화된 obsv_code별 max(date, time) 조회
      */
     private List<Map<String, Object>> getMaxDateTimePerObsvCode(JdbcTemplate targetJdbc, String executionId) {
-        // execution_id로 현재 실행에서 동기화된 데이터만 필터링
         String sql = String.format(
                 "SELECT %s, MAX(%s) as %s, MAX(%s) as %s " +
                         "FROM %s WHERE execution_id = ? " +
@@ -161,7 +163,6 @@ public class LinkTableUpdateStep implements StepExecutor {
         } catch (Exception e) {
             log.warn("[{}] IF 테이블 조회 실패, 전체 데이터로 시도: {}", STEP_ID, e.getMessage());
 
-            // executionId 필터 없이 전체 조회 (fallback)
             String fallbackSql = String.format(
                     "SELECT %s, MAX(%s) as %s, MAX(%s) as %s " +
                             "FROM %s GROUP BY %s",
@@ -172,34 +173,62 @@ public class LinkTableUpdateStep implements StepExecutor {
     }
 
     /**
-     * Link 테이블에 UPSERT (PostgreSQL ON CONFLICT 사용)
-     * 단, 새 데이터가 기존 데이터보다 최신일 때만 업데이트
+     * Link 테이블에 UPSERT
+     * PostgreSQL: ON CONFLICT ... DO UPDATE
+     * MySQL: ON DUPLICATE KEY UPDATE
      */
-    private int upsertLinkRecord(JdbcTemplate targetJdbc, String obsvCode, String obsvDate, String obsvTime) {
-        // 날짜 형식 정리 (YYYYMMDD → DATE 변환)
+    private int upsertLinkRecord(JdbcTemplate targetJdbc, String obsvCode, String obsvDate, String obsvTime, String dbType) {
         String cleanDate = obsvDate.replaceAll("-", "");
-        String cleanTime = obsvTime != null ? obsvTime.replaceAll(":", "") : "000000";
+        String cleanTime = obsvTime != null ? obsvTime : "00:00:00";
 
-        // UPSERT with condition: 새 데이터가 더 최신일 때만 업데이트
-        // - 새 날짜가 더 크거나
-        // - 날짜가 같으면 새 시간이 더 클 때
-        String upsertSql = String.format(
-                "INSERT INTO %s (%s, %s, %s, update_time) " +
-                        "VALUES (?, TO_DATE(?, 'YYYYMMDD'), ?, CURRENT_TIMESTAMP) " +
-                        "ON CONFLICT (%s) DO UPDATE SET " +
-                        "%s = EXCLUDED.%s, " +
-                        "%s = EXCLUDED.%s, " +
-                        "update_time = CURRENT_TIMESTAMP " +
-                        "WHERE %s.%s < EXCLUDED.%s " +
-                        "   OR (%s.%s = EXCLUDED.%s AND %s.%s < EXCLUDED.%s)",
-                linkTable, keyColumn, dateColumn, timeColumn,
-                keyColumn,
-                dateColumn, dateColumn,
-                timeColumn, timeColumn,
-                // WHERE 조건: 기존 날짜 < 새 날짜
-                linkTable, dateColumn, dateColumn,
-                // OR (기존 날짜 = 새 날짜 AND 기존 시간 < 새 시간)
-                linkTable, dateColumn, dateColumn, linkTable, timeColumn, timeColumn);
+        String upsertSql;
+
+        if (isMysql(dbType)) {
+            // MySQL: ON DUPLICATE KEY UPDATE + STR_TO_DATE
+            upsertSql = String.format(
+                    "INSERT INTO %s (%s, %s, %s, update_time) " +
+                            "VALUES (?, STR_TO_DATE(?, '%%Y%%m%%d'), ?, CURRENT_TIMESTAMP) " +
+                            "ON DUPLICATE KEY UPDATE " +
+                            "%s = IF(" +
+                            "  %s IS NULL OR %s < VALUES(%s) OR (%s = VALUES(%s) AND %s < VALUES(%s)), " +
+                            "  VALUES(%s), %s), " +
+                            "%s = IF(" +
+                            "  %s IS NULL OR %s < VALUES(%s) OR (%s = VALUES(%s) AND %s < VALUES(%s)), " +
+                            "  VALUES(%s), %s), " +
+                            "update_time = IF(" +
+                            "  %s IS NULL OR %s < VALUES(%s) OR (%s = VALUES(%s) AND %s < VALUES(%s)), " +
+                            "  CURRENT_TIMESTAMP, update_time)",
+                    linkTable, keyColumn, dateColumn, timeColumn,
+                    // date column update
+                    dateColumn,
+                    dateColumn, dateColumn, dateColumn, dateColumn, dateColumn, timeColumn, timeColumn,
+                    dateColumn, dateColumn,
+                    // time column update
+                    timeColumn,
+                    dateColumn, dateColumn, dateColumn, dateColumn, dateColumn, timeColumn, timeColumn,
+                    timeColumn, timeColumn,
+                    // update_time update
+                    dateColumn, dateColumn, dateColumn, dateColumn, dateColumn, timeColumn, timeColumn);
+        } else {
+            // PostgreSQL: ON CONFLICT ... DO UPDATE + TO_DATE
+            upsertSql = String.format(
+                    "INSERT INTO %s (%s, %s, %s, update_time) " +
+                            "VALUES (?, TO_DATE(?, 'YYYYMMDD'), ?, CURRENT_TIMESTAMP) " +
+                            "ON CONFLICT (%s) DO UPDATE SET " +
+                            "%s = EXCLUDED.%s, " +
+                            "%s = EXCLUDED.%s, " +
+                            "update_time = CURRENT_TIMESTAMP " +
+                            "WHERE %s.%s IS NULL " +
+                            "   OR %s.%s < EXCLUDED.%s " +
+                            "   OR (%s.%s = EXCLUDED.%s AND %s.%s < EXCLUDED.%s)",
+                    linkTable, keyColumn, dateColumn, timeColumn,
+                    keyColumn,
+                    dateColumn, dateColumn,
+                    timeColumn, timeColumn,
+                    linkTable, dateColumn,
+                    linkTable, dateColumn, dateColumn,
+                    linkTable, dateColumn, dateColumn, linkTable, timeColumn, timeColumn);
+        }
 
         try {
             int affected = targetJdbc.update(upsertSql, obsvCode, cleanDate, cleanTime);

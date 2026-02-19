@@ -27,7 +27,7 @@ public class Datasource {
      * Auto-increment로 자동 생성
      */
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
+    @Column(name = "id", insertable = false, updatable = false)
     private Long id;
 
     @Id

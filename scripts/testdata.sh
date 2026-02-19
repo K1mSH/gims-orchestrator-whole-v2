@@ -14,17 +14,19 @@ MY_USER="k1m"
 MY_PASS="1111"
 
 # 업체 목록: db명:접두사:case:시도:dbtype
+# 관측코드 양식: {지역}-{세부지역}-G1-{번호} (예: GG-GMP-G1-0008)
+# G1 = 보조측정망, 앞 2자리 = 시도, 중간 = 세부지역코드
 COMPANIES=(
-  "daejeon:DJ:lower:대전광역시:pg"
-  "bytek:BT:lower:경기도:pg"
-  "chungnam:CN:lower:충청남도:pg"
-  "keunsan:KS:upper:경상남도:pg"
-  "infoworld_local:IWL:lower:대전광역시:my"
-  "infoworld_seoul:IWS:lower:서울특별시:my"
-  "hydronet_ara:HNA:lower:인천광역시:my"
-  "hydronet_idc:HNI:lower:서울특별시:my"
-  "hydronet_kyungnam:HNK:lower:경상남도:my"
-  "hydronet_wonju:HNW:lower:강원특별자치도:my"
+  "daejeon:DJ-DJC-G1:lower:대전광역시:pg"
+  "bytek:GG-SWN-G1:lower:경기도:pg"
+  "chungnam:CN-CAN-G1:lower:충청남도:pg"
+  "keunsan:GN-CWN-G1:upper:경상남도:pg"
+  "infoworld_local:GG-GMP-G1:lower:경기도:my"
+  "infoworld_seoul:SE-GBK-G1:lower:서울특별시:my"
+  "hydronet_ara:IC-ARA-G1:lower:인천광역시:my"
+  "hydronet_idc:DG-IDC-G1:lower:대구광역시:my"
+  "hydronet_kyungnam:GN-JJU-G1:lower:경상남도:my"
+  "hydronet_wonju:GW-WNJ-G1:lower:강원특별자치도:my"
 )
 
 STATIONS=400
@@ -40,13 +42,13 @@ pg_cmd() {
 # MySQL: -e 옵션으로 간단한 쿼리
 my_cmd() {
   local db=$1; shift
-  docker exec "$MY_CONTAINER" mysql -u "$MY_USER" -p"$MY_PASS" "$db" "$@" 2>/dev/null
+  docker exec "$MY_CONTAINER" mysql -u "$MY_USER" -p"$MY_PASS" --default-character-set=utf8mb4 "$db" "$@" 2>/dev/null
 }
 
 # MySQL: stdin 파이프로 긴 쿼리
 my_pipe() {
   local db=$1
-  docker exec -i "$MY_CONTAINER" mysql -u "$MY_USER" -p"$MY_PASS" "$db" 2>/dev/null
+  docker exec -i "$MY_CONTAINER" mysql -u "$MY_USER" -p"$MY_PASS" --default-character-set=utf8mb4 "$db" 2>/dev/null
 }
 
 # ============================================================
@@ -56,12 +58,12 @@ get_sigungu_array() {
   case $1 in
     daejeon)           echo "유성구,서구,중구,대덕구,동구" ;;
     bytek)             echo "수원시,성남시,용인시,화성시,평택시" ;;
-    infoworld_local)   echo "유성구,대덕구,서구,중구,동구" ;;
+    infoworld_local)   echo "김포시,고양시,파주시,양주시,의정부시" ;;
     infoworld_seoul)   echo "강남구,서초구,송파구,강동구,관악구" ;;
     chungnam)          echo "천안시,아산시,서산시,논산시,공주시" ;;
     keunsan)           echo "창원시,김해시,양산시,진주시,거제시" ;;
     hydronet_ara)      echo "서구,남동구,부평구,계양구,연수구" ;;
-    hydronet_idc)      echo "금천구,구로구,영등포구,동작구,관악구" ;;
+    hydronet_idc)      echo "달서구,수성구,북구,중구,동구" ;;
     hydronet_kyungnam) echo "창원시,통영시,사천시,밀양시,함안군" ;;
     hydronet_wonju)    echo "원주시,횡성군,영월군,평창군,정선군" ;;
   esac
@@ -71,12 +73,12 @@ get_dong_array() {
   case $1 in
     daejeon)           echo "전민동,둔산동,대흥동,신탄진동,판암동" ;;
     bytek)             echo "영통동,분당동,수지동,동탄동,평택동" ;;
-    infoworld_local)   echo "궁동,대화동,갈마동,은행동,가오동" ;;
+    infoworld_local)   echo "장기동,일산동,금촌동,덕계동,의정부동" ;;
     infoworld_seoul)   echo "역삼동,서초동,잠실동,천호동,봉천동" ;;
     chungnam)          echo "성정동,온천동,동문동,연무동,금학동" ;;
     keunsan)           echo "성산구,내동,중앙동,칠암동,장승포동" ;;
     hydronet_ara)      echo "검단동,논현동,부평동,계산동,송도동" ;;
-    hydronet_idc)      echo "가산동,구로동,여의동,상도동,신림동" ;;
+    hydronet_idc)      echo "월성동,범어동,침산동,동인동,신암동" ;;
     hydronet_kyungnam) echo "마산동,봉평동,용현동,내이동,가야읍" ;;
     hydronet_wonju)    echo "단계동,우산동,영월읍,대화면,고한읍" ;;
   esac
@@ -90,7 +92,7 @@ init_jewon() {
 
   for entry in "${COMPANIES[@]}"; do
     IFS=':' read -r db prefix case_type sido dbtype <<< "$entry"
-    echo -n "  $db [${dbtype}] (${prefix}-0001~$(printf '%04d' $STATIONS))... "
+    echo -n "  $db [${dbtype}] (${prefix}-0001 ~ ${prefix}-$(printf '%04d' $STATIONS))... "
 
     local sigungu_csv=$(get_sigungu_array "$db")
     local dong_csv=$(get_dong_array "$db")
@@ -187,7 +189,10 @@ FROM seq;
 }
 
 # ============================================================
-# obsvdata 생성 (날짜 지정, jewon의 모든 관측소 x 24시간)
+# obsvdata 생성 (날짜 지정, jewon의 모든 관측소 x 가변 시간)
+# 관측소 번호에 따라 시간 범위가 다름:
+#   station % 24 = max_hour (0001→1시, 0012→12시, 0023→23시, 0024→0시)
+#   → link 테이블 검증 시 관측소별로 다른 max_time 확인 가능
 # ============================================================
 generate_obsvdata() {
   local target_date=$1
@@ -196,7 +201,7 @@ generate_obsvdata() {
     exit 1
   fi
 
-  echo "=== 관측 데이터 생성: ${target_date} ==="
+  echo "=== 관측 데이터 생성: ${target_date} (관측소별 가변 시간) ==="
 
   for entry in "${COMPANIES[@]}"; do
     IFS=':' read -r db prefix case_type sido dbtype <<< "$entry"
@@ -217,7 +222,8 @@ SELECT
   ROUND((180 + j.\"WELL\" * 20 + h * 0.8 + random() * 15)::numeric, 0)::int,
   'auto'
 FROM \"SEC_JEWON_VIEW\" j
-CROSS JOIN generate_series(0, 23) h;
+CROSS JOIN generate_series(0, 23) h
+WHERE h <= (CAST(substring(j.\"OBSV_CODE\" from '\\d+$') AS INT) % 24);
 " 2>&1 | grep -q ERROR && { echo "FAIL"; continue; }
         local cnt=$(pg_cmd "$db" -t -q -c "SELECT count(*) FROM \"SEC_OBSVDATA_VIEW\" WHERE \"OBSV_DATE\" = '${target_date}';" | tr -d ' ')
         echo "OK (${cnt}건)"
@@ -235,14 +241,15 @@ SELECT
   ROUND((180 + j.well * 20 + h * 0.8 + random() * 15)::numeric, 0)::int,
   'auto'
 FROM sec_jewon_view j
-CROSS JOIN generate_series(0, 23) h;
+CROSS JOIN generate_series(0, 23) h
+WHERE h <= (CAST(substring(j.obsv_code from '\\d+$') AS INT) % 24);
 " 2>&1 | grep -q ERROR && { echo "FAIL"; continue; }
         local cnt=$(pg_cmd "$db" -t -q -c "SELECT count(*) FROM sec_obsvdata_view WHERE obsv_date = '${target_date}';" | tr -d ' ')
         echo "OK (${cnt}건)"
       fi
 
     else
-      # MySQL: CROSS JOIN으로 24시간 생성
+      # MySQL: CROSS JOIN + 관측소별 가변 시간
       my_cmd "$db" -e "
 INSERT INTO sec_obsvdata_view (obsv_code, obsv_date, obsv_time, gwdep, gwtemp, ec, remark)
 SELECT
@@ -261,7 +268,8 @@ CROSS JOIN (
   UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15
   UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19
   UNION SELECT 20 UNION SELECT 21 UNION SELECT 22 UNION SELECT 23
-) hours;
+) hours
+WHERE h <= (CAST(SUBSTRING(j.obsv_code, -4) AS UNSIGNED) % 24);
 " && {
         local cnt=$(my_cmd "$db" -N -e "SELECT COUNT(*) FROM sec_obsvdata_view WHERE obsv_date = '${target_date}';")
         echo "OK (${cnt}건)"

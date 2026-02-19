@@ -55,10 +55,12 @@ public class JdbcTableNameResolver {
         return tableNameCache.computeIfAbsent(cacheKey, key -> {
             try (Connection conn = dataSource.getConnection()) {
                 DatabaseMetaData metaData = conn.getMetaData();
+                // MySQL은 catalog(=database)를 지정해야 해당 DB 테이블만 반환
+                String catalog = conn.getCatalog();
                 String[] variants = {logicalName, logicalName.toLowerCase(), logicalName.toUpperCase()};
 
                 for (String variant : variants) {
-                    try (ResultSet rs = metaData.getTables(null, null, variant, new String[]{"TABLE", "VIEW"})) {
+                    try (ResultSet rs = metaData.getTables(catalog, null, variant, new String[]{"TABLE", "VIEW"})) {
                         if (rs.next()) {
                             String actualName = rs.getString("TABLE_NAME");
                             log.info("Resolved table name: '{}' -> '{}'", logicalName, actualName);
@@ -85,10 +87,11 @@ public class JdbcTableNameResolver {
     public static String resolve(DataSource dataSource, String logicalName) {
         try (Connection conn = dataSource.getConnection()) {
             DatabaseMetaData metaData = conn.getMetaData();
+            String catalog = conn.getCatalog();
             String[] variants = {logicalName, logicalName.toLowerCase(), logicalName.toUpperCase()};
 
             for (String variant : variants) {
-                try (ResultSet rs = metaData.getTables(null, null, variant, new String[]{"TABLE", "VIEW"})) {
+                try (ResultSet rs = metaData.getTables(catalog, null, variant, new String[]{"TABLE", "VIEW"})) {
                     if (rs.next()) {
                         String actualName = rs.getString("TABLE_NAME");
                         log.debug("Resolved table name: '{}' -> '{}'", logicalName, actualName);

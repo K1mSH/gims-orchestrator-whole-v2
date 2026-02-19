@@ -56,7 +56,7 @@ public class SndPipelineConfig {
                 .primaryKeyColumn(jewonCfg.getPrimaryKey())
                 .fullCopy(jewonCfg.isFullCopy())
                 .build();
-        SourceToIfExtractStep jewonStep = new SourceToIfExtractStep(
+        SourceToIfStep jewonStep = new SourceToIfStep(
                 jewonConfig, dataSourceProvider, syncLogRepository);
 
         // Step 2: 관측데이터 추출
@@ -75,7 +75,7 @@ public class SndPipelineConfig {
                 .lookbackValue(lookbackValue)
                 .lookbackUnit(ExtractStepConfig.LookbackUnit.valueOf(lookbackUnit))
                 .build();
-        SourceToIfExtractStep obsvStep = new SourceToIfExtractStep(
+        SourceToIfStep obsvStep = new SourceToIfStep(
                 obsvConfig, dataSourceProvider, syncLogRepository);
 
         return new PipelineRunner(def.getAgentCode(), List.of(jewonStep, obsvStep));

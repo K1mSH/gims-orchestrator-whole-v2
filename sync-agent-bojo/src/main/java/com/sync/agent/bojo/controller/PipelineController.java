@@ -1,5 +1,7 @@
 package com.sync.agent.bojo.controller;
 
+import com.sync.agent.bojo.config.AgentConfigLoader;
+import com.sync.agent.bojo.config.AgentDefinition;
 import com.sync.agent.bojo.config.PipelineRegistry;
 import com.sync.agent.bojo.pipeline.PipelineService;
 import com.sync.agent.common.pipeline.PipelineResult;
@@ -10,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,6 +31,7 @@ public class PipelineController {
 
     private final PipelineService pipelineService;
     private final PipelineRegistry pipelineRegistry;
+    private final AgentConfigLoader agentConfigLoader;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     /**
@@ -190,6 +195,62 @@ public class PipelineController {
             response.put("errorMessage", result.getErrorMessage());
         }
 
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 파이프라인 테이블 정보 조회
+     * Orchestrator가 SOURCE 테이블 자동 등록에 사용
+     * agentCode의 파이프라인 Step 설정에서 sourceTable, targetTable 정보 추출
+     */
+    @GetMapping("/{agentCode}/tables")
+    public ResponseEntity<Map<String, Object>> getPipelineTables(@PathVariable String agentCode) {
+        // 등록된 agentCode인지 확인
+        if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Unknown agentCode: " + agentCode));
+        }
+
+        List<Map<String, String>> tables = new ArrayList<>();
+
+        // AgentDefinition에서 테이블 정보 추출
+        for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
+            if (!agentCode.equals(def.getAgentCode())) continue;
+
+            // RCV/SND: jewon, obsvdata
+            if (def.getJewon() != null) {
+                if (def.getJewon().getSourceTable() != null) {
+                    tables.add(Map.of("tableName", def.getJewon().getSourceTable(), "type", "SOURCE"));
+                }
+                if (def.getJewon().getTargetTable() != null) {
+                    tables.add(Map.of("tableName", def.getJewon().getTargetTable(), "type", "TARGET"));
+                }
+            }
+            if (def.getObsvdata() != null) {
+                if (def.getObsvdata().getSourceTable() != null) {
+                    tables.add(Map.of("tableName", def.getObsvdata().getSourceTable(), "type", "SOURCE"));
+                }
+                if (def.getObsvdata().getTargetTable() != null) {
+                    tables.add(Map.of("tableName", def.getObsvdata().getTargetTable(), "type", "TARGET"));
+                }
+            }
+
+            // Loader: if-table, target-table
+            if (def.getIfTable() != null) {
+                def.getIfTable().values().forEach(t ->
+                        tables.add(Map.of("tableName", t, "type", "SOURCE")));
+            }
+            if (def.getTargetTable() != null) {
+                def.getTargetTable().values().forEach(t ->
+                        tables.add(Map.of("tableName", t, "type", "TARGET")));
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("agentCode", agentCode);
+        response.put("tables", tables);
+
+        log.info("Pipeline tables for {}: {}", agentCode, tables);
         return ResponseEntity.ok(response);
     }
 }

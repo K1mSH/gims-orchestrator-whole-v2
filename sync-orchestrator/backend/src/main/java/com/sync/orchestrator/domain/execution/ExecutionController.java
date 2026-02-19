@@ -84,9 +84,10 @@ public class ExecutionController {
 
     /**
      * 특정 테이블의 레코드 조회 (Agent DB에서)
+     * Agent는 SyncLog 단일 객체를 반환하므로 Map으로 수신
      */
     @GetMapping("/{executionId}/tables/{tableName}")
-    public ResponseEntity<List<Map<String, Object>>> getTableRecords(
+    public ResponseEntity<Map<String, Object>> getTableRecords(
             @PathVariable String executionId,
             @PathVariable String tableName) {
         return ResponseEntity.ok(executionService.getTableRecords(executionId, tableName));

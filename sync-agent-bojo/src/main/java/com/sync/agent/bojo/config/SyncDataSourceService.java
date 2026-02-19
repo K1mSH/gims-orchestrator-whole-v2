@@ -193,6 +193,12 @@ public class SyncDataSourceService implements DataSourceProvider {
     }
 
     @Override
+    public String getDbType(String datasourceId) {
+        DataSourceInfo info = findDataSourceInfo(datasourceId);
+        return info != null ? info.getDbType() : null;
+    }
+
+    @Override
     public JdbcTemplate getJdbcTemplate(String datasourceId) {
         return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
     }

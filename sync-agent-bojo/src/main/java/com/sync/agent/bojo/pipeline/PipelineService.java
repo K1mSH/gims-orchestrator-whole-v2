@@ -145,13 +145,24 @@ public class PipelineService {
         String dbType = (String) params.get(prefix + "DbType");
         String host = (String) params.get(prefix + "Host");
         Object portObj = params.get(prefix + "Port");
-        Integer port = portObj instanceof Integer ? (Integer) portObj : Integer.parseInt(portObj.toString());
+        Integer port;
+        if (portObj instanceof Integer) {
+            port = (Integer) portObj;
+        } else if (portObj instanceof Number) {
+            port = ((Number) portObj).intValue();
+        } else if (portObj != null) {
+            port = Integer.parseInt(portObj.toString());
+        } else {
+            log.error("[Bojo] {} port is null! Available params: {}", prefix, params.keySet());
+            port = null;
+        }
         String databaseName = (String) params.get(prefix + "DatabaseName");
         String username = (String) params.get(prefix + "Username");
         String password = (String) params.get(prefix + "Password");
 
         if (datasourceId == null || host == null || port == null) {
-            throw new IllegalArgumentException(prefix + " datasource info is incomplete.");
+            throw new IllegalArgumentException(prefix + " datasource info is incomplete. " +
+                    "datasourceId=" + datasourceId + ", host=" + host + ", port=" + port);
         }
 
         return DataSourceInfo.builder()

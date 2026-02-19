@@ -32,4 +32,15 @@ public interface DataSourceProvider {
     default String getAgentType() {
         return null;
     }
+
+    /**
+     * Get the DB type for a specific datasource.
+     * Used for SQL dialect-specific query generation (PostgreSQL vs MySQL etc.)
+     *
+     * @param datasourceId datasource ID
+     * @return DB type string (POSTGRESQL, MYSQL, ORACLE, etc.), or null if unknown
+     */
+    default String getDbType(String datasourceId) {
+        return null;
+    }
 }

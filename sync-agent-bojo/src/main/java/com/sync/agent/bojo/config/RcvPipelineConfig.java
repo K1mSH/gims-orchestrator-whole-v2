@@ -65,7 +65,7 @@ public class RcvPipelineConfig {
                 .fullCopy(jewonCfg.isFullCopy())
                 .skipSourceStatusUpdate(jewonCfg.isSkipSourceStatusUpdate())
                 .build();
-        SourceToIfExtractStep jewonStep = new SourceToIfExtractStep(
+        SourceToIfStep jewonStep = new SourceToIfStep(
                 jewonConfig, dataSourceProvider, syncLogRepository);
 
         // Step 2: 관측데이터 추출
@@ -98,7 +98,7 @@ public class RcvPipelineConfig {
                     .timeColumn(obsvCfg.getTimeColumn())
                     .build();
         }
-        SourceToIfExtractStep obsvStep = new SourceToIfExtractStep(
+        SourceToIfStep obsvStep = new SourceToIfStep(
                 obsvConfig, dataSourceProvider, syncLogRepository);
 
         // Steps

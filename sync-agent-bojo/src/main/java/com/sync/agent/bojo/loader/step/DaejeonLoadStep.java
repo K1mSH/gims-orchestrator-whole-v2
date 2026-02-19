@@ -9,6 +9,7 @@ import com.sync.agent.common.step.StepResult;
 import com.sync.agent.common.step.Status;
 import com.sync.agent.bojo.entity.iftable.rsv.IfRsvSecJewon;
 import com.sync.agent.bojo.entity.iftable.rsv.IfRsvSecObsvdata;
+import com.sync.agent.bojo.entity.target.LinkNgwis;
 import com.sync.agent.bojo.entity.target.SecJewon;
 import com.sync.agent.bojo.entity.target.SecObsvdata;
 import com.sync.agent.bojo.loader.repository.TargetRepositoryService;
@@ -17,16 +18,23 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 대전 관측망 데이터 적재 Step (JPA 버전)
+ * 대전 관측망 데이터 적재 Step (JDBC batch UPSERT 버전)
  * IF_RSV 테이블 → Target 테이블 (sec_jewon, sec_obsvdata, link_ngwis)
  *
- * 모든 테이블이 Target DB에 있으므로 DynamicEntityManagerService 사용
+ * 성능 최적화:
+ * - JPA merge() → JDBC batch UPSERT (ON CONFLICT)
+ * - 레코드별 RESYNC SELECT 제거 → ON CONFLICT가 자동 처리
+ * - 레코드별 IF 상태 UPDATE → 배치 UPDATE (batchMarkAsProcessed)
+ * - 레코드별 Link UPDATE → 배치 UPSERT (batchUpsertLinks)
+ * - ~31,000 DB round-trip → ~15 DB round-trip
  */
 @Slf4j
 @Component
@@ -114,14 +122,13 @@ public class DaejeonLoadStep implements StepExecutor {
                 log.info("[{}] obsv_code filter: {}", getStepId(), filterObsvCode);
             }
 
-            // 1. 제원 데이터 처리
-            // 시간지정실행: 전체 데이터 재동기화 (link_status 무시)
-            // 일반실행: PENDING만 처리
+            String loaderExecutionId = context.getExecutionId();
+
+            // ===== 1. 제원 데이터 처리 (JDBC batch UPSERT) =====
             List<IfRsvSecJewon> pendingJewon = isTimeRangeExecution
                     ? targetRepository.findAllIfRsvJewonForResync()
                     : targetRepository.findIfRsvJewonPending(context.getExecutionId());
 
-            // obsv_code 필터 적용 (in-memory)
             if (filterObsvCode != null) {
                 pendingJewon = applyObsvCodeFilter(pendingJewon, filterObsvCode, IfRsvSecJewon::getObsvCode);
                 log.info("[{}] After obsv_code filter: {} jewon records", getStepId(), pendingJewon.size());
@@ -131,47 +138,48 @@ public class DaejeonLoadStep implements StepExecutor {
                     isTimeRangeExecution ? "total (resync)" : "pending");
 
             if (!pendingJewon.isEmpty()) {
-                // 1-1. 기존 제원 삭제 (JPA)
-                List<String> obsvCodes = pendingJewon.stream()
-                        .map(IfRsvSecJewon::getObsvCode)
-                        .toList();
-                targetRepository.deleteJewonByObsvCodes(obsvCodes);
-
-                // 1-2. 제원 INSERT (JPA)
-                String loaderExecutionId = context.getExecutionId();
+                // Phase 1: 변환 (in-memory) + 성공/실패 ID 수집
                 List<SecJewon> jewonsToSave = new ArrayList<>();
+                List<Object> jewonSuccessIds = new ArrayList<>();
+                List<Object> jewonFailedIds = new ArrayList<>();
+
                 for (IfRsvSecJewon ifJewon : pendingJewon) {
                     try {
                         SecJewon secJewon = TargetRepositoryService.convertToSecJewon(ifJewon, loaderExecutionId);
                         jewonsToSave.add(secJewon);
-                        updateIfJewonStatus(ifJewon, "SUCCESS", loaderExecutionId);
+                        jewonSuccessIds.add(ifJewon.getId());
                         jewonSuccess++;
                     } catch (Exception e) {
                         log.error("Failed to convert jewon: {}", ifJewon.getObsvCode(), e);
                         skipCount++;
                         jewonFailed++;
+                        jewonFailedIds.add(ifJewon.getId());
                         jewonFailedKeys.add(ifJewon.getSourceRefs() != null ? ifJewon.getSourceRefs() : ifJewon.getObsvCode());
                         if (jewonFirstError == null) jewonFirstError = e.getMessage();
-                        updateIfJewonStatus(ifJewon, "FAILED", loaderExecutionId);
                     }
                 }
 
-                // 일괄 저장
+                // Phase 2: JDBC batch UPSERT (DELETE 불필요 - ON CONFLICT가 처리)
                 if (!jewonsToSave.isEmpty()) {
-                    int saved = targetRepository.saveAllJewon(jewonsToSave);
+                    int saved = targetRepository.batchUpsertJewon(jewonsToSave);
                     writeCount += saved;
-                    log.info("[{}] Saved {} jewon records", getStepId(), saved);
+                    log.info("[{}] Batch UPSERT {} jewon records", getStepId(), saved);
+                }
+
+                // Phase 3: IF 상태 배치 UPDATE
+                if (!jewonSuccessIds.isEmpty()) {
+                    ifTableService.batchMarkAsProcessed(ifJewonTable, "id", jewonSuccessIds, "SUCCESS", loaderExecutionId);
+                }
+                if (!jewonFailedIds.isEmpty()) {
+                    ifTableService.batchMarkAsProcessed(ifJewonTable, "id", jewonFailedIds, "FAILED", loaderExecutionId);
                 }
             }
 
-            // 2. 관측데이터 처리
-            // 시간지정실행: 해당 시간 범위의 모든 데이터 재동기화 (link_status 무시)
-            // 일반실행: PENDING만 처리
+            // ===== 2. 관측데이터 처리 (JDBC batch UPSERT - RESYNC SELECT 제거) =====
             List<IfRsvSecObsvdata> pendingObsvData = isTimeRangeExecution
                     ? targetRepository.findIfRsvObsvdataByTimeRange(paramStartTime, paramEndTime)
                     : targetRepository.findIfRsvObsvdataPending(context.getExecutionId());
 
-            // obsv_code 필터 적용 (in-memory)
             if (filterObsvCode != null) {
                 pendingObsvData = applyObsvCodeFilter(pendingObsvData, filterObsvCode, IfRsvSecObsvdata::getObsvCode);
                 log.info("[{}] After obsv_code filter: {} obsvdata records", getStepId(), pendingObsvData.size());
@@ -181,72 +189,57 @@ public class DaejeonLoadStep implements StepExecutor {
                     isTimeRangeExecution ? "in time range (resync)" : "pending");
 
             if (!pendingObsvData.isEmpty()) {
-                // 배치 처리
-                String loaderExecId = context.getExecutionId();
-                List<SecObsvdata> batch = new ArrayList<>();
-                int resyncCount = 0;
-                for (int i = 0; i < pendingObsvData.size(); i++) {
-                    IfRsvSecObsvdata ifData = pendingObsvData.get(i);
+                // Phase 1: 변환 (in-memory) + 성공/실패 ID 수집
+                // RESYNC SELECT 완전 제거 - ON CONFLICT (obsv_code, obsv_date, obsv_time) 가 자동 처리
+                List<SecObsvdata> obsvToSave = new ArrayList<>();
+                List<Object> obsvSuccessIds = new ArrayList<>();
+                List<Object> obsvFailedIds = new ArrayList<>();
 
+                for (IfRsvSecObsvdata ifData : pendingObsvData) {
                     try {
-                        SecObsvdata secData = TargetRepositoryService.convertToSecObsvdata(ifData, loaderExecId);
-
-                        // RESYNC 처리: 기존 레코드가 있으면 id 설정하여 UPDATE
-                        if ("RESYNC".equals(ifData.getLinkStatus())) {
-                            Integer existingId = targetRepository.findSecObsvdataIdByUniqueKey(
-                                    ifData.getObsvCode(), ifData.getObsvDate(), ifData.getObsvTime());
-                            if (existingId != null) {
-                                secData.setId(existingId);  // JPA merge()가 UPDATE로 동작
-                                resyncCount++;
-                            }
-                        }
-
-                        batch.add(secData);
-                        updateIfObsvDataStatus(ifData, "SUCCESS", loaderExecId);
+                        SecObsvdata secData = TargetRepositoryService.convertToSecObsvdata(ifData, loaderExecutionId);
+                        obsvToSave.add(secData);
+                        obsvSuccessIds.add(ifData.getId());
                         obsvSuccess++;
                     } catch (Exception e) {
                         log.error("Failed to convert obsvdata: {}", ifData.getObsvCode(), e);
                         skipCount++;
                         obsvFailed++;
+                        obsvFailedIds.add(ifData.getId());
                         obsvFailedKeys.add(ifData.getSourceRefs() != null ? ifData.getSourceRefs() : ifData.getObsvCode());
                         if (obsvFirstError == null) obsvFirstError = e.getMessage();
-                        updateIfObsvDataStatus(ifData, "FAILED", loaderExecId);
-                    }
-
-                    // 배치 사이즈에 도달하면 저장
-                    if (batch.size() >= batchSize || i == pendingObsvData.size() - 1) {
-                        if (!batch.isEmpty()) {
-                            int saved = targetRepository.saveAllObsvData(batch);
-                            writeCount += saved;
-                            batch.clear();
-
-                            // 진행률 로그
-                            int processed = Math.min(i + 1, pendingObsvData.size());
-                            int percent = (int) ((processed * 100.0) / pendingObsvData.size());
-                            log.info("[{}] Processed {}/{} obsvdata ({}%)", getStepId(), processed, pendingObsvData.size(), percent);
-                        }
                     }
                 }
 
-                if (resyncCount > 0) {
-                    log.info("[{}] RESYNC: Updated {} existing obsvdata records", getStepId(), resyncCount);
+                // Phase 2: JDBC batch UPSERT (ON CONFLICT가 INSERT/UPDATE 자동 처리)
+                if (!obsvToSave.isEmpty()) {
+                    int saved = targetRepository.batchUpsertObsvdata(obsvToSave);
+                    writeCount += saved;
+                    log.info("[{}] Batch UPSERT {} obsvdata records", getStepId(), saved);
                 }
 
-                // 3. Link 테이블 업데이트 (마지막 동기화 시점 기록) - JPA
-                updateLinkTable(context, pendingObsvData);
+                // Phase 3: IF 상태 배치 UPDATE
+                if (!obsvSuccessIds.isEmpty()) {
+                    ifTableService.batchMarkAsProcessed(ifObsvdataTable, "id", obsvSuccessIds, "SUCCESS", loaderExecutionId);
+                }
+                if (!obsvFailedIds.isEmpty()) {
+                    ifTableService.batchMarkAsProcessed(ifObsvdataTable, "id", obsvFailedIds, "FAILED", loaderExecutionId);
+                }
+
+                // ===== 3. Link 테이블 배치 UPSERT =====
+                updateLinkTableBatch(pendingObsvData);
             }
 
-            log.info("[{}] Loaded {} records ({} skipped)", getStepId(), writeCount, skipCount);
+            log.info("[{}] Loaded {} records ({} skipped) in {}ms",
+                    getStepId(), writeCount, skipCount, System.currentTimeMillis() - startTime);
 
-            // 4. SyncLog 요약 저장 (테이블별 1건씩)
-            // IF 테이블 (읽기 - LOADER 입장에서 SOURCE)
+            // 4. SyncLog 요약 저장
             saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "IF",
                     (long) pendingJewon.size(), 0L, 0L, null, null);
 
             saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "IF",
                     (long) pendingObsvData.size(), 0L, 0L, null, null);
 
-            // TARGET 테이블 (쓰기)
             saveSyncLogSummary(context.getExecutionId(), targetJewonTable, "TARGET",
                     (long) jewonSuccess, (long) jewonFailed, 0L,
                     jewonFailedKeys.isEmpty() ? null : String.join(",", jewonFailedKeys),
@@ -269,25 +262,19 @@ public class DaejeonLoadStep implements StepExecutor {
         } catch (Exception e) {
             log.error("Step execution failed", e);
 
-            // SyncLog에 에러 정보 저장
             String errorMessage = e.getMessage();
             if (errorMessage != null && errorMessage.length() > 500) {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            // IF 테이블 (읽기 정보 - 에러 발생 전까지 읽은 건수)
             saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "IF",
                     (long) readCount, 0L, 0L, null, null);
-
             saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "IF",
                     0L, 0L, 0L, null, null);
-
-            // TARGET 테이블에 에러 정보 저장
             saveSyncLogSummary(context.getExecutionId(), targetJewonTable, "TARGET",
                     (long) jewonSuccess, (long) jewonFailed, 0L,
                     jewonFailedKeys.isEmpty() ? null : String.join(",", jewonFailedKeys),
                     errorMessage);
-
             saveSyncLogSummary(context.getExecutionId(), targetObsvdataTable, "TARGET",
                     (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
@@ -298,39 +285,45 @@ public class DaejeonLoadStep implements StepExecutor {
     }
 
     /**
-     * Link 테이블 업데이트 (마지막 동기화 시점) - JPA 사용
+     * Link 테이블 배치 UPSERT (JDBC)
+     * obsv_code별 마지막 관측 데이터 시점을 link_ngwis에 일괄 저장
      */
-    private void updateLinkTable(StepContext context, List<IfRsvSecObsvdata> processedData) {
-        // 각 obsv_code별 마지막 데이터 찾기
-        processedData.stream()
+    private void updateLinkTableBatch(List<IfRsvSecObsvdata> processedData) {
+        Map<String, IfRsvSecObsvdata> latestByObsvCode = processedData.stream()
                 .collect(Collectors.groupingBy(IfRsvSecObsvdata::getObsvCode))
-                .forEach((obsvCode, dataList) -> {
-                    // 가장 마지막 데이터 찾기
-                    IfRsvSecObsvdata lastData = dataList.stream()
+                .entrySet().stream()
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().stream()
                             .max((a, b) -> {
                                 int dateCompare = a.getObsvDate().compareTo(b.getObsvDate());
                                 if (dateCompare != 0) return dateCompare;
                                 return a.getObsvTime().compareTo(b.getObsvTime());
                             })
-                            .orElse(null);
+                            .orElseThrow()
+                ));
 
-                    if (lastData != null) {
-                        // JPA 방식으로 Link 업데이트
-                        targetRepository.updateLinkLastSync(
-                                obsvCode,
-                                lastData.getObsvDate(),
-                                lastData.getObsvTime()
-                        );
-                    }
-                });
-    }
+        List<LinkNgwis> links = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HHmm");
 
-    private void updateIfJewonStatus(IfRsvSecJewon record, String status, String sndExecutionId) {
-        ifTableService.markAsProcessed(ifJewonTable, "id", record.getId(), status, sndExecutionId);
-    }
+        for (Map.Entry<String, IfRsvSecObsvdata> entry : latestByObsvCode.entrySet()) {
+            IfRsvSecObsvdata lastData = entry.getValue();
+            LinkNgwis link = LinkNgwis.builder()
+                    .obsvCode(entry.getKey())
+                    .obsvDate(lastData.getObsvDate() != null
+                            ? lastData.getObsvDate().toLocalDate().atStartOfDay() : null)
+                    .obsvTime(lastData.getObsvTime() != null
+                            ? lastData.getObsvTime().toLocalTime().format(timeFormatter) : null)
+                    .updateTime(now)
+                    .build();
+            links.add(link);
+        }
 
-    private void updateIfObsvDataStatus(IfRsvSecObsvdata record, String status, String sndExecutionId) {
-        ifTableService.markAsProcessed(ifObsvdataTable, "id", record.getId(), status, sndExecutionId);
+        if (!links.isEmpty()) {
+            targetRepository.batchUpsertLinks(links);
+            log.info("[{}] Batch UPSERT {} link records", getStepId(), links.size());
+        }
     }
 
     /**

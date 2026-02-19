@@ -577,12 +577,6 @@ function TableManagementModal({
   const [registering, setRegistering] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchRegisteredTables();
-    // 모달 최초 오픈 시 테이블 목록 자동 검색
-    searchTablesFromDb('');
-  }, [datasource.datasourceId]);
-
   const fetchRegisteredTables = async () => {
     try {
       const tables = await datasourceApi.getRegisteredTables(datasource.datasourceId);
@@ -593,6 +587,24 @@ function TableManagementModal({
       setLoading(false);
     }
   };
+
+  // 모달 최초 오픈 시 등록된 테이블 + DB 테이블 목록 자동 로드
+  useEffect(() => {
+    fetchRegisteredTables();
+
+    const loadAllTables = async () => {
+      setLoadingTables(true);
+      try {
+        const results = await datasourceApi.searchTables(datasource.datasourceId);
+        setAllTables(results);
+      } catch (error) {
+        console.error('테이블 자동 검색 실패:', error);
+      } finally {
+        setLoadingTables(false);
+      }
+    };
+    loadAllTables();
+  }, [datasource.datasourceId]);
 
   // 실제 DB에서 테이블 검색
   const searchTablesFromDb = async (query: string) => {
@@ -782,6 +794,11 @@ function TableManagementModal({
           </div>
 
           {/* 테이블 선택 */}
+          {loadingTables && allTables.length === 0 && (
+            <div style={{ marginBottom: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border-color, #ddd)', borderRadius: '0.375rem', background: 'var(--bg-secondary, #f9f9f9)' }}>
+              테이블 목록 로딩중...
+            </div>
+          )}
           {allTables.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
               <label className="form-label">테이블 선택 ({allTables.length}개)</label>

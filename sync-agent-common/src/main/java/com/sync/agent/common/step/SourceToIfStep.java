@@ -19,60 +19,103 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Source 테이블 → IF 테이블 추출 Step (공통)
+ * Source → IF 테이블 동기화 Step (공통)
  *
- * 두 가지 모드 지원:
+ * Source 테이블에서 데이터를 조회(Extract)하고 IF 테이블에 적재(Load)하는 통합 Step.
+ * ETL에서 E+L을 하나의 Step으로 처리하며, IF 테이블에 UPSERT 방식으로 적재한다.
+ *
+ * 주요 기능:
+ * - Source 데이터 조회 (SIMPLE_COPY / CUSTOM_STAGING 두 가지 모드)
+ * - IF 테이블에 배치 UPSERT (ON CONFLICT DO UPDATE)
+ * - source_refs 추적 정보 자동 생성
+ * - link_status 관리 (PENDING/RESYNC/SUCCESS/FAILED)
+ * - SyncLog 요약 저장 (테이블별 성공/실패 건수)
+ *
+ * 두 가지 모드:
  * 1. SIMPLE_COPY: Source 1개 → IF (1:1), 전체 추적 가능
  * 2. CUSTOM_STAGING: 커스텀 DataFetcher로 데이터 조회, IF→Target만 추적
  */
 @Slf4j
-public class SourceToIfExtractStep implements StepExecutor {
+public class SourceToIfStep implements StepExecutor {
 
     // IF 테이블 메타 컬럼 목록 (소스에서 제외해야 함)
     private static final List<String> IF_META_COLUMNS = List.of(
             "source_refs", "link_status", "extracted_at", "updated_at", "execution_id"
     );
 
+    private static final int DEFAULT_BATCH_SIZE = 1000;
+
     private final ExtractStepConfig config;
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final SyncRecordHistoryService historyService;
     private final long stepDelayMs;
+    private final int batchSize;
 
-    public SourceToIfExtractStep(
+    public SourceToIfStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository) {
-        this(config, dataSourceProvider, syncLogRepository, null, 0);
+        this(config, dataSourceProvider, syncLogRepository, null, 0, DEFAULT_BATCH_SIZE);
     }
 
-    public SourceToIfExtractStep(
+    public SourceToIfStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
             SyncRecordHistoryService historyService) {
-        this(config, dataSourceProvider, syncLogRepository, historyService, 0);
+        this(config, dataSourceProvider, syncLogRepository, historyService, 0, DEFAULT_BATCH_SIZE);
     }
 
-    public SourceToIfExtractStep(
+    public SourceToIfStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
             long stepDelayMs) {
-        this(config, dataSourceProvider, syncLogRepository, null, stepDelayMs);
+        this(config, dataSourceProvider, syncLogRepository, null, stepDelayMs, DEFAULT_BATCH_SIZE);
     }
 
-    public SourceToIfExtractStep(
+    public SourceToIfStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
             SyncRecordHistoryService historyService,
             long stepDelayMs) {
+        this(config, dataSourceProvider, syncLogRepository, historyService, stepDelayMs, DEFAULT_BATCH_SIZE);
+    }
+
+    public SourceToIfStep(
+            ExtractStepConfig config,
+            DataSourceProvider dataSourceProvider,
+            SyncLogRepository syncLogRepository,
+            int batchSize) {
+        this(config, dataSourceProvider, syncLogRepository, null, 0, batchSize);
+    }
+
+    public SourceToIfStep(
+            ExtractStepConfig config,
+            DataSourceProvider dataSourceProvider,
+            SyncLogRepository syncLogRepository,
+            SyncRecordHistoryService historyService,
+            long stepDelayMs,
+            int batchSize) {
         this.config = config;
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.historyService = historyService;
         this.stepDelayMs = stepDelayMs;
+        this.batchSize = batchSize > 0 ? batchSize : DEFAULT_BATCH_SIZE;
+    }
+
+    // ==================== SQL 방언 헬퍼 ====================
+
+    private static boolean isMysql(String dbType) {
+        return "MYSQL".equalsIgnoreCase(dbType) || "MARIADB".equalsIgnoreCase(dbType);
+    }
+
+    private static String qi(String name, String dbType) {
+        if (isMysql(dbType)) return "`" + name + "`";
+        return "\"" + name + "\"";
     }
 
     @Override
@@ -112,11 +155,9 @@ public class SourceToIfExtractStep implements StepExecutor {
             List<Map<String, Object>> records;
 
             if (config.isCustomStaging() && config.getCustomDataFetcher() != null) {
-                // CUSTOM_STAGING: 커스텀 DataFetcher 사용
                 log.info("[{}] Using custom DataFetcher for CUSTOM_STAGING", getStepId());
                 records = config.getCustomDataFetcher().fetch(context);
             } else {
-                // SIMPLE_COPY: 기본 시간 범위 조회 (동적 컬럼 사용)
                 log.info("[{}] Using default fetch for SIMPLE_COPY", getStepId());
                 records = fetchSimpleCopy(context, columns);
             }
@@ -144,7 +185,6 @@ public class SourceToIfExtractStep implements StepExecutor {
             }
 
             if (records.isEmpty()) {
-                // 빈 결과도 로그 기록
                 saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE", 0L, 0L, 0L, null, null);
                 saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF", 0L, 0L, 0L, null, null);
 
@@ -160,10 +200,9 @@ public class SourceToIfExtractStep implements StepExecutor {
                         .build();
             }
 
-            // 2. Target IF 테이블에 적재
+            // 2. Target IF 테이블에 배치 UPSERT 적재
             String targetDsId = getTargetDatasourceId(context);
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
-            // 실제 테이블명 조회 (대소문자 처리) - JdbcTableNameResolver 사용
             String actualTargetIfTable = JdbcTableNameResolver.resolve(
                     targetJdbc.getDataSource(), targetDsId, config.getTargetIfTable());
 
@@ -172,18 +211,17 @@ public class SourceToIfExtractStep implements StepExecutor {
             LocalDateTime paramEndTime = context.getParam("endTime");
             boolean isTimeRangeExecution = (paramStartTime != null && paramEndTime != null);
 
-            // 항상 UPSERT 사용 (ON CONFLICT DO UPDATE)
-            String insertSql = buildUpsertSql(actualTargetIfTable, columns);
-            log.info("[{}] UPSERT SQL: {}", getStepId(), insertSql);
-            log.info("[{}] UK columns (UPSERT): {}", getStepId(), config.getPrimaryKeyColumnList());
+            String targetDbType = dataSourceProvider.getDbType(targetDsId);
+            boolean useUpsert = config.isFullCopy() || isTimeRangeExecution;
+            String insertSql = buildUpsertSql(actualTargetIfTable, columns, targetDbType, useUpsert);
+            log.info("[{}] {} SQL: {}", getStepId(), useUpsert ? "UPSERT" : "INSERT (DO NOTHING)", insertSql);
+            log.info("[{}] UK columns: {}", getStepId(), config.getPrimaryKeyColumnList());
+            log.info("[{}] Batch size: {}", getStepId(), batchSize);
 
             // sourceRef용 실제 PK 컬럼 감지 (DB 메타데이터)
             String sourceDsIdForPk = getSourceDatasourceId(context);
             List<String> sourceRefPkCols = detectSourcePrimaryKey(sourceDsIdForPk, config.getSourceTable());
             log.info("[{}] Source PK columns (sourceRef): {}", getStepId(), sourceRefPkCols);
-
-            int totalCount = records.size();
-            int currentIndex = 0;
 
             // 성공/실패한 레코드 키 수집 (Source link_status 업데이트용)
             List<Object> successPkValues = new ArrayList<>();
@@ -192,112 +230,140 @@ public class SourceToIfExtractStep implements StepExecutor {
             // 이력 기록용 엔트리 수집
             List<SyncRecordHistoryService.HistoryEntry> historyEntries = new ArrayList<>();
 
-            for (Map<String, Object> record : records) {
-                String recordKey = buildRecordKey(record);
-                currentIndex++;
+            // ===== Phase 1: 전체 레코드의 파라미터 사전 준비 =====
+            List<Object[]> allParams = new ArrayList<>(records.size());
+            List<String> allRecordKeys = new ArrayList<>(records.size());
+            List<String> allSourceRefsJson = new ArrayList<>(records.size());
 
-                // 진행률 로그 (10% 단위)
-                int progressPercent = (int) ((currentIndex * 100.0) / totalCount);
-                if (currentIndex == 1 || currentIndex == totalCount || progressPercent % 10 == 0) {
-                    log.info("[{}] Processing {}/{} ({}%) - {}",
-                            getStepId(), currentIndex, totalCount, progressPercent, recordKey);
+            for (Map<String, Object> record : records) {
+                List<Object> params = new ArrayList<>();
+                for (String column : columns) {
+                    params.add(record.get(column));
                 }
 
+                // source_refs 생성: "zone:dsId:tbId:pk" 형식 JSON 배열
+                String sourceRef;
+                if (sourceRefPkCols.size() == 1) {
+                    Object pkValue = getRecordValue(record, sourceRefPkCols.get(0));
+                    sourceRef = SourceRefUtils.build(context, config.getSourceTable(), pkValue);
+                } else {
+                    Object[] pkValues = sourceRefPkCols.stream()
+                            .map(col -> getRecordValue(record, col))
+                            .toArray();
+                    sourceRef = SourceRefUtils.buildComposite(context, config.getSourceTable(), pkValues);
+                }
+                String sourceRefsJson = SourceRefUtils.toJsonSingle(sourceRef);
+                params.add(sourceRefsJson); // source_refs
+
+                // link_status 결정
+                Object sourceLinkStatus = getRecordValue(record, "link_status");
+                String recordLinkStatus;
+                if (isTimeRangeExecution) {
+                    recordLinkStatus = "RESYNC";
+                } else if ("RESYNC".equals(sourceLinkStatus)) {
+                    recordLinkStatus = "RESYNC";
+                } else {
+                    recordLinkStatus = "PENDING";
+                }
+                params.add(recordLinkStatus); // link_status
+
+                Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+                params.add(now); // extracted_at
+                params.add(now); // updated_at
+                params.add(context.getExecutionId()); // execution_id
+
+                allParams.add(params.toArray());
+                allRecordKeys.add(buildRecordKey(record));
+                allSourceRefsJson.add(sourceRefsJson);
+            }
+
+            // ===== Phase 2: 배치 단위로 UPSERT 실행 =====
+            int totalCount = allParams.size();
+            for (int batchStart = 0; batchStart < totalCount; batchStart += batchSize) {
+                int batchEnd = Math.min(batchStart + batchSize, totalCount);
+                List<Object[]> batchParams = allParams.subList(batchStart, batchEnd);
+                List<String> batchKeys = allRecordKeys.subList(batchStart, batchEnd);
+                List<String> batchSourceRefs = allSourceRefsJson.subList(batchStart, batchEnd);
+                int currentBatchSize = batchParams.size();
+
+                log.info("[{}] Batch UPSERT {}-{}/{} ({} records)",
+                        getStepId(), batchStart + 1, batchEnd, totalCount, currentBatchSize);
+
                 try {
-                    // 파라미터 준비: 컬럼 값들 + source_refs + link_status + extracted_at + updated_at + execution_id
-                    List<Object> params = new ArrayList<>();
-                    for (String column : columns) {
-                        params.add(record.get(column));
+                    targetJdbc.batchUpdate(insertSql, batchParams);
+
+                    // 배치 성공: 전부 성공 처리
+                    writeCount += currentBatchSize;
+                    successPkValues.addAll(batchKeys);
+
+                    for (int j = 0; j < currentBatchSize; j++) {
+                        historyEntries.add(SyncRecordHistoryService.HistoryEntry.builder()
+                                .recordKey(batchKeys.get(j))
+                                .action("UPSERT")
+                                .sourceRefs(batchSourceRefs.get(j))
+                                .build());
                     }
+                } catch (Exception batchEx) {
+                    // 배치 실패 → 개별 실행으로 fallback (실패 레코드 특정용)
+                    log.warn("[{}] Batch failed, falling back to individual inserts: {}",
+                            getStepId(), batchEx.getMessage());
 
-                    // source_refs 생성: "zone:dsId:tbId:pk" 형식 JSON 배열
-                    String sourceRef;
-                    if (sourceRefPkCols.size() == 1) {
-                        Object pkValue = getRecordValue(record, sourceRefPkCols.get(0));
-                        sourceRef = SourceRefUtils.build(context, config.getSourceTable(), pkValue);
-                    } else {
-                        Object[] pkValues = sourceRefPkCols.stream()
-                                .map(col -> getRecordValue(record, col))
-                                .toArray();
-                        sourceRef = SourceRefUtils.buildComposite(context, config.getSourceTable(), pkValues);
+                    for (int j = 0; j < currentBatchSize; j++) {
+                        String recordKey = batchKeys.get(j);
+                        try {
+                            targetJdbc.update(insertSql, batchParams.get(j));
+                            writeCount++;
+                            successPkValues.add(recordKey);
+
+                            historyEntries.add(SyncRecordHistoryService.HistoryEntry.builder()
+                                    .recordKey(recordKey)
+                                    .action("UPSERT")
+                                    .sourceRefs(batchSourceRefs.get(j))
+                                    .build());
+                        } catch (Exception e) {
+                            log.error("Failed to upsert record: {}", recordKey, e);
+                            skipCount++;
+                            failedKeys.add(recordKey);
+                            failedPkValues.add(recordKey);
+                            if (firstError == null) {
+                                firstError = e.getMessage();
+                            }
+                        }
                     }
-                    String sourceRefsJson = SourceRefUtils.toJsonSingle(sourceRef);
-                    params.add(sourceRefsJson); // source_refs
+                }
 
-                    // link_status: Source가 RESYNC면 전파, 기간 지정이면 RESYNC, 그외 PENDING
-                    Object sourceLinkStatus = getRecordValue(record, "link_status");
-                    String recordLinkStatus;
-                    if (isTimeRangeExecution) {
-                        recordLinkStatus = "RESYNC";
-                    } else if ("RESYNC".equals(sourceLinkStatus)) {
-                        recordLinkStatus = "RESYNC";  // Source RESYNC 전파
-                    } else {
-                        recordLinkStatus = "PENDING";
-                    }
-                    params.add(recordLinkStatus); // link_status
-
-                    Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-                    params.add(now); // extracted_at
-                    params.add(now); // updated_at
-                    params.add(context.getExecutionId()); // execution_id
-
-                    targetJdbc.update(insertSql, params.toArray());
-                    writeCount++;
-                    successPkValues.add(recordKey);
-
-                    // 이력 엔트리 수집
-                    historyEntries.add(SyncRecordHistoryService.HistoryEntry.builder()
-                            .recordKey(buildRecordKey(record))
-                            .action("UPSERT")
-                            .sourceRefs(sourceRefsJson)
-                            .build());
-
-                    // 디버그용 지연
-                    if (stepDelayMs > 0) {
-                        Thread.sleep(stepDelayMs);
-                    }
-
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Step interrupted");
-                    break;
-                } catch (Exception e) {
-                    log.error("Failed to extract record: {}", recordKey, e);
-                    skipCount++;
-                    failedKeys.add(recordKey);
-                    failedPkValues.add(recordKey);
-                    if (firstError == null) {
-                        firstError = e.getMessage();
+                // 디버그용 지연 (배치 단위)
+                if (stepDelayMs > 0) {
+                    try { Thread.sleep(stepDelayMs); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warn("Step interrupted");
+                        break;
                     }
                 }
             }
 
-            log.info("[{}] Loaded {} records to IF table '{}', {} skipped",
-                    getStepId(), writeCount, config.getTargetIfTable(), skipCount);
+            log.info("[{}] Loaded {} records to IF table '{}', {} skipped (batch size: {})",
+                    getStepId(), writeCount, config.getTargetIfTable(), skipCount, batchSize);
 
-            // 2-1. 이력 배치 저장
+            // 이력 배치 저장
             if (historyService != null && !historyEntries.isEmpty()) {
                 historyService.saveBatch(context.getExecutionId(), getStepId(),
                         config.getTargetIfTable(), historyEntries);
             }
 
             // 3. Source 테이블 link_status 업데이트
-            // - skipSourceStatusUpdate=true: 외부 DB (RSV 등 VIEW라서 업데이트 불가)
-            // - CUSTOM_STAGING: 커스텀 로직 사용 (RSV obsvdata)
             if (!config.isSkipSourceStatusUpdate() && !config.isCustomStaging()) {
                 String sourceDsId = getSourceDatasourceId(context);
                 JdbcTemplate sourceJdbc = dataSourceProvider.getJdbcTemplate(sourceDsId);
                 String actualSourceTable = JdbcTableNameResolver.resolve(
                         sourceJdbc.getDataSource(), sourceDsId, config.getSourceTable());
 
-                // 성공한 레코드: link_status = 'SUCCESS'
                 if (!successPkValues.isEmpty()) {
                     int updated = updateSourceLinkStatus(sourceJdbc, actualSourceTable,
                             config.getPrimaryKeyColumn(), successPkValues, "SUCCESS");
                     log.info("[{}] Updated {} source records to SUCCESS", getStepId(), updated);
                 }
 
-                // 실패한 레코드: link_status = 'FAILED'
                 if (!failedPkValues.isEmpty()) {
                     int updated = updateSourceLinkStatus(sourceJdbc, actualSourceTable,
                             config.getPrimaryKeyColumn(), failedPkValues, "FAILED");
@@ -308,12 +374,10 @@ public class SourceToIfExtractStep implements StepExecutor {
                         getStepId(), config.isSkipSourceStatusUpdate(), config.isCustomStaging());
             }
 
-            // 4. SyncLog 요약 저장 (테이블별 1건씩)
-            // Source 테이블: 읽은 건수 기록
+            // 4. SyncLog 요약 저장
             saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
                     (long) readCount, 0L, 0L, null, null);
 
-            // IF 테이블: 쓴 건수 기록 (성공/실패)
             String failedKeysJson = failedKeys.isEmpty() ? null : String.join(",", failedKeys);
             saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF",
                     (long) writeCount, (long) skipCount, 0L, failedKeysJson, firstError);
@@ -332,17 +396,14 @@ public class SourceToIfExtractStep implements StepExecutor {
         } catch (Exception e) {
             log.error("Step execution failed", e);
 
-            // SyncLog에 에러 정보 저장
             String errorMessage = e.getMessage();
             if (errorMessage != null && errorMessage.length() > 500) {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            // Source 테이블: 읽은 건수 기록 (에러 발생 전까지 읽은 수)
             saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
                     (long) readCount, 0L, 0L, null, null);
 
-            // IF 테이블: 에러 정보 저장 (성공/실패/에러 메시지)
             String failedKeysJson = failedKeys.isEmpty() ? null : String.join(",", failedKeys);
             saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF",
                     (long) writeCount, (long) (readCount - writeCount), 0L, failedKeysJson, errorMessage);
@@ -350,6 +411,8 @@ public class SourceToIfExtractStep implements StepExecutor {
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
+
+    // ==================== 컬럼 해석 ====================
 
     /**
      * 컬럼 목록 결정: config에 있으면 사용, 없으면 source 테이블에서 자동 감지
@@ -361,7 +424,6 @@ public class SourceToIfExtractStep implements StepExecutor {
             return configColumns;
         }
 
-        // sourceTable이 설정되어 있으면 자동 감지 (SIMPLE_COPY, CUSTOM_STAGING 모두 지원)
         if (config.getSourceTable() != null && !config.getSourceTable().isBlank()) {
             String sourceDsId = getSourceDatasourceId(context);
             log.info("[{}] No columns configured, auto-detecting from source table '{}'",
@@ -372,72 +434,95 @@ public class SourceToIfExtractStep implements StepExecutor {
         return List.of();
     }
 
+    // ==================== SQL 빌더 ====================
+
     /**
-     * UPSERT SQL 생성 (항상 ON CONFLICT DO UPDATE)
+     * UPSERT/INSERT SQL 생성
      * IF 테이블 메타 컬럼: source_refs, link_status, extracted_at, updated_at, execution_id
      *
-     * 모든 실행에서 UPSERT 사용:
-     * - 새 데이터: INSERT
-     * - 기존 데이터: UPDATE (변경사항 반영)
-     *
-     * link_status는 레코드별로 다를 수 있어 placeholder 사용:
-     * - PENDING: 일반 동기화
-     * - RESYNC: 재동기화 (기간 지정 실행에서 설정)
-     *
-     * IF 테이블은 소문자 컬럼명 사용 (Source는 대문자일 수 있음)
+     * @param useUpsert true: ON CONFLICT DO UPDATE (fullCopy 또는 RESYNC)
+     *                  false: ON CONFLICT DO NOTHING (증분 동기화 - 중복 스킵)
      */
-    private String buildUpsertSql(String actualTableName, List<String> columns) {
+    private String buildUpsertSql(String actualTableName, List<String> columns, String dbType, boolean useUpsert) {
         StringBuilder sb = new StringBuilder();
 
-        // IF 테이블 컬럼명은 소문자로 통일
         List<String> ifColumns = columns.stream()
                 .map(String::toLowerCase)
                 .toList();
 
         String columnList = String.join(", ", ifColumns);
 
-        // INSERT 부분 (IF 테이블은 따옴표 없이 소문자)
-        sb.append("INSERT INTO ").append(actualTableName.toLowerCase());
+        List<String> pkCols = config.getPrimaryKeyColumnList();
+
+        if (isMysql(dbType) && !useUpsert && !pkCols.isEmpty()) {
+            // MySQL: INSERT IGNORE (중복 PK 스킵)
+            sb.append("INSERT IGNORE INTO ").append(actualTableName.toLowerCase());
+        } else {
+            sb.append("INSERT INTO ").append(actualTableName.toLowerCase());
+        }
+
         sb.append(" (").append(columnList).append(", source_refs, link_status, extracted_at, updated_at, execution_id)");
 
-        // link_status도 placeholder로 (레코드별로 다를 수 있음)
         String placeholders = columns.stream().map(c -> "?").reduce((a, b) -> a + ", " + b).orElse("");
         sb.append(" VALUES (").append(placeholders).append(", ?, ?, ?, ?, ?)");
 
-        List<String> pkCols = config.getPrimaryKeyColumnList();
         if (!pkCols.isEmpty()) {
             String pkColList = pkCols.stream()
                     .map(String::toLowerCase)
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
 
-            // 항상 UPSERT (ON CONFLICT DO UPDATE)
-            sb.append(" ON CONFLICT (").append(pkColList).append(") DO UPDATE SET ");
+            if (isMysql(dbType)) {
+                if (useUpsert) {
+                    // MySQL: ON DUPLICATE KEY UPDATE
+                    sb.append(" ON DUPLICATE KEY UPDATE ");
 
-            // PK가 아닌 컬럼들만 UPDATE
-            List<String> updateCols = ifColumns.stream()
-                    .filter(col -> pkCols.stream().noneMatch(pk -> pk.equalsIgnoreCase(col)))
-                    .toList();
+                    List<String> updateCols = ifColumns.stream()
+                            .filter(col -> pkCols.stream().noneMatch(pk -> pk.equalsIgnoreCase(col)))
+                            .toList();
 
-            List<String> updateParts = new java.util.ArrayList<>();
-            for (String col : updateCols) {
-                updateParts.add(col + " = EXCLUDED." + col);
+                    List<String> updateParts = new java.util.ArrayList<>();
+                    for (String col : updateCols) {
+                        updateParts.add(col + " = VALUES(" + col + ")");
+                    }
+                    updateParts.add("source_refs = VALUES(source_refs)");
+                    updateParts.add("link_status = VALUES(link_status)");
+                    updateParts.add("updated_at = VALUES(updated_at)");
+                    updateParts.add("execution_id = VALUES(execution_id)");
+
+                    sb.append(String.join(", ", updateParts));
+                }
+                // else: INSERT IGNORE already handles DO NOTHING
+            } else {
+                // PostgreSQL
+                if (useUpsert) {
+                    sb.append(" ON CONFLICT (").append(pkColList).append(") DO UPDATE SET ");
+
+                    List<String> updateCols = ifColumns.stream()
+                            .filter(col -> pkCols.stream().noneMatch(pk -> pk.equalsIgnoreCase(col)))
+                            .toList();
+
+                    List<String> updateParts = new java.util.ArrayList<>();
+                    for (String col : updateCols) {
+                        updateParts.add(col + " = EXCLUDED." + col);
+                    }
+                    updateParts.add("source_refs = EXCLUDED.source_refs");
+                    updateParts.add("link_status = EXCLUDED.link_status");
+                    updateParts.add("updated_at = EXCLUDED.updated_at");
+                    updateParts.add("execution_id = EXCLUDED.execution_id");
+
+                    sb.append(String.join(", ", updateParts));
+                } else {
+                    sb.append(" ON CONFLICT (").append(pkColList).append(") DO NOTHING");
+                }
             }
-            // 메타 컬럼도 업데이트 (link_status는 EXCLUDED 값 사용)
-            updateParts.add("source_refs = EXCLUDED.source_refs");
-            updateParts.add("link_status = EXCLUDED.link_status");
-            updateParts.add("updated_at = EXCLUDED.updated_at");
-            updateParts.add("execution_id = EXCLUDED.execution_id");
-
-            sb.append(String.join(", ", updateParts));
         }
 
         return sb.toString();
     }
 
-    /**
-     * Context에서 Source DataSource ID 조회 (context 우선, fallback to provider)
-     */
+    // ==================== DataSource ID 해석 ====================
+
     private String getSourceDatasourceId(StepContext context) {
         if (context.getSourceDatasourceId() != null) {
             return context.getSourceDatasourceId();
@@ -445,9 +530,6 @@ public class SourceToIfExtractStep implements StepExecutor {
         return dataSourceProvider.getSourceDatasourceId();
     }
 
-    /**
-     * Context에서 Target DataSource ID 조회 (context 우선, fallback to provider)
-     */
     private String getTargetDatasourceId(StepContext context) {
         if (context.getTargetDatasourceId() != null) {
             return context.getTargetDatasourceId();
@@ -455,27 +537,26 @@ public class SourceToIfExtractStep implements StepExecutor {
         return dataSourceProvider.getTargetDatasourceId();
     }
 
+    // ==================== SIMPLE_COPY 데이터 조회 ====================
+
     /**
      * SIMPLE_COPY 모드: 조건에 따라 데이터 조회
-     *
      * - fullCopy=true: 전체 조회 (RSV 제원 등 외부 DB용)
-     * - 기간 지정 실행: startTime/endTime 범위의 데이터 조회
-     * - 일반 실행: link_status = 'PENDING' 또는 NULL인 데이터 조회
-     *
+     * - 기간 지정 실행: startTime/endTime 범위
+     * - 일반 실행: link_status = 'PENDING' 또는 NULL
      */
     private List<Map<String, Object>> fetchSimpleCopy(StepContext context, List<String> columns) {
         String sourceDsId = getSourceDatasourceId(context);
         JdbcTemplate sourceJdbc = dataSourceProvider.getJdbcTemplate(sourceDsId);
+        String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
 
-        // 실제 테이블명 조회 (대소문자 처리) - JdbcTableNameResolver 사용
         String actualSourceTable = JdbcTableNameResolver.resolve(
                 sourceJdbc.getDataSource(), sourceDsId, config.getSourceTable());
 
         List<Map<String, Object>> records;
 
-        // fullCopy 모드: 전체 조회 (시간 조건 없음)
         if (config.isFullCopy()) {
-            String selectSql = buildFullCopySelectSql(actualSourceTable, columns);
+            String selectSql = buildFullCopySelectSql(actualSourceTable, columns, sourceDbType);
             records = sourceJdbc.queryForList(selectSql);
             log.info("[{}] Full copy mode - Found {} records from source table '{}'",
                     getStepId(), records.size(), actualSourceTable);
@@ -484,20 +565,18 @@ public class SourceToIfExtractStep implements StepExecutor {
             LocalDateTime paramEndTime = context.getParam("endTime");
 
             if (paramStartTime != null && paramEndTime != null) {
-                // 기간 지정 실행: 시간 범위로 조회
                 log.info("[{}] Time-range execution: {} ~ {}", getStepId(), paramStartTime, paramEndTime);
 
-                String selectSql = buildSelectSql(actualSourceTable, columns);
+                String selectSql = buildSelectSql(actualSourceTable, columns, sourceDbType);
                 records = sourceJdbc.queryForList(selectSql,
                         Timestamp.valueOf(paramStartTime), Timestamp.valueOf(paramEndTime));
 
                 log.info("[{}] Found {} records from source table '{}' in range {} ~ {}",
                         getStepId(), records.size(), actualSourceTable, paramStartTime, paramEndTime);
             } else {
-                // 일반 실행: link_status = 'PENDING' 또는 NULL 조회
                 log.info("[{}] Normal execution: querying PENDING records", getStepId());
 
-                String selectSql = buildPendingSelectSql(actualSourceTable, columns);
+                String selectSql = buildPendingSelectSql(actualSourceTable, columns, sourceDbType);
                 records = sourceJdbc.queryForList(selectSql);
 
                 log.info("[{}] Found {} PENDING records from source table '{}'",
@@ -508,51 +587,36 @@ public class SourceToIfExtractStep implements StepExecutor {
         return records;
     }
 
-    /**
-     * PENDING/RESYNC 상태 조회용 SELECT SQL 생성
-     * link_status = 'PENDING', 'RESYNC', 또는 NULL인 레코드 조회
-     *
-     * - PENDING: 일반 동기화 (새 데이터)
-     * - RESYNC: 재동기화 필요 (기간 지정 실행으로 들어온 데이터, UPSERT 필요)
-     */
-    private String buildPendingSelectSql(String actualTableName, List<String> columns) {
+    private String buildPendingSelectSql(String actualTableName, List<String> columns, String dbType) {
         String columnList = columns.stream()
-                .map(c -> "\"" + c + "\"")
+                .map(c -> qi(c, dbType))
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("");
-        String quotedTable = "\"" + actualTableName + "\"";
+        String quotedTable = qi(actualTableName, dbType);
 
         return String.format(
-                "SELECT %s, \"link_status\" FROM %s WHERE \"link_status\" IS NULL OR \"link_status\" IN ('PENDING', 'RESYNC')",
-                columnList, quotedTable);
+                "SELECT %s, %s FROM %s WHERE %s IS NULL OR %s IN ('PENDING', 'RESYNC')",
+                columnList, qi("link_status", dbType), quotedTable,
+                qi("link_status", dbType), qi("link_status", dbType));
     }
 
-    /**
-     * 전체 복사용 SELECT SQL (시간 조건 없음)
-     */
-    private String buildFullCopySelectSql(String actualTableName, List<String> columns) {
+    private String buildFullCopySelectSql(String actualTableName, List<String> columns, String dbType) {
         String columnList = columns.stream()
-                .map(c -> "\"" + c + "\"")
+                .map(c -> qi(c, dbType))
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("");
-        String quotedTable = "\"" + actualTableName + "\"";
+        String quotedTable = qi(actualTableName, dbType);
         return String.format("SELECT %s FROM %s", columnList, quotedTable);
     }
 
-    /**
-     * 동적 SELECT SQL 생성
-     * PostgreSQL 대소문자 이슈 처리: 테이블명/컬럼명에 따옴표 추가
-     * DATE + TIME 조합 지원: config.getTimeExpressionSql() 사용
-     */
-    private String buildSelectSql(String actualTableName, List<String> columns) {
+    private String buildSelectSql(String actualTableName, List<String> columns, String dbType) {
         String columnList = columns.stream()
-                .map(c -> "\"" + c + "\"")
+                .map(c -> qi(c, dbType))
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("");
-        String quotedTable = "\"" + actualTableName + "\"";
+        String quotedTable = qi(actualTableName, dbType);
 
-        // 시간 표현식 생성 (dateColumn + timeColumn 또는 timeColumn만)
-        String timeExpr = buildTimeExpression(columns);
+        String timeExpr = buildTimeExpression(columns, dbType);
 
         return String.format(
                 "SELECT %s FROM %s WHERE %s > ? AND %s <= ? ORDER BY %s",
@@ -561,46 +625,38 @@ public class SourceToIfExtractStep implements StepExecutor {
         );
     }
 
-    /**
-     * 시간 표현식 생성 (DATE + TIME 조합 지원)
-     */
-    private String buildTimeExpression(List<String> columns) {
-        // 1. 커스텀 표현식이 있으면 그대로 사용
+    private String buildTimeExpression(List<String> columns, String dbType) {
         if (config.getTimeExpression() != null && !config.getTimeExpression().isBlank()) {
             return config.getTimeExpression();
         }
 
-        // 2. dateColumn + timeColumn 조합
         if (config.getDateColumn() != null && !config.getDateColumn().isBlank()
                 && config.getTimeColumn() != null && !config.getTimeColumn().isBlank()) {
             String actualDateCol = resolveActualColumnName(columns, config.getDateColumn());
             String actualTimeCol = resolveActualColumnName(columns, config.getTimeColumn());
-            // PostgreSQL: DATE + TIME = TIMESTAMP
-            return "(\"" + actualDateCol + "\" + \"" + actualTimeCol + "\")";
+            if (isMysql(dbType)) {
+                return "TIMESTAMP(" + qi(actualDateCol, dbType) + ", " + qi(actualTimeCol, dbType) + ")";
+            }
+            return "(" + qi(actualDateCol, dbType) + " + " + qi(actualTimeCol, dbType) + ")";
         }
 
-        // 3. timeColumn만 사용
         if (config.getTimeColumn() != null && !config.getTimeColumn().isBlank()) {
             String actualTimeCol = resolveActualColumnName(columns, config.getTimeColumn());
-            return "\"" + actualTimeCol + "\"";
+            return qi(actualTimeCol, dbType);
         }
 
         throw new IllegalStateException("No time column configured. Set timeColumn, dateColumn+timeColumn, or timeExpression.");
     }
 
-    /**
-     * 컬럼 목록에서 실제 컬럼명 찾기 (대소문자 무시)
-     */
     private String resolveActualColumnName(List<String> columns, String logicalColumnName) {
         return columns.stream()
                 .filter(c -> c.equalsIgnoreCase(logicalColumnName))
                 .findFirst()
-                .orElse(logicalColumnName);  // 못 찾으면 원본 반환
+                .orElse(logicalColumnName);
     }
 
-    /**
-     * 테이블별 처리 요약 저장
-     */
+    // ==================== SyncLog / 이력 ====================
+
     private void saveSyncLogSummary(String executionId, String tableName, String tableType,
                                      Long successCount, Long failedCount, Long skipCount,
                                      String failedKeys, String errorSummary) {
@@ -618,12 +674,8 @@ public class SourceToIfExtractStep implements StepExecutor {
         syncLogRepository.save(logEntry);
     }
 
-    /**
-     * Source 테이블의 실제 PK 컬럼 감지 (DatabaseMetaData.getPrimaryKeys)
-     * sourceRef 생성에 사용 (UPSERT용 UK와 별개)
-     *
-     * @return PK 컬럼명 리스트 (감지 실패 시 config UK의 첫 번째 컬럼으로 fallback)
-     */
+    // ==================== 메타데이터 / PK 감지 ====================
+
     private List<String> detectSourcePrimaryKey(String datasourceId, String tableName) {
         List<String> pkColumns = new ArrayList<>();
         JdbcTemplate jdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
@@ -632,14 +684,14 @@ public class SourceToIfExtractStep implements StepExecutor {
             Connection conn = jdbc.getDataSource().getConnection();
             try {
                 DatabaseMetaData metaData = conn.getMetaData();
+                String catalog = conn.getCatalog();
                 String[] variants = {tableName, tableName.toLowerCase(), tableName.toUpperCase()};
 
                 for (String variant : variants) {
-                    try (ResultSet rs = metaData.getPrimaryKeys(null, null, variant)) {
+                    try (ResultSet rs = metaData.getPrimaryKeys(catalog, null, variant)) {
                         while (rs.next()) {
                             String colName = rs.getString("COLUMN_NAME");
                             int keySeq = rs.getInt("KEY_SEQ");
-                            // KEY_SEQ 순서대로 정렬을 위해 위치에 맞게 삽입
                             while (pkColumns.size() < keySeq) {
                                 pkColumns.add(null);
                             }
@@ -660,7 +712,6 @@ public class SourceToIfExtractStep implements StepExecutor {
             log.warn("[{}] Failed to detect source PK from metadata: {}", getStepId(), e.getMessage());
         }
 
-        // 감지 실패 시 config UK의 첫 번째 컬럼으로 fallback
         if (pkColumns.isEmpty()) {
             List<String> ukCols = config.getPrimaryKeyColumnList();
             if (!ukCols.isEmpty()) {
@@ -672,24 +723,21 @@ public class SourceToIfExtractStep implements StepExecutor {
         return pkColumns;
     }
 
-    /**
-     * Source 테이블에서 컬럼 목록 자동 조회 (SIMPLE_COPY용)
-     * columns 설정이 없을 때 메타데이터에서 가져옴
-     */
     private List<String> fetchColumnsFromMetadata(String datasourceId, String tableName) {
         List<String> columns = new ArrayList<>();
         JdbcTemplate jdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
+        String dbType = dataSourceProvider.getDbType(datasourceId);
 
         try {
             Connection conn = jdbc.getDataSource().getConnection();
             try {
                 DatabaseMetaData metaData = conn.getMetaData();
+                String catalog = conn.getCatalog();
 
-                // 테이블명 변형 시도 (대소문자)
                 String[] variants = {tableName, tableName.toLowerCase(), tableName.toUpperCase()};
 
                 for (String variant : variants) {
-                    try (ResultSet rs = metaData.getColumns(null, null, variant, null)) {
+                    try (ResultSet rs = metaData.getColumns(catalog, null, variant, null)) {
                         while (rs.next()) {
                             String columnName = rs.getString("COLUMN_NAME");
                             columns.add(columnName);
@@ -704,8 +752,7 @@ public class SourceToIfExtractStep implements StepExecutor {
 
                 if (columns.isEmpty()) {
                     log.warn("[{}] No columns found for table '{}'. Using fallback query.", getStepId(), tableName);
-                    // Fallback: 실제 쿼리로 컬럼 가져오기
-                    columns = fetchColumnsFromQuery(jdbc, tableName);
+                    columns = fetchColumnsFromQuery(jdbc, tableName, dbType);
                 }
             } finally {
                 conn.close();
@@ -718,17 +765,13 @@ public class SourceToIfExtractStep implements StepExecutor {
         return columns;
     }
 
-    /**
-     * 쿼리 실행으로 컬럼 목록 가져오기 (메타데이터 실패 시 fallback)
-     * PostgreSQL 대소문자 이슈 처리: 대소문자 변형 시도
-     */
-    private List<String> fetchColumnsFromQuery(JdbcTemplate jdbc, String tableName) {
+    private List<String> fetchColumnsFromQuery(JdbcTemplate jdbc, String tableName, String dbType) {
         List<String> columns = new ArrayList<>();
         String[] variants = {tableName, tableName.toLowerCase(), tableName.toUpperCase()};
 
         for (String variant : variants) {
             try {
-                String sql = String.format("SELECT * FROM \"%s\" WHERE 1=0", variant);
+                String sql = String.format("SELECT * FROM %s WHERE 1=0", qi(variant, dbType));
                 jdbc.query(sql, rs -> {
                     var metaData = rs.getMetaData();
                     int columnCount = metaData.getColumnCount();
@@ -754,31 +797,20 @@ public class SourceToIfExtractStep implements StepExecutor {
         return columns;
     }
 
-    /**
-     * Source 테이블의 link_status 업데이트 (배치)
-     *
-     * @param jdbc JdbcTemplate
-     * @param tableName 테이블명 (실제 테이블명, 대소문자 유지)
-     * @param pkColumn PK 컬럼명
-     * @param pkValues PK 값 목록
-     * @param status 설정할 상태 (SUCCESS, FAILED)
-     * @return 업데이트된 행 수
-     */
+    // ==================== Source link_status 업데이트 ====================
+
     private int updateSourceLinkStatus(JdbcTemplate jdbc, String tableName,
                                         String pkColumn, List<Object> pkValues, String status) {
         if (pkValues.isEmpty()) return 0;
 
-        // 배치 크기 제한 (너무 큰 IN 절 방지)
-        int batchSize = 500;
+        int updateBatchSize = 500;
         int totalUpdated = 0;
 
-        for (int i = 0; i < pkValues.size(); i += batchSize) {
-            List<Object> batch = pkValues.subList(i, Math.min(i + batchSize, pkValues.size()));
+        for (int i = 0; i < pkValues.size(); i += updateBatchSize) {
+            List<Object> batch = pkValues.subList(i, Math.min(i + updateBatchSize, pkValues.size()));
 
             String placeholders = batch.stream().map(v -> "?").reduce((a, b) -> a + ", " + b).orElse("");
 
-            // PostgreSQL: 테이블명/컬럼명은 소문자로 저장됨 (따옴표 없이 사용 시)
-            // Source 테이블은 link_status만 업데이트 (updated_at 컬럼이 없을 수 있음)
             String sql = String.format(
                     "UPDATE %s SET link_status = ? WHERE %s IN (%s)",
                     tableName.toLowerCase(),
@@ -803,11 +835,8 @@ public class SourceToIfExtractStep implements StepExecutor {
         return totalUpdated;
     }
 
-    /**
-     * 레코드의 비즈니스 키 생성 (PK 컬럼 값 기반)
-     * 단일 PK: "GPM-3050-001"
-     * 복합 PK: "GPM-3050-001|2026-01-15|093000"
-     */
+    // ==================== 유틸리티 ====================
+
     private String buildRecordKey(Map<String, Object> record) {
         List<String> pkCols = config.getPrimaryKeyColumnList();
         if (pkCols.isEmpty()) {
@@ -826,15 +855,10 @@ public class SourceToIfExtractStep implements StepExecutor {
         return sb.toString();
     }
 
-    /**
-     * Record에서 값 조회 (대소문자 무시)
-     */
     private Object getRecordValue(Map<String, Object> record, String columnName) {
-        // 정확한 키로 먼저 시도
         if (record.containsKey(columnName)) {
             return record.get(columnName);
         }
-        // 대소문자 무시하고 찾기
         for (Map.Entry<String, Object> entry : record.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(columnName)) {
                 return entry.getValue();

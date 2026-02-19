@@ -111,13 +111,15 @@ public class DatasourceController {
                 log.info("Connection established");
                 DatabaseMetaData metaData = conn.getMetaData();
 
+                // MySQL은 catalog에 DB명을 지정해야 해당 DB 테이블만 반환
+                String catalog = "MYSQL".equalsIgnoreCase(request.getDbType()) ? request.getDatabaseName() : null;
                 String[] types = {"TABLE", "VIEW"};
                 String searchPattern = request.getQuery() != null && !request.getQuery().isEmpty()
                         ? "%" + request.getQuery().toUpperCase() + "%"
                         : "%";
-                log.info("Search pattern: {}", searchPattern);
+                log.info("Search pattern: {}, catalog: {}", searchPattern, catalog);
 
-                try (ResultSet rs = metaData.getTables(null, null, searchPattern, types)) {
+                try (ResultSet rs = metaData.getTables(catalog, null, searchPattern, types)) {
                     int count = 0;
                     while (rs.next() && count < 100) {
                         results.add(TableSearchResult.builder()
@@ -156,9 +158,12 @@ public class DatasourceController {
                 log.info("Connection established for column search");
                 DatabaseMetaData metaData = conn.getMetaData();
 
+                // MySQL은 catalog에 DB명을 지정해야 해당 DB 테이블만 반환
+                String catalog = "MYSQL".equalsIgnoreCase(request.getDbType()) ? request.getDatabaseName() : null;
+
                 // PK 컬럼 조회
                 Set<String> pkColumns = new HashSet<>();
-                try (ResultSet pkRs = metaData.getPrimaryKeys(null, null, request.getTableName())) {
+                try (ResultSet pkRs = metaData.getPrimaryKeys(catalog, null, request.getTableName())) {
                     while (pkRs.next()) {
                         pkColumns.add(pkRs.getString("COLUMN_NAME"));
                     }
@@ -170,7 +175,7 @@ public class DatasourceController {
                         ? "%" + request.getQuery().toUpperCase() + "%"
                         : "%";
 
-                try (ResultSet rs = metaData.getColumns(null, null, request.getTableName(), columnPattern)) {
+                try (ResultSet rs = metaData.getColumns(catalog, null, request.getTableName(), columnPattern)) {
                     while (rs.next()) {
                         String columnName = rs.getString("COLUMN_NAME");
                         results.add(ColumnSearchResult.builder()

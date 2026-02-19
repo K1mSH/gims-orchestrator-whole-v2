@@ -8,13 +8,16 @@ import com.sync.agent.bojo.entity.target.SecJewon;
 import com.sync.agent.bojo.entity.target.SecObsvdata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.TypedQuery;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -372,6 +375,127 @@ public class TargetRepositoryService {
         } finally {
             em.close();
         }
+    }
+
+    // ==================== JDBC Batch UPSERT (성능 최적화) ====================
+
+    private static final int JDBC_BATCH_SIZE = 1000;
+
+    /**
+     * 제원 JDBC batch UPSERT (ON CONFLICT 사용)
+     * JPA merge() 대비 ~100x 성능 향상
+     */
+    public int batchUpsertJewon(List<SecJewon> jewonList) {
+        if (jewonList.isEmpty()) return 0;
+
+        JdbcTemplate jdbc = entityManagerService.getTargetJdbcTemplate();
+        String sql = """
+            INSERT INTO sec_jewon (obsv_code, obsv_name, well, sido, sigungu, upmyundo,
+                bunji, ri, x, y, pyogo, insdate, guldep, guldia, regdate, casing_height,
+                source_refs, link_status, execution_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (obsv_code) DO UPDATE SET
+                obsv_name=EXCLUDED.obsv_name, well=EXCLUDED.well,
+                sido=EXCLUDED.sido, sigungu=EXCLUDED.sigungu, upmyundo=EXCLUDED.upmyundo,
+                bunji=EXCLUDED.bunji, ri=EXCLUDED.ri, x=EXCLUDED.x, y=EXCLUDED.y,
+                pyogo=EXCLUDED.pyogo, insdate=EXCLUDED.insdate,
+                guldep=EXCLUDED.guldep, guldia=EXCLUDED.guldia, regdate=EXCLUDED.regdate,
+                casing_height=EXCLUDED.casing_height,
+                source_refs=EXCLUDED.source_refs, link_status=EXCLUDED.link_status,
+                execution_id=EXCLUDED.execution_id
+            """;
+
+        int totalUpserted = 0;
+        for (int i = 0; i < jewonList.size(); i += JDBC_BATCH_SIZE) {
+            List<SecJewon> batch = jewonList.subList(i, Math.min(i + JDBC_BATCH_SIZE, jewonList.size()));
+            List<Object[]> batchParams = new ArrayList<>(batch.size());
+
+            for (SecJewon j : batch) {
+                batchParams.add(new Object[]{
+                    j.getObsvCode(), j.getObsvName(), j.getWell(),
+                    j.getSido(), j.getSigungu(), j.getUpmyundo(),
+                    j.getBunji(), j.getRi(), j.getX(), j.getY(),
+                    j.getPyogo(), j.getInsdate(), j.getGuldep(), j.getGuldia(),
+                    j.getRegdate(), j.getCasingHeight(),
+                    j.getSourceRefs(), j.getLinkStatus(), j.getExecutionId()
+                });
+            }
+
+            int[] results = jdbc.batchUpdate(sql, batchParams);
+            totalUpserted += batch.size();
+            log.info("Batch UPSERT jewon: {}/{}", totalUpserted, jewonList.size());
+        }
+        return totalUpserted;
+    }
+
+    /**
+     * 관측데이터 JDBC batch UPSERT (ON CONFLICT 사용)
+     * RESYNC SELECT 완전 제거 - ON CONFLICT가 자동 처리
+     */
+    public int batchUpsertObsvdata(List<SecObsvdata> obsvList) {
+        if (obsvList.isEmpty()) return 0;
+
+        JdbcTemplate jdbc = entityManagerService.getTargetJdbcTemplate();
+        String sql = """
+            INSERT INTO sec_obsvdata (obsv_code, obsv_date, obsv_time, gwdep, gwtemp, ec,
+                remark, source_refs, link_status, execution_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (obsv_code, obsv_date, obsv_time) DO UPDATE SET
+                gwdep=EXCLUDED.gwdep, gwtemp=EXCLUDED.gwtemp, ec=EXCLUDED.ec,
+                remark=EXCLUDED.remark, source_refs=EXCLUDED.source_refs,
+                link_status=EXCLUDED.link_status, execution_id=EXCLUDED.execution_id
+            """;
+
+        int totalUpserted = 0;
+        for (int i = 0; i < obsvList.size(); i += JDBC_BATCH_SIZE) {
+            List<SecObsvdata> batch = obsvList.subList(i, Math.min(i + JDBC_BATCH_SIZE, obsvList.size()));
+            List<Object[]> batchParams = new ArrayList<>(batch.size());
+
+            for (SecObsvdata o : batch) {
+                batchParams.add(new Object[]{
+                    o.getObsvCode(), o.getObsvDate(), o.getObsvTime(),
+                    o.getGwdep(), o.getGwtemp(), o.getEc(),
+                    o.getRemark(), o.getSourceRefs(), o.getLinkStatus(), o.getExecutionId()
+                });
+            }
+
+            int[] results = jdbc.batchUpdate(sql, batchParams);
+            totalUpserted += batch.size();
+            int percent = (int) ((totalUpserted * 100.0) / obsvList.size());
+            log.info("Batch UPSERT obsvdata: {}/{} ({}%)", totalUpserted, obsvList.size(), percent);
+        }
+        return totalUpserted;
+    }
+
+    /**
+     * Link 테이블 JDBC batch UPSERT
+     * obsv_code가 PK이므로 ON CONFLICT (obsv_code) 사용
+     */
+    public int batchUpsertLinks(List<LinkNgwis> linkList) {
+        if (linkList.isEmpty()) return 0;
+
+        JdbcTemplate jdbc = entityManagerService.getTargetJdbcTemplate();
+        String sql = """
+            INSERT INTO link_ngwis (obsv_code, obsv_date, obsv_time, update_time)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (obsv_code) DO UPDATE SET
+                obsv_date=EXCLUDED.obsv_date, obsv_time=EXCLUDED.obsv_time,
+                update_time=EXCLUDED.update_time
+            """;
+
+        List<Object[]> batchParams = new ArrayList<>(linkList.size());
+        for (LinkNgwis link : linkList) {
+            batchParams.add(new Object[]{
+                link.getObsvCode(),
+                link.getObsvDate() != null ? Timestamp.valueOf(link.getObsvDate()) : null,
+                link.getObsvTime(),
+                link.getUpdateTime() != null ? Timestamp.valueOf(link.getUpdateTime()) : null
+            });
+        }
+
+        int[] results = jdbc.batchUpdate(sql, batchParams);
+        log.info("Batch UPSERT links: {} records", linkList.size());
+        return linkList.size();
     }
 
     // ==================== IF -> Target 변환 헬퍼 ====================

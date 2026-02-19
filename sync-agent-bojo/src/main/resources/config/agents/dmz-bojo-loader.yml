@@ -7,5 +7,5 @@ target-table:
   jewon: sec_jewon
   obsvdata: sec_obsvdata
 step:
-  batch-size: 100
+  batch-size: 1000
 

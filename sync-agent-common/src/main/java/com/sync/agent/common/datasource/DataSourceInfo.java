@@ -20,20 +20,24 @@ public class DataSourceInfo {
     private String password;    // 암호화된 상태로 전달
 
     public String getJdbcUrl() {
-        if ("POSTGRESQL".equalsIgnoreCase(dbType)) {
-            return String.format("jdbc:postgresql://%s:%d/%s", host, port, databaseName);
-        } else if ("ORACLE".equalsIgnoreCase(dbType)) {
-            return String.format("jdbc:oracle:thin:@%s:%d:%s", host, port, databaseName);
-        }
-        throw new IllegalArgumentException("Unsupported DB type: " + dbType);
+        return switch (dbType.toUpperCase()) {
+            case "POSTGRESQL" -> String.format("jdbc:postgresql://%s:%d/%s", host, port, databaseName);
+            case "ORACLE" -> String.format("jdbc:oracle:thin:@%s:%d:%s", host, port, databaseName);
+            case "MYSQL" -> String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8", host, port, databaseName);
+            case "MARIADB" -> String.format("jdbc:mariadb://%s:%d/%s", host, port, databaseName);
+            case "MSSQL" -> String.format("jdbc:sqlserver://%s:%d;databaseName=%s", host, port, databaseName);
+            default -> throw new IllegalArgumentException("Unsupported DB type: " + dbType);
+        };
     }
 
     public String getDriverClassName() {
-        if ("POSTGRESQL".equalsIgnoreCase(dbType)) {
-            return "org.postgresql.Driver";
-        } else if ("ORACLE".equalsIgnoreCase(dbType)) {
-            return "oracle.jdbc.OracleDriver";
-        }
-        throw new IllegalArgumentException("Unsupported DB type: " + dbType);
+        return switch (dbType.toUpperCase()) {
+            case "POSTGRESQL" -> "org.postgresql.Driver";
+            case "ORACLE" -> "oracle.jdbc.OracleDriver";
+            case "MYSQL" -> "com.mysql.cj.jdbc.Driver";
+            case "MARIADB" -> "org.mariadb.jdbc.Driver";
+            case "MSSQL" -> "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+            default -> throw new IllegalArgumentException("Unsupported DB type: " + dbType);
+        };
     }
 }

@@ -169,20 +169,21 @@ public class ExecutionService {
 
     /**
      * 특정 테이블의 레코드 조회 (Agent DB에서)
+     * Agent의 getTableLog()는 SyncLog 단일 객체를 반환하므로 Map으로 역직렬화
      */
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> getTableRecords(String executionId, String tableName) {
+    public Map<String, Object> getTableRecords(String executionId, String tableName) {
         Agent agent = findAgentByExecutionId(executionId);
 
         try {
             String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables/" + tableName;
             log.info("Fetching table records from agent: {}", url);
 
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Failed to fetch table records from agent: {}", agent.getAgentCode(), e);
-            return List.of();
+            return Map.of();
         }
     }
 
@@ -409,6 +410,56 @@ public class ExecutionService {
                                         .ifPresent(dt -> sourceTableIds.put(dt.getTableName(), dt.getId()));
                             });
                 }
+
+                // sourceTableIds가 비었을 때 Agent에서 자동 발견 & 등록
+                if (sourceTableIds.isEmpty()) {
+                    log.info("Auto-discovering source tables for agent: {}", agentCode);
+                    try {
+                        String tablesUrl = agent.getEndpointUrl() + "/api/pipeline/" + agentCode + "/tables";
+                        @SuppressWarnings("unchecked")
+                        ResponseEntity<Map> tablesResponse = restTemplate.getForEntity(tablesUrl, Map.class);
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, String>> tables = (List<Map<String, String>>) tablesResponse.getBody().get("tables");
+
+                        if (tables != null) {
+                            for (Map<String, String> tableInfo : tables) {
+                                if ("SOURCE".equals(tableInfo.get("type"))) {
+                                    String tableName = tableInfo.get("tableName");
+                                    String dsId = agent.getSourceDatasourceId();
+
+                                    // DatasourceTable 등록 (없으면 생성)
+                                    DatasourceTable dt = datasourceTableRepository
+                                            .findByDatasourceIdAndTableName(dsId, tableName)
+                                            .orElseGet(() -> datasourceTableRepository.save(
+                                                    DatasourceTable.builder()
+                                                            .datasourceId(dsId)
+                                                            .tableName(tableName)
+                                                            .build()));
+
+                                    // AgentTable 매핑 (중복 방지)
+                                    boolean alreadyMapped = agent.getAgentTables().stream()
+                                            .anyMatch(at -> at.getDatasourceTableId().equals(dt.getId()));
+                                    if (!alreadyMapped) {
+                                        agent.getAgentTables().add(AgentTable.builder()
+                                                .agent(agent)
+                                                .datasourceTableId(dt.getId())
+                                                .tableType(AgentTable.TableType.SOURCE)
+                                                .build());
+                                    }
+
+                                    sourceTableIds.put(tableName, dt.getId());
+                                }
+                            }
+                            if (!sourceTableIds.isEmpty()) {
+                                agentRepository.save(agent);
+                                log.info("Auto-registered {} source tables for agent: {}", sourceTableIds.size(), agentCode);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to auto-discover tables for agent {}: {}", agentCode, e.getMessage());
+                    }
+                }
+
                 request.put("sourceTableIds", sourceTableIds);
             }
 
