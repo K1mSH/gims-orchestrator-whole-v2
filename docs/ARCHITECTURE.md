@@ -321,6 +321,52 @@ sync-orchestrator/
 
 ---
 
+## 1.2.6 데이터 접근 전략 (JPA vs JDBCTemplate)
+
+> **원칙: 읽기는 JPA, 쓰기는 JDBCTemplate**
+
+### 왜 쓰기에 JPA를 쓰지 않는가
+
+데이터 동기화 특성상 건당 수만 건의 대량 쓰기가 발생한다.
+JPA의 대량 쓰기 성능은 구조적 한계로 인해 실무 요구사항을 충족하지 못한다.
+
+**JPA 대량 쓰기의 구조적 한계:**
+
+| 한계 | 원인 | 영향 |
+|------|------|------|
+| IDENTITY 전략 = 배치 INSERT 불가 | Hibernate가 INSERT마다 DB에서 생성된 ID를 회수해야 함 | 1만 건 = 1만 번 개별 INSERT |
+| merge() = SELECT + INSERT/UPDATE | 엔티티 존재 여부 확인을 위해 매건 SELECT 선행 | 1만 건 = SELECT 1만 + INSERT/UPDATE 1만 |
+| UPSERT 미지원 | `ON CONFLICT` 구문이 JPA 스펙에 없음 | 네이티브 쿼리 필요 → JDBCTemplate과 동일 |
+| 중복 스킵 불가 | `ON CONFLICT DO NOTHING` 없음 | 중복 시 예외 발생 → try-catch 또는 사전 SELECT 필요 |
+
+**실측 성능 비교 (약 1만 건 기준):**
+
+| 방식 | 소요시간 | 비고 |
+|------|----------|------|
+| JPA save() 반복 | ~9분 | 건건이 SELECT + INSERT |
+| JPA saveAll() | ~1분 40초 | IDENTITY라 배치 안 됨 |
+| JPA Batch (SEQUENCE 전략) | ~38초 | IDENTITY 전략에서는 사용 불가 |
+| **JDBCTemplate batch** | **~13초** | 별도 라이브러리 불필요, UPSERT/DO NOTHING 지원 |
+
+**Loader 실측:** JPA merge() 10,704건 → 15분 → JDBCTemplate batch UPSERT → 30초 이내 (DB 라운드트립 ~31,000회 → ~15회)
+
+### 파이프라인별 적용 현황
+
+| 파이프라인 | 읽기 | 쓰기 | 이유 |
+|-----------|------|------|------|
+| RCV (common) | JDBC | JDBC | Source 테이블이 동적 (YAML 설정 기반) |
+| Loader | JPA | JDBCTemplate batch | Target 엔티티 고정, 대량 UPSERT |
+| SND (common) | JDBC | JDBC | RCV와 동일 구조 |
+| Orchestrator | JPA | JPA | 관리 데이터 (소량, CRUD 중심) |
+
+### 설계 기준
+
+- **JPA 사용**: 엔티티가 고정되고, 소량 CRUD이거나, 조회 위주일 때
+- **JDBCTemplate 사용**: 대량 쓰기, UPSERT/DO NOTHING이 필요할 때, 동적 테이블/컬럼일 때
+- 같은 서비스 클래스 내에서 읽기(JPA)와 쓰기(JDBCTemplate) 혼용 가능
+
+---
+
 ## 1.3 테이블 설계 원칙
 
 ### 1.3.1 IF 테이블 (if_rsv_*, if_snd_*)
@@ -347,6 +393,23 @@ sync-orchestrator/
 IF_RSV: PENDING (RCV 적재) → SUCCESS/FAILED (Loader 처리 후)
 IF_SND: PENDING (SND 적재) → SUCCESS/FAILED (후속 처리 후)
 ```
+
+**UPSERT 충돌 기준 (conflict-key):**
+
+기본적으로 YAML의 `primary-key`를 ON CONFLICT 기준으로 사용하되,
+외부 DB에 PK 중복이 존재하는 경우 `conflict-key`로 별도 지정 가능.
+
+| 테이블 | conflict 기준 | 이유 |
+|--------|--------------|------|
+| if_rsv_sec_jewon | `source_refs` (conflict-key) | 외부 DB에 obsv_code 중복 존재 (갱신 대신 INSERT하는 업체) |
+| if_rsv_sec_obsvdata | `obsv_code,obsv_date,obsv_time` (primary-key) | 복합키로 자연 유일 |
+| if_snd_sec_jewon | `id` (primary-key) | sec_jewon의 PK 그대로 복사 |
+| if_snd_sec_obsvdata | `obsv_code,obsv_date,obsv_time` (primary-key) | 복합키로 자연 유일 |
+
+`conflict-key` 설정 시 동작:
+- YAML: `conflict-key: source_refs` → ExtractStepConfig.conflictKey에 전달
+- SourceToIfStep: `ON CONFLICT (source_refs)` 생성 (conflictKey 우선, 없으면 primaryKey)
+- UPDATE SET에서 conflict 대상 컬럼은 자동 제외
 
 ---
 

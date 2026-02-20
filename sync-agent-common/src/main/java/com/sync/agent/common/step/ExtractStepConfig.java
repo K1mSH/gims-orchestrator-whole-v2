@@ -71,6 +71,14 @@ public class ExtractStepConfig {
     private final List<String> primaryKeyColumns;
 
     /**
+     * UPSERT 충돌 기준 컬럼 (선택적)
+     * 설정 시 ON CONFLICT에 primaryKey 대신 이 컬럼을 사용
+     * 예: "source_refs" - 외부 DB에 PK 중복이 있는 경우 source_refs로 충돌 판단
+     * null이면 기존 primaryKey 사용 (기본 동작)
+     */
+    private final String conflictKey;
+
+    /**
      * 전체 복사 모드 (시간 조건 없이 전체 조회)
      * true면 시간 필터링 없이 모든 레코드 조회 후 UPSERT
      * 마스터 테이블(제원 등)에 적합

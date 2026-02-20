@@ -14,8 +14,8 @@ import java.sql.Date;
 @Entity
 @Table(name = "sec_jewon",
        uniqueConstraints = @UniqueConstraint(
-           name = "uk_sec_jewon_obsv_code",
-           columnNames = {"obsv_code"}
+           name = "uk_sec_jewon_source_refs",
+           columnNames = {"source_refs"}
        ))
 @Getter
 @Setter

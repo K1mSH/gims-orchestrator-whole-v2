@@ -63,6 +63,7 @@ public class AgentConfigLoader {
             jewon.setSourceTable((String) jewonMap.get("source-table"));
             jewon.setTargetTable((String) jewonMap.get("target-table"));
             jewon.setPrimaryKey((String) jewonMap.get("primary-key"));
+            jewon.setConflictKey((String) jewonMap.get("conflict-key"));
             jewon.setFullCopy(Boolean.TRUE.equals(jewonMap.get("full-copy")));
             jewon.setSkipSourceStatusUpdate(Boolean.TRUE.equals(jewonMap.get("skip-source-status-update")));
             jewon.setDateColumn((String) jewonMap.get("date-column"));
@@ -77,6 +78,7 @@ public class AgentConfigLoader {
             obsv.setSourceTable((String) obsvMap.get("source-table"));
             obsv.setTargetTable((String) obsvMap.get("target-table"));
             obsv.setPrimaryKey((String) obsvMap.get("primary-key"));
+            obsv.setConflictKey((String) obsvMap.get("conflict-key"));
             obsv.setFullCopy(Boolean.TRUE.equals(obsvMap.get("full-copy")));
             obsv.setDateColumn((String) obsvMap.get("date-column"));
             obsv.setTimeColumn((String) obsvMap.get("time-column"));

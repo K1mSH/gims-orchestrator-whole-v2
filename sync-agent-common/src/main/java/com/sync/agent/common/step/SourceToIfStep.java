@@ -215,7 +215,9 @@ public class SourceToIfStep implements StepExecutor {
             boolean useUpsert = config.isFullCopy() || isTimeRangeExecution;
             String insertSql = buildUpsertSql(actualTargetIfTable, columns, targetDbType, useUpsert);
             log.info("[{}] {} SQL: {}", getStepId(), useUpsert ? "UPSERT" : "INSERT (DO NOTHING)", insertSql);
-            log.info("[{}] UK columns: {}", getStepId(), config.getPrimaryKeyColumnList());
+            String conflictInfo = (config.getConflictKey() != null && !config.getConflictKey().isEmpty())
+                    ? "conflictKey=" + config.getConflictKey() : "PK=" + config.getPrimaryKeyColumnList();
+            log.info("[{}] Conflict: {}, PK: {}", getStepId(), conflictInfo, config.getPrimaryKeyColumnList());
             log.info("[{}] Batch size: {}", getStepId(), batchSize);
 
             // sourceRef용 실제 PK 컬럼 감지 (DB 메타데이터)
@@ -452,7 +454,11 @@ public class SourceToIfStep implements StepExecutor {
 
         String columnList = String.join(", ", ifColumns);
 
+        // 충돌 기준: conflictKey 설정 시 해당 컬럼 사용, 없으면 primaryKey 사용
         List<String> pkCols = config.getPrimaryKeyColumnList();
+        List<String> conflictCols = (config.getConflictKey() != null && !config.getConflictKey().isEmpty())
+                ? List.of(config.getConflictKey())
+                : pkCols;
 
         if (isMysql(dbType) && !useUpsert && !pkCols.isEmpty()) {
             // MySQL: INSERT IGNORE (중복 PK 스킵)
@@ -466,8 +472,8 @@ public class SourceToIfStep implements StepExecutor {
         String placeholders = columns.stream().map(c -> "?").reduce((a, b) -> a + ", " + b).orElse("");
         sb.append(" VALUES (").append(placeholders).append(", ?, ?, ?, ?, ?)");
 
-        if (!pkCols.isEmpty()) {
-            String pkColList = pkCols.stream()
+        if (!conflictCols.isEmpty()) {
+            String conflictColList = conflictCols.stream()
                     .map(String::toLowerCase)
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
@@ -478,14 +484,17 @@ public class SourceToIfStep implements StepExecutor {
                     sb.append(" ON DUPLICATE KEY UPDATE ");
 
                     List<String> updateCols = ifColumns.stream()
-                            .filter(col -> pkCols.stream().noneMatch(pk -> pk.equalsIgnoreCase(col)))
+                            .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
 
                     List<String> updateParts = new java.util.ArrayList<>();
                     for (String col : updateCols) {
                         updateParts.add(col + " = VALUES(" + col + ")");
                     }
-                    updateParts.add("source_refs = VALUES(source_refs)");
+                    // conflictKey가 source_refs가 아닌 경우에만 source_refs 갱신
+                    if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
+                        updateParts.add("source_refs = VALUES(source_refs)");
+                    }
                     updateParts.add("link_status = VALUES(link_status)");
                     updateParts.add("updated_at = VALUES(updated_at)");
                     updateParts.add("execution_id = VALUES(execution_id)");
@@ -496,24 +505,27 @@ public class SourceToIfStep implements StepExecutor {
             } else {
                 // PostgreSQL
                 if (useUpsert) {
-                    sb.append(" ON CONFLICT (").append(pkColList).append(") DO UPDATE SET ");
+                    sb.append(" ON CONFLICT (").append(conflictColList).append(") DO UPDATE SET ");
 
                     List<String> updateCols = ifColumns.stream()
-                            .filter(col -> pkCols.stream().noneMatch(pk -> pk.equalsIgnoreCase(col)))
+                            .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
 
                     List<String> updateParts = new java.util.ArrayList<>();
                     for (String col : updateCols) {
                         updateParts.add(col + " = EXCLUDED." + col);
                     }
-                    updateParts.add("source_refs = EXCLUDED.source_refs");
+                    // conflictKey가 source_refs가 아닌 경우에만 source_refs 갱신
+                    if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
+                        updateParts.add("source_refs = EXCLUDED.source_refs");
+                    }
                     updateParts.add("link_status = EXCLUDED.link_status");
                     updateParts.add("updated_at = EXCLUDED.updated_at");
                     updateParts.add("execution_id = EXCLUDED.execution_id");
 
                     sb.append(String.join(", ", updateParts));
                 } else {
-                    sb.append(" ON CONFLICT (").append(pkColList).append(") DO NOTHING");
+                    sb.append(" ON CONFLICT (").append(conflictColList).append(") DO NOTHING");
                 }
             }
         }

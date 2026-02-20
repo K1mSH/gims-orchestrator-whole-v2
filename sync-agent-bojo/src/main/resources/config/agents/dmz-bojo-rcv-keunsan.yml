@@ -4,6 +4,7 @@ jewon:
   source-table: SEC_JEWON_VIEW
   target-table: if_rsv_sec_jewon
   primary-key: OBSV_CODE
+  conflict-key: source_refs
   full-copy: true
   skip-source-status-update: true
 obsvdata:

@@ -3,7 +3,7 @@ type: SND
 jewon:
   source-table: sec_jewon
   target-table: if_snd_sec_jewon
-  primary-key: obsv_code
+  primary-key: id
   full-copy: true
 obsvdata:
   source-table: sec_obsvdata

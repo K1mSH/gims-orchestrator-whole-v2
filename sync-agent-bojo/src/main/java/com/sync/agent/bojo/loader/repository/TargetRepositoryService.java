@@ -394,15 +394,14 @@ public class TargetRepositoryService {
                 bunji, ri, x, y, pyogo, insdate, guldep, guldia, regdate, casing_height,
                 source_refs, link_status, execution_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (obsv_code) DO UPDATE SET
+            ON CONFLICT (source_refs) DO UPDATE SET
                 obsv_name=EXCLUDED.obsv_name, well=EXCLUDED.well,
                 sido=EXCLUDED.sido, sigungu=EXCLUDED.sigungu, upmyundo=EXCLUDED.upmyundo,
                 bunji=EXCLUDED.bunji, ri=EXCLUDED.ri, x=EXCLUDED.x, y=EXCLUDED.y,
                 pyogo=EXCLUDED.pyogo, insdate=EXCLUDED.insdate,
                 guldep=EXCLUDED.guldep, guldia=EXCLUDED.guldia, regdate=EXCLUDED.regdate,
                 casing_height=EXCLUDED.casing_height,
-                source_refs=EXCLUDED.source_refs, link_status=EXCLUDED.link_status,
-                execution_id=EXCLUDED.execution_id
+                link_status=EXCLUDED.link_status, execution_id=EXCLUDED.execution_id
             """;
 
         int totalUpserted = 0;

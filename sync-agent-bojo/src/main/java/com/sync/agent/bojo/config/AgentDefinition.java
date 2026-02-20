@@ -36,6 +36,7 @@ public class AgentDefinition {
         private String sourceTable;
         private String targetTable;
         private String primaryKey;
+        private String conflictKey;  // UPSERT 충돌 기준 (선택적, 기본값: primaryKey)
         private boolean fullCopy;
         private boolean skipSourceStatusUpdate;
         private String dateColumn;

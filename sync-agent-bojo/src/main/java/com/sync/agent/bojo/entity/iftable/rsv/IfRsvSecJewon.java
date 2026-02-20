@@ -13,13 +13,14 @@ import java.time.LocalDateTime;
  * 흐름: sec_jewon_view (External) → if_rsv_sec_jewon (Target DB) → sec_jewon (Target DB)
  *
  * PK: Auto-generated (외부 DB 10개가 1개 IF_RSV에 연결되므로 Source ID 충돌 가능)
- * UK: obsv_code - 관측소 코드는 전체적으로 unique
+ * UK: source_refs - 외부 DB에 obsv_code 중복이 존재하므로 source_refs로 충돌 판단
+ *     source_refs 형식: ["E:datasourceId:tableId:primaryKey"] → 출처별 자연 유일키
  */
 @Entity
 @Table(name = "if_rsv_sec_jewon",
        uniqueConstraints = @UniqueConstraint(
-           name = "uk_if_rsv_sec_jewon_obsv_code",
-           columnNames = {"obsv_code"}
+           name = "uk_if_rsv_sec_jewon_source_refs",
+           columnNames = {"source_refs"}
        ))
 @Getter
 @Setter

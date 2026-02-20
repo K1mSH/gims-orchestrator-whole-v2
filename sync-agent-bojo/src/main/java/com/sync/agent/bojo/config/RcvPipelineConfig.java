@@ -62,6 +62,7 @@ public class RcvPipelineConfig {
                 .sourceTable(jewonCfg.getSourceTable())
                 .targetIfTable(jewonCfg.getTargetTable())
                 .primaryKeyColumn(jewonCfg.getPrimaryKey())
+                .conflictKey(jewonCfg.getConflictKey())
                 .fullCopy(jewonCfg.isFullCopy())
                 .skipSourceStatusUpdate(jewonCfg.isSkipSourceStatusUpdate())
                 .build();
