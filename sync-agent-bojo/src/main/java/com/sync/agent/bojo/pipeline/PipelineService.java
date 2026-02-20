@@ -2,7 +2,6 @@ package com.sync.agent.bojo.pipeline;
 
 import com.sync.agent.common.datasource.DataSourceInfo;
 import com.sync.agent.common.service.ExecutionService;
-import com.sync.agent.common.service.StepLogService;
 import com.sync.agent.common.client.OrchestratorClient;
 import com.sync.agent.common.pipeline.PipelineResult;
 import com.sync.agent.common.pipeline.PipelineRunner;
@@ -33,7 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipelineService {
 
     private final PipelineRegistry pipelineRegistry;
-    private final StepLogService stepLogService;
     private final ExecutionService executionService;
     private final SyncDataSourceService syncDataSourceService;
 
@@ -78,7 +76,7 @@ public class PipelineService {
 
             // OrchestratorClient 생성 (실행마다, 해당 agentCode로)
             OrchestratorClient orchestratorClient = new OrchestratorClient(orchestratorUrl, finalAgentCode);
-            CompositeStepCallback callback = new CompositeStepCallback(stepLogService, orchestratorClient);
+            CompositeStepCallback callback = new CompositeStepCallback(orchestratorClient);
             PipelineRunner runner = baseRunner.withProgressCallback(callback);
 
             executeWithRunner(runner, orchestratorClient, finalExecutionId, finalAgentCode, params);

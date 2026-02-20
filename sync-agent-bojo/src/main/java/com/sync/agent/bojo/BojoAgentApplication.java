@@ -16,7 +16,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication(scanBasePackages = {"com.sync.agent.bojo", "com.sync.agent.common"})
 @EntityScan(basePackages = {
         "com.sync.agent.bojo.entity",       // 모든 엔티티 (local, source, iftable, target)
-        "com.sync.agent.common.entity"      // Execution, StepLog, SyncLog
+        "com.sync.agent.common.entity"      // Execution, SyncLog
 })
 @EnableJpaRepositories(basePackages = {
         "com.sync.agent.bojo.entity.repository",

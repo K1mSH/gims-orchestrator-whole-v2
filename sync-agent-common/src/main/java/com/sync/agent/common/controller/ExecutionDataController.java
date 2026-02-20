@@ -2,13 +2,9 @@ package com.sync.agent.common.controller;
 
 import com.sync.agent.common.dto.TableStatsDto;
 import com.sync.agent.common.entity.Execution;
-import com.sync.agent.common.entity.StepLog;
 import com.sync.agent.common.entity.SyncLog;
-import com.sync.agent.common.entity.SyncRecordHistory;
 import com.sync.agent.common.repository.SyncLogRepository;
-import com.sync.agent.common.repository.SyncRecordHistoryRepository;
 import com.sync.agent.common.service.ExecutionService;
-import com.sync.agent.common.service.StepLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -32,8 +28,6 @@ public class ExecutionDataController {
 
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
-    private final SyncRecordHistoryRepository syncRecordHistoryRepository;
-    private final StepLogService stepLogService;
     private final ExecutionService executionService;
 
     /**
@@ -263,85 +257,6 @@ public class ExecutionDataController {
             Integer totalCount = targetJdbc.queryForObject(countSql, Integer.class, params.toArray());
             if (totalCount == null) totalCount = 0;
 
-            // Fallback: execution_id가 UPSERT로 덮어씌워진 경우
-            boolean fallbackMode = false;
-            String fallbackReason = null;
-            if (totalCount == 0) {
-                log.info("No data with execution_id='{}' in table '{}', trying record_history fallback", executionId, tableName);
-
-                // 1순위: sync_record_history의 record_key로 이 실행이 처리한 레코드만 조회
-                List<SyncRecordHistory> histories = syncRecordHistoryRepository.findByExecutionId(executionId);
-                List<String> recordKeys = histories.stream()
-                        .filter(h -> h.getTableName() != null && h.getTableName().equalsIgnoreCase(tableName))
-                        .map(SyncRecordHistory::getRecordKey)
-                        .distinct()
-                        .toList();
-
-                if (!recordKeys.isEmpty()) {
-                    // 유니크 키 컬럼 조회
-                    List<String> ukColumns = getUniqueKeyColumns(targetJdbc, tableName);
-                    if (!ukColumns.isEmpty()) {
-                        whereClause = new StringBuilder();
-                        params.clear();
-
-                        // record_key가 단일 컬럼이면 IN 절, 복합키이면 OR 조합
-                        if (ukColumns.size() == 1) {
-                            // 단일 UK: WHERE uk_col IN (?, ?, ...)
-                            String ukCol = ukColumns.get(0);
-                            whereClause.append(ukCol).append(" IN (");
-                            for (int i = 0; i < recordKeys.size(); i++) {
-                                if (i > 0) whereClause.append(", ");
-                                whereClause.append("?");
-                                params.add(recordKeys.get(i));
-                            }
-                            whereClause.append(")");
-                        } else {
-                            // 복합 UK: WHERE (uk1=? AND uk2=? AND uk3=?) OR (...)
-                            // record_key 형식: "val1|val2|val3"
-                            whereClause.append("(");
-                            int added = 0;
-                            for (String rk : recordKeys) {
-                                String[] parts = rk.split("\\|");
-                                if (parts.length != ukColumns.size()) continue;
-                                if (added > 0) whereClause.append(" OR ");
-                                whereClause.append("(");
-                                for (int j = 0; j < ukColumns.size(); j++) {
-                                    if (j > 0) whereClause.append(" AND ");
-                                    whereClause.append(ukColumns.get(j)).append(" = ?");
-                                    params.add(parts[j]);
-                                }
-                                whereClause.append(")");
-                                added++;
-                            }
-                            whereClause.append(")");
-                            if (added == 0) {
-                                whereClause = new StringBuilder("1=0");
-                                params.clear();
-                            }
-                        }
-
-                        // 검색/상태 조건 추가
-                        String searchClause2 = buildSearchClause(targetJdbc, tableName, search, searchColumn, params);
-                        whereClause.append(searchClause2);
-                        if (status != null && !status.isBlank()) {
-                            whereClause.append(" AND link_status = ?");
-                            params.add(status);
-                        }
-
-                        countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s", tableName, whereClause);
-                        totalCount = targetJdbc.queryForObject(countSql, Integer.class, params.toArray());
-                        if (totalCount == null) totalCount = 0;
-                        if (totalCount > 0) {
-                            fallbackMode = true;
-                            fallbackReason = String.format(
-                                    "이 실행의 execution_id가 덮어씌워져서, 처리 이력 기반으로 이 실행이 처리한 %d건을 표시합니다.", totalCount);
-                        }
-                    }
-                }
-
-                // 이력도 없는 경우: 데이터 표시하지 않음 (오래된 실행은 추후 정리 대상)
-            }
-
             // 정렬 처리
             String orderBy = buildOrderByClause(targetJdbc, tableName, sortColumn, sortDirection);
 
@@ -354,10 +269,6 @@ public class ExecutionDataController {
             List<String> columns = data.isEmpty() ? getTableColumns(targetJdbc, tableName) : new ArrayList<>(data.get(0).keySet());
 
             Map<String, Object> result = buildPageResult(tableName, columns, data, totalCount, page, size);
-            if (fallbackMode) {
-                result.put("fallbackMode", true);
-                result.put("fallbackReason", fallbackReason);
-            }
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Failed to get target IF data for execution: {}", executionId, e);
@@ -459,15 +370,6 @@ public class ExecutionDataController {
                 .toList();
 
         return ResponseEntity.ok(result);
-    }
-
-    /**
-     * Step 실행 로그 조회
-     */
-    @GetMapping("/{executionId}/steps")
-    public ResponseEntity<List<StepLog>> getStepLogs(@PathVariable String executionId) {
-        List<StepLog> stepLogs = stepLogService.getStepLogs(executionId);
-        return ResponseEntity.ok(stepLogs);
     }
 
     /**
@@ -583,6 +485,27 @@ public class ExecutionDataController {
                         .map(SyncLog::getTableName)
                         .findFirst()
                         .orElse(null);
+
+                // Loader 대응: sourceBase가 if_rsv_sec_jewon처럼 IF 접두사를 포함하면
+                // 접두사 제거 후 재시도 (sec_jewon으로 매칭)
+                if (ifTableName == null) {
+                    String strippedBase = sourceBase
+                            .replaceFirst("^if_rsv_", "")
+                            .replaceFirst("^if_snd_", "");
+                    if (!strippedBase.equals(sourceBase)) {
+                        String finalStripped = strippedBase;
+                        ifTableName = allLogs.stream()
+                                .filter(l -> "TARGET".equals(l.getTableType()))
+                                .filter(l -> l.getTableName() != null &&
+                                             l.getTableName().toLowerCase().contains(finalStripped))
+                                .map(SyncLog::getTableName)
+                                .findFirst()
+                                .orElse(null);
+                        if (ifTableName != null) {
+                            log.debug("Resolved target via stripped IF prefix: {} -> {}", sourceBase, ifTableName);
+                        }
+                    }
+                }
 
                 log.debug("Resolved ifTableName: {} for sourceTable: {}", ifTableName, sourceTable);
             }
@@ -717,6 +640,7 @@ public class ExecutionDataController {
             // 원본 IF 테이블명 저장 (SND 특수 처리용)
             String originalIfTable = sourceTable;
             boolean isSndRelay = sourceTable != null && sourceTable.toLowerCase().startsWith("if_snd_");
+            boolean isLoaderTarget = false;  // Loader TARGET → SOURCE 역추적 여부
 
             // sourceTable 파라미터가 IF 테이블명일 경우 SOURCE 테이블명으로 변환
             // 예: if_rsv_sec_obsvdata → sec_obsvdata_view, if_snd_sec_jewon → sec_jewon
@@ -739,6 +663,23 @@ public class ExecutionDataController {
                             .findFirst()
                             .orElse(sourceTable);  // 못 찾으면 원본 유지
                     log.debug("Resolved sourceTable from IF table: {} -> {}", lowerTable, sourceTable);
+                } else {
+                    // Loader 대응: sourceTable이 TARGET 테이블(sec_jewon 등)인 경우
+                    // sync_log SOURCE에서 해당 base를 포함하는 테이블로 변환
+                    // sec_jewon → if_rsv_sec_jewon (SOURCE), source_refs로 매칭
+                    List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
+                    String resolvedSource = allLogs.stream()
+                            .filter(l -> "SOURCE".equals(l.getTableType()))
+                            .filter(l -> l.getTableName() != null &&
+                                        l.getTableName().toLowerCase().contains(lowerTable))
+                            .map(SyncLog::getTableName)
+                            .findFirst()
+                            .orElse(null);
+                    if (resolvedSource != null) {
+                        log.debug("Loader trace: resolved TARGET {} -> SOURCE {}", sourceTable, resolvedSource);
+                        sourceTable = resolvedSource;
+                        isLoaderTarget = true;
+                    }
                 }
             }
 
@@ -841,6 +782,27 @@ public class ExecutionDataController {
                 }
             }
 
+            // Loader TARGET → SOURCE 역추적: source_refs LIKE 검색
+            // PK 조회 실패 시 (sourceRefs의 PK가 외부 obsv_code인데 SOURCE 테이블은 auto-increment id)
+            // SOURCE 테이블(if_rsv)의 source_refs 컬럼에서 동일 값 검색
+            if (sourceRecords.isEmpty() && isLoaderTarget) {
+                log.debug("Loader trace: PK lookup failed, trying source_refs search in {}", quotedTableName);
+                for (String pk : pkValues) {
+                    try {
+                        String searchPattern = "%" + pk + "%";
+                        String refsSql = String.format(
+                                "SELECT * FROM %s WHERE source_refs LIKE ?", quotedTableName);
+                        List<Map<String, Object>> records = sourceJdbc.queryForList(refsSql, searchPattern);
+                        if (!records.isEmpty()) {
+                            log.debug("Loader trace: Found {} records via source_refs for pk={}", records.size(), pk);
+                            sourceRecords.addAll(records);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Loader trace: source_refs search failed for pk={}: {}", pk, e.getMessage());
+                    }
+                }
+            }
+
             // SND Relay 특수 처리: Source에서 못 찾으면 IF 테이블에서 비즈니스 키로 재조회
             if (sourceRecords.isEmpty() && isSndRelay && originalIfTable != null) {
                 log.debug("SND Relay: Source lookup failed, trying business key fallback...");
@@ -863,71 +825,6 @@ public class ExecutionDataController {
         }
     }
 
-    /**
-     * 레코드 처리 이력 조회 (sync_record_history)
-     * 특정 테이블의 특정 레코드가 어떤 실행들에서 처리되었는지 타임라인으로 조회
-     */
-    @GetMapping("/record-history")
-    public ResponseEntity<Map<String, Object>> getRecordHistory(
-            @RequestParam String tableName,
-            @RequestParam String recordKey) {
-
-        List<SyncRecordHistory> histories = syncRecordHistoryRepository
-                .findByTableNameAndRecordKeyOrderByProcessedAtDesc(tableName, recordKey);
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("tableName", tableName);
-        result.put("recordKey", recordKey);
-        result.put("histories", histories);
-        result.put("count", histories.size());
-
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * 실행 ID별 처리 이력 조회 (sync_record_history)
-     * 특정 실행이 처리한 모든 레코드 이력 조회
-     * UPSERT로 execution_id가 덮어씌워진 이전 실행에서도 이력 확인 가능
-     */
-    @GetMapping("/record-history/by-execution")
-    public ResponseEntity<Map<String, Object>> getRecordHistoryByExecution(
-            @RequestParam String executionId) {
-
-        List<SyncRecordHistory> histories = syncRecordHistoryRepository
-                .findByExecutionId(executionId);
-
-        // 테이블별로 그룹화
-        Map<String, List<SyncRecordHistory>> byTable = new LinkedHashMap<>();
-        for (SyncRecordHistory h : histories) {
-            byTable.computeIfAbsent(h.getTableName(), k -> new ArrayList<>()).add(h);
-        }
-
-        // 테이블별 요약 생성
-        List<Map<String, Object>> tableSummaries = new ArrayList<>();
-        for (Map.Entry<String, List<SyncRecordHistory>> entry : byTable.entrySet()) {
-            Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("tableName", entry.getKey());
-            List<SyncRecordHistory> tableHistories = entry.getValue();
-            summary.put("count", tableHistories.size());
-
-            long insertCount = tableHistories.stream().filter(h -> "INSERT".equals(h.getAction())).count();
-            long updateCount = tableHistories.stream().filter(h -> "UPDATE".equals(h.getAction())).count();
-            long upsertCount = tableHistories.stream().filter(h -> "UPSERT".equals(h.getAction())).count();
-            summary.put("insertCount", insertCount);
-            summary.put("updateCount", updateCount);
-            summary.put("upsertCount", upsertCount);
-            summary.put("histories", tableHistories);
-
-            tableSummaries.add(summary);
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("executionId", executionId);
-        result.put("totalCount", histories.size());
-        result.put("tables", tableSummaries);
-
-        return ResponseEntity.ok(result);
-    }
 
     /**
      * SND Relay용: IF 테이블에서 유니크 키를 추출하여 Source 테이블 재조회

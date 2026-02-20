@@ -1,10 +1,8 @@
 package com.sync.agent.common.service;
 
 import com.sync.agent.common.entity.Execution;
-import com.sync.agent.common.entity.StepLog;
 import com.sync.agent.common.pipeline.PipelineResult;
 import com.sync.agent.common.repository.ExecutionRepository;
-import com.sync.agent.common.repository.StepLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +18,6 @@ import java.util.Optional;
 public class ExecutionService {
 
     private final ExecutionRepository executionRepository;
-    private final StepLogRepository stepLogRepository;
 
     @Transactional
     public Execution startExecution(String executionId) {
@@ -92,9 +89,5 @@ public class ExecutionService {
 
     public List<Execution> getAllExecutions() {
         return executionRepository.findAllByOrderByStartedAtDesc();
-    }
-
-    public List<StepLog> getStepLogs(String executionId) {
-        return stepLogRepository.findByExecutionIdOrderByStepOrderAsc(executionId);
     }
 }

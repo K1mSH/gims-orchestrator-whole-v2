@@ -234,10 +234,12 @@ public class DaejeonLoadStep implements StepExecutor {
                     getStepId(), writeCount, skipCount, System.currentTimeMillis() - startTime);
 
             // 4. SyncLog 요약 저장
-            saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "IF",
+            // Loader 관점: if_rsv = 읽기 대상(SOURCE), sec = 쓰기 대상(TARGET)
+            // table_type은 물리적 위치가 아니라 파이프라인에서의 논리적 역할로 기록
+            saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "SOURCE",
                     (long) pendingJewon.size(), 0L, 0L, null, null);
 
-            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "IF",
+            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "SOURCE",
                     (long) pendingObsvData.size(), 0L, 0L, null, null);
 
             saveSyncLogSummary(context.getExecutionId(), targetJewonTable, "TARGET",
@@ -267,9 +269,9 @@ public class DaejeonLoadStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "IF",
+            saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "SOURCE",
                     (long) readCount, 0L, 0L, null, null);
-            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "IF",
+            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "SOURCE",
                     0L, 0L, 0L, null, null);
             saveSyncLogSummary(context.getExecutionId(), targetJewonTable, "TARGET",
                     (long) jewonSuccess, (long) jewonFailed, 0L,

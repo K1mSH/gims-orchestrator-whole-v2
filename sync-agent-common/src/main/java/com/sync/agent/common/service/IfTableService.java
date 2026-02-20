@@ -78,6 +78,8 @@ public class IfTableService {
 
     // ==================== 공통 내부 메서드 ====================
 
+    private static final int BATCH_CHUNK_SIZE = 1000;
+
     private JdbcTemplate getTargetJdbcTemplate() {
         String targetDsId = dataSourceProvider.getTargetDatasourceId();
         return dataSourceProvider.getJdbcTemplate(targetDsId);
@@ -85,7 +87,6 @@ public class IfTableService {
 
     /**
      * IF 테이블 상태 업데이트 (단건)
-     * link_status와 updated_at만 업데이트
      */
     private void updateStatus(JdbcTemplate jdbc, String tableName,
                                String pkColumn, Object pkValue,
@@ -100,34 +101,35 @@ public class IfTableService {
     }
 
     /**
-     * IF 테이블 배치 상태 업데이트
-     * link_status와 updated_at만 업데이트
+     * IF 테이블 배치 상태 업데이트 (청크 분할)
      */
     private int batchUpdateStatus(JdbcTemplate jdbc, String tableName,
                                    String pkColumn, List<?> pkValues,
                                    String status) {
-        // IN 절용 placeholder 생성
-        String placeholders = String.join(", ", pkValues.stream().map(v -> "?").toList());
+        int totalUpdated = 0;
+        for (int i = 0; i < pkValues.size(); i += BATCH_CHUNK_SIZE) {
+            List<?> chunk = pkValues.subList(i, Math.min(i + BATCH_CHUNK_SIZE, pkValues.size()));
+            String placeholders = String.join(", ", chunk.stream().map(v -> "?").toList());
 
-        List<Object> params = new ArrayList<>();
-        params.add(status);
-        params.add(Timestamp.valueOf(LocalDateTime.now()));
-        params.addAll(pkValues);
+            List<Object> params = new ArrayList<>();
+            params.add(status);
+            params.add(Timestamp.valueOf(LocalDateTime.now()));
+            params.addAll(chunk);
 
-        String sql = String.format(
-                "UPDATE %s SET link_status = ?, updated_at = ? WHERE %s IN (%s)",
-                tableName.toLowerCase(),
-                pkColumn.toLowerCase(),
-                placeholders);
+            String sql = String.format(
+                    "UPDATE %s SET link_status = ?, updated_at = ? WHERE %s IN (%s)",
+                    tableName.toLowerCase(),
+                    pkColumn.toLowerCase(),
+                    placeholders);
 
-        int updated = jdbc.update(sql, params.toArray());
-        log.debug("Batch updated IF table {}: count={}, status={}", tableName, updated, status);
-        return updated;
+            totalUpdated += jdbc.update(sql, params.toArray());
+        }
+        log.debug("Batch updated IF table {}: count={}, status={}", tableName, totalUpdated, status);
+        return totalUpdated;
     }
 
     /**
      * IF 테이블 상태 업데이트 (단건, execution_id 포함)
-     * link_status, updated_at, execution_id 업데이트
      */
     private void updateStatusWithExecutionId(JdbcTemplate jdbc, String tableName,
                                               String pkColumn, Object pkValue,
@@ -143,29 +145,31 @@ public class IfTableService {
     }
 
     /**
-     * IF 테이블 배치 상태 업데이트 (execution_id 포함)
-     * link_status, updated_at, execution_id 업데이트
+     * IF 테이블 배치 상태 업데이트 (execution_id 포함, 청크 분할)
      */
     private int batchUpdateStatusWithExecutionId(JdbcTemplate jdbc, String tableName,
                                                   String pkColumn, List<?> pkValues,
                                                   String status, String executionId) {
-        // IN 절용 placeholder 생성
-        String placeholders = String.join(", ", pkValues.stream().map(v -> "?").toList());
+        int totalUpdated = 0;
+        for (int i = 0; i < pkValues.size(); i += BATCH_CHUNK_SIZE) {
+            List<?> chunk = pkValues.subList(i, Math.min(i + BATCH_CHUNK_SIZE, pkValues.size()));
+            String placeholders = String.join(", ", chunk.stream().map(v -> "?").toList());
 
-        List<Object> params = new ArrayList<>();
-        params.add(status);
-        params.add(Timestamp.valueOf(LocalDateTime.now()));
-        params.add(executionId);
-        params.addAll(pkValues);
+            List<Object> params = new ArrayList<>();
+            params.add(status);
+            params.add(Timestamp.valueOf(LocalDateTime.now()));
+            params.add(executionId);
+            params.addAll(chunk);
 
-        String sql = String.format(
-                "UPDATE %s SET link_status = ?, updated_at = ?, execution_id = ? WHERE %s IN (%s)",
-                tableName.toLowerCase(),
-                pkColumn.toLowerCase(),
-                placeholders);
+            String sql = String.format(
+                    "UPDATE %s SET link_status = ?, updated_at = ?, execution_id = ? WHERE %s IN (%s)",
+                    tableName.toLowerCase(),
+                    pkColumn.toLowerCase(),
+                    placeholders);
 
-        int updated = jdbc.update(sql, params.toArray());
-        log.debug("Batch updated IF table {}: count={}, status={}, executionId={}", tableName, updated, status, executionId);
-        return updated;
+            totalUpdated += jdbc.update(sql, params.toArray());
+        }
+        log.debug("Batch updated IF table {}: count={}, status={}, executionId={}", tableName, totalUpdated, status, executionId);
+        return totalUpdated;
     }
 }

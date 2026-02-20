@@ -4,7 +4,6 @@ import com.sync.agent.common.config.JdbcTableNameResolver;
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
-import com.sync.agent.common.service.SyncRecordHistoryService;
 import com.sync.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -48,7 +47,6 @@ public class SourceToIfStep implements StepExecutor {
     private final ExtractStepConfig config;
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
-    private final SyncRecordHistoryService historyService;
     private final long stepDelayMs;
     private final int batchSize;
 
@@ -56,15 +54,7 @@ public class SourceToIfStep implements StepExecutor {
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository) {
-        this(config, dataSourceProvider, syncLogRepository, null, 0, DEFAULT_BATCH_SIZE);
-    }
-
-    public SourceToIfStep(
-            ExtractStepConfig config,
-            DataSourceProvider dataSourceProvider,
-            SyncLogRepository syncLogRepository,
-            SyncRecordHistoryService historyService) {
-        this(config, dataSourceProvider, syncLogRepository, historyService, 0, DEFAULT_BATCH_SIZE);
+        this(config, dataSourceProvider, syncLogRepository, 0, DEFAULT_BATCH_SIZE);
     }
 
     public SourceToIfStep(
@@ -72,16 +62,7 @@ public class SourceToIfStep implements StepExecutor {
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
             long stepDelayMs) {
-        this(config, dataSourceProvider, syncLogRepository, null, stepDelayMs, DEFAULT_BATCH_SIZE);
-    }
-
-    public SourceToIfStep(
-            ExtractStepConfig config,
-            DataSourceProvider dataSourceProvider,
-            SyncLogRepository syncLogRepository,
-            SyncRecordHistoryService historyService,
-            long stepDelayMs) {
-        this(config, dataSourceProvider, syncLogRepository, historyService, stepDelayMs, DEFAULT_BATCH_SIZE);
+        this(config, dataSourceProvider, syncLogRepository, stepDelayMs, DEFAULT_BATCH_SIZE);
     }
 
     public SourceToIfStep(
@@ -89,20 +70,18 @@ public class SourceToIfStep implements StepExecutor {
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
             int batchSize) {
-        this(config, dataSourceProvider, syncLogRepository, null, 0, batchSize);
+        this(config, dataSourceProvider, syncLogRepository, 0, batchSize);
     }
 
     public SourceToIfStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
-            SyncRecordHistoryService historyService,
             long stepDelayMs,
             int batchSize) {
         this.config = config;
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
-        this.historyService = historyService;
         this.stepDelayMs = stepDelayMs;
         this.batchSize = batchSize > 0 ? batchSize : DEFAULT_BATCH_SIZE;
     }
@@ -229,9 +208,6 @@ public class SourceToIfStep implements StepExecutor {
             List<Object> successPkValues = new ArrayList<>();
             List<Object> failedPkValues = new ArrayList<>();
 
-            // 이력 기록용 엔트리 수집
-            List<SyncRecordHistoryService.HistoryEntry> historyEntries = new ArrayList<>();
-
             // ===== Phase 1: 전체 레코드의 파라미터 사전 준비 =====
             List<Object[]> allParams = new ArrayList<>(records.size());
             List<String> allRecordKeys = new ArrayList<>(records.size());
@@ -292,18 +268,29 @@ public class SourceToIfStep implements StepExecutor {
                         getStepId(), batchStart + 1, batchEnd, totalCount, currentBatchSize);
 
                 try {
-                    targetJdbc.batchUpdate(insertSql, batchParams);
+                    int[] results = targetJdbc.batchUpdate(insertSql, batchParams);
 
-                    // 배치 성공: 전부 성공 처리
-                    writeCount += currentBatchSize;
-                    successPkValues.addAll(batchKeys);
+                    // 배치 결과 검증: 실제 영향받은 행 수 기반으로 카운트
+                    int batchWriteCount = 0;
+                    for (int j = 0; j < results.length; j++) {
+                        // >= 0: 영향받은 행 수, -2(SUCCESS_NO_INFO): 성공이나 건수 불명
+                        if (results[j] >= 0 || results[j] == java.sql.Statement.SUCCESS_NO_INFO) {
+                            batchWriteCount++;
+                            successPkValues.add(batchKeys.get(j));
+                        } else {
+                            // EXECUTE_FAILED (-3) 등 실패 케이스
+                            skipCount++;
+                            failedKeys.add(batchKeys.get(j));
+                            failedPkValues.add(batchKeys.get(j));
+                            log.warn("[{}] Batch item failed: index={}, key={}, result={}",
+                                    getStepId(), j, batchKeys.get(j), results[j]);
+                        }
+                    }
+                    writeCount += batchWriteCount;
 
-                    for (int j = 0; j < currentBatchSize; j++) {
-                        historyEntries.add(SyncRecordHistoryService.HistoryEntry.builder()
-                                .recordKey(batchKeys.get(j))
-                                .action("UPSERT")
-                                .sourceRefs(batchSourceRefs.get(j))
-                                .build());
+                    if (batchWriteCount < currentBatchSize) {
+                        log.warn("[{}] Batch partially succeeded: {}/{} records written",
+                                getStepId(), batchWriteCount, currentBatchSize);
                     }
                 } catch (Exception batchEx) {
                     // 배치 실패 → 개별 실행으로 fallback (실패 레코드 특정용)
@@ -316,12 +303,6 @@ public class SourceToIfStep implements StepExecutor {
                             targetJdbc.update(insertSql, batchParams.get(j));
                             writeCount++;
                             successPkValues.add(recordKey);
-
-                            historyEntries.add(SyncRecordHistoryService.HistoryEntry.builder()
-                                    .recordKey(recordKey)
-                                    .action("UPSERT")
-                                    .sourceRefs(batchSourceRefs.get(j))
-                                    .build());
                         } catch (Exception e) {
                             log.error("Failed to upsert record: {}", recordKey, e);
                             skipCount++;
@@ -347,28 +328,23 @@ public class SourceToIfStep implements StepExecutor {
             log.info("[{}] Loaded {} records to IF table '{}', {} skipped (batch size: {})",
                     getStepId(), writeCount, config.getTargetIfTable(), skipCount, batchSize);
 
-            // 이력 배치 저장
-            if (historyService != null && !historyEntries.isEmpty()) {
-                historyService.saveBatch(context.getExecutionId(), getStepId(),
-                        config.getTargetIfTable(), historyEntries);
-            }
-
             // 3. Source 테이블 link_status 업데이트
             if (!config.isSkipSourceStatusUpdate() && !config.isCustomStaging()) {
                 String sourceDsId = getSourceDatasourceId(context);
                 JdbcTemplate sourceJdbc = dataSourceProvider.getJdbcTemplate(sourceDsId);
+                String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
                 String actualSourceTable = JdbcTableNameResolver.resolve(
                         sourceJdbc.getDataSource(), sourceDsId, config.getSourceTable());
 
                 if (!successPkValues.isEmpty()) {
                     int updated = updateSourceLinkStatus(sourceJdbc, actualSourceTable,
-                            config.getPrimaryKeyColumn(), successPkValues, "SUCCESS");
+                            config.getPrimaryKeyColumn(), successPkValues, "SUCCESS", sourceDbType);
                     log.info("[{}] Updated {} source records to SUCCESS", getStepId(), updated);
                 }
 
                 if (!failedPkValues.isEmpty()) {
                     int updated = updateSourceLinkStatus(sourceJdbc, actualSourceTable,
-                            config.getPrimaryKeyColumn(), failedPkValues, "FAILED");
+                            config.getPrimaryKeyColumn(), failedPkValues, "FAILED", sourceDbType);
                     log.info("[{}] Updated {} source records to FAILED", getStepId(), updated);
                 }
             } else {
@@ -812,38 +788,80 @@ public class SourceToIfStep implements StepExecutor {
     // ==================== Source link_status 업데이트 ====================
 
     private int updateSourceLinkStatus(JdbcTemplate jdbc, String tableName,
-                                        String pkColumn, List<Object> pkValues, String status) {
+                                        String pkColumn, List<Object> pkValues, String status, String dbType) {
         if (pkValues.isEmpty()) return 0;
+
+        // PK 값이 String인데 컬럼이 숫자/날짜 타입일 수 있으므로, 컬럼을 text로 캐스팅하여 비교
+        boolean isMysql = "mysql".equalsIgnoreCase(dbType);
+
+        List<String> pkCols = List.of(pkColumn.split(","));
+        boolean isCompositePk = pkCols.size() > 1;
 
         int updateBatchSize = 500;
         int totalUpdated = 0;
 
-        for (int i = 0; i < pkValues.size(); i += updateBatchSize) {
-            List<Object> batch = pkValues.subList(i, Math.min(i + updateBatchSize, pkValues.size()));
+        if (!isCompositePk) {
+            // 단일 PK: IN 절 사용 (컬럼을 text 캐스팅)
+            String colExpr = isMysql
+                    ? "CAST(" + pkColumn.trim().toLowerCase() + " AS CHAR)"
+                    : pkColumn.trim().toLowerCase() + "::text";
 
-            String placeholders = batch.stream().map(v -> "?").reduce((a, b) -> a + ", " + b).orElse("");
+            for (int i = 0; i < pkValues.size(); i += updateBatchSize) {
+                List<Object> batch = pkValues.subList(i, Math.min(i + updateBatchSize, pkValues.size()));
+                String placeholders = batch.stream().map(v -> "?").reduce((a, b) -> a + ", " + b).orElse("");
 
-            String sql = String.format(
-                    "UPDATE %s SET link_status = ? WHERE %s IN (%s)",
-                    tableName.toLowerCase(),
-                    pkColumn.toLowerCase(),
-                    placeholders);
+                String sql = String.format(
+                        "UPDATE %s SET link_status = ? WHERE %s IN (%s)",
+                        tableName.toLowerCase(), colExpr, placeholders);
 
-            log.debug("[{}] Update SQL: {}", getStepId(), sql);
+                List<Object> params = new ArrayList<>();
+                params.add(status);
+                params.addAll(batch);
 
-            List<Object> params = new ArrayList<>();
-            params.add(status);
-            params.addAll(batch);
+                try {
+                    int updated = jdbc.update(sql, params.toArray());
+                    totalUpdated += updated;
+                } catch (Exception e) {
+                    log.error("[{}] Failed to update source link_status: {}", getStepId(), e.getMessage(), e);
+                }
+            }
+        } else {
+            // 복합 PK: ROW값 비교 (col1::text, col2::text) IN ((?,?), (?,?))
+            List<String> trimmedCols = pkCols.stream().map(String::trim).toList();
+            String colList = trimmedCols.stream()
+                    .map(c -> isMysql
+                            ? "CAST(" + c.toLowerCase() + " AS CHAR)"
+                            : c.toLowerCase() + "::text")
+                    .reduce((a, b) -> a + ", " + b).orElse("");
+            String singleTuple = "(" + trimmedCols.stream().map(c -> "?").reduce((a, b) -> a + ", " + b).orElse("") + ")";
 
-            try {
-                int updated = jdbc.update(sql, params.toArray());
-                totalUpdated += updated;
-                log.debug("[{}] Batch updated {} records", getStepId(), updated);
-            } catch (Exception e) {
-                log.error("[{}] Failed to update source link_status: {}", getStepId(), e.getMessage(), e);
+            for (int i = 0; i < pkValues.size(); i += updateBatchSize) {
+                List<Object> batch = pkValues.subList(i, Math.min(i + updateBatchSize, pkValues.size()));
+                String tuples = batch.stream().map(v -> singleTuple).reduce((a, b) -> a + ", " + b).orElse("");
+
+                String sql = String.format(
+                        "UPDATE %s SET link_status = ? WHERE (%s) IN (%s)",
+                        tableName.toLowerCase(), colList, tuples);
+
+                List<Object> params = new ArrayList<>();
+                params.add(status);
+                for (Object pkVal : batch) {
+                    String[] parts = pkVal.toString().split("\\|", -1);
+                    for (String part : parts) {
+                        params.add(part);
+                    }
+                }
+
+                try {
+                    int updated = jdbc.update(sql, params.toArray());
+                    totalUpdated += updated;
+                } catch (Exception e) {
+                    log.error("[{}] Failed to update source link_status (composite PK): {}", getStepId(), e.getMessage(), e);
+                }
             }
         }
 
+        log.debug("[{}] Updated source link_status: table={}, count={}, status={}", getStepId(), tableName, totalUpdated, status);
         return totalUpdated;
     }
 
