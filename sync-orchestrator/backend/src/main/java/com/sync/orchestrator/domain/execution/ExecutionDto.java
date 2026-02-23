@@ -90,7 +90,7 @@ public class ExecutionDto {
     /**
      * 실행 트리거 요청
      * - startTime/endTime: 지정 시 해당 범위 데이터 동기화 (재동기화용)
-     * - 미지정 시: 기본 lookback 설정 사용 (증분 동기화)
+     * - 미지정 시: 증분 동기화 (link_status 기반)
      */
     @Getter
     @Setter

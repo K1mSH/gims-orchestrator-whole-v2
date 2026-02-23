@@ -4,10 +4,12 @@ jewon:
   source-table: sec_jewon
   target-table: if_snd_sec_jewon
   primary-key: id
+  conflict-key: source_refs
   full-copy: true
 obsvdata:
   source-table: sec_obsvdata
   target-table: if_snd_sec_obsvdata
-  primary-key: obsv_code,obsv_date,obsv_time
+  primary-key: id
+  conflict-key: source_refs
   date-column: obsv_date
   time-column: obsv_time

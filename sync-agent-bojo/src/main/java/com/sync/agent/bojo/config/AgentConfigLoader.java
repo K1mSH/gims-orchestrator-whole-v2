@@ -94,15 +94,6 @@ public class AgentConfigLoader {
             def.setLink(link);
         }
 
-        // lookback
-        Map<String, Object> lookbackMap = (Map<String, Object>) data.get("lookback");
-        if (lookbackMap != null) {
-            AgentDefinition.LookbackConfig lookback = new AgentDefinition.LookbackConfig();
-            if (lookbackMap.get("value") != null) lookback.setValue((int) lookbackMap.get("value"));
-            if (lookbackMap.get("unit") != null) lookback.setUnit((String) lookbackMap.get("unit"));
-            def.setLookback(lookback);
-        }
-
         // if-table (Loader)
         Map<String, Object> ifTableMap = (Map<String, Object>) data.get("if-table");
         if (ifTableMap != null) {

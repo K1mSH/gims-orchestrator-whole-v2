@@ -633,11 +633,11 @@ export default function ExecutionDetailPage() {
                   <span style={{ color: 'var(--gray-600)' }}>
                     총 <strong>{tableData.totalCount}</strong>건
                   </span>
-                  {selectedTableStat && (
+                  {(tableData.successCount != null || selectedTableStat) && (
                     <span style={{ marginLeft: '1rem' }}>
-                      (<span style={{ color: 'var(--green-600)' }}>성공 {selectedTableStat.successCount}</span>
-                      {(selectedTableStat.failedCount ?? 0) > 0 && (
-                        <span style={{ color: 'var(--red-600)', marginLeft: '0.5rem' }}>실패 {selectedTableStat.failedCount}</span>
+                      (<span style={{ color: 'var(--green-600)' }}>성공 {tableData.successCount ?? selectedTableStat?.successCount ?? 0}</span>
+                      {((tableData.failedCount ?? selectedTableStat?.failedCount ?? 0) > 0) && (
+                        <span style={{ color: 'var(--red-600)', marginLeft: '0.5rem' }}>실패 {tableData.failedCount ?? selectedTableStat?.failedCount ?? 0}</span>
                       )})
                     </span>
                   )}

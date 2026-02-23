@@ -3,17 +3,13 @@ package com.sync.agent.bojo.controller;
 import com.sync.agent.common.datasource.DataSourceInfo;
 import com.sync.agent.bojo.config.PipelineRegistry;
 import com.sync.agent.bojo.config.SyncDataSourceService;
-import com.sync.agent.bojo.entity.local.DataSourceConfig;
-import com.sync.agent.bojo.entity.repository.DataSourceConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,7 +22,6 @@ public class HealthController {
 
     private final PipelineRegistry pipelineRegistry;
     private final SyncDataSourceService syncDataSourceService;
-    private final DataSourceConfigRepository dataSourceConfigRepository;
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
@@ -55,34 +50,19 @@ public class HealthController {
     public ResponseEntity<Map<String, Object>> debugDatasources() {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        List<DataSourceConfig> allConfigs = dataSourceConfigRepository.findAll();
-        List<DataSourceConfig> activeConfigs = dataSourceConfigRepository.findByIsActiveTrue();
-
-        result.put("dbTotalCount", allConfigs.size());
-        result.put("dbActiveCount", activeConfigs.size());
-        result.put("dbConfigs", allConfigs.stream().map(c -> Map.of(
-                "datasourceId", c.getDatasourceId(),
-                "datasourceName", c.getDatasourceName() != null ? c.getDatasourceName() : "",
-                "dbType", c.getDbType() != null ? c.getDbType() : "",
-                "host", c.getHost() != null ? c.getHost() : "",
-                "port", c.getPort() != null ? c.getPort() : 0,
-                "databaseName", c.getDatabaseName() != null ? c.getDatabaseName() : "",
-                "isActive", c.getIsActive() != null ? c.getIsActive() : false
-        )).toList());
-
         Map<String, DataSourceInfo> cached = syncDataSourceService.getCachedDataSourceInfos();
         result.put("cachedCount", cached.size());
-        result.put("cachedKeys", cached.keySet());
+        result.put("cachedDatasources", cached.entrySet().stream()
+                .collect(LinkedHashMap::new,
+                        (m, e) -> m.put(e.getKey(), Map.of(
+                                "datasourceId", e.getValue().getDatasourceId(),
+                                "dbType", e.getValue().getDbType() != null ? e.getValue().getDbType() : "",
+                                "host", e.getValue().getHost() != null ? e.getValue().getHost() : "",
+                                "port", e.getValue().getPort() != null ? e.getValue().getPort() : 0,
+                                "databaseName", e.getValue().getDatabaseName() != null ? e.getValue().getDatabaseName() : ""
+                        )),
+                        LinkedHashMap::putAll));
 
         return ResponseEntity.ok(result);
-    }
-
-    /**
-     * 디버그용: DataSource 설정 다시 로드
-     */
-    @PostMapping("/debug/datasources/reload")
-    public ResponseEntity<Map<String, Object>> reloadDatasources() {
-        syncDataSourceService.loadDataSourceConfigsFromDb();
-        return debugDatasources();
     }
 }

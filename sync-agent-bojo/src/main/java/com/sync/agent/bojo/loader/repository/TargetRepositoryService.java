@@ -200,6 +200,7 @@ public class TargetRepositoryService {
         } finally {
             em.close();
         }
+
     }
 
     // ==================== SecJewon 저장/삭제 ====================
@@ -439,9 +440,11 @@ public class TargetRepositoryService {
             INSERT INTO sec_obsvdata (obsv_code, obsv_date, obsv_time, gwdep, gwtemp, ec,
                 remark, source_refs, link_status, execution_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (obsv_code, obsv_date, obsv_time) DO UPDATE SET
+            ON CONFLICT (source_refs) DO UPDATE SET
+                obsv_code=EXCLUDED.obsv_code, obsv_date=EXCLUDED.obsv_date,
+                obsv_time=EXCLUDED.obsv_time,
                 gwdep=EXCLUDED.gwdep, gwtemp=EXCLUDED.gwtemp, ec=EXCLUDED.ec,
-                remark=EXCLUDED.remark, source_refs=EXCLUDED.source_refs,
+                remark=EXCLUDED.remark,
                 link_status=EXCLUDED.link_status, execution_id=EXCLUDED.execution_id
             """;
 

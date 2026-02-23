@@ -14,13 +14,13 @@ import java.time.LocalDateTime;
  * 흐름: sec_obsvdata_view (External) → if_rsv_sec_obsvdata (Target DB) → sec_obsvdata (Target DB)
  *
  * PK: Auto-generated (외부 DB 10개가 1개 IF_RSV에 연결되므로 Source ID 충돌 가능)
- * UK: (obsv_code, obsv_date, obsv_time) - 비즈니스 키로 중복 방지
+ * UK: source_refs - 소스 레코드 고유 식별자 (zone:dsId:tbId:pk 형식)
  */
 @Entity
 @Table(name = "if_rsv_sec_obsvdata",
        uniqueConstraints = @UniqueConstraint(
-           name = "uk_if_rsv_sec_obsvdata_code_date_time",
-           columnNames = {"obsv_code", "obsv_date", "obsv_time"}
+           name = "uk_if_rsv_sec_obsvdata_source_refs",
+           columnNames = {"source_refs"}
        ))
 @Getter
 @Setter

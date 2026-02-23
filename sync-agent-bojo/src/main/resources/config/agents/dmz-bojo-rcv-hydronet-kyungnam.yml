@@ -10,7 +10,8 @@ jewon:
 obsvdata:
   source-table: sec_obsvdata_view
   target-table: if_rsv_sec_obsvdata
-  primary-key: obsv_code,obsv_date,obsv_time
+  primary-key: id
+  conflict-key: source_refs
   date-column: obsv_date
   time-column: obsv_time
 link:

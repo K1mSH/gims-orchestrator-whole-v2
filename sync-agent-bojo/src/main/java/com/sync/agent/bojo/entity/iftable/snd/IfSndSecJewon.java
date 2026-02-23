@@ -15,7 +15,11 @@ import java.time.LocalDateTime;
  * PK: Source의 ID를 그대로 사용 (auto-generated 아님)
  */
 @Entity
-@Table(name = "if_snd_sec_jewon")
+@Table(name = "if_snd_sec_jewon",
+       uniqueConstraints = @UniqueConstraint(
+           name = "uk_if_snd_sec_jewon_source_refs",
+           columnNames = {"source_refs"}
+       ))
 @Getter
 @Setter
 @NoArgsConstructor

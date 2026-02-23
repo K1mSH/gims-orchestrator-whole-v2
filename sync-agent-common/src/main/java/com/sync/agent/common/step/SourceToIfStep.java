@@ -42,6 +42,10 @@ public class SourceToIfStep implements StepExecutor {
             "source_refs", "link_status", "extracted_at", "updated_at", "execution_id"
     );
 
+    // 소스 auto-increment PK 컬럼 (IF 테이블에도 동일 PK가 있으므로 제외해야 함)
+    // 소스의 PK 값은 source_refs에 이미 추적됨
+    private static final List<String> AUTO_INCREMENT_PK_COLUMNS = List.of("id");
+
     private static final int DEFAULT_BATCH_SIZE = 1000;
 
     private final ExtractStepConfig config;
@@ -123,14 +127,19 @@ public class SourceToIfStep implements StepExecutor {
                 throw new IllegalStateException("No columns found for table: " + config.getSourceTable());
             }
 
-            // IF 메타 컬럼 제외 (source_refs, link_status 등이 이미 소스에 있으면 중복 방지)
-            List<String> columns = allColumns.stream()
+            // SELECT용 컬럼: IF 메타 컬럼만 제외 (id 포함 → source_refs PK 추출에 필요)
+            List<String> selectColumns = allColumns.stream()
                     .filter(c -> IF_META_COLUMNS.stream().noneMatch(meta -> meta.equalsIgnoreCase(c)))
                     .toList();
-            log.info("[{}] Columns after filtering IF meta columns: {} -> {} (removed: {})",
-                    getStepId(), allColumns.size(), columns.size(), allColumns.size() - columns.size());
 
-            // 1. 데이터 조회 (타입에 따라 다른 방식)
+            // INSERT용 컬럼: IF 메타 + auto-increment PK 추가 제외 (id 제외 → IF 테이블 PK 충돌 방지)
+            List<String> columns = selectColumns.stream()
+                    .filter(c -> AUTO_INCREMENT_PK_COLUMNS.stream().noneMatch(pk -> pk.equalsIgnoreCase(c)))
+                    .toList();
+            log.info("[{}] Columns: all={}, select={}, insert={} (auto-increment PK excluded from INSERT only)",
+                    getStepId(), allColumns.size(), selectColumns.size(), columns.size());
+
+            // 1. 데이터 조회 (타입에 따라 다른 방식) - selectColumns 사용 (id 포함)
             List<Map<String, Object>> records;
 
             if (config.isCustomStaging() && config.getCustomDataFetcher() != null) {
@@ -138,7 +147,7 @@ public class SourceToIfStep implements StepExecutor {
                 records = config.getCustomDataFetcher().fetch(context);
             } else {
                 log.info("[{}] Using default fetch for SIMPLE_COPY", getStepId());
-                records = fetchSimpleCopy(context, columns);
+                records = fetchSimpleCopy(context, selectColumns);
             }
 
             readCount = records.size();
@@ -418,8 +427,8 @@ public class SourceToIfStep implements StepExecutor {
      * UPSERT/INSERT SQL 생성
      * IF 테이블 메타 컬럼: source_refs, link_status, extracted_at, updated_at, execution_id
      *
-     * @param useUpsert true: ON CONFLICT DO UPDATE (fullCopy 또는 RESYNC)
-     *                  false: ON CONFLICT DO NOTHING (증분 동기화 - 중복 스킵)
+     * @param useUpsert true: ON CONFLICT DO UPDATE (fullCopy 또는 RESYNC) - 전체 컬럼 갱신
+     *                  false: 메타 경량 UPDATE (증분 동기화) - updated_at, execution_id만 갱신
      */
     private String buildUpsertSql(String actualTableName, List<String> columns, String dbType, boolean useUpsert) {
         StringBuilder sb = new StringBuilder();
@@ -436,12 +445,7 @@ public class SourceToIfStep implements StepExecutor {
                 ? List.of(config.getConflictKey())
                 : pkCols;
 
-        if (isMysql(dbType) && !useUpsert && !pkCols.isEmpty()) {
-            // MySQL: INSERT IGNORE (중복 PK 스킵)
-            sb.append("INSERT IGNORE INTO ").append(actualTableName.toLowerCase());
-        } else {
-            sb.append("INSERT INTO ").append(actualTableName.toLowerCase());
-        }
+        sb.append("INSERT INTO ").append(actualTableName.toLowerCase());
 
         sb.append(" (").append(columnList).append(", source_refs, link_status, extracted_at, updated_at, execution_id)");
 
@@ -455,10 +459,10 @@ public class SourceToIfStep implements StepExecutor {
                     .orElse("");
 
             if (isMysql(dbType)) {
-                if (useUpsert) {
-                    // MySQL: ON DUPLICATE KEY UPDATE
-                    sb.append(" ON DUPLICATE KEY UPDATE ");
+                sb.append(" ON DUPLICATE KEY UPDATE ");
 
+                if (useUpsert) {
+                    // MySQL full UPSERT: 모든 데이터 컬럼 갱신
                     List<String> updateCols = ifColumns.stream()
                             .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
@@ -476,13 +480,16 @@ public class SourceToIfStep implements StepExecutor {
                     updateParts.add("execution_id = VALUES(execution_id)");
 
                     sb.append(String.join(", ", updateParts));
+                } else {
+                    // MySQL 증분: 메타 컬럼만 경량 UPDATE (데이터 보존)
+                    sb.append("updated_at = VALUES(updated_at), execution_id = VALUES(execution_id)");
                 }
-                // else: INSERT IGNORE already handles DO NOTHING
             } else {
                 // PostgreSQL
-                if (useUpsert) {
-                    sb.append(" ON CONFLICT (").append(conflictColList).append(") DO UPDATE SET ");
+                sb.append(" ON CONFLICT (").append(conflictColList).append(") DO UPDATE SET ");
 
+                if (useUpsert) {
+                    // PostgreSQL full UPSERT: 모든 데이터 컬럼 갱신
                     List<String> updateCols = ifColumns.stream()
                             .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
@@ -501,7 +508,8 @@ public class SourceToIfStep implements StepExecutor {
 
                     sb.append(String.join(", ", updateParts));
                 } else {
-                    sb.append(" ON CONFLICT (").append(conflictColList).append(") DO NOTHING");
+                    // PostgreSQL 증분: 메타 컬럼만 경량 UPDATE (데이터 보존)
+                    sb.append("updated_at = EXCLUDED.updated_at, execution_id = EXCLUDED.execution_id");
                 }
             }
         }

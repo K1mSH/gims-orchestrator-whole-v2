@@ -288,7 +288,7 @@ public class ExecutionService {
     }
 
     /**
-     * 실행 트리거 - Agent에 실행 요청 (기본 lookback 사용, MANUAL 트리거)
+     * 실행 트리거 - Agent에 실행 요청 (증분 동기화, MANUAL 트리거)
      */
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecution(Long id) {

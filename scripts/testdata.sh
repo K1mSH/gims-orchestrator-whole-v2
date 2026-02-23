@@ -340,6 +340,103 @@ reset_all() {
 }
 
 # ============================================================
+# 테이블 재생성 (id PK 포함)
+# keunsan은 대문자+ID PK 이미 존재 → 스킵
+# 나머지 9개: id serial/auto_increment PK로 재생성
+# ============================================================
+recreate_tables() {
+  echo "=== 테이블 재생성 (id PK 추가) ==="
+
+  for entry in "${COMPANIES[@]}"; do
+    IFS=':' read -r db prefix case_type sido dbtype <<< "$entry"
+
+    # keunsan은 이미 ID PK가 있으므로 스킵
+    if [ "$case_type" = "upper" ]; then
+      echo "  $db [${dbtype}] (대문자 ID PK 이미 존재) SKIP"
+      continue
+    fi
+
+    echo -n "  $db [${dbtype}]... "
+
+    if [ "$dbtype" = "pg" ]; then
+      pg_cmd "$db" -q -c "
+DROP TABLE IF EXISTS sec_obsvdata_view CASCADE;
+DROP TABLE IF EXISTS sec_jewon_view CASCADE;
+
+CREATE TABLE sec_jewon_view (
+  id SERIAL PRIMARY KEY,
+  obsv_code VARCHAR(20) NOT NULL,
+  obsv_name VARCHAR(100),
+  sido VARCHAR(50),
+  sigungu VARCHAR(50),
+  upmyundo VARCHAR(50),
+  ri VARCHAR(50),
+  bunji VARCHAR(30),
+  x VARCHAR(20),
+  y VARCHAR(20),
+  pyogo NUMERIC(10,1),
+  well INTEGER,
+  guldep NUMERIC(10,1),
+  guldia NUMERIC(10,2),
+  casing_height NUMERIC(10,2),
+  insdate DATE,
+  regdate DATE
+);
+
+CREATE TABLE sec_obsvdata_view (
+  id SERIAL PRIMARY KEY,
+  obsv_code VARCHAR(20) NOT NULL,
+  obsv_date DATE NOT NULL,
+  obsv_time TIME NOT NULL,
+  gwdep NUMERIC(10,2),
+  gwtemp NUMERIC(10,1),
+  ec INTEGER,
+  remark VARCHAR(200)
+);
+" 2>&1 | grep -q ERROR && echo "FAIL" || echo "OK"
+
+    else
+      echo "
+DROP TABLE IF EXISTS sec_obsvdata_view;
+DROP TABLE IF EXISTS sec_jewon_view;
+
+CREATE TABLE sec_jewon_view (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  obsv_code VARCHAR(20) NOT NULL,
+  obsv_name VARCHAR(100),
+  sido VARCHAR(50),
+  sigungu VARCHAR(50),
+  upmyundo VARCHAR(50),
+  ri VARCHAR(50),
+  bunji VARCHAR(30),
+  x VARCHAR(20),
+  y VARCHAR(20),
+  pyogo DECIMAL(10,1),
+  well INT,
+  guldep DECIMAL(10,1),
+  guldia DECIMAL(10,2),
+  casing_height DECIMAL(10,2),
+  insdate DATE,
+  regdate DATE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE sec_obsvdata_view (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  obsv_code VARCHAR(20) NOT NULL,
+  obsv_date DATE NOT NULL,
+  obsv_time TIME NOT NULL,
+  gwdep DECIMAL(10,2),
+  gwtemp DECIMAL(10,1),
+  ec INT,
+  remark VARCHAR(200)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+" | my_pipe "$db" && echo "OK" || echo "FAIL"
+    fi
+  done
+  echo "=== 완료 ==="
+}
+
+# ============================================================
 # 현황 조회
 # ============================================================
 status() {
@@ -378,6 +475,7 @@ case "${1}" in
   generate)       generate_obsvdata "$2" ;;
   clear-obsvdata) clear_obsvdata "$2" ;;
   reset)          reset_all ;;
+  recreate)       recreate_tables ;;
   status)         status ;;
   *)
     echo "사용법:"
@@ -385,6 +483,7 @@ case "${1}" in
     echo "  $0 generate <YYYY-MM-DD>   - 관측 데이터 생성 (날짜별, 관측소×24시간)"
     echo "  $0 clear-obsvdata [날짜]   - 관측 데이터 삭제 (날짜 미지정시 전체)"
     echo "  $0 reset                   - 전체 초기화 (jewon + obsvdata 삭제)"
+    echo "  $0 recreate                - 테이블 재생성 (id PK 추가, keunsan 제외)"
     echo "  $0 status                  - 데이터 현황 조회"
     ;;
 esac

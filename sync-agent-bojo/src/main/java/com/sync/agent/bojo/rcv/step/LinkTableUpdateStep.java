@@ -90,7 +90,7 @@ public class LinkTableUpdateStep implements StepExecutor {
             for (Map<String, Object> record : maxRecords) {
                 String obsvCode = (String) record.get(keyColumn);
                 String obsvDate = record.get(dateColumn) != null ? record.get(dateColumn).toString() : null;
-                String obsvTime = record.get(timeColumn) != null ? record.get(timeColumn).toString() : null;
+                String obsvTime = normalizeTime(record.get(timeColumn));
 
                 if (obsvCode == null || obsvDate == null) {
                     log.warn("[{}] 잘못된 레코드: obsvCode={}, obsvDate={}", STEP_ID, obsvCode, obsvDate);
@@ -177,9 +177,20 @@ public class LinkTableUpdateStep implements StepExecutor {
      * PostgreSQL: ON CONFLICT ... DO UPDATE
      * MySQL: ON DUPLICATE KEY UPDATE
      */
+    /**
+     * obsv_time을 HHmmss 6자리 형식으로 정규화
+     * TIME 타입 → "HH:MM:SS" → "HHmmss", null → "000000"
+     */
+    private String normalizeTime(Object timeValue) {
+        if (timeValue == null) return "000000";
+        String s = timeValue.toString().replace(":", "");
+        if (s.length() < 6) s = s + "0".repeat(6 - s.length());
+        return s.substring(0, 6);
+    }
+
     private int upsertLinkRecord(JdbcTemplate targetJdbc, String obsvCode, String obsvDate, String obsvTime, String dbType) {
         String cleanDate = obsvDate.replaceAll("-", "");
-        String cleanTime = obsvTime != null ? obsvTime : "00:00:00";
+        String cleanTime = obsvTime != null ? obsvTime : "000000";
 
         String upsertSql;
 

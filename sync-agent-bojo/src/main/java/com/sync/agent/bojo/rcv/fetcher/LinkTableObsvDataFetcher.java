@@ -152,7 +152,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                     continue;
                 }
                 lastDate = minData.obsvDate;
-                lastTime = "00:00:00";
+                lastTime = "000000";
                 log.info("[LinkTableFetcher] {} - 첫 동기화, 최소 날짜부터: {} {}", obsvCode, lastDate, lastTime);
             }
 
@@ -245,7 +245,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                 return null;
             }
 
-            return new LinkData(obsvCode, date, time != null ? time : "00:00:00");
+            return new LinkData(obsvCode, date, time != null ? normalizeTime(time) : "000000");
         } catch (Exception e) {
             log.debug("[LinkTableFetcher] link 테이블 조회 실패 (테이블 없을 수 있음): {}", e.getMessage());
             return null;
@@ -288,7 +288,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                 // 날짜 형식 정리 (YYYYMMDD 형태로)
                 date = date.replaceAll("-", "");
 
-                return new LinkData(obsvCode, date, time != null ? time : "00:00:00");
+                return new LinkData(obsvCode, date, time != null ? normalizeTime(time) : "000000");
             } catch (Exception e) {
                 log.debug("[LinkTableFetcher] Source 최소 날짜 조회 시도 실패: {} - {}", table, e.getMessage());
             }
@@ -315,24 +315,24 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                 String kc, dc, tc;
                 String sql;
                 if (isMysql(dbType)) {
-                    // MySQL: STR_TO_DATE, CAST
+                    // MySQL: STR_TO_DATE, DATE_FORMAT (HHmmss 비교)
                     kc = qi(keyColumn, dbType);
                     dc = qi(dateColumn, dbType);
                     tc = qi(timeColumn, dbType);
                     sql = String.format(
                             "SELECT * FROM %s WHERE %s = ? " +
-                                    "AND ((%s = STR_TO_DATE(?, '%%Y%%m%%d') AND CAST(%s AS CHAR) >= ?) " +
+                                    "AND ((%s = STR_TO_DATE(?, '%%Y%%m%%d') AND DATE_FORMAT(%s, '%%H%%i%%s') >= ?) " +
                                     "OR %s > STR_TO_DATE(?, '%%Y%%m%%d')) " +
                                     "ORDER BY %s, %s",
                             qi(table, dbType), kc, dc, tc, dc, dc, tc);
                 } else {
-                    // PostgreSQL: TO_DATE, ::text - 컬럼 case를 테이블에 맞춤
+                    // PostgreSQL: TO_DATE, TO_CHAR (HHmmss 비교) - 컬럼 case를 테이블에 맞춤
                     kc = qi(colCase.equals("upper") ? keyColumn.toUpperCase() : keyColumn.toLowerCase(), dbType);
                     dc = qi(colCase.equals("upper") ? dateColumn.toUpperCase() : dateColumn.toLowerCase(), dbType);
                     tc = qi(colCase.equals("upper") ? timeColumn.toUpperCase() : timeColumn.toLowerCase(), dbType);
                     sql = String.format(
                             "SELECT * FROM %s WHERE %s = ? " +
-                                    "AND ((%s = TO_DATE(?, 'YYYYMMDD') AND %s::text >= ?) " +
+                                    "AND ((%s = TO_DATE(?, 'YYYYMMDD') AND TO_CHAR(%s, 'HH24MISS') >= ?) " +
                                     "OR %s > TO_DATE(?, 'YYYYMMDD')) " +
                                     "ORDER BY %s, %s",
                             qi(table, dbType), kc, dc, tc, dc, dc, tc);
@@ -417,6 +417,17 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
 
         log.error("[LinkTableFetcher] 시간 범위 조회 실패 (모든 변형 시도): {}", obsvdataTable);
         return new ArrayList<>();
+    }
+
+    /**
+     * obsv_time을 HHmmss 6자리 형식으로 정규화
+     * TIME 타입 → "HH:MM:SS" → "HHmmss", null → "000000"
+     */
+    private String normalizeTime(String time) {
+        if (time == null) return "000000";
+        String s = time.replace(":", "");
+        if (s.length() < 6) s = s + "0".repeat(6 - s.length());
+        return s.substring(0, 6);
     }
 
     /**

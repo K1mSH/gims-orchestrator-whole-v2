@@ -107,7 +107,7 @@ export default function AgentDetailPage() {
 
     const confirmMsg = parts.length > 0
       ? `실행 옵션:\n${parts.join('\n')}\n\n실행하시겠습니까?`
-      : '파이프라인을 실행하시겠습니까? (기본 lookback 사용)';
+      : '파이프라인을 실행하시겠습니까? (증분 동기화)';
 
     if (!confirm(confirmMsg)) return;
 

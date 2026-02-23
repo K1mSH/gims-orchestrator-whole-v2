@@ -142,9 +142,25 @@ public class ExecutionDataController {
             try {
                 sourceJdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
             } catch (Exception e) {
-                log.error("DataSource '{}' not found: {}", datasourceId, e.getMessage());
-                return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
-                        "DataSource를 찾을 수 없습니다: " + datasourceId));
+                // 소스 데이터 조회이므로 SOURCE(외부 DB) 먼저 시도
+                log.warn("DataSource '{}' not found, trying fallback datasources...", datasourceId);
+                String fallbackId = null;
+                try {
+                    fallbackId = dataSourceProvider.getSourceDatasourceId();
+                    sourceJdbc = dataSourceProvider.getJdbcTemplate(fallbackId);
+                    datasourceId = fallbackId;
+                    log.info("Using fallback SOURCE datasource: {} for source endpoint", fallbackId);
+                } catch (Exception e2) {
+                    try {
+                        fallbackId = dataSourceProvider.getTargetDatasourceId();
+                        sourceJdbc = dataSourceProvider.getJdbcTemplate(fallbackId);
+                        datasourceId = fallbackId;
+                        log.info("Using fallback TARGET datasource: {} for source endpoint", fallbackId);
+                    } catch (Exception e3) {
+                        return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
+                                "DataSource를 찾을 수 없습니다: " + datasourceId));
+                    }
+                }
             }
 
             // 테이블 존재 여부 확인 (대소문자 무시)
@@ -247,6 +263,16 @@ public class ExecutionDataController {
             String searchClause = buildSearchClause(targetJdbc, tableName, search, searchColumn, params);
             whereClause.append(searchClause);
 
+            // 검색 조건 기반 성공/실패 건수 (상태 필터 적용 전)
+            String baseWhere = whereClause.toString();
+            Object[] baseParams = params.toArray();
+            Integer successCount = targetJdbc.queryForObject(
+                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, baseWhere),
+                    Integer.class, baseParams);
+            Integer failedCount = targetJdbc.queryForObject(
+                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, baseWhere),
+                    Integer.class, baseParams);
+
             if (status != null && !status.isBlank()) {
                 whereClause.append(" AND link_status = ?");
                 params.add(status);
@@ -269,6 +295,8 @@ public class ExecutionDataController {
             List<String> columns = data.isEmpty() ? getTableColumns(targetJdbc, tableName) : new ArrayList<>(data.get(0).keySet());
 
             Map<String, Object> result = buildPageResult(tableName, columns, data, totalCount, page, size);
+            result.put("successCount", successCount != null ? successCount : 0);
+            result.put("failedCount", failedCount != null ? failedCount : 0);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Failed to get target IF data for execution: {}", executionId, e);
@@ -327,6 +355,20 @@ public class ExecutionDataController {
             String searchClause = buildSearchClause(targetJdbc, tableName, search, searchColumn, params);
             whereClause.append(searchClause);
 
+            // 검색 조건 기반 성공/실패 건수 (link_status 컬럼이 있는 경우)
+            Integer successCount = null;
+            Integer failedCount = null;
+            if (hasColumn(targetJdbc, tableName, "link_status")) {
+                String baseWhere = whereClause.toString();
+                Object[] baseParams = params.toArray();
+                successCount = targetJdbc.queryForObject(
+                        String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, baseWhere),
+                        Integer.class, baseParams);
+                failedCount = targetJdbc.queryForObject(
+                        String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, baseWhere),
+                        Integer.class, baseParams);
+            }
+
             // 전체 건수 조회
             String countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s", tableName, whereClause);
             Integer totalCount = targetJdbc.queryForObject(countSql, Integer.class, params.toArray());
@@ -343,7 +385,10 @@ public class ExecutionDataController {
 
             List<String> columns = data.isEmpty() ? getTableColumns(targetJdbc, tableName) : new ArrayList<>(data.get(0).keySet());
 
-            return ResponseEntity.ok(buildPageResult(tableName, columns, data, totalCount, page, size));
+            Map<String, Object> result = buildPageResult(tableName, columns, data, totalCount, page, size);
+            if (successCount != null) result.put("successCount", successCount);
+            if (failedCount != null) result.put("failedCount", failedCount);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Failed to get target data for execution: {}", executionId, e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
@@ -564,27 +609,31 @@ public class ExecutionDataController {
                         pkColumn, pkValueTyped, executionId);
             }
 
-            // 4차 시도: execution_id 필터 없이 조회 (UPSERT로 덮어씌워진 경우)
+            // 4차 시도: 같은 Agent의 다른 execution에서 조회 (UPSERT로 덮어씌워진 경우)
+            // execution_id를 완전히 제거하지 않고, agentCode 접두사로 필터링
             boolean traceFallback = false;
             if (targetRecords.isEmpty()) {
-                log.debug("All execution_id-filtered attempts failed, trying without execution_id filter...");
-                // PK로 직접 조회 (execution_id 없이)
-                String noFilterSql = String.format(
-                        "SELECT * FROM %s WHERE %s = ?",
-                        ifTableName, pkColumn);
-                targetRecords = targetJdbc.queryForList(noFilterSql, pkValueTyped);
+                String agentCode = extractAgentCode(executionId);
+                String agentPattern = agentCode + "_%";
+                log.debug("Trying agent-scoped fallback with pattern: {}", agentPattern);
 
-                // source_refs로 재시도 (execution_id 없이)
+                // PK로 직접 조회 (같은 Agent의 execution만)
+                String agentFilterSql = String.format(
+                        "SELECT * FROM %s WHERE %s = ? AND %s LIKE ?",
+                        ifTableName, pkColumn, executionIdCol);
+                targetRecords = targetJdbc.queryForList(agentFilterSql, pkValueTyped, agentPattern);
+
+                // source_refs로 재시도 (같은 Agent의 execution만)
                 if (targetRecords.isEmpty()) {
-                    String noFilterRefsSql = String.format(
-                            "SELECT * FROM %s WHERE source_refs LIKE ?",
-                            ifTableName);
+                    String agentFilterRefsSql = String.format(
+                            "SELECT * FROM %s WHERE source_refs LIKE ? AND %s LIKE ?",
+                            ifTableName, executionIdCol);
                     String searchPattern = "%:" + pkValue + "\"]";
-                    targetRecords = targetJdbc.queryForList(noFilterRefsSql, searchPattern);
+                    targetRecords = targetJdbc.queryForList(agentFilterRefsSql, searchPattern, agentPattern);
                 }
 
                 if (!targetRecords.isEmpty()) {
-                    log.debug("Found {} records without execution_id filter (fallback)", targetRecords.size());
+                    log.debug("Found {} records via agent-scoped fallback (agent: {})", targetRecords.size(), agentCode);
                     traceFallback = true;
                 }
             }
@@ -715,8 +764,28 @@ public class ExecutionDataController {
             try {
                 sourceJdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
             } catch (Exception e) {
-                log.error("DataSource '{}' not found: {}", datasourceId, e.getMessage());
-                return ResponseEntity.badRequest().body(Map.of("error", "DataSource를 찾을 수 없습니다: " + datasourceId));
+                // Orchestrator datasource ID가 Agent에 없을 수 있음 (재시작 후 캐시 소실)
+                // trace-source는 소스 데이터 조회이므로 SOURCE 먼저 시도
+                // - RCV: 외부 DB(SOURCE) → IF(TARGET) 순서
+                // - Loader: SOURCE/TARGET 같은 DB이므로 어느 쪽이든 OK
+                log.warn("DataSource '{}' not found, trying fallback datasources...", datasourceId);
+                String fallbackId = null;
+                try {
+                    fallbackId = dataSourceProvider.getSourceDatasourceId();
+                    sourceJdbc = dataSourceProvider.getJdbcTemplate(fallbackId);
+                    datasourceId = fallbackId;
+                    log.info("Using fallback SOURCE datasource: {} for trace-source", fallbackId);
+                } catch (Exception e2) {
+                    try {
+                        fallbackId = dataSourceProvider.getTargetDatasourceId();
+                        sourceJdbc = dataSourceProvider.getJdbcTemplate(fallbackId);
+                        datasourceId = fallbackId;
+                        log.info("Using fallback TARGET datasource: {} for trace-source", fallbackId);
+                    } catch (Exception e3) {
+                        log.error("All datasource fallbacks failed for '{}'", datasourceId);
+                        return ResponseEntity.badRequest().body(Map.of("error", "DataSource를 찾을 수 없습니다: " + datasourceId));
+                    }
+                }
             }
 
             // 테이블명 해석 (대소문자 무시) - /source 엔드포인트와 동일한 방식
@@ -782,23 +851,39 @@ public class ExecutionDataController {
                 }
             }
 
-            // Loader TARGET → SOURCE 역추적: source_refs LIKE 검색
-            // PK 조회 실패 시 (sourceRefs의 PK가 외부 obsv_code인데 SOURCE 테이블은 auto-increment id)
-            // SOURCE 테이블(if_rsv)의 source_refs 컬럼에서 동일 값 검색
+            // Loader TARGET → SOURCE 역추적: source_refs 정확 매칭
+            // PK 조회 실패 시 SOURCE 테이블(if_rsv)의 source_refs 컬럼에서 동일 값 검색
+            // 정확 매칭(=) 우선, 실패 시 LIKE fallback (복합 PK 등)
             if (sourceRecords.isEmpty() && isLoaderTarget) {
-                log.debug("Loader trace: PK lookup failed, trying source_refs search in {}", quotedTableName);
-                for (String pk : pkValues) {
-                    try {
-                        String searchPattern = "%" + pk + "%";
-                        String refsSql = String.format(
-                                "SELECT * FROM %s WHERE source_refs LIKE ?", quotedTableName);
-                        List<Map<String, Object>> records = sourceJdbc.queryForList(refsSql, searchPattern);
-                        if (!records.isEmpty()) {
-                            log.debug("Loader trace: Found {} records via source_refs for pk={}", records.size(), pk);
-                            sourceRecords.addAll(records);
+                log.debug("Loader trace: PK lookup failed, trying source_refs exact match in {}", quotedTableName);
+                try {
+                    // 1차: source_refs 정확 매칭 (sourceRefs 원본 사용)
+                    String refsSql = String.format(
+                            "SELECT * FROM %s WHERE source_refs = ?", quotedTableName);
+                    List<Map<String, Object>> records = sourceJdbc.queryForList(refsSql, sourceRefs);
+                    if (!records.isEmpty()) {
+                        log.debug("Loader trace: Found {} records via source_refs exact match", records.size());
+                        sourceRecords.addAll(records);
+                    }
+                } catch (Exception e) {
+                    log.warn("Loader trace: source_refs exact match failed: {}", e.getMessage());
+                }
+
+                // 2차: 정확 매칭 실패 시 LIKE fallback (복합 source_refs 등)
+                if (sourceRecords.isEmpty()) {
+                    for (String pk : pkValues) {
+                        try {
+                            String searchPattern = "%" + pk + "%";
+                            String refsSql = String.format(
+                                    "SELECT * FROM %s WHERE source_refs LIKE ?", quotedTableName);
+                            List<Map<String, Object>> records = sourceJdbc.queryForList(refsSql, searchPattern);
+                            if (!records.isEmpty()) {
+                                log.debug("Loader trace: Found {} records via source_refs LIKE for pk={}", records.size(), pk);
+                                sourceRecords.addAll(records);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Loader trace: source_refs LIKE search failed for pk={}: {}", pk, e.getMessage());
                         }
-                    } catch (Exception e) {
-                        log.warn("Loader trace: source_refs search failed for pk={}: {}", pk, e.getMessage());
                     }
                 }
             }
@@ -1182,6 +1267,16 @@ public class ExecutionDataController {
     }
 
     // ==================== Helper Methods ====================
+
+    /**
+     * executionId에서 agentCode 추출
+     * 형식: {agentCode}_{uuid} → agentCode
+     */
+    private String extractAgentCode(String executionId) {
+        if (executionId == null) return "";
+        int lastUnderscore = executionId.lastIndexOf('_');
+        return lastUnderscore > 0 ? executionId.substring(0, lastUnderscore) : executionId;
+    }
 
     /**
      * PK 값 타입 변환

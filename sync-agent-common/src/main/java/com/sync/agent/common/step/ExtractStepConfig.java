@@ -116,28 +116,6 @@ public class ExtractStepConfig {
      */
     private final String timeExpression;
 
-    // ==================== 기간(Period) 설정 ====================
-
-    /**
-     * 기본 조회 범위 (시간, 기본값 3시간) - SIMPLE_COPY일 때 사용
-     */
-    @Builder.Default
-    private final int defaultLookbackHours = 3;
-
-    /**
-     * 조회 범위 단위 (HOURS, DAYS, MINUTES)
-     * defaultLookbackHours와 함께 사용
-     */
-    @Builder.Default
-    private final LookbackUnit lookbackUnit = LookbackUnit.HOURS;
-
-    /**
-     * 조회 범위 값 (lookbackUnit과 함께 사용)
-     * 0이면 defaultLookbackHours 사용 (하위 호환)
-     */
-    @Builder.Default
-    private final int lookbackValue = 0;
-
     /**
      * Primary Key 컬럼 목록 반환 (호환성 유지)
      */
@@ -201,38 +179,4 @@ public class ExtractStepConfig {
         throw new IllegalStateException("No time column configured. Set timeColumn, dateColumn+timeColumn, or timeExpression.");
     }
 
-    /**
-     * 조회 범위(Lookback) 시간 계산 (시간 단위로 반환)
-     */
-    public long getLookbackHoursEffective() {
-        if (lookbackValue > 0) {
-            return switch (lookbackUnit) {
-                case MINUTES -> Math.max(1, lookbackValue / 60);
-                case HOURS -> lookbackValue;
-                case DAYS -> lookbackValue * 24L;
-            };
-        }
-        return defaultLookbackHours;
-    }
-
-    /**
-     * 조회 범위(Lookback) 분 단위로 계산
-     */
-    public long getLookbackMinutes() {
-        if (lookbackValue > 0) {
-            return switch (lookbackUnit) {
-                case MINUTES -> lookbackValue;
-                case HOURS -> lookbackValue * 60L;
-                case DAYS -> lookbackValue * 24L * 60L;
-            };
-        }
-        return defaultLookbackHours * 60L;
-    }
-
-    /**
-     * 조회 범위 단위
-     */
-    public enum LookbackUnit {
-        MINUTES, HOURS, DAYS
-    }
 }

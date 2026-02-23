@@ -116,6 +116,8 @@ export interface TableData {
   columns: string[];
   data: Record<string, unknown>[];
   totalCount: number;
+  successCount?: number;
+  failedCount?: number;
   page: number;
   size: number;
   totalPages: number;

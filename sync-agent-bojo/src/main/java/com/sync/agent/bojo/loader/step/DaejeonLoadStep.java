@@ -9,7 +9,6 @@ import com.sync.agent.common.step.StepResult;
 import com.sync.agent.common.step.Status;
 import com.sync.agent.bojo.entity.iftable.rsv.IfRsvSecJewon;
 import com.sync.agent.bojo.entity.iftable.rsv.IfRsvSecObsvdata;
-import com.sync.agent.bojo.entity.target.LinkNgwis;
 import com.sync.agent.bojo.entity.target.SecJewon;
 import com.sync.agent.bojo.entity.target.SecObsvdata;
 import com.sync.agent.bojo.loader.repository.TargetRepositoryService;
@@ -18,16 +17,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * 대전 관측망 데이터 적재 Step (JDBC batch UPSERT 버전)
- * IF_RSV 테이블 → Target 테이블 (sec_jewon, sec_obsvdata, link_ngwis)
+ * IF_RSV 테이블 → Target 테이블 (sec_jewon, sec_obsvdata)
  *
  * 성능 최적화:
  * - JPA merge() → JDBC batch UPSERT (ON CONFLICT)
@@ -226,8 +223,7 @@ public class DaejeonLoadStep implements StepExecutor {
                     ifTableService.batchMarkAsProcessed(ifObsvdataTable, "id", obsvFailedIds, "FAILED", loaderExecutionId);
                 }
 
-                // ===== 3. Link 테이블 배치 UPSERT =====
-                updateLinkTableBatch(pendingObsvData);
+                // link_ngwis는 RCV에서 관리 (Loader는 link_status만 처리)
             }
 
             log.info("[{}] Loaded {} records ({} skipped) in {}ms",
@@ -283,48 +279,6 @@ public class DaejeonLoadStep implements StepExecutor {
                     errorMessage);
 
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
-        }
-    }
-
-    /**
-     * Link 테이블 배치 UPSERT (JDBC)
-     * obsv_code별 마지막 관측 데이터 시점을 link_ngwis에 일괄 저장
-     */
-    private void updateLinkTableBatch(List<IfRsvSecObsvdata> processedData) {
-        Map<String, IfRsvSecObsvdata> latestByObsvCode = processedData.stream()
-                .collect(Collectors.groupingBy(IfRsvSecObsvdata::getObsvCode))
-                .entrySet().stream()
-                .collect(Collectors.toMap(
-                    Map.Entry::getKey,
-                    entry -> entry.getValue().stream()
-                            .max((a, b) -> {
-                                int dateCompare = a.getObsvDate().compareTo(b.getObsvDate());
-                                if (dateCompare != 0) return dateCompare;
-                                return a.getObsvTime().compareTo(b.getObsvTime());
-                            })
-                            .orElseThrow()
-                ));
-
-        List<LinkNgwis> links = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HHmm");
-
-        for (Map.Entry<String, IfRsvSecObsvdata> entry : latestByObsvCode.entrySet()) {
-            IfRsvSecObsvdata lastData = entry.getValue();
-            LinkNgwis link = LinkNgwis.builder()
-                    .obsvCode(entry.getKey())
-                    .obsvDate(lastData.getObsvDate() != null
-                            ? lastData.getObsvDate().toLocalDate().atStartOfDay() : null)
-                    .obsvTime(lastData.getObsvTime() != null
-                            ? lastData.getObsvTime().toLocalTime().format(timeFormatter) : null)
-                    .updateTime(now)
-                    .build();
-            links.add(link);
-        }
-
-        if (!links.isEmpty()) {
-            targetRepository.batchUpsertLinks(links);
-            log.info("[{}] Batch UPSERT {} link records", getStepId(), links.size());
         }
     }
 

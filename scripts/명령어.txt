@@ -1,0 +1,5 @@
+./testdata.sh init                    # jewon 초기 생성 (1회, 업체당 400개 = 총 4,000개)
+./testdata.sh generate 2026-02-19     # 날짜별 obsvdata 생성 (관측소×24시간 = 업체당 9,600건)
+./testdata.sh clear-obsvdata [날짜]   # obsvdata 삭제 (날짜 미지정시 전체)
+./testdata.sh reset                   # 전체 초기화 (jewon + obsvdata)
+./testdata.sh status                  # 10개 DB 데이터 현황 조회

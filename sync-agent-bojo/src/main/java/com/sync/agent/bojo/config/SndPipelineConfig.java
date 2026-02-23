@@ -54,15 +54,13 @@ public class SndPipelineConfig {
                 .sourceTable(jewonCfg.getSourceTable())
                 .targetIfTable(jewonCfg.getTargetTable())
                 .primaryKeyColumn(jewonCfg.getPrimaryKey())
+                .conflictKey(jewonCfg.getConflictKey())
                 .fullCopy(jewonCfg.isFullCopy())
                 .build();
         SourceToIfStep jewonStep = new SourceToIfStep(
                 jewonConfig, dataSourceProvider, syncLogRepository);
 
         // Step 2: 관측데이터 추출
-        int lookbackValue = def.getLookback() != null ? def.getLookback().getValue() : 3;
-        String lookbackUnit = def.getLookback() != null ? def.getLookback().getUnit() : "HOURS";
-
         ExtractStepConfig obsvConfig = ExtractStepConfig.builder()
                 .stepId("obsvdata-snd-extract")
                 .stepName("관측데이터 송신 추출")
@@ -70,10 +68,9 @@ public class SndPipelineConfig {
                 .sourceTable(obsvCfg.getSourceTable())
                 .targetIfTable(obsvCfg.getTargetTable())
                 .primaryKeyColumn(obsvCfg.getPrimaryKey())
+                .conflictKey(obsvCfg.getConflictKey())
                 .dateColumn(obsvCfg.getDateColumn())
                 .timeColumn(obsvCfg.getTimeColumn())
-                .lookbackValue(lookbackValue)
-                .lookbackUnit(ExtractStepConfig.LookbackUnit.valueOf(lookbackUnit))
                 .build();
         SourceToIfStep obsvStep = new SourceToIfStep(
                 obsvConfig, dataSourceProvider, syncLogRepository);

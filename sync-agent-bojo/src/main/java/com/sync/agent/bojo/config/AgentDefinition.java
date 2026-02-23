@@ -21,7 +21,6 @@ public class AgentDefinition {
     private TableConfig jewon;
     private TableConfig obsvdata;
     private LinkConfig link;
-    private LookbackConfig lookback;
 
     // Loader 전용 설정
     private Map<String, String> ifTable;      // jewon, obsvdata
@@ -48,13 +47,6 @@ public class AgentDefinition {
     public static class LinkConfig {
         private boolean useLinkTable;
         private String tableName;
-    }
-
-    @Getter
-    @Setter
-    public static class LookbackConfig {
-        private int value = 3;
-        private String unit = "HOURS";
     }
 
     @Getter

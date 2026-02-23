@@ -40,7 +40,7 @@ public class ExecutionController {
 
     /**
      * 실행 트리거 - Agent에 실행 요청
-     * - body 없이 호출: 기본 lookback 사용 (증분 동기화)
+     * - body 없이 호출: 증분 동기화 (link_status 기반)
      * - body에 startTime/endTime 지정: 해당 범위 재동기화
      */
     @PostMapping("/{id}/run")
