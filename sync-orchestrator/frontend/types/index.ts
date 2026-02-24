@@ -21,6 +21,7 @@ export interface Agent {
   sourceTableIds: number[];
   targetTableIds: number[];
   executionParams: ExecutionParamResponse[];
+  stepDefinitions: StepDefinitionResponse[];
 }
 
 export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
@@ -90,6 +91,16 @@ export interface ExecutionParamResponse {
 export interface ExecutionFilter {
   paramId: string;
   value: string;
+}
+
+// Step 정의 (Agent가 제공하는 Step 메타데이터)
+export interface StepDefinitionResponse {
+  id: number;
+  stepId: string;
+  stepName: string;
+  description: string | null;
+  displayOrder: number;
+  enabledByDefault: boolean;
 }
 
 export interface HealthCheckResponse {

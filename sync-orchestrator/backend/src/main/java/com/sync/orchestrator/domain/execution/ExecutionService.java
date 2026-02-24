@@ -318,7 +318,17 @@ public class ExecutionService {
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                           List<Map<String, Object>> filters, String triggeredBy) {
-        return triggerExecutionInternal(id, startTime, endTime, filters, triggeredBy);
+        return triggerExecutionInternal(id, startTime, endTime, filters, null, triggeredBy);
+    }
+
+    /**
+     * 실행 트리거 - Agent에 실행 요청 (시간 범위, 필터, Step 선택, 트리거 유형 지정)
+     */
+    @Transactional
+    public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
+                                                          List<Map<String, Object>> filters,
+                                                          List<String> selectedStepIds, String triggeredBy) {
+        return triggerExecutionInternal(id, startTime, endTime, filters, selectedStepIds, triggeredBy);
     }
 
     /**
@@ -327,7 +337,7 @@ public class ExecutionService {
      */
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime, String triggeredBy) {
-        return triggerExecutionInternal(id, startTime, endTime, null, triggeredBy);
+        return triggerExecutionInternal(id, startTime, endTime, null, null, triggeredBy);
     }
 
     /**
@@ -335,7 +345,8 @@ public class ExecutionService {
      */
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecutionInternal(Long id, LocalDateTime startTime, LocalDateTime endTime,
-                                                                  List<Map<String, Object>> filters, String triggeredBy) {
+                                                                  List<Map<String, Object>> filters,
+                                                                  List<String> selectedStepIds, String triggeredBy) {
         Agent agent = agentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
@@ -480,6 +491,12 @@ public class ExecutionService {
             if (filters != null && !filters.isEmpty()) {
                 request.put("filters", filters);
                 log.info("Triggering execution with {} filters", filters.size());
+            }
+
+            // 선택적 Step 실행
+            if (selectedStepIds != null && !selectedStepIds.isEmpty()) {
+                request.put("selectedStepIds", selectedStepIds);
+                log.info("Triggering execution with selectedStepIds: {}", selectedStepIds);
             }
 
             log.info("Triggering execution on agent: {} with executionId: {}, source: {} (zone={}), target: {}, timeRange: {} ~ {}",

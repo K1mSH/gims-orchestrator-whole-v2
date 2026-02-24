@@ -11,8 +11,8 @@ obsvdata:
   source-table: SEC_OBSVDATA_VIEW
   target-table: if_rsv_sec_obsvdata
   primary-key: ID
-  conflict-key: source_refs
-  date-column: OBSV_DATE
+    conflict-key: source_refs
+    date-column: OBSV_DATE
   time-column: OBSV_TIME
 link:
   use-link-table: true

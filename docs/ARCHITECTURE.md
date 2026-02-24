@@ -45,7 +45,11 @@
 1. RCV:     Source(외부) → IF_RSV(중간)
 2. Loader:  IF_RSV(중간) → Target(내부)
 3. SND:     Target(내부) → IF_SND(중간, 전송 대기)
+4. int-RCV: IF_SND(DMZ)  → IF_RSV(내부망)   ← sync-agent-bojo-int
 ```
+
+> **내부망 Agent 문서:** DMZ → 내부망 동기화는 별도 프로젝트(`sync-agent-bojo-int`)로 구현.
+> 상세 내용은 [ARCHITECTURE_INTERNAL.md](ARCHITECTURE_INTERNAL.md) 참조.
 
 ---
 
@@ -767,7 +771,8 @@ RCV 기간지정 → IF_RSV(RESYNC) → Loader 일반 → Target(RESYNC) → SND
 | 서버 | 포트 | 설명 |
 |------|------|------|
 | Orchestrator Backend | 8080 | 중앙 관리 서버 |
-| 통합 Agent (sync-agent-bojo) | 8082 | RCV/Loader/SND 전체 (12개 논리적 Agent) |
+| DMZ Agent (sync-agent-bojo) | 8082 | RCV/Loader/SND 전체 (12개 논리적 Agent) |
+| 내부망 Agent (sync-agent-bojo-int) | 8092 | RCV (→ Loader 추가 예정). [상세 문서](ARCHITECTURE_INTERNAL.md) |
 
 > v1에서는 RSV Relay(18081), Loader(8082), SND Relay(18082)로 3개 포트였으나,
 > v2에서는 하나의 앱(8082)으로 통합. Orchestrator의 12개 Agent 레코드가 모두 같은 endpointUrl을 가리킴.
@@ -798,3 +803,4 @@ RCV 기간지정 → IF_RSV(RESYNC) → Loader 일반 → Target(RESYNC) → SND
 | 2026-02-09 | sync_record_history 이력 테이블 추가 (UPSERT 이력 보존) |
 | 2026-02-12 | v2 통합 아키텍처 반영: 3개 분리 모듈 → sync-agent-bojo 1개 통합, RSV→RCV 명칭 변경, PipelineRegistry/AgentConfigLoader 추가, 파일 기반 Agent 설정 |
 | 2026-02-19 | Tracing 기능 강화: 복합 PK 지원, JDBC 메타데이터 기반 PK 자동 감지, source_refs 형식 업데이트 (JSON배열), 소스 테이블 자동 등록, MySQL/PG 호환성 (SQL 방언 분기) |
+| 2026-02-24 | 내부망 Agent(sync-agent-bojo-int) 추가, [ARCHITECTURE_INTERNAL.md](ARCHITECTURE_INTERNAL.md) 분리 |

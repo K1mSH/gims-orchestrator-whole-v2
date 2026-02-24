@@ -90,4 +90,9 @@ public class Agent {
     @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<AgentExecutionParam> executionParams = new ArrayList<>();
+
+    // Agent Step 메타데이터
+    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AgentStepDefinition> stepDefinitions = new ArrayList<>();
 }

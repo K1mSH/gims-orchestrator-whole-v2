@@ -296,16 +296,24 @@ ONLINE ──(실행 트리거)──> RUNNING ──(완료 콜백)──> ONLI
 - [ ] 대문자 테이블/컬럼 정상 조회
 - [ ] IF 테이블 적재 정상 (소문자 IF 테이블에 정상 매핑)
 
-### 7.6 기간 지정 실행
+### 7.6 기간 지정 실행 (RESYNC)
 
-- [ ] 지정 범위의 데이터만 추출
-- [ ] link_status = RESYNC으로 설정
-- [ ] IF 테이블에 UPSERT (전체 컬럼 갱신)
+- [x] 지정 범위의 데이터만 추출
+- [x] `ON CONFLICT (source_refs)` UPSERT로 기존 데이터 전체 컬럼 갱신
+- [x] link_status = RESYNC으로 설정
+- [x] SOURCE/IF 건수 일치 (대전 6/6, 인포로컬 6/6)
+- [x] Loader → Target, SND → IF_SND까지 업데이트 값 전파 확인
+
+**주의**: obsvdata의 UPSERT conflict-key는 반드시 `source_refs`여야 함.
+`id`(auto-increment)로 하면 새 ID가 기존 행과 충돌하지 않아 UK 위반 발생.
 
 ### 7.7 데이터 추적 (Trace)
 
-- [ ] Source 행 클릭 → IF, Target 매칭 데이터 표시
-- [ ] source_refs 기반 PK 역추적 정상
+- [x] RCV: Source PK → IF 테이블 매칭 (source_refs 기반)
+- [x] Loader: IF_RSV PK → Target 매칭 (순방향 trace)
+- [x] Loader: Target → IF_RSV 역추적 (source_refs fallback으로 매칭)
+- [x] SND: Target PK → IF_SND 매칭 (순방향 trace)
+- [x] SND: IF_SND → Target 역추적 (source_refs PK 직접 매칭)
 
 ---
 
@@ -314,3 +322,4 @@ ONLINE ──(실행 트리거)──> RUNNING ──(완료 콜백)──> ONLI
 | 날짜 | 내용 |
 |------|------|
 | 2026-02-24 | 초안 작성 |
+| 2026-02-24 | 기간 지정 실행, Trace 검증 결과 반영 |

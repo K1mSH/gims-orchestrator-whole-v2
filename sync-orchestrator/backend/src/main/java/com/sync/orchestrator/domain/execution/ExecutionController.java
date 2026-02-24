@@ -47,10 +47,11 @@ public class ExecutionController {
     public ResponseEntity<ExecutionDto.TriggerResponse> triggerExecution(
             @PathVariable Long id,
             @RequestBody(required = false) ExecutionDto.TriggerRequest request) {
-        if (request != null && (request.getStartTime() != null || request.getEndTime() != null || request.getFilters() != null)) {
+        if (request != null && (request.getStartTime() != null || request.getEndTime() != null
+                || request.getFilters() != null || request.getSelectedStepIds() != null)) {
             return ResponseEntity.ok(executionService.triggerExecution(
                     id, request.getStartTime(), request.getEndTime(),
-                    request.getFilters(), "MANUAL"));
+                    request.getFilters(), request.getSelectedStepIds(), "MANUAL"));
         }
         return ResponseEntity.ok(executionService.triggerExecution(id));
     }

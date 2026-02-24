@@ -109,6 +109,31 @@ public class AgentDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class StepDefinitionResponse {
+        private Long id;
+        private String stepId;
+        private String stepName;
+        private String description;
+        private Integer displayOrder;
+        private Boolean enabledByDefault;
+
+        public static StepDefinitionResponse from(AgentStepDefinition def) {
+            return StepDefinitionResponse.builder()
+                    .id(def.getId())
+                    .stepId(def.getStepId())
+                    .stepName(def.getStepName())
+                    .description(def.getDescription())
+                    .displayOrder(def.getDisplayOrder())
+                    .enabledByDefault(def.getEnabledByDefault())
+                    .build();
+        }
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Response {
         private Long id;
         private String agentCode;
@@ -130,6 +155,8 @@ public class AgentDto {
         private List<Long> targetTableIds;
         // 실행 파라미터
         private List<ExecutionParamResponse> executionParams;
+        // Step 정의
+        private List<StepDefinitionResponse> stepDefinitions;
 
         public static Response from(Agent agent) {
             List<Long> sourceIds = agent.getAgentTables().stream()
@@ -142,6 +169,9 @@ public class AgentDto {
                     .toList();
             List<ExecutionParamResponse> execParams = agent.getExecutionParams().stream()
                     .map(ExecutionParamResponse::from)
+                    .toList();
+            List<StepDefinitionResponse> stepDefs = agent.getStepDefinitions().stream()
+                    .map(StepDefinitionResponse::from)
                     .toList();
 
             return Response.builder()
@@ -163,6 +193,7 @@ public class AgentDto {
                     .sourceTableIds(sourceIds)
                     .targetTableIds(targetIds)
                     .executionParams(execParams)
+                    .stepDefinitions(stepDefs)
                     .build();
         }
     }

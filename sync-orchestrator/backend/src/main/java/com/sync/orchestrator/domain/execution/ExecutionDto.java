@@ -109,6 +109,12 @@ public class ExecutionDto {
          * 각 필터: {"paramId":"sido","category":"FILTER","column":"sido","operator":"EQ","value":"경기도"}
          */
         private java.util.List<java.util.Map<String, Object>> filters;
+
+        /**
+         * 선택적 Step 실행 (optional)
+         * 지정 시 해당 stepId만 실행, 미지정 시 전체 실행
+         */
+        private java.util.List<String> selectedStepIds;
     }
 
     /**

@@ -1,0 +1,16 @@
+agent-code: internal-bojo-rcv
+type: RCV
+jewon:
+  source-table: if_snd_sec_jewon
+  target-table: if_rsv_sec_jewon
+  primary-key: id
+  conflict-key: source_refs
+  full-copy: true
+  skip-source-status-update: false
+obsvdata:
+  source-table: if_snd_sec_obsvdata
+  target-table: if_rsv_sec_obsvdata
+  primary-key: id
+  conflict-key: source_refs
+  date-column: obsv_date
+  time-column: obsv_time

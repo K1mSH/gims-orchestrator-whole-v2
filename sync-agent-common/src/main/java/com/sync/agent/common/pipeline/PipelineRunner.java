@@ -137,11 +137,40 @@ public class PipelineRunner {
             }
         }
 
+        // selectedStepIds: 사용자가 선택한 Step만 실행 (없으면 전체 실행)
+        @SuppressWarnings("unchecked")
+        List<String> selectedStepIds = params.get("selectedStepIds") instanceof List
+                ? (List<String>) params.get("selectedStepIds") : null;
+
+        if (selectedStepIds != null && !selectedStepIds.isEmpty()) {
+            log.info("Pipeline [{}] selective execution: selectedStepIds={}", pipelineId, selectedStepIds);
+        }
+
         log.info("Pipeline [{}] started. executionId={}, totalSteps={}", pipelineId, executionId, totalSteps);
 
         int stepOrder = 0;
         for (StepExecutor step : steps) {
             stepOrder++;
+
+            // selectedStepIds가 있으면: 목록에 포함된 것만 실행
+            if (selectedStepIds != null && !selectedStepIds.isEmpty()
+                    && !selectedStepIds.contains(step.getStepId())) {
+                log.info("Step [{}] skipped (not in selectedStepIds). ({}/{})", step.getStepId(), stepOrder, totalSteps);
+                StepResult skippedResult = StepResult.skipped(step.getStepId(), "선택되지 않은 Step");
+                stepResults.add(skippedResult);
+
+                // Skip 콜백 호출
+                if (progressCallback != null) {
+                    try {
+                        progressCallback.onStepStarted(executionId, step.getStepId(), step.getStepName(), stepOrder, totalSteps);
+                        progressCallback.onStepFinished(executionId, skippedResult, stepOrder, totalSteps);
+                    } catch (Exception e) {
+                        log.warn("Failed to notify step skipped: {}", e.getMessage());
+                    }
+                }
+                continue;
+            }
+
             log.info("Step [{}] started. ({}/{})", step.getStepId(), stepOrder, totalSteps);
 
             // Step 시작 콜백 호출

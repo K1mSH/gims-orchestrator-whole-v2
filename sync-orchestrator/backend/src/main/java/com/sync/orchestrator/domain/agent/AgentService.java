@@ -197,6 +197,75 @@ public class AgentService {
         }
     }
 
+    // ==================== Step Definition 관련 메서드 ====================
+
+    /**
+     * Agent API에서 Step 정의 가져오기
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> fetchStepDefinitionsFromAgent(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        try {
+            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/step-definitions";
+            log.info("Fetching step definitions from agent: {}", url);
+
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            log.error("Failed to fetch step definitions from agent: {}", agent.getAgentCode(), e);
+            return List.of();
+        }
+    }
+
+    /**
+     * DB에 저장된 Step 정의 조회
+     */
+    public List<AgentDto.StepDefinitionResponse> getStepDefinitions(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        return agent.getStepDefinitions().stream()
+                .map(AgentDto.StepDefinitionResponse::from)
+                .toList();
+    }
+
+    /**
+     * Agent API에서 가져온 Step 정의를 DB에 저장 (기존 데이터 교체)
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public List<AgentDto.StepDefinitionResponse> refreshStepDefinitions(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        List<Map<String, Object>> fetched = fetchStepDefinitionsFromAgent(id);
+
+        // 기존 Step 정의 제거
+        agent.getStepDefinitions().clear();
+        entityManager.flush();
+
+        // 새로 추가
+        for (Map<String, Object> fm : fetched) {
+            AgentStepDefinition def = AgentStepDefinition.builder()
+                    .agent(agent)
+                    .stepId((String) fm.get("stepId"))
+                    .stepName((String) fm.get("stepName"))
+                    .description((String) fm.get("description"))
+                    .displayOrder(fm.get("displayOrder") != null ? ((Number) fm.get("displayOrder")).intValue() : 0)
+                    .enabledByDefault(fm.get("enabledByDefault") != null ? (Boolean) fm.get("enabledByDefault") : true)
+                    .build();
+            agent.getStepDefinitions().add(def);
+        }
+
+        log.info("Refreshed {} step definitions for agent: {}", fetched.size(), agent.getAgentCode());
+
+        return agent.getStepDefinitions().stream()
+                .map(AgentDto.StepDefinitionResponse::from)
+                .toList();
+    }
+
     /**
      * DB에 저장된 Agent 실행 파라미터 조회
      */

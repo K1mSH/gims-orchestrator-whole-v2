@@ -59,6 +59,22 @@ public class AgentController {
     }
 
     /**
+     * DB에 저장된 Step 정의 조회
+     */
+    @GetMapping("/{id}/step-definitions")
+    public ResponseEntity<List<AgentDto.StepDefinitionResponse>> getStepDefinitions(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getStepDefinitions(id));
+    }
+
+    /**
+     * Agent API에서 Step 정의를 새로 가져와 DB 업데이트
+     */
+    @PostMapping("/{id}/refresh-step-definitions")
+    public ResponseEntity<List<AgentDto.StepDefinitionResponse>> refreshStepDefinitions(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.refreshStepDefinitions(id));
+    }
+
+    /**
      * Agent의 내장 실행 옵션 목록 조회 (Agent API 프록시)
      */
     @GetMapping("/{id}/fetch-execution-params")

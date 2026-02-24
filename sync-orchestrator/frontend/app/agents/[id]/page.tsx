@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
-import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, ExecutionFilter } from '@/types';
+import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, ExecutionFilter, StepDefinitionResponse } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
 import InfoTab from '@/components/agent/InfoTab';
@@ -37,6 +37,9 @@ export default function AgentDetailPage() {
   // 데이터 필터 상태
   const [executionParams, setExecutionParams] = useState<ExecutionParamResponse[]>([]);
   const [activeFilters, setActiveFilters] = useState<Record<string, { enabled: boolean; value: string }>>({});
+  // Step 선택 상태
+  const [stepDefinitions, setStepDefinitions] = useState<StepDefinitionResponse[]>([]);
+  const [selectedSteps, setSelectedSteps] = useState<Record<string, boolean>>({});
 
   const fetchData = useCallback(async () => {
     try {
@@ -52,6 +55,15 @@ export default function AgentDetailPage() {
       if (agentData.executionParams && agentData.executionParams.length > 0) {
         const enabledParams = agentData.executionParams.filter(p => p.isEnabled);
         setExecutionParams(enabledParams);
+      }
+      // Step 정의 설정
+      if (agentData.stepDefinitions && agentData.stepDefinitions.length > 0) {
+        const sorted = [...agentData.stepDefinitions].sort((a, b) => a.displayOrder - b.displayOrder);
+        setStepDefinitions(sorted);
+        // 기본 선택 상태 초기화 (enabledByDefault 기준)
+        const defaults: Record<string, boolean> = {};
+        sorted.forEach(s => { defaults[s.stepId] = s.enabledByDefault; });
+        setSelectedSteps(defaults);
       }
     } catch (error) {
       console.error('데이터 조회 실패:', error);
@@ -101,8 +113,19 @@ export default function AgentDetailPage() {
       });
     }
 
+    // Step 선택: 옵션 패널에서 실행 시에만 적용, 전체 선택이면 미전달 (기존 동작 유지)
+    let stepIds: string[] | undefined;
+    if (withOptions && stepDefinitions.length > 0) {
+      const selected = Object.entries(selectedSteps).filter(([, v]) => v).map(([k]) => k);
+      const allSelected = selected.length === stepDefinitions.length;
+      if (!allSelected && selected.length > 0) {
+        stepIds = selected;
+      }
+    }
+
     const parts: string[] = [];
     if (hasTimeRange) parts.push(`시간 범위: ${startTime || '(기본값)'} ~ ${endTime || '(현재시간)'}`);
+    if (stepIds) parts.push(`선택 Step: ${stepIds.join(', ')}`);
     if (filters.length > 0) parts.push(`필터 ${filters.length}개: ${filters.map(f => `${f.paramId}=${f.value}`).join(', ')}`);
 
     const confirmMsg = parts.length > 0
@@ -116,7 +139,8 @@ export default function AgentDetailPage() {
         agentId,
         hasTimeRange && startTime ? startTime : undefined,
         hasTimeRange && endTime ? endTime : undefined,
-        filters.length > 0 ? filters : undefined
+        filters.length > 0 ? filters : undefined,
+        stepIds
       );
       setActiveTab('monitor');
       setShowExecutionOptions(false);
@@ -229,6 +253,49 @@ export default function AgentDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Step 선택 */}
+          {stepDefinitions.length > 0 && (
+            <div style={{ marginBottom: executionParams.length > 0 ? '1rem' : 0 }}>
+              <div style={{ fontWeight: 500, marginBottom: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
+                실행 Step 선택
+              </div>
+              {stepDefinitions.map(step => (
+                <div key={step.stepId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', marginLeft: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSteps[step.stepId] ?? true}
+                      onChange={(e) => setSelectedSteps(prev => ({
+                        ...prev,
+                        [step.stepId]: e.target.checked
+                      }))}
+                    />
+                    <span>{step.stepName}</span>
+                  </label>
+                  {step.description && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                      ({step.description})
+                    </span>
+                  )}
+                </div>
+              ))}
+              <div style={{ marginLeft: '0.5rem', marginTop: '0.25rem' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
+                  onClick={() => {
+                    const allSelected = stepDefinitions.every(s => selectedSteps[s.stepId]);
+                    const newState: Record<string, boolean> = {};
+                    stepDefinitions.forEach(s => { newState[s.stepId] = !allSelected; });
+                    setSelectedSteps(newState);
+                  }}
+                >
+                  {stepDefinitions.every(s => selectedSteps[s.stepId]) ? '전체 해제' : '전체 선택'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 데이터 필터 */}
           {executionParams.length > 0 && (
