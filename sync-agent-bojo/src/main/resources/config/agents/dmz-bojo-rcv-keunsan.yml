@@ -16,4 +16,4 @@ obsvdata:
   time-column: OBSV_TIME
 link:
   use-link-table: true
-  table-name: LINK_NGWIS
+  table-name: link_ngwis

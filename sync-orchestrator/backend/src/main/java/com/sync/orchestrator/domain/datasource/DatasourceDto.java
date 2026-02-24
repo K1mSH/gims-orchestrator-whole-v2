@@ -94,6 +94,24 @@ public class DatasourceDto {
         }
     }
 
+    /**
+     * Agent 내부용 연결 정보 (자격증명 포함, 복호화된 상태)
+     */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ConnectionInfo {
+        private String datasourceId;
+        private String dbType;
+        private String host;
+        private Integer port;
+        private String databaseName;
+        private String username;
+        private String password;
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor

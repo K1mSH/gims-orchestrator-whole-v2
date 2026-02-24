@@ -51,6 +51,24 @@ public class DatasourceService {
     }
 
     /**
+     * Agent 내부용 연결 정보 조회 (자격증명 복호화 포함)
+     * Agent가 trace API 등에서 외부 DB 접속이 필요할 때 사용
+     */
+    public DatasourceDto.ConnectionInfo getConnectionInfo(String datasourceId) {
+        Datasource ds = datasourceRepository.findById(datasourceId)
+                .orElseThrow(() -> new RuntimeException("Datasource not found: " + datasourceId));
+        return DatasourceDto.ConnectionInfo.builder()
+                .datasourceId(ds.getDatasourceId())
+                .dbType(ds.getDbType().name())
+                .host(ds.getHost())
+                .port(ds.getPort())
+                .databaseName(ds.getDatabaseName())
+                .username(credentialEncryptor.decrypt(ds.getUsername()))
+                .password(credentialEncryptor.decrypt(ds.getPassword()))
+                .build();
+    }
+
+    /**
      * Agent 등록 시 선택 목록용 (간단한 정보만)
      */
     public List<DatasourceDto.SimpleResponse> findAllSimple() {

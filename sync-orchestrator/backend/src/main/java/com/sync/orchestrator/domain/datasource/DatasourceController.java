@@ -57,6 +57,15 @@ public class DatasourceController {
     }
 
     /**
+     * 연결 정보 조회 (Agent 내부용 - 자격증명 포함)
+     * Agent가 trace API 등에서 외부 DB에 접속해야 할 때 사용
+     */
+    @GetMapping("/{datasourceId}/connection-info")
+    public ResponseEntity<DatasourceDto.ConnectionInfo> getConnectionInfo(@PathVariable String datasourceId) {
+        return ResponseEntity.ok(datasourceService.getConnectionInfo(datasourceId));
+    }
+
+    /**
      * 생성
      */
     @PostMapping

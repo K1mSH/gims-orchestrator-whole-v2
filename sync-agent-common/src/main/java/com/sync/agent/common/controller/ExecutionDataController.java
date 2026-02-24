@@ -57,7 +57,7 @@ public class ExecutionDataController {
                 skipCount = sums.length > 2 && sums[2] != null ? ((Number) sums[2]).longValue() : 0L;
             }
         }
-        long totalCount = successCount + failedCount + skipCount;
+        long totalCount = successCount + failedCount;
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("executionId", executionId);
@@ -104,8 +104,8 @@ public class ExecutionDataController {
     }
 
     /**
-     * Source 테이블 데이터 조회 (해당 실행에서 읽어온 데이터)
-     * Relay 에이전트의 경우 SOURCE 테이블에 execution_id가 없으므로 전체 데이터 조회
+     * Source 테이블 데이터 조회 (해당 실행에서 추출된 데이터만)
+     * IF 테이블의 source_refs에서 Source PK를 추출하여 필터링
      */
     @GetMapping("/{executionId}/source")
     public ResponseEntity<Map<String, Object>> getSourceData(
@@ -142,7 +142,6 @@ public class ExecutionDataController {
             try {
                 sourceJdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
             } catch (Exception e) {
-                // 소스 데이터 조회이므로 SOURCE(외부 DB) 먼저 시도
                 log.warn("DataSource '{}' not found, trying fallback datasources...", datasourceId);
                 String fallbackId = null;
                 try {
@@ -175,12 +174,50 @@ public class ExecutionDataController {
             String srcDbType = dataSourceProvider.getDbType(datasourceId);
             String quotedTableName = qi(actualTableName, srcDbType);
 
-            // SOURCE 테이블은 execution_id 필터링 안 함
-            // (외부 시스템이거나, 다른 agent가 생성한 데이터일 수 있음)
+            // IF 테이블에서 이번 실행의 source PK 목록 추출
+            String targetDsId = execution.getTargetDatasourceId();
+            List<String> sourcePks = getSourcePksFromIfTable(executionId, tableName, targetDsId);
+
             StringBuilder whereClause = new StringBuilder("1=1");
             List<Object> params = new ArrayList<>();
 
-            // 검색 조건 추가 (특정 컬럼 또는 전체 컬럼)
+            if (sourcePks != null && !sourcePks.isEmpty()) {
+                // source PK로 필터링 (이번 실행에서 추출된 데이터만)
+                // source_refs의 PK는 detectSourcePrimaryKey가 감지한 DB PK (보통 id/ID)
+                // 대소문자 구분 DB 대응: findActualColumnName으로 실제 컬럼명 해석
+                String actualPkCol = findActualColumnName(sourceJdbc, actualTableName, "id");
+                if (actualPkCol == null) {
+                    // id 컬럼이 없는 경우 → SyncLog의 sourcePkColumn (YAML primary-key) fallback
+                    List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
+                    String fallbackPkCol = syncLogs.stream()
+                            .filter(l -> "SOURCE".equals(l.getTableType())
+                                    && tableName.equalsIgnoreCase(l.getTableName()))
+                            .map(SyncLog::getSourcePkColumn)
+                            .filter(Objects::nonNull)
+                            .findFirst().orElse(null);
+                    if (fallbackPkCol != null) {
+                        actualPkCol = findActualColumnName(sourceJdbc, actualTableName, fallbackPkCol);
+                    }
+                }
+                String pkColumn = qi(actualPkCol != null ? actualPkCol : "id", srcDbType);
+                String placeholders = String.join(",", sourcePks.stream().map(pk -> "?").toList());
+                whereClause.append(" AND ").append(pkColumn).append(" IN (").append(placeholders).append(")");
+                for (String pk : sourcePks) {
+                    try {
+                        params.add(Long.parseLong(pk));
+                    } catch (NumberFormatException e) {
+                        params.add(pk);
+                    }
+                }
+                log.debug("Source 필터: {} PK로 제한 (executionId={})", sourcePks.size(), executionId);
+            } else if (sourcePks != null) {
+                // IF 테이블은 있지만 해당 실행의 데이터가 없음
+                return ResponseEntity.ok(buildPageResult(tableName, getTableColumns(sourceJdbc, actualTableName),
+                        List.of(), 0, page, size));
+            }
+            // sourcePks == null: IF 테이블을 찾지 못한 경우 → 전체 데이터 표시 (fallback)
+
+            // 검색 조건 추가
             String searchClause = buildSearchClause(sourceJdbc, actualTableName, search, searchColumn, params);
             whereClause.append(searchClause);
 
@@ -205,6 +242,76 @@ public class ExecutionDataController {
             log.error("Failed to get source data for execution: {}", executionId, e);
             return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
                     "Source 데이터를 조회할 수 없습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * IF 테이블에서 이번 실행의 source PK 목록 추출
+     * SyncLog에서 매칭되는 IF 테이블을 찾고, source_refs에서 PK 파싱
+     *
+     * @return PK 목록. IF 테이블을 찾지 못하면 null (전체 데이터 fallback)
+     */
+    private List<String> getSourcePksFromIfTable(String executionId, String sourceTableName, String targetDatasourceId) {
+        try {
+            // SyncLog에서 TARGET_IF 테이블 목록 조회
+            List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
+            List<String> ifTableNames = syncLogs.stream()
+                    .filter(l -> "TARGET_IF".equals(l.getTableType()) || "IF".equals(l.getTableType()))
+                    .map(SyncLog::getTableName)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            if (ifTableNames.isEmpty()) {
+                log.debug("이 실행에 TARGET_IF SyncLog가 없음: {}", executionId);
+                return null;
+            }
+
+            // Source 테이블명으로 매칭되는 IF 테이블 찾기
+            // 예: sec_obsvdata_view → if_rsv_sec_obsvdata (source 기본명 포함)
+            String sourceBase = sourceTableName.replaceAll("(?i)_view$", "");
+            String matchedIfTable = null;
+            for (String ifTable : ifTableNames) {
+                if (ifTable.toLowerCase().contains(sourceBase.toLowerCase())) {
+                    matchedIfTable = ifTable;
+                    break;
+                }
+            }
+
+            if (matchedIfTable == null) {
+                log.debug("Source '{}'에 매칭되는 IF 테이블 없음 (후보: {})", sourceTableName, ifTableNames);
+                return null;
+            }
+
+            // IF 테이블에서 source_refs 조회 (Execution의 targetDatasourceId 사용)
+            JdbcTemplate targetJdbc;
+            try {
+                String dsId = (targetDatasourceId != null) ? targetDatasourceId : dataSourceProvider.getTargetDatasourceId();
+                targetJdbc = dataSourceProvider.getJdbcTemplate(dsId);
+            } catch (Exception e) {
+                log.warn("Target JdbcTemplate 획득 실패, 기본 target 시도: {}", e.getMessage());
+                try {
+                    targetJdbc = dataSourceProvider.getJdbcTemplate(dataSourceProvider.getTargetDatasourceId());
+                } catch (Exception e2) {
+                    log.warn("기본 Target JdbcTemplate도 실패: {}", e2.getMessage());
+                    return null;
+                }
+            }
+
+            String sql = String.format("SELECT source_refs FROM %s WHERE execution_id = ?", matchedIfTable);
+            List<String> sourceRefsList = targetJdbc.queryForList(sql, String.class, executionId);
+
+            // source_refs에서 PK 파싱
+            List<String> pks = new ArrayList<>();
+            for (String refs : sourceRefsList) {
+                pks.addAll(parseSourceRefsPks(refs));
+            }
+
+            log.info("Source PK 추출: {} → {} ({}건, executionId={})",
+                    sourceTableName, matchedIfTable, pks.size(), executionId);
+            return pks;
+        } catch (Exception e) {
+            log.warn("Source PK 추출 실패 (fallback to 전체): {}", e.getMessage());
+            return null;
         }
     }
 
@@ -263,20 +370,21 @@ public class ExecutionDataController {
             String searchClause = buildSearchClause(targetJdbc, tableName, search, searchColumn, params);
             whereClause.append(searchClause);
 
-            // 검색 조건 기반 성공/실패 건수 (상태 필터 적용 전)
-            String baseWhere = whereClause.toString();
-            Object[] baseParams = params.toArray();
-            Integer successCount = targetJdbc.queryForObject(
-                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, baseWhere),
-                    Integer.class, baseParams);
-            Integer failedCount = targetJdbc.queryForObject(
-                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, baseWhere),
-                    Integer.class, baseParams);
-
+            // 상태 필터 적용
             if (status != null && !status.isBlank()) {
                 whereClause.append(" AND link_status = ?");
                 params.add(status);
             }
+
+            // 현재 조건(검색+상태 필터) 기반 성공/실패 건수
+            String currentWhere = whereClause.toString();
+            Object[] currentParams = params.toArray();
+            Integer successCount = targetJdbc.queryForObject(
+                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, currentWhere),
+                    Integer.class, currentParams);
+            Integer failedCount = targetJdbc.queryForObject(
+                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, currentWhere),
+                    Integer.class, currentParams);
 
             // 전체 건수 조회
             String countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s", tableName, whereClause);
@@ -316,6 +424,7 @@ public class ExecutionDataController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String searchColumn,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) String sortColumn,
             @RequestParam(defaultValue = "asc") String sortDirection) {
 
@@ -355,18 +464,25 @@ public class ExecutionDataController {
             String searchClause = buildSearchClause(targetJdbc, tableName, search, searchColumn, params);
             whereClause.append(searchClause);
 
-            // 검색 조건 기반 성공/실패 건수 (link_status 컬럼이 있는 경우)
+            // 상태 필터 적용
+            boolean hasLinkStatus = hasColumn(targetJdbc, tableName, "link_status");
+            if (status != null && !status.isBlank() && hasLinkStatus) {
+                whereClause.append(" AND link_status = ?");
+                params.add(status);
+            }
+
+            // 현재 조건(검색+상태 필터) 기반 성공/실패 건수
             Integer successCount = null;
             Integer failedCount = null;
-            if (hasColumn(targetJdbc, tableName, "link_status")) {
-                String baseWhere = whereClause.toString();
-                Object[] baseParams = params.toArray();
+            if (hasLinkStatus) {
+                String currentWhere = whereClause.toString();
+                Object[] currentParams = params.toArray();
                 successCount = targetJdbc.queryForObject(
-                        String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, baseWhere),
-                        Integer.class, baseParams);
+                        String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, currentWhere),
+                        Integer.class, currentParams);
                 failedCount = targetJdbc.queryForObject(
-                        String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, baseWhere),
-                        Integer.class, baseParams);
+                        String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, currentWhere),
+                        Integer.class, currentParams);
             }
 
             // 전체 건수 조회
@@ -563,7 +679,12 @@ public class ExecutionDataController {
                 ));
             }
 
-            JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(dataSourceProvider.getTargetDatasourceId());
+            // Execution에서 targetDatasourceId 조회 (IF 테이블이 위치한 DB)
+            Execution execution = executionService.getExecution(executionId).orElse(null);
+            String targetDsId = (execution != null && execution.getTargetDatasourceId() != null)
+                    ? execution.getTargetDatasourceId()
+                    : dataSourceProvider.getTargetDatasourceId();
+            JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("pkColumn", pkColumn);
@@ -892,8 +1013,11 @@ public class ExecutionDataController {
             if (sourceRecords.isEmpty() && isSndRelay && originalIfTable != null) {
                 log.debug("SND Relay: Source lookup failed, trying business key fallback...");
                 String sndPkColumn = pkColumns.isEmpty() ? "id" : pkColumns.get(0);
+                String sndTargetDsId = (execution != null && execution.getTargetDatasourceId() != null)
+                        ? execution.getTargetDatasourceId()
+                        : dataSourceProvider.getTargetDatasourceId();
                 sourceRecords = traceSourceBySndBusinessKey(sourceJdbc, quotedTableName, sndPkColumn,
-                        originalIfTable, pkValues, executionId, sourceDbType);
+                        originalIfTable, pkValues, executionId, sourceDbType, sndTargetDsId);
             }
 
             result.put("sourceRecords", sourceRecords);
@@ -918,12 +1042,12 @@ public class ExecutionDataController {
     private List<Map<String, Object>> traceSourceBySndBusinessKey(
             JdbcTemplate sourceJdbc, String quotedSourceTable, String pkColumn,
             String ifTableName, List<String> pkValues, String executionId,
-            String sourceDbType) {
+            String sourceDbType, String targetDatasourceId) {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(dataSourceProvider.getTargetDatasourceId());
+            JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDatasourceId);
 
             // IF 테이블의 유니크 키 컬럼 동적 조회
             List<String> ukColumns = getUniqueKeyColumns(targetJdbc, ifTableName);

@@ -64,17 +64,20 @@ public class SyncLog {
     @Column(name = "error_summary", columnDefinition = "TEXT")
     private String errorSummary;
 
+    /** SOURCE 테이블의 PK 컬럼명 (YAML primary-key 값, 대소문자 구분 DB용) */
+    @Column(name = "source_pk_column", length = 100)
+    private String sourcePkColumn;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     // ========== Helper Methods ==========
 
-    /** 총 처리 건수 */
+    /** 총 처리 건수 (skip 제외: 실제 처리된 success + failed만) */
     public long getTotalCount() {
         return (successCount != null ? successCount : 0L)
-             + (failedCount != null ? failedCount : 0L)
-             + (skipCount != null ? skipCount : 0L);
+             + (failedCount != null ? failedCount : 0L);
     }
 
     /** 성공 여부 (실패 건수가 0이면 성공) */

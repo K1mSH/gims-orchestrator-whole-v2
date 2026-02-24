@@ -361,13 +361,12 @@ public class SourceToIfStep implements StepExecutor {
                         getStepId(), config.isSkipSourceStatusUpdate(), config.isCustomStaging());
             }
 
-            // 4. SyncLog 요약 저장
-            saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
-                    (long) readCount, 0L, 0L, null, null);
-
+            // 4. SyncLog 요약 저장 (SOURCE와 IF 건수 일치시킴)
             String failedKeysJson = failedKeys.isEmpty() ? null : String.join(",", failedKeys);
+            saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
+                    (long) writeCount, 0L, (long) skipCount, null, null, config.getPrimaryKeyColumn());
             saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF",
-                    (long) writeCount, (long) skipCount, 0L, failedKeysJson, firstError);
+                    (long) writeCount, 0L, (long) skipCount, failedKeysJson, firstError);
 
             return StepResult.builder()
                     .stepId(getStepId())
@@ -388,12 +387,12 @@ public class SourceToIfStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
-                    (long) readCount, 0L, 0L, null, null);
-
+            long failedCount = (long) (readCount - writeCount - skipCount);
             String failedKeysJson = failedKeys.isEmpty() ? null : String.join(",", failedKeys);
+            saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
+                    (long) writeCount, failedCount, (long) skipCount, null, null, config.getPrimaryKeyColumn());
             saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF",
-                    (long) writeCount, (long) (readCount - writeCount), 0L, failedKeysJson, errorMessage);
+                    (long) writeCount, failedCount, (long) skipCount, failedKeysJson, errorMessage);
 
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
         }
@@ -656,6 +655,12 @@ public class SourceToIfStep implements StepExecutor {
     private void saveSyncLogSummary(String executionId, String tableName, String tableType,
                                      Long successCount, Long failedCount, Long skipCount,
                                      String failedKeys, String errorSummary) {
+        saveSyncLogSummary(executionId, tableName, tableType, successCount, failedCount, skipCount, failedKeys, errorSummary, null);
+    }
+
+    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
+                                     Long successCount, Long failedCount, Long skipCount,
+                                     String failedKeys, String errorSummary, String sourcePkColumn) {
         SyncLog logEntry = SyncLog.builder()
                 .executionId(executionId)
                 .stepId(getStepId())
@@ -666,6 +671,7 @@ public class SourceToIfStep implements StepExecutor {
                 .skipCount(skipCount)
                 .failedKeys(failedKeys)
                 .errorSummary(errorSummary)
+                .sourcePkColumn(sourcePkColumn)
                 .build();
         syncLogRepository.save(logEntry);
     }
