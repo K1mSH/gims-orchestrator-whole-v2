@@ -3,6 +3,7 @@ package com.sync.orchestrator.domain.callback;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class CallbackDto {
 
@@ -33,5 +34,22 @@ public class CallbackDto {
         private Long durationMs;
         private String errorMessage;
         private LocalDateTime finishedAt;
+        private List<StepResultItem> stepResults;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StepResultItem {
+        private String stepId;
+        private String status;       // SUCCESS, FAILED, SKIPPED
+        private Integer readCount;
+        private Integer writeCount;
+        private Integer skipCount;
+        private Long durationMs;
+        private String errorMessage;
+        private Integer stepOrder;
     }
 }

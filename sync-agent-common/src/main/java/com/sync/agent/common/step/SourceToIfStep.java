@@ -590,7 +590,7 @@ public class SourceToIfStep implements StepExecutor {
         String quotedTable = qi(actualTableName, dbType);
 
         return String.format(
-                "SELECT %s, %s FROM %s WHERE %s IS NULL OR %s IN ('PENDING', 'RESYNC')",
+                "SELECT %s, %s FROM %s WHERE %s IS NULL OR %s IN ('PENDING', 'RESYNC', 'FAILED')",
                 columnList, qi("link_status", dbType), quotedTable,
                 qi("link_status", dbType), qi("link_status", dbType));
     }

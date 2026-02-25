@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,6 +43,7 @@ public class PipelineService {
     private String agentZone;
 
     private final Map<String, PipelineResult> executionResults = new ConcurrentHashMap<>();
+    private final Set<String> runningAgentCodes = ConcurrentHashMap.newKeySet();
 
     /**
      * 파이프라인 실행 (Orchestrator에서 호출)
@@ -69,6 +71,7 @@ public class PipelineService {
 
         final String finalAgentCode = agentCode;
 
+        runningAgentCodes.add(finalAgentCode);
         try {
             log.info("[Bojo] Starting pipeline: executionId={}, agentCode={}", finalExecutionId, finalAgentCode);
 
@@ -86,6 +89,8 @@ public class PipelineService {
         } catch (Error err) {
             log.error("[Bojo] CRITICAL ERROR: {} - {}", finalExecutionId, err.getMessage(), err);
             notifyFailure(finalAgentCode, finalExecutionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
+        } finally {
+            runningAgentCodes.remove(finalAgentCode);
         }
     }
 
@@ -195,5 +200,9 @@ public class PipelineService {
 
     public PipelineResult getExecutionResult(String executionId) {
         return executionResults.get(executionId);
+    }
+
+    public Set<String> getRunningAgentCodes() {
+        return Collections.unmodifiableSet(runningAgentCodes);
     }
 }

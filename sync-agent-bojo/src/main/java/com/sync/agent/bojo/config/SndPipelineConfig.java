@@ -33,6 +33,7 @@ public class SndPipelineConfig {
 
         for (AgentDefinition def : sndDefs) {
             try {
+                
                 PipelineRunner runner = createSndRunner(def);
                 pipelineRegistry.register(def.getAgentCode(), "SND", runner);
                 log.info("Registered SND pipeline: {}", def.getAgentCode());

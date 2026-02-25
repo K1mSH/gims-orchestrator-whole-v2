@@ -24,7 +24,7 @@ export interface Agent {
   stepDefinitions: StepDefinitionResponse[];
 }
 
-export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
+export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
 
 export interface AgentCreateRequest {
   agentCode: string;
@@ -246,6 +246,33 @@ export interface ExecutionHistory {
   startedAt: string;
   finishedAt: string | null;
   triggeredBy: 'MANUAL' | 'SCHEDULE' | 'CHAIN';
+}
+
+// Step별 실행 결과 이력
+export interface ExecutionStepHistory {
+  id: number;
+  executionId: string;
+  stepId: string;
+  status: string;  // SUCCESS, FAILED, SKIPPED
+  readCount: number | null;
+  writeCount: number | null;
+  skipCount: number | null;
+  durationMs: number | null;
+  errorMessage: string | null;
+  stepOrder: number;
+}
+
+// 실행 이력 검색 파라미터
+export interface ExecutionHistorySearchParams {
+  page?: number;
+  size?: number;
+  status?: ExecutionStatus | null;
+  agentCode?: string | null;
+  agentType?: AgentType | null;
+  zone?: Zone | null;
+  startDate?: string | null;  // yyyy-MM-dd
+  endDate?: string | null;    // yyyy-MM-dd
+  search?: string | null;
 }
 
 // 실행 대시보드 통계

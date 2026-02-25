@@ -7,7 +7,6 @@ import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, Executi
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
 import InfoTab from '@/components/agent/InfoTab';
-import MonitorTab from '@/components/agent/MonitorTab';
 import HistoryTab from '@/components/agent/HistoryTab';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -16,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   RUNNING: '실행중',
 };
 
-type TabType = 'info' | 'monitor' | 'history';
+type TabType = 'info' | 'history';
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -142,7 +141,7 @@ export default function AgentDetailPage() {
         filters.length > 0 ? filters : undefined,
         stepIds
       );
-      setActiveTab('monitor');
+      setActiveTab('history');
       setShowExecutionOptions(false);
       setStartTime('');
       setEndTime('');
@@ -366,9 +365,6 @@ export default function AgentDetailPage() {
         <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')}>
           기본정보
         </TabButton>
-        <TabButton active={activeTab === 'monitor'} onClick={() => setActiveTab('monitor')} highlight={agent.status === 'RUNNING'}>
-          모니터링 {agent.status === 'RUNNING' && '●'}
-        </TabButton>
         <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
           실행이력 ({executions.length})
         </TabButton>
@@ -377,9 +373,6 @@ export default function AgentDetailPage() {
       {/* 탭 컨텐츠 */}
       {activeTab === 'info' && (
         <InfoTab agent={agent} schedules={schedules} onUpdate={fetchData} />
-      )}
-      {activeTab === 'monitor' && (
-        <MonitorTab agent={agent} onExecutionComplete={fetchData} />
       )}
       {activeTab === 'history' && (
         <HistoryTab executions={executions} />

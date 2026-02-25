@@ -6,10 +6,15 @@ import com.sync.orchestrator.domain.agent.AgentStatus;
 import com.sync.orchestrator.domain.execution.ExecutionHistory;
 import com.sync.orchestrator.domain.execution.ExecutionHistoryRepository;
 import com.sync.orchestrator.domain.execution.ExecutionStatus;
+import com.sync.orchestrator.domain.execution.ExecutionStepHistory;
+import com.sync.orchestrator.domain.execution.ExecutionStepHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Agent 콜백 처리 서비스
@@ -23,6 +28,7 @@ public class CallbackService {
 
     private final AgentRepository agentRepository;
     private final ExecutionHistoryRepository executionHistoryRepository;
+    private final ExecutionStepHistoryRepository executionStepHistoryRepository;
 
     /**
      * 실행 시작 콜백 처리
@@ -97,6 +103,25 @@ public class CallbackService {
         history.setErrorMessage(request.getErrorMessage());
         history.setFinishedAt(request.getFinishedAt());
         executionHistoryRepository.save(history);
+
+        // Step 결과 저장
+        if (request.getStepResults() != null && !request.getStepResults().isEmpty()) {
+            List<ExecutionStepHistory> stepHistories = request.getStepResults().stream()
+                    .map(step -> ExecutionStepHistory.builder()
+                            .executionId(request.getExecutionId())
+                            .stepId(step.getStepId())
+                            .status(step.getStatus())
+                            .readCount(step.getReadCount())
+                            .writeCount(step.getWriteCount())
+                            .skipCount(step.getSkipCount())
+                            .durationMs(step.getDurationMs())
+                            .errorMessage(step.getErrorMessage())
+                            .stepOrder(step.getStepOrder())
+                            .build())
+                    .collect(Collectors.toList());
+            executionStepHistoryRepository.saveAll(stepHistories);
+            log.info("Saved {} step results for execution: {}", stepHistories.size(), request.getExecutionId());
+        }
 
         log.info("Agent status updated to ONLINE, ExecutionHistory updated: {} -> {}",
                 agentCode, request.getStatus());

@@ -26,7 +26,10 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 /**
  * 실행 관리 서비스
@@ -44,6 +47,7 @@ public class ExecutionService {
     private final DatasourceTableRepository datasourceTableRepository;
     private final ZoneConfigRepository zoneConfigRepository;
     private final ExecutionHistoryRepository executionHistoryRepository;
+    private final ExecutionStepHistoryRepository executionStepHistoryRepository;
     private final CredentialEncryptor credentialEncryptor;
     private final RestTemplate restTemplate;
 
@@ -553,6 +557,13 @@ public class ExecutionService {
     // ==================== ExecutionHistory 관련 메서드 ====================
 
     /**
+     * 실행의 Step별 결과 조회
+     */
+    public List<ExecutionStepHistory> getExecutionSteps(String executionId) {
+        return executionStepHistoryRepository.findByExecutionIdOrderByStepOrder(executionId);
+    }
+
+    /**
      * 최근 실행 이력 조회 (대시보드용)
      */
     public List<ExecutionDto.HistoryResponse> getRecentHistory() {
@@ -593,6 +604,52 @@ public class ExecutionService {
      */
     public Page<ExecutionDto.HistoryResponse> getHistoryPaged(Pageable pageable) {
         return executionHistoryRepository.findAllByOrderByStartedAtDesc(pageable)
+                .map(ExecutionDto.HistoryResponse::from);
+    }
+
+    /**
+     * 실행 이력 필터/검색 페이징 조회
+     */
+    public Page<ExecutionDto.HistoryResponse> getHistoryPaged(int page, int size,
+            String status, String agentCode, String agentType,
+            String zone, String startDate, String endDate, String search) {
+        Specification<ExecutionHistory> spec = Specification.where(null);
+        if (status != null && !status.isBlank()) {
+            spec = spec.and((r, q, cb) -> cb.equal(r.get("status"), ExecutionStatus.valueOf(status)));
+        }
+        if (agentCode != null && !agentCode.isBlank()) {
+            spec = spec.and((r, q, cb) -> cb.equal(r.get("agentCode"), agentCode));
+        }
+        if (agentType != null && !agentType.isBlank()) {
+            spec = spec.and((r, q, cb) -> cb.equal(r.get("agentType"), agentType));
+        }
+        // 망구분 필터: Agent 테이블에서 해당 zone의 agentCode 목록 조회 후 in 조건
+        if (zone != null && !zone.isBlank()) {
+            List<String> agentCodes = agentRepository.findByZone(zone).stream()
+                    .map(Agent::getAgentCode)
+                    .collect(Collectors.toList());
+            if (agentCodes.isEmpty()) {
+                // 해당 zone에 Agent가 없으면 빈 결과 반환
+                spec = spec.and((r, q, cb) -> cb.isNull(r.get("executionId")));
+            } else {
+                spec = spec.and((r, q, cb) -> r.get("agentCode").in(agentCodes));
+            }
+        }
+        // 날짜 필터
+        if (startDate != null && !startDate.isBlank()) {
+            LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+            spec = spec.and((r, q, cb) -> cb.greaterThanOrEqualTo(r.get("startedAt"), start));
+        }
+        if (endDate != null && !endDate.isBlank()) {
+            LocalDateTime end = LocalDate.parse(endDate).plusDays(1).atStartOfDay();
+            spec = spec.and((r, q, cb) -> cb.lessThan(r.get("startedAt"), end));
+        }
+        if (search != null && !search.isBlank()) {
+            spec = spec.and((r, q, cb) -> cb.like(cb.lower(r.get("agentName")),
+                    "%" + search.toLowerCase() + "%"));
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
+        return executionHistoryRepository.findAll(spec, pageable)
                 .map(ExecutionDto.HistoryResponse::from);
     }
 

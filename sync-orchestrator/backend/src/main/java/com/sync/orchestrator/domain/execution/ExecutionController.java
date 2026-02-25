@@ -2,8 +2,6 @@ package com.sync.orchestrator.domain.execution;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -129,6 +127,14 @@ public class ExecutionController {
         return ResponseEntity.ok(executionService.traceToSource(executionId, sourceRefs, sourceTable));
     }
 
+    /**
+     * 실행의 Step별 결과 조회 (Orchestrator DB)
+     */
+    @GetMapping("/{executionId}/steps")
+    public ResponseEntity<List<ExecutionStepHistory>> getExecutionSteps(@PathVariable String executionId) {
+        return ResponseEntity.ok(executionService.getExecutionSteps(executionId));
+    }
+
     // ==================== ExecutionHistory 관련 API ====================
 
     /**
@@ -156,14 +162,21 @@ public class ExecutionController {
     }
 
     /**
-     * 실행 이력 페이징 조회
+     * 실행 이력 페이징 조회 (필터/검색 지원)
      */
     @GetMapping("/history/paged")
     public ResponseEntity<Page<ExecutionDto.HistoryResponse>> getHistoryPaged(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(executionService.getHistoryPaged(pageable));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String agentCode,
+            @RequestParam(required = false) String agentType,
+            @RequestParam(required = false) String zone,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(executionService.getHistoryPaged(
+                page, size, status, agentCode, agentType, zone, startDate, endDate, search));
     }
 
     /**

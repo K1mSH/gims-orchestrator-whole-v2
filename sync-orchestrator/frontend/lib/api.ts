@@ -24,11 +24,14 @@ import type {
   TableCreateRequest,
   DatasourceTable,
   ExecutionHistory,
+  ExecutionStepHistory,
   ExecutionDashboardStats,
+  ExecutionHistorySearchParams,
   ExecutionParamDefinition,
   ExecutionParamResponse,
   ExecutionFilter,
   StepDefinitionResponse,
+  PageResponse,
 } from '@/types';
 
 const api: AxiosInstance = axios.create({
@@ -262,6 +265,13 @@ export const chainApi = {
     api.post<TriggerResponse[]>(`/chains/${id}/execute`).then((res) => res.data),
 };
 
+// Execution Step History API
+export const executionStepApi = {
+  // 실행의 Step별 결과 조회
+  getByExecution: (executionId: string) =>
+    api.get<ExecutionStepHistory[]>(`/executions/${encodeURIComponent(executionId)}/steps`).then((res) => res.data),
+};
+
 // Execution History API (Orchestrator 중앙 관리)
 export const executionHistoryApi = {
   // 최근 실행 이력 조회 (최신 50건)
@@ -279,6 +289,23 @@ export const executionHistoryApi = {
   // 대시보드 통계 조회
   getDashboardStats: () =>
     api.get<ExecutionDashboardStats>('/executions/dashboard/stats').then((res) => res.data),
+
+  // 페이징 + 필터 조회
+  getPaged: (params: ExecutionHistorySearchParams) => {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 0,
+      size: params.size ?? 20,
+    };
+    if (params.status) query.status = params.status;
+    if (params.agentCode) query.agentCode = params.agentCode;
+    if (params.agentType) query.agentType = params.agentType;
+    if (params.zone) query.zone = params.zone;
+    if (params.startDate) query.startDate = params.startDate;
+    if (params.endDate) query.endDate = params.endDate;
+    if (params.search) query.search = params.search;
+    return api.get<PageResponse<ExecutionHistory>>('/executions/history/paged', { params: query })
+      .then((res) => res.data);
+  },
 };
 
 // Datasource API

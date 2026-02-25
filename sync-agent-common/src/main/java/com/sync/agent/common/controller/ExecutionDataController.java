@@ -656,7 +656,7 @@ public class ExecutionDataController {
                     if (!strippedBase.equals(sourceBase)) {
                         String finalStripped = strippedBase;
                         ifTableName = allLogs.stream()
-                                .filter(l -> "TARGET".equals(l.getTableType()))
+                                .filter(l -> "TARGET".equals(l.getTableType()) || "IF".equals(l.getTableType()))
                                 .filter(l -> l.getTableName() != null &&
                                              l.getTableName().toLowerCase().contains(finalStripped))
                                 .map(SyncLog::getTableName)

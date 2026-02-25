@@ -3,6 +3,7 @@ package com.sync.agent.bojo.controller;
 import com.sync.agent.common.datasource.DataSourceInfo;
 import com.sync.agent.bojo.config.PipelineRegistry;
 import com.sync.agent.bojo.config.SyncDataSourceService;
+import com.sync.agent.bojo.pipeline.PipelineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ public class HealthController {
     private String zone;
 
     private final PipelineRegistry pipelineRegistry;
+    private final PipelineService pipelineService;
     private final SyncDataSourceService syncDataSourceService;
 
     @GetMapping("/health")
@@ -39,6 +41,7 @@ public class HealthController {
         result.put("rcvAgents", rcvAgents);
         result.put("loaderAgents", loaderAgents);
         result.put("sndAgents", sndAgents);
+        result.put("runningAgents", pipelineService.getRunningAgentCodes());
 
         return ResponseEntity.ok(result);
     }

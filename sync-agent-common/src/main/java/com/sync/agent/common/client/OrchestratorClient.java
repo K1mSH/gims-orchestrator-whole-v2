@@ -2,7 +2,6 @@ package com.sync.agent.common.client;
 
 import com.sync.agent.common.client.dto.ExecutionFinishRequest;
 import com.sync.agent.common.client.dto.ExecutionStartRequest;
-import com.sync.agent.common.client.dto.StepCallbackRequest;
 import com.sync.agent.common.pipeline.PipelineResult;
 import com.sync.agent.common.step.StepResult;
 import lombok.extern.slf4j.Slf4j;
@@ -36,70 +35,19 @@ public class OrchestratorClient implements com.sync.agent.common.pipeline.StepPr
     }
 
     /**
-     * Step 시작 알림
+     * Step 시작 알림 (로그만 출력, 실시간 콜백 제거 - finished에서 일괄 전송)
      */
     @Override
     public void onStepStarted(String executionId, String stepId, String stepName, int stepOrder, int totalSteps) {
-        try {
-            StepCallbackRequest request = StepCallbackRequest.builder()
-                    .executionId(executionId)
-                    .agentId(agentId)
-                    .stepId(stepId)
-                    .stepName(stepName)
-                    .stepOrder(stepOrder)
-                    .totalSteps(totalSteps)
-                    .status("RUNNING")
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<StepCallbackRequest> entity = new HttpEntity<>(request, headers);
-
-            String url = orchestratorUrl + "/api/callback/step";
-            restTemplate.postForEntity(url, entity, Void.class);
-
-            log.info("Notified orchestrator: step started. executionId={}, step={} ({}/{})",
-                    executionId, stepId, stepOrder, totalSteps);
-        } catch (Exception e) {
-            log.error("Failed to notify step start: {}", e.getMessage());
-        }
+        log.debug("Step started: executionId={}, step={} ({}/{})", executionId, stepId, stepOrder, totalSteps);
     }
 
     /**
-     * Step 완료 알림
+     * Step 완료 알림 (로그만 출력, 실시간 콜백 제거 - finished에서 일괄 전송)
      */
     @Override
     public void onStepFinished(String executionId, StepResult result, int stepOrder, int totalSteps) {
-        try {
-            StepCallbackRequest request = StepCallbackRequest.builder()
-                    .executionId(executionId)
-                    .agentId(agentId)
-                    .stepId(result.getStepId())
-                    .stepName(result.getStepId())  // stepName은 stepId와 동일하게 (필요시 확장)
-                    .stepOrder(stepOrder)
-                    .totalSteps(totalSteps)
-                    .status(result.getStatus().name())
-                    .readCount(result.getReadCount())
-                    .writeCount(result.getWriteCount())
-                    .skipCount(result.getSkipCount())
-                    .durationMs(result.getDurationMs())
-                    .errorMessage(result.getErrorMessage())
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<StepCallbackRequest> entity = new HttpEntity<>(request, headers);
-
-            String url = orchestratorUrl + "/api/callback/step";
-            restTemplate.postForEntity(url, entity, Void.class);
-
-            log.info("Notified orchestrator: step finished. executionId={}, step={}, status={}",
-                    executionId, result.getStepId(), result.getStatus());
-        } catch (Exception e) {
-            log.error("Failed to notify step finish: {}", e.getMessage());
-        }
+        log.debug("Step finished: executionId={}, step={}, status={}", executionId, result.getStepId(), result.getStatus());
     }
 
     public void notifyStarted(String executionId, String triggeredBy) {

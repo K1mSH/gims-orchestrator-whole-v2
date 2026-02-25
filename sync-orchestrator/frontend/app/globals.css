@@ -118,6 +118,31 @@ a {
   border-radius: 0.5rem;
   padding: 1.25rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 2px solid transparent;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.stat-card-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.stat-card-clickable:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card-active {
+  border-color: var(--primary);
+  background: #f0f4ff;
+}
+
+.stat-card-alert {
+  background: #fff5f5;
+}
+
+.stat-card-alert.stat-card-active {
+  background: #ffe8e8;
+  border-color: var(--error);
 }
 
 .stat-label {
@@ -336,6 +361,7 @@ tr:hover {
 /* Zone Colors */
 .zone-external { color: #dc2626; }
 .zone-dmz { color: #f59e0b; }
+.zone-internal { color: #8b5cf6; }
 .zone-internal-common { color: #3b82f6; }
 .zone-internal-service { color: #22c55e; }
 
