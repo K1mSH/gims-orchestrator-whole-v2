@@ -59,6 +59,22 @@ public class AgentController {
     }
 
     /**
+     * DB에 저장된 실행 모드 조회
+     */
+    @GetMapping("/{id}/execution-modes")
+    public ResponseEntity<List<AgentDto.ExecutionModeResponse>> getExecutionModes(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getExecutionModes(id));
+    }
+
+    /**
+     * Agent API에서 실행 모드를 새로 가져와 DB 업데이트
+     */
+    @PostMapping("/{id}/refresh-execution-modes")
+    public ResponseEntity<List<AgentDto.ExecutionModeResponse>> refreshExecutionModes(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.refreshExecutionModes(id));
+    }
+
+    /**
      * DB에 저장된 Step 정의 조회
      */
     @GetMapping("/{id}/step-definitions")

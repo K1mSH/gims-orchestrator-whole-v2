@@ -18,12 +18,22 @@ import java.util.List;
 @Builder
 public class ExecutionOptions {
 
+    /** 실행 모드 ID (Agent 소스코드에 정의된 모드) */
+    private String modeId;
+
     /** 시간 범위 (기간 지정 실행) */
     private TimeRange timeRange;
 
     /** 실행 파라미터 (Agent가 자유롭게 해석) */
     @Builder.Default
     private List<ExecutionParam> params = new ArrayList<>();
+
+    /**
+     * 모드 ID 반환 (미지정 시 "default")
+     */
+    public String getModeIdOrDefault() {
+        return modeId != null ? modeId : "default";
+    }
 
     // === 시간 범위 ===
 

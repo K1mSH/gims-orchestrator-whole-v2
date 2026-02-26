@@ -1,6 +1,7 @@
 package com.sync.agent.bojoint.config;
 
 import com.sync.agent.common.pipeline.PipelineRunner;
+import com.sync.agent.common.step.ExecutionModeDefinition;
 import com.sync.agent.common.step.StepDefinition;
 import com.sync.agent.common.step.StepDefinitionProvider;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class PipelineRegistry implements StepDefinitionProvider {
     private final Map<String, PipelineRunner> runners = new ConcurrentHashMap<>();
     private final Map<String, String> agentTypes = new ConcurrentHashMap<>();
     private final Map<String, List<StepDefinition>> stepDefs = new ConcurrentHashMap<>();
+    private final Map<String, List<ExecutionModeDefinition>> executionModes = new ConcurrentHashMap<>();
 
     public void register(String agentCode, String agentType, PipelineRunner runner) {
         register(agentCode, agentType, runner, List.of());
@@ -28,13 +30,28 @@ public class PipelineRegistry implements StepDefinitionProvider {
 
     public void register(String agentCode, String agentType, PipelineRunner runner,
                           List<StepDefinition> stepDefinitions) {
+        register(agentCode, agentType, runner, stepDefinitions, List.of());
+    }
+
+    public void register(String agentCode, String agentType, PipelineRunner runner,
+                          List<StepDefinition> stepDefinitions,
+                          List<ExecutionModeDefinition> modes) {
         runners.put(agentCode, runner);
         agentTypes.put(agentCode, agentType);
         if (stepDefinitions != null && !stepDefinitions.isEmpty()) {
             stepDefs.put(agentCode, stepDefinitions);
         }
-        log.info("Registered pipeline: agentCode={}, type={}, steps={}",
-                agentCode, agentType, stepDefinitions != null ? stepDefinitions.size() : 0);
+        if (modes != null && !modes.isEmpty()) {
+            executionModes.put(agentCode, modes);
+        }
+        log.info("Registered pipeline: agentCode={}, type={}, steps={}, modes={}",
+                agentCode, agentType,
+                stepDefinitions != null ? stepDefinitions.size() : 0,
+                modes != null ? modes.size() : 0);
+    }
+
+    public List<ExecutionModeDefinition> getExecutionModes(String agentCode) {
+        return executionModes.getOrDefault(agentCode, List.of());
     }
 
     public PipelineRunner getRunner(String agentCode) {

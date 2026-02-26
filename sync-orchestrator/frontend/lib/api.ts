@@ -30,6 +30,7 @@ import type {
   ExecutionParamDefinition,
   ExecutionParamResponse,
   ExecutionFilter,
+  ExecutionModeResponse,
   StepDefinitionResponse,
   PageResponse,
 } from '@/types';
@@ -89,6 +90,14 @@ export const agentApi = {
   // Agent에서 Step 정의 가져와서 DB 갱신
   refreshStepDefinitions: (id: number) =>
     api.post<StepDefinitionResponse[]>(`/agents/${id}/refresh-step-definitions`).then((res) => res.data),
+
+  // DB에 저장된 실행 모드 조회
+  getExecutionModes: (id: number) =>
+    api.get<ExecutionModeResponse[]>(`/agents/${id}/execution-modes`).then((res) => res.data),
+
+  // Agent에서 실행 모드 가져와서 DB 갱신
+  refreshExecutionModes: (id: number) =>
+    api.post<ExecutionModeResponse[]>(`/agents/${id}/refresh-execution-modes`).then((res) => res.data),
 };
 
 // Schedule API
@@ -189,14 +198,15 @@ export const executionApi = {
     api.get<AgentExecutionSummary[]>('/executions/status').then((res) => res.data),
 
   // 실행 트리거 - Agent에 실행 요청
-  trigger: (id: number, startTime?: string, endTime?: string, filters?: ExecutionFilter[], selectedStepIds?: string[]) => {
+  trigger: (id: number, startTime?: string, endTime?: string, filters?: ExecutionFilter[], selectedStepIds?: string[], executionModeId?: string) => {
     const formatTime = (t?: string) => t && !t.match(/T\d{2}:\d{2}:\d{2}$/) ? `${t}:00` : t;
-    const hasOptions = startTime || endTime || (filters && filters.length > 0) || (selectedStepIds && selectedStepIds.length > 0);
+    const hasOptions = startTime || endTime || (filters && filters.length > 0) || (selectedStepIds && selectedStepIds.length > 0) || executionModeId;
     const body = hasOptions ? {
       startTime: formatTime(startTime),
       endTime: formatTime(endTime),
       filters: filters && filters.length > 0 ? filters : undefined,
       selectedStepIds: selectedStepIds && selectedStepIds.length > 0 ? selectedStepIds : undefined,
+      executionModeId: executionModeId || undefined,
     } : undefined;
     return api.post<TriggerResponse>(`/executions/${id}/run`, body).then((res) => res.data);
   },

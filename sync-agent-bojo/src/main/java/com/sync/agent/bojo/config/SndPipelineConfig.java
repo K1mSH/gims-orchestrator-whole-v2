@@ -17,6 +17,7 @@ import java.util.List;
  * Target → IF_SND 추출
  */
 @Slf4j
+
 @Configuration
 @RequiredArgsConstructor
 public class SndPipelineConfig {
@@ -33,7 +34,7 @@ public class SndPipelineConfig {
 
         for (AgentDefinition def : sndDefs) {
             try {
-                
+
                 PipelineRunner runner = createSndRunner(def);
                 pipelineRegistry.register(def.getAgentCode(), "SND", runner);
                 log.info("Registered SND pipeline: {}", def.getAgentCode());

@@ -46,10 +46,12 @@ public class ExecutionController {
             @PathVariable Long id,
             @RequestBody(required = false) ExecutionDto.TriggerRequest request) {
         if (request != null && (request.getStartTime() != null || request.getEndTime() != null
-                || request.getFilters() != null || request.getSelectedStepIds() != null)) {
+                || request.getFilters() != null || request.getSelectedStepIds() != null
+                || request.getExecutionModeId() != null)) {
             return ResponseEntity.ok(executionService.triggerExecution(
                     id, request.getStartTime(), request.getEndTime(),
-                    request.getFilters(), request.getSelectedStepIds(), "MANUAL"));
+                    request.getFilters(), request.getSelectedStepIds(),
+                    request.getExecutionModeId(), "MANUAL"));
         }
         return ResponseEntity.ok(executionService.triggerExecution(id));
     }

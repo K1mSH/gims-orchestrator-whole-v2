@@ -5,6 +5,7 @@ import com.sync.agent.bojoint.config.AgentDefinition;
 import com.sync.agent.bojoint.config.PipelineRegistry;
 import com.sync.agent.bojoint.pipeline.PipelineService;
 import com.sync.agent.common.pipeline.PipelineResult;
+import com.sync.agent.common.step.ExecutionModeDefinition;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -59,6 +60,13 @@ public class PipelineController {
 
             Map<String, Object> params = new HashMap<>(request);
             params.put("agentCode", agentCode);
+
+            // executionModeId 전달
+            String executionModeId = (String) request.get("executionModeId");
+            if (executionModeId != null) {
+                params.put("executionModeId", executionModeId);
+                log.info("[BojoInt] Execution mode: {}", executionModeId);
+            }
 
             if (request.get("startTime") != null && request.get("endTime") != null) {
                 LocalDateTime startTime = LocalDateTime.parse((String) request.get("startTime"), FORMATTER);
@@ -175,6 +183,28 @@ public class PipelineController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{agentCode}/execution-modes")
+    public ResponseEntity<List<Map<String, Object>>> getExecutionModes(@PathVariable String agentCode) {
+        if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<ExecutionModeDefinition> modes = pipelineRegistry.getExecutionModes(agentCode);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ExecutionModeDefinition mode : modes) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("modeId", mode.getModeId());
+            m.put("modeName", mode.getModeName());
+            m.put("description", mode.getDescription());
+            m.put("displayOrder", mode.getDisplayOrder());
+            m.put("isDefault", mode.isDefault());
+            result.add(m);
+        }
+
+        log.info("Execution modes for {}: {}", agentCode, result.size());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{agentCode}/tables")

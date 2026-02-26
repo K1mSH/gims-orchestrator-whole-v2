@@ -322,7 +322,7 @@ public class ExecutionService {
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                           List<Map<String, Object>> filters, String triggeredBy) {
-        return triggerExecutionInternal(id, startTime, endTime, filters, null, triggeredBy);
+        return triggerExecutionInternal(id, startTime, endTime, filters, null, null, triggeredBy);
     }
 
     /**
@@ -332,7 +332,18 @@ public class ExecutionService {
     public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                           List<Map<String, Object>> filters,
                                                           List<String> selectedStepIds, String triggeredBy) {
-        return triggerExecutionInternal(id, startTime, endTime, filters, selectedStepIds, triggeredBy);
+        return triggerExecutionInternal(id, startTime, endTime, filters, selectedStepIds, null, triggeredBy);
+    }
+
+    /**
+     * 실행 트리거 - Agent에 실행 요청 (시간 범위, 필터, Step 선택, 실행 모드, 트리거 유형 지정)
+     */
+    @Transactional
+    public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
+                                                          List<Map<String, Object>> filters,
+                                                          List<String> selectedStepIds,
+                                                          String executionModeId, String triggeredBy) {
+        return triggerExecutionInternal(id, startTime, endTime, filters, selectedStepIds, executionModeId, triggeredBy);
     }
 
     /**
@@ -341,7 +352,7 @@ public class ExecutionService {
      */
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime, String triggeredBy) {
-        return triggerExecutionInternal(id, startTime, endTime, null, null, triggeredBy);
+        return triggerExecutionInternal(id, startTime, endTime, null, null, null, triggeredBy);
     }
 
     /**
@@ -350,7 +361,8 @@ public class ExecutionService {
     @Transactional
     public ExecutionDto.TriggerResponse triggerExecutionInternal(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                                   List<Map<String, Object>> filters,
-                                                                  List<String> selectedStepIds, String triggeredBy) {
+                                                                  List<String> selectedStepIds,
+                                                                  String executionModeId, String triggeredBy) {
         Agent agent = agentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
@@ -501,6 +513,12 @@ public class ExecutionService {
             if (selectedStepIds != null && !selectedStepIds.isEmpty()) {
                 request.put("selectedStepIds", selectedStepIds);
                 log.info("Triggering execution with selectedStepIds: {}", selectedStepIds);
+            }
+
+            // 실행 모드
+            if (executionModeId != null && !executionModeId.isBlank()) {
+                request.put("executionModeId", executionModeId);
+                log.info("Triggering execution with executionModeId: {}", executionModeId);
             }
 
             log.info("Triggering execution on agent: {} with executionId: {}, source: {} (zone={}), target: {}, timeRange: {} ~ {}",

@@ -134,6 +134,31 @@ public class AgentDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    public static class ExecutionModeResponse {
+        private Long id;
+        private String modeId;
+        private String modeName;
+        private String description;
+        private Integer displayOrder;
+        private Boolean isDefault;
+
+        public static ExecutionModeResponse from(AgentExecutionMode mode) {
+            return ExecutionModeResponse.builder()
+                    .id(mode.getId())
+                    .modeId(mode.getModeId())
+                    .modeName(mode.getModeName())
+                    .description(mode.getDescription())
+                    .displayOrder(mode.getDisplayOrder())
+                    .isDefault(mode.getIsDefault())
+                    .build();
+        }
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class Response {
         private Long id;
         private String agentCode;
@@ -157,6 +182,8 @@ public class AgentDto {
         private List<ExecutionParamResponse> executionParams;
         // Step 정의
         private List<StepDefinitionResponse> stepDefinitions;
+        // 실행 모드
+        private List<ExecutionModeResponse> executionModes;
 
         public static Response from(Agent agent) {
             List<Long> sourceIds = agent.getAgentTables().stream()
@@ -172,6 +199,9 @@ public class AgentDto {
                     .toList();
             List<StepDefinitionResponse> stepDefs = agent.getStepDefinitions().stream()
                     .map(StepDefinitionResponse::from)
+                    .toList();
+            List<ExecutionModeResponse> modes = agent.getExecutionModes().stream()
+                    .map(ExecutionModeResponse::from)
                     .toList();
 
             return Response.builder()
@@ -194,6 +224,7 @@ public class AgentDto {
                     .targetTableIds(targetIds)
                     .executionParams(execParams)
                     .stepDefinitions(stepDefs)
+                    .executionModes(modes)
                     .build();
         }
     }

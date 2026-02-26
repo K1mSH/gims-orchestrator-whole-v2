@@ -22,6 +22,7 @@ export interface Agent {
   targetTableIds: number[];
   executionParams: ExecutionParamResponse[];
   stepDefinitions: StepDefinitionResponse[];
+  executionModes: ExecutionModeResponse[];
 }
 
 export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
@@ -101,6 +102,16 @@ export interface StepDefinitionResponse {
   description: string | null;
   displayOrder: number;
   enabledByDefault: boolean;
+}
+
+// 실행 모드 (Agent가 제공하는 실행 방식 메타데이터)
+export interface ExecutionModeResponse {
+  id: number;
+  modeId: string;
+  modeName: string;
+  description: string | null;
+  displayOrder: number;
+  isDefault: boolean;
 }
 
 export interface HealthCheckResponse {

@@ -83,6 +83,45 @@ public class AgentConfigLoader {
             def.setObsvdata(obsv);
         }
 
+        // if-table (Loader)
+        Map<String, Object> ifTableMap = (Map<String, Object>) data.get("if-table");
+        if (ifTableMap != null) {
+            java.util.HashMap<String, String> ifTable = new java.util.HashMap<>();
+            ifTableMap.forEach((k, v) -> ifTable.put(k, v.toString()));
+            def.setIfTable(ifTable);
+        }
+
+        // target-table (Loader)
+        Map<String, Object> targetTableMap = (Map<String, Object>) data.get("target-table");
+        if (targetTableMap != null) {
+            java.util.HashMap<String, String> targetTable = new java.util.HashMap<>();
+            targetTableMap.forEach((k, v) -> targetTable.put(k, v.toString()));
+            def.setTargetTable(targetTable);
+        }
+
+        // step (Loader)
+        Map<String, Object> stepMap = (Map<String, Object>) data.get("step");
+        if (stepMap != null) {
+            AgentDefinition.StepConfig step = new AgentDefinition.StepConfig();
+            step.setId((String) stepMap.get("id"));
+            step.setName((String) stepMap.get("name"));
+            def.setStep(step);
+        }
+
+        // execution-modes
+        List<Map<String, Object>> modesList = (List<Map<String, Object>>) data.get("execution-modes");
+        if (modesList != null) {
+            for (Map<String, Object> modeMap : modesList) {
+                AgentDefinition.ExecutionModeConfig mode = new AgentDefinition.ExecutionModeConfig();
+                mode.setModeId((String) modeMap.get("mode-id"));
+                mode.setModeName((String) modeMap.get("mode-name"));
+                mode.setDescription((String) modeMap.get("description"));
+                mode.setDisplayOrder(modeMap.get("display-order") != null ? ((Number) modeMap.get("display-order")).intValue() : 0);
+                mode.setDefault(Boolean.TRUE.equals(modeMap.get("is-default")));
+                def.getExecutionModes().add(mode);
+            }
+        }
+
         return def;
     }
 

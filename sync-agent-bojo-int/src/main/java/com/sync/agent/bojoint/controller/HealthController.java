@@ -34,6 +34,11 @@ public class HealthController {
         Set<String> rcvAgents = pipelineRegistry.getAgentCodesByType("RCV");
         result.put("rcvAgents", rcvAgents);
 
+        Set<String> loaderAgents = pipelineRegistry.getAgentCodesByType("LOADER");
+        if (!loaderAgents.isEmpty()) {
+            result.put("loaderAgents", loaderAgents);
+        }
+
         return ResponseEntity.ok(result);
     }
 

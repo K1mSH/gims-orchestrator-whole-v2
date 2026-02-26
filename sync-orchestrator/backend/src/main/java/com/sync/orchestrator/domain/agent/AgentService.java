@@ -197,6 +197,75 @@ public class AgentService {
         }
     }
 
+    // ==================== Execution Mode 관련 메서드 ====================
+
+    /**
+     * Agent API에서 실행 모드 목록 가져오기 (프록시)
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> fetchExecutionModesFromAgent(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        try {
+            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/execution-modes";
+            log.info("Fetching execution modes from agent: {}", url);
+
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            log.error("Failed to fetch execution modes from agent: {}", agent.getAgentCode(), e);
+            return List.of();
+        }
+    }
+
+    /**
+     * DB에 저장된 실행 모드 조회
+     */
+    public List<AgentDto.ExecutionModeResponse> getExecutionModes(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        return agent.getExecutionModes().stream()
+                .map(AgentDto.ExecutionModeResponse::from)
+                .toList();
+    }
+
+    /**
+     * Agent API에서 가져온 실행 모드를 DB에 저장 (기존 데이터 교체)
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public List<AgentDto.ExecutionModeResponse> refreshExecutionModes(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        List<Map<String, Object>> fetched = fetchExecutionModesFromAgent(id);
+
+        // 기존 모드 제거
+        agent.getExecutionModes().clear();
+        entityManager.flush();
+
+        // 새로 추가
+        for (Map<String, Object> fm : fetched) {
+            AgentExecutionMode mode = AgentExecutionMode.builder()
+                    .agent(agent)
+                    .modeId((String) fm.get("modeId"))
+                    .modeName((String) fm.get("modeName"))
+                    .description((String) fm.get("description"))
+                    .displayOrder(fm.get("displayOrder") != null ? ((Number) fm.get("displayOrder")).intValue() : 0)
+                    .isDefault(fm.get("isDefault") != null ? (Boolean) fm.get("isDefault") : false)
+                    .build();
+            agent.getExecutionModes().add(mode);
+        }
+
+        log.info("Refreshed {} execution modes for agent: {}", fetched.size(), agent.getAgentCode());
+
+        return agent.getExecutionModes().stream()
+                .map(AgentDto.ExecutionModeResponse::from)
+                .toList();
+    }
+
     // ==================== Step Definition 관련 메서드 ====================
 
     /**

@@ -105,6 +105,12 @@ public class ExecutionDto {
         private LocalDateTime endTime;    // 동기화 종료 시간 (optional)
 
         /**
+         * 실행 모드 ID (optional)
+         * Agent에 정의된 실행 방식 (예: "incremental", "full-reload")
+         */
+        private String executionModeId;
+
+        /**
          * 실행 필터 목록 (optional)
          * 각 필터: {"paramId":"sido","category":"FILTER","column":"sido","operator":"EQ","value":"경기도"}
          */

@@ -95,4 +95,9 @@ public class Agent {
     @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<AgentStepDefinition> stepDefinitions = new ArrayList<>();
+
+    // Agent 실행 모드 메타데이터
+    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AgentExecutionMode> executionModes = new ArrayList<>();
 }

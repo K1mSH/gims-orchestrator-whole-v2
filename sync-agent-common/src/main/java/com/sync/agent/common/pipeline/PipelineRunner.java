@@ -257,6 +257,12 @@ public class PipelineRunner {
     private ExecutionOptions buildExecutionOptions(Map<String, Object> contextParams, Map<String, Object> rawParams) {
         ExecutionOptions.ExecutionOptionsBuilder builder = ExecutionOptions.builder();
 
+        // 0. ModeId
+        Object modeIdObj = rawParams.get("executionModeId");
+        if (modeIdObj instanceof String) {
+            builder.modeId((String) modeIdObj);
+        }
+
         // 1. TimeRange
         LocalDateTime startTime = contextParams.get("startTime") instanceof LocalDateTime
                 ? (LocalDateTime) contextParams.get("startTime") : null;

@@ -2,6 +2,7 @@ package com.sync.agent.common.entity;
 
 import javax.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
     @Index(name = "idx_sync_log_execution", columnList = "execution_id"),
     @Index(name = "idx_sync_log_table", columnList = "execution_id, table_name")
 })
+@org.hibernate.annotations.Table(appliesTo = "sync_log", comment = "동기화 처리 로그 (Step별 테이블 단위 처리 결과)")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,51 +27,55 @@ public class SyncLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
+    @Comment("자동 증가 PK")
     private Long id;
 
     @Column(name = "execution_id", length = 100, nullable = false)
+    @Comment("실행 고유 ID (execution 참조)")
     private String executionId;
 
     @Column(name = "step_id", length = 50)
+    @Comment("Step 식별자")
     private String stepId;
 
-    /** 테이블명 (예: if_sec_jewon_view, sec_jewon_view) */
     @Column(name = "table_name", length = 100)
+    @Comment("처리 대상 테이블명")
     private String tableName;
 
-    /** 테이블 타입: SOURCE, IF, TARGET */
     @Column(name = "table_type", length = 20)
+    @Comment("테이블 유형 (SOURCE/IF/TARGET)")
     private String tableType;
 
-    /** 성공 건수 */
     @Column(name = "success_count")
+    @Comment("성공 건수")
     @Builder.Default
     private Long successCount = 0L;
 
-    /** 실패 건수 */
     @Column(name = "failed_count")
+    @Comment("실패 건수")
     @Builder.Default
     private Long failedCount = 0L;
 
-    /** 스킵 건수 */
     @Column(name = "skip_count")
+    @Comment("스킵 건수")
     @Builder.Default
     private Long skipCount = 0L;
 
-    /** 실패한 레코드의 source_pk 목록 (JSON 배열 또는 콤마 구분) */
     @Column(name = "failed_keys", columnDefinition = "TEXT")
+    @Comment("실패 키 목록")
     private String failedKeys;
 
-    /** 에러 요약 (첫 번째 에러 또는 대표 에러) */
     @Column(name = "error_summary", columnDefinition = "TEXT")
+    @Comment("오류 요약")
     private String errorSummary;
 
-    /** SOURCE 테이블의 PK 컬럼명 (YAML primary-key 값, 대소문자 구분 DB용) */
     @Column(name = "source_pk_column", length = 100)
+    @Comment("소스 PK 컬럼명")
     private String sourcePkColumn;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
+    @Comment("로그 생성 시각")
     private LocalDateTime createdAt;
 
     // ========== Helper Methods ==========

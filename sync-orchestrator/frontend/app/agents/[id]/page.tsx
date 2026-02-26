@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
-import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, ExecutionFilter, StepDefinitionResponse } from '@/types';
+import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, ExecutionFilter, StepDefinitionResponse, ExecutionModeResponse } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
 import InfoTab from '@/components/agent/InfoTab';
@@ -39,6 +39,9 @@ export default function AgentDetailPage() {
   // Step 선택 상태
   const [stepDefinitions, setStepDefinitions] = useState<StepDefinitionResponse[]>([]);
   const [selectedSteps, setSelectedSteps] = useState<Record<string, boolean>>({});
+  // 실행 모드 상태
+  const [executionModes, setExecutionModes] = useState<ExecutionModeResponse[]>([]);
+  const [selectedModeId, setSelectedModeId] = useState<string | undefined>(undefined);
 
   const fetchData = useCallback(async () => {
     try {
@@ -63,6 +66,14 @@ export default function AgentDetailPage() {
         const defaults: Record<string, boolean> = {};
         sorted.forEach(s => { defaults[s.stepId] = s.enabledByDefault; });
         setSelectedSteps(defaults);
+      }
+      // 실행 모드 설정
+      if (agentData.executionModes && agentData.executionModes.length > 0) {
+        const sorted = [...agentData.executionModes].sort((a, b) => a.displayOrder - b.displayOrder);
+        setExecutionModes(sorted);
+        // 기본 모드 선택
+        const defaultMode = sorted.find(m => m.isDefault);
+        setSelectedModeId(defaultMode ? defaultMode.modeId : sorted[0].modeId);
       }
     } catch (error) {
       console.error('데이터 조회 실패:', error);
@@ -122,7 +133,22 @@ export default function AgentDetailPage() {
       }
     }
 
+    // 실행 모드: 옵션 패널에서 실행 시에만 적용, default 모드면 미전달 (기존 동작 유지)
+    let modeId: string | undefined;
+    if (withOptions && executionModes.length > 1 && selectedModeId) {
+      const defaultMode = executionModes.find(m => m.isDefault);
+      if (!defaultMode || defaultMode.modeId !== selectedModeId) {
+        modeId = selectedModeId;
+      } else {
+        modeId = selectedModeId;  // default라도 명시적으로 전달
+      }
+    }
+
     const parts: string[] = [];
+    if (modeId) {
+      const mode = executionModes.find(m => m.modeId === modeId);
+      parts.push(`실행 방식: ${mode?.modeName || modeId}`);
+    }
     if (hasTimeRange) parts.push(`시간 범위: ${startTime || '(기본값)'} ~ ${endTime || '(현재시간)'}`);
     if (stepIds) parts.push(`선택 Step: ${stepIds.join(', ')}`);
     if (filters.length > 0) parts.push(`필터 ${filters.length}개: ${filters.map(f => `${f.paramId}=${f.value}`).join(', ')}`);
@@ -139,7 +165,8 @@ export default function AgentDetailPage() {
         hasTimeRange && startTime ? startTime : undefined,
         hasTimeRange && endTime ? endTime : undefined,
         filters.length > 0 ? filters : undefined,
-        stepIds
+        stepIds,
+        modeId
       );
       setActiveTab('history');
       setShowExecutionOptions(false);
@@ -233,6 +260,37 @@ export default function AgentDetailPage() {
       {/* 실행 옵션 패널 */}
       {showExecutionOptions && (
         <div className="card" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--gray-50)' }}>
+          {/* 실행 방식 (모드가 2개 이상일 때만 표시) */}
+          {executionModes.length > 1 && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>
+                실행 방식
+              </div>
+              {executionModes.map(mode => (
+                <div key={mode.modeId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', marginLeft: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="executionMode"
+                      value={mode.modeId}
+                      checked={selectedModeId === mode.modeId}
+                      onChange={() => setSelectedModeId(mode.modeId)}
+                    />
+                    <span>{mode.modeName}</span>
+                    {mode.isDefault && (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 500 }}>(기본)</span>
+                    )}
+                  </label>
+                  {mode.description && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                      — {mode.description}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* 시간 범위 */}
           <div style={{ marginBottom: executionParams.length > 0 ? '1rem' : 0 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 500 }}>
