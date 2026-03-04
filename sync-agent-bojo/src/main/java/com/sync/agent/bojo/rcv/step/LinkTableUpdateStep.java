@@ -1,6 +1,8 @@
 package com.sync.agent.bojo.rcv.step;
 
 import com.sync.agent.common.controller.DataSourceProvider;
+import com.sync.agent.common.entity.SyncLog;
+import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.step.Status;
 import com.sync.agent.common.step.StepContext;
 import com.sync.agent.common.step.StepExecutor;
@@ -25,6 +27,7 @@ public class LinkTableUpdateStep implements StepExecutor {
     private static final String STEP_NAME = "Link 테이블 업데이트";
 
     private final DataSourceProvider dataSourceProvider;
+    private final SyncLogRepository syncLogRepository;
     private final String ifTable;       // IF 테이블 (현재 실행에서 동기화된 데이터)
     private final String linkTable;     // link 테이블
 
@@ -35,10 +38,12 @@ public class LinkTableUpdateStep implements StepExecutor {
     public LinkTableUpdateStep(
             DataSourceProvider dataSourceProvider,
             String ifTable,
-            String linkTable) {
+            String linkTable,
+            SyncLogRepository syncLogRepository) {
         this.dataSourceProvider = dataSourceProvider;
         this.ifTable = ifTable;
         this.linkTable = linkTable;
+        this.syncLogRepository = syncLogRepository;
     }
 
     @Override
@@ -105,11 +110,15 @@ public class LinkTableUpdateStep implements StepExecutor {
 
             log.info("[{}] Link 테이블 업데이트 완료: {} 건", STEP_ID, updateCount);
 
+            // SyncLog에 LINK 타입으로 기록 (테이블 처리 현황에 표시)
+            saveSyncLogSummary(context.getExecutionId(), linkTable, "LINK",
+                    (long) updateCount, 0L, 0L);
+
             return StepResult.builder()
                     .stepId(STEP_ID)
                     .status(Status.SUCCESS)
                     .readCount(0)
-                    .writeCount(updateCount)
+                    .writeCount(0)
                     .skipCount(0)
                     .durationMs(System.currentTimeMillis() - startTime)
                     .sourceTable(ifTable)
@@ -250,6 +259,24 @@ public class LinkTableUpdateStep implements StepExecutor {
         } catch (Exception e) {
             log.error("[{}] Link 레코드 UPSERT 실패: {} - {}", STEP_ID, obsvCode, e.getMessage());
             return 0;
+        }
+    }
+
+    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
+                                     Long successCount, Long failedCount, Long skipCount) {
+        try {
+            SyncLog logEntry = SyncLog.builder()
+                    .executionId(executionId)
+                    .stepId(STEP_ID)
+                    .tableName(tableName)
+                    .tableType(tableType)
+                    .successCount(successCount)
+                    .failedCount(failedCount)
+                    .skipCount(skipCount)
+                    .build();
+            syncLogRepository.save(logEntry);
+        } catch (Exception e) {
+            log.warn("Failed to save SyncLog for {}: {}", tableName, e.getMessage());
         }
     }
 }

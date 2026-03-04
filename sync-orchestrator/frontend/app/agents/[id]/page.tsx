@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
-import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, ExecutionFilter, StepDefinitionResponse, ExecutionModeResponse } from '@/types';
+import type { Agent, Schedule, ExecutionHistory, ExecutionParamResponse, ExecutionFilter, StepDefinitionResponse, ExecutionModeResponse, AgentType } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
 import InfoTab from '@/components/agent/InfoTab';
@@ -45,14 +45,18 @@ export default function AgentDetailPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [agentData, schedulesData, executionsData] = await Promise.all([
-        agentApi.getById(agentId),
-        scheduleApi.getByAgentId(agentId),
-        executionHistoryApi.getByAgent(agentId),
-      ]);
+      const agentData = await agentApi.getById(agentId);
       setAgent(agentData);
-      setSchedules(schedulesData);
-      setExecutions(executionsData);
+
+      // 프록시 Agent는 스케줄/실행이력 불필요
+      if (agentData.agentType !== 'DB_CON_PROXY') {
+        const [schedulesData, executionsData] = await Promise.all([
+          scheduleApi.getByAgentId(agentId),
+          executionHistoryApi.getByAgent(agentId),
+        ]);
+        setSchedules(schedulesData);
+        setExecutions(executionsData);
+      }
       // 실행 파라미터 설정 (Agent 응답에 포함된 경우)
       if (agentData.executionParams && agentData.executionParams.length > 0) {
         const enabledParams = agentData.executionParams.filter(p => p.isEnabled);
@@ -224,6 +228,8 @@ export default function AgentDetailPage() {
     return <div className="empty-state">Agent를 찾을 수 없습니다</div>;
   }
 
+  const isProxy = agent.agentType === 'DB_CON_PROXY';
+
   return (
     <div>
       {/* 헤더 */}
@@ -231,6 +237,11 @@ export default function AgentDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h1 className="page-title">{agent.agentName}</h1>
           <StatusBadge status={agent.status} />
+          {isProxy && (
+            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: '#8b5cf620', color: '#8b5cf6', fontWeight: 500 }}>
+              DB Proxy
+            </span>
+          )}
         </div>
         <div>
           <button className="btn btn-secondary" onClick={() => router.push('/agents')} style={{ marginRight: '0.5rem' }}>
@@ -239,26 +250,30 @@ export default function AgentDetailPage() {
           <button className="btn btn-primary" onClick={handleHealthCheck} style={{ marginRight: '0.5rem' }}>
             상태확인
           </button>
-          <button className="btn btn-secondary" onClick={handleGenerateTestData} disabled={agent.status === 'OFFLINE'} style={{ marginRight: '0.25rem' }}>
-            테스트 생성
-          </button>
-          <button className="btn btn-secondary" onClick={handleClearTestData} disabled={agent.status === 'OFFLINE'} style={{ marginRight: '0.5rem' }}>
-            테스트 삭제
-          </button>
-          <button className="btn btn-primary" onClick={() => handleTriggerExecution(false)} disabled={agent.status !== 'ONLINE'} style={{ marginRight: '0.25rem' }}>
-            실행
-          </button>
-          <button className="btn btn-secondary" onClick={() => setShowExecutionOptions(!showExecutionOptions)} disabled={agent.status !== 'ONLINE'} style={{ marginRight: '0.5rem' }}>
-            실행옵션 ▾
-          </button>
+          {!isProxy && (
+            <>
+              <button className="btn btn-secondary" onClick={handleGenerateTestData} disabled={agent.status === 'OFFLINE'} style={{ marginRight: '0.25rem' }}>
+                테스트 생성
+              </button>
+              <button className="btn btn-secondary" onClick={handleClearTestData} disabled={agent.status === 'OFFLINE'} style={{ marginRight: '0.5rem' }}>
+                테스트 삭제
+              </button>
+              <button className="btn btn-primary" onClick={() => handleTriggerExecution(false)} disabled={agent.status !== 'ONLINE'} style={{ marginRight: '0.25rem' }}>
+                실행
+              </button>
+              <button className="btn btn-secondary" onClick={() => setShowExecutionOptions(!showExecutionOptions)} disabled={agent.status !== 'ONLINE'} style={{ marginRight: '0.5rem' }}>
+                실행옵션 ▾
+              </button>
+            </>
+          )}
           <button className="btn btn-danger" onClick={handleDelete}>
             삭제
           </button>
         </div>
       </div>
 
-      {/* 실행 옵션 패널 */}
-      {showExecutionOptions && (
+      {/* 실행 옵션 패널 (프록시 Agent에서는 숨김) */}
+      {!isProxy && showExecutionOptions && (
         <div className="card" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--gray-50)' }}>
           {/* 실행 방식 (모드가 2개 이상일 때만 표시) */}
           {executionModes.length > 1 && (
@@ -423,9 +438,11 @@ export default function AgentDetailPage() {
         <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')}>
           기본정보
         </TabButton>
-        <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
-          실행이력 ({executions.length})
-        </TabButton>
+        {!isProxy && (
+          <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
+            실행이력 ({executions.length})
+          </TabButton>
+        )}
       </div>
 
       {/* 탭 컨텐츠 */}

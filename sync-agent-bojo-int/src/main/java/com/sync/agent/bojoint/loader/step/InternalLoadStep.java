@@ -86,6 +86,7 @@ public class InternalLoadStep implements StepExecutor {
         int skipCount = 0;
 
         int obsvSuccess = 0, obsvFailed = 0;
+        int linkUpdated = 0;
         List<String> obsvFailedKeys = new ArrayList<>();
         String obsvFirstError = null;
         int obsvReadCount = 0;
@@ -184,15 +185,19 @@ public class InternalLoadStep implements StepExecutor {
                         long resultGwtemp = targetRepo.ensureResultId(targetResultTable, resultIdMap, spotId, IEM_GWTEMP);
                         long resultEc = targetRepo.ensureResultId(targetResultTable, resultIdMap, spotId, IEM_EC);
 
+                        // source_refs: IF 레코드의 id 참조
+                        Object ifId = row.get("id");
+                        String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifObsvdataTable, ifId);
+
                         // 3행 생성 (값이 있는 항목만)
                         if (gwdep != null) {
-                            expandedRows.add(new Object[]{resultGwdep, gwdep, obsrvnDt, 1});
+                            expandedRows.add(new Object[]{resultGwdep, gwdep, obsrvnDt, 1, executionId, sourceRef});
                         }
                         if (gwtemp != null) {
-                            expandedRows.add(new Object[]{resultGwtemp, gwtemp, obsrvnDt, 1});
+                            expandedRows.add(new Object[]{resultGwtemp, gwtemp, obsrvnDt, 1, executionId, sourceRef});
                         }
                         if (ec != null) {
-                            expandedRows.add(new Object[]{resultEc, ec, obsrvnDt, 1});
+                            expandedRows.add(new Object[]{resultEc, ec, obsrvnDt, 1, executionId, sourceRef});
                         }
 
                         obsvSuccessIds.add(row.get("id"));
@@ -249,7 +254,7 @@ public class InternalLoadStep implements StepExecutor {
                             dateTime[0], dateTime[1]    // frst_date, frst_time (신규 INSERT 시만 사용)
                     });
                 }
-                int linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
+                linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
                 log.info("[{}] Upserted {} link records", getStepId(), linkUpdated);
             }
 
@@ -264,6 +269,10 @@ public class InternalLoadStep implements StepExecutor {
                     (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     obsvFirstError);
+            if (targetLinkTable != null && linkUpdated > 0) {
+                saveSyncLogSummary(executionId, targetLinkTable, "LINK",
+                        (long) linkUpdated, 0L, 0L, null, null);
+            }
 
             return StepResult.builder()
                     .stepId(getStepId())

@@ -18,15 +18,17 @@ const AGENT_TYPE_LABELS: Record<AgentType, string> = {
   RCV: '수신(RCV)',
   SND: '송신(SND)',
   LOADER: 'Loader',
+  DB_CON_PROXY: 'DB Proxy',
 };
 
 const AGENT_TYPE_COLORS: Record<AgentType, string> = {
   RCV: '#6366f1',      // indigo
   SND: '#f59e0b',      // amber
   LOADER: '#10b981',   // emerald
+  DB_CON_PROXY: '#8b5cf6', // violet
 };
 
-const AGENT_TYPE_ORDER: AgentType[] = ['RCV', 'LOADER', 'SND'];
+const AGENT_TYPE_ORDER: AgentType[] = ['RCV', 'LOADER', 'SND', 'DB_CON_PROXY'];
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -414,13 +416,15 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
         executionParams: executionParams.length > 0 ? executionParams : undefined,
       });
 
-      // 2. 스케줄 등록 (Agent id 사용)
-      const scheduleReq: ScheduleCreateRequest = {
-        agentId: createdAgent.id,
-        cronExpression: scheduleData.cronExpression,
-        isEnabled: scheduleData.isEnabled,
-      };
-      await scheduleApi.create(scheduleReq);
+      // 2. 스케줄 등록 (프록시 Agent는 스케줄 불필요)
+      if (selectedAgentType !== 'DB_CON_PROXY') {
+        const scheduleReq: ScheduleCreateRequest = {
+          agentId: createdAgent.id,
+          cronExpression: scheduleData.cronExpression,
+          isEnabled: scheduleData.isEnabled,
+        };
+        await scheduleApi.create(scheduleReq);
+      }
 
       onSuccess();
     } catch (error: unknown) {
@@ -590,7 +594,8 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
               </div>
             </div>
 
-            {/* Datasource 및 테이블 설정 */}
+            {/* Datasource 및 테이블 설정 (프록시 Agent는 제외) */}
+            {selectedAgentType !== 'DB_CON_PROXY' && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
               <strong style={{ marginBottom: '1rem', display: 'block' }}>Datasource 및 테이블 설정</strong>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -670,7 +675,10 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
               </div>
             </div>
 
-            {/* 실행 옵션 섹션 */}
+            )}
+
+            {/* 실행 옵션 섹션 (프록시 Agent는 제외) */}
+            {selectedAgentType !== 'DB_CON_PROXY' && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <strong>실행 옵션</strong>
@@ -713,7 +721,10 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
               )}
             </div>
 
-            {/* 스케줄 설정 섹션 (필수) */}
+            )}
+
+            {/* 스케줄 설정 섹션 (프록시 Agent는 제외) */}
+            {selectedAgentType !== 'DB_CON_PROXY' && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
               <strong style={{ marginBottom: '1rem', display: 'block' }}>스케줄 설정</strong>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -744,6 +755,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                 </div>
               </div>
             </div>
+            )}
 
             <button type="submit" className="btn btn-primary" disabled={submitting} style={{ marginTop: '1rem' }}>
               {submitting ? '등록중...' : '등록'}

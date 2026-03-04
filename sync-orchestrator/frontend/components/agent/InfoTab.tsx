@@ -17,6 +17,7 @@ const AGENT_TYPE_LABELS: Record<AgentType, string> = {
   RCV: '수신(RCV)',
   SND: '송신(SND)',
   LOADER: 'Loader',
+  DB_CON_PROXY: 'DB Proxy',
 };
 
 /**
@@ -545,7 +546,8 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
               </div>
             </div>
 
-            {/* Datasource & 테이블 설정 */}
+            {/* Datasource & 테이블 설정 (프록시 Agent 제외) */}
+            {agent.agentType !== 'DB_CON_PROXY' && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
               <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', fontWeight: 600 }}>Datasource & 테이블 설정</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -624,12 +626,13 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Datasource & 테이블 정보 */}
-      {(sourceDatasource || targetDatasource) && (
+      {/* Datasource & 테이블 정보 (프록시 Agent 제외) */}
+      {agent.agentType !== 'DB_CON_PROXY' && (sourceDatasource || targetDatasource) && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
             <h2 className="card-title">Datasource & 테이블</h2>
@@ -700,7 +703,8 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
         </div>
       )}
 
-      {/* 실행 옵션 */}
+      {/* 실행 옵션 (프록시 Agent 제외) */}
+      {agent.agentType !== 'DB_CON_PROXY' && (
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
           <h2 className="card-title">실행 옵션</h2>
@@ -747,8 +751,10 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
           </div>
         )}
       </div>
+      )}
 
-      {/* 스케줄 */}
+      {/* 스케줄 (프록시 Agent 제외) */}
+      {agent.agentType !== 'DB_CON_PROXY' && (
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
           <h2 className="card-title">스케줄</h2>
@@ -919,6 +925,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
           </div>
         )}
       </div>
+      )}
     </>
   );
 }

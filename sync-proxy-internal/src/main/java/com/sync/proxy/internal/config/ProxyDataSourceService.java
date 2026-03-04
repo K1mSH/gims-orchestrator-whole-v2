@@ -1,0 +1,172 @@
+package com.sync.proxy.internal.config;
+
+import com.sync.agent.common.controller.DataSourceProvider;
+import com.sync.agent.common.datasource.DataSourceInfo;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import javax.annotation.PreDestroy;
+import javax.sql.DataSource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * DB 프록시 전용 DataSourceProvider 구현
+ *
+ * 파이프라인 실행이 없으므로 ThreadLocal 불필요.
+ * Fallback 전략:
+ * 1. 메모리 캐시 (Orchestrator에서 전달받은 정보)
+ * 2. Orchestrator API 호출 (캐시 miss 시)
+ * 3. Spring 기본 DataSource (Agent 로컬 DB)
+ */
+@Slf4j
+@Service
+public class ProxyDataSourceService implements DataSourceProvider {
+
+    private final JdbcTemplate defaultJdbcTemplate;
+
+    @Value("${agent.orchestrator-url:http://localhost:8080}")
+    private String orchestratorUrl;
+
+    // Orchestrator에서 전달받은 datasource 정보 캐시
+    private final Map<String, DataSourceInfo> cachedDataSourceInfos = new ConcurrentHashMap<>();
+    private final Map<String, HikariDataSource> dataSources = new ConcurrentHashMap<>();
+    private final Map<String, JdbcTemplate> jdbcTemplates = new ConcurrentHashMap<>();
+
+    public ProxyDataSourceService(DataSource dataSource) {
+        this.defaultJdbcTemplate = new JdbcTemplate(dataSource);
+    }
+
+    @Override
+    public String getSourceDatasourceId() {
+        return cachedDataSourceInfos.keySet().stream()
+                .filter(id -> id.toLowerCase().contains("source"))
+                .findFirst()
+                .or(() -> cachedDataSourceInfos.keySet().stream().findFirst())
+                .orElseThrow(() -> new IllegalStateException("No SOURCE datasource configured"));
+    }
+
+    @Override
+    public String getTargetDatasourceId() {
+        return cachedDataSourceInfos.keySet().stream()
+                .filter(id -> id.toLowerCase().contains("target"))
+                .findFirst()
+                .or(() -> cachedDataSourceInfos.keySet().stream().findFirst())
+                .orElseThrow(() -> new IllegalStateException("No TARGET datasource configured"));
+    }
+
+    @Override
+    public String getAgentType() {
+        return "PROXY";
+    }
+
+    @Override
+    public String getDbType(String datasourceId) {
+        DataSourceInfo info = cachedDataSourceInfos.get(datasourceId);
+        return info != null ? info.getDbType() : null;
+    }
+
+    @Override
+    public JdbcTemplate getJdbcTemplate(String datasourceId) {
+        // 1. 캐시에 있으면 전용 JdbcTemplate 사용
+        if (cachedDataSourceInfos.containsKey(datasourceId)) {
+            return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
+        }
+
+        // 2. Orchestrator에서 연결 정보 조회
+        DataSourceInfo fetched = fetchFromOrchestrator(datasourceId);
+        if (fetched != null) {
+            cachedDataSourceInfos.put(datasourceId, fetched);
+            return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
+        }
+
+        // 3. Spring 기본 DataSource fallback (프록시 로컬 DB)
+        log.debug("[Proxy] DataSource '{}' not resolved, using default JdbcTemplate", datasourceId);
+        return defaultJdbcTemplate;
+    }
+
+    private JdbcTemplate createJdbcTemplate(String datasourceId) {
+        HikariDataSource ds = dataSources.computeIfAbsent(datasourceId, this::createDataSource);
+        return new JdbcTemplate(ds);
+    }
+
+    private HikariDataSource createDataSource(String datasourceId) {
+        log.info("[Proxy] Creating DataSource: {}", datasourceId);
+
+        DataSourceInfo info = cachedDataSourceInfos.get(datasourceId);
+        if (info == null) {
+            throw new IllegalArgumentException("DataSource info not found: " + datasourceId);
+        }
+
+        HikariConfig hikariConfig = new HikariConfig();
+        hikariConfig.setPoolName("ProxyPool-" + datasourceId);
+        hikariConfig.setJdbcUrl(info.getJdbcUrl());
+        hikariConfig.setUsername(info.getUsername());
+        hikariConfig.setPassword(info.getPassword());
+        hikariConfig.setDriverClassName(info.getDriverClassName());
+        hikariConfig.setMaximumPoolSize(5);
+        hikariConfig.setMinimumIdle(1);
+
+        HikariDataSource ds = new HikariDataSource(hikariConfig);
+        log.info("[Proxy] DataSource created: {} -> {}", datasourceId, info.getJdbcUrl());
+        return ds;
+    }
+
+    /**
+     * Orchestrator API에서 datasource 연결 정보 동적 조회
+     */
+    private DataSourceInfo fetchFromOrchestrator(String datasourceId) {
+        try {
+            String url = orchestratorUrl + "/api/datasources/" + datasourceId + "/connection-info";
+            log.info("[Proxy] Fetching datasource info from Orchestrator: {}", datasourceId);
+
+            RestTemplate restTemplate = new RestTemplate();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response == null || response.isEmpty()) {
+                log.warn("[Proxy] Empty response from Orchestrator for datasource: {}", datasourceId);
+                return null;
+            }
+
+            DataSourceInfo info = DataSourceInfo.builder()
+                    .datasourceId((String) response.get("datasourceId"))
+                    .dbType((String) response.get("dbType"))
+                    .host((String) response.get("host"))
+                    .port(response.get("port") instanceof Integer ? (Integer) response.get("port")
+                            : Integer.parseInt(response.get("port").toString()))
+                    .databaseName((String) response.get("databaseName"))
+                    .username((String) response.get("username"))
+                    .password((String) response.get("password"))
+                    .build();
+
+            log.info("[Proxy] Fetched datasource from Orchestrator: {} ({}:{})",
+                    datasourceId, info.getHost(), info.getPort());
+            return info;
+        } catch (Exception e) {
+            log.warn("[Proxy] Failed to fetch datasource from Orchestrator: {} - {}", datasourceId, e.getMessage());
+            return null;
+        }
+    }
+
+    public Map<String, DataSourceInfo> getCachedDataSourceInfos() {
+        return new ConcurrentHashMap<>(cachedDataSourceInfos);
+    }
+
+    @PreDestroy
+    public void closeAll() {
+        dataSources.forEach((id, ds) -> {
+            if (!ds.isClosed()) {
+                ds.close();
+                log.info("[Proxy] DataSource closed: {}", id);
+            }
+        });
+        dataSources.clear();
+        jdbcTemplates.clear();
+    }
+}

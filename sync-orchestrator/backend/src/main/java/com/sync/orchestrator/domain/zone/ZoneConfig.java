@@ -8,8 +8,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 /**
- * Zone별 Master Agent URL 설정
- * Datasource 연결 테스트 시 해당 zone의 master agent로 요청을 프록시하기 위해 사용
+ * Zone별 프록시 Agent URL 설정
+ * DB 조회(연결 테스트, 테이블/컬럼 스키마, 실행 데이터)를 해당 zone의 프록시 Agent로 라우팅
  */
 @Entity
 @Table(name = "zone_config")
@@ -27,8 +27,8 @@ public class ZoneConfig {
     @Column(name = "short_code", length = 5, nullable = false)
     private String shortCode;  // E, D, IC, IS
 
-    @Column(name = "master_agent_url", length = 500, nullable = false)
-    private String masterAgentUrl;  // http://192.168.1.100:8081
+    @Column(name = "proxy_agent_url", length = 500, nullable = false)
+    private String proxyAgentUrl;  // http://192.168.1.100:8083
 
     @Column(name = "description", length = 500)
     private String description;

@@ -107,13 +107,14 @@ public class GimsTargetRepository {
     /**
      * 관측데이터 배치 INSERT (EAV 확장 후)
      * 현행 시스템과 동일하게 UK 없이 단순 INSERT
+     * 각 행: [result_id, obsrvn_dta_value, obsrvn_dt, qlt_id, execution_id, source_refs]
      */
     public int batchInsertObsvdata(String tableName, List<Object[]> rows) {
         if (rows.isEmpty()) return 0;
 
         String sql = String.format(
-                "INSERT INTO %s (result_id, obsrvn_dta_value, obsrvn_dt, qlt_id) " +
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO %s (result_id, obsrvn_dta_value, obsrvn_dt, qlt_id, execution_id, source_refs) " +
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 tableName);
 
         int totalInserted = 0;

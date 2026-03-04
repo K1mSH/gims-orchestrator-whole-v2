@@ -264,25 +264,24 @@ public class DatasourceService {
     }
 
     /**
-     * zone의 master Agent를 통해 연결 테스트
-     * 1순위: ZoneConfig에서 masterAgentUrl 조회
-     * 2순위: Agent 테이블에서 zone master 조회
+     * zone의 프록시 Agent를 통해 연결 테스트
+     * ZoneConfig에서 proxyAgentUrl 조회
      */
     private DatasourceDto.ConnectionTestResponse testConnectionViaAgent(
             String zone, DbType dbType, String host, int port, String databaseName, String username, String password) {
 
-        // ZoneConfig에서 masterAgentUrl 조회
-        String masterAgentUrl = zoneConfigRepository.findByZoneAndIsActiveTrue(zone)
-                .map(ZoneConfig::getMasterAgentUrl)
+        // ZoneConfig에서 proxyAgentUrl 조회
+        String proxyAgentUrl = zoneConfigRepository.findByZoneAndIsActiveTrue(zone)
+                .map(ZoneConfig::getProxyAgentUrl)
                 .orElse(null);
 
-        if (masterAgentUrl == null) {
-            log.warn("No master agent URL found for zone: {}, falling back to direct test", zone);
+        if (proxyAgentUrl == null) {
+            log.warn("No proxy agent URL found for zone: {}, falling back to direct test", zone);
             // master Agent URL이 없으면 직접 테스트 시도
             return testConnectionInternal(dbType, host, port, databaseName, username, password);
         }
 
-        log.info("Testing connection via agent URL: {}", masterAgentUrl);
+        log.info("Testing connection via agent URL: {}", proxyAgentUrl);
 
         try {
             // Agent에게 연결 테스트 요청
@@ -295,7 +294,7 @@ public class DatasourceService {
                     .password(password)
                     .build();
 
-            String agentApiUrl = masterAgentUrl + "/api/datasource/test-connection";
+            String agentApiUrl = proxyAgentUrl + "/api/datasource/test-connection";
             ResponseEntity<DatasourceDto.ConnectionTestResponse> response = restTemplate.postForEntity(
                     agentApiUrl,
                     agentRequest,
@@ -312,7 +311,7 @@ public class DatasourceService {
                         .build();
             }
         } catch (Exception e) {
-            log.error("Failed to test connection via agent {}: {}", masterAgentUrl, e.getMessage());
+            log.error("Failed to test connection via agent {}: {}", proxyAgentUrl, e.getMessage());
             return DatasourceDto.ConnectionTestResponse.builder()
                     .success(false)
                     .message("Agent connection failed: " + e.getMessage())
@@ -393,15 +392,15 @@ public class DatasourceService {
     private List<DatasourceDto.TableSearchResult> searchTablesViaAgent(Datasource datasource, String query) {
         log.info("searchTablesViaAgent called for zone: {}", datasource.getZone());
 
-        String masterAgentUrl = getMasterAgentUrl(datasource.getZone());
-        log.info("Master agent URL resolved: {}", masterAgentUrl);
+        String proxyAgentUrl = getProxyAgentUrl(datasource.getZone());
+        log.info("Master agent URL resolved: {}", proxyAgentUrl);
 
-        if (masterAgentUrl == null) {
-            log.warn("No master agent URL found for zone: {}, falling back to direct search", datasource.getZone());
+        if (proxyAgentUrl == null) {
+            log.warn("No proxy agent URL found for zone: {}, falling back to direct search", datasource.getZone());
             return searchTablesInternal(datasource, query);
         }
 
-        log.info("Searching tables via agent: {}", masterAgentUrl);
+        log.info("Searching tables via agent: {}", proxyAgentUrl);
 
         try {
             var request = new java.util.HashMap<String, Object>();
@@ -413,7 +412,7 @@ public class DatasourceService {
             request.put("password", credentialEncryptor.decrypt(datasource.getPassword()));
             request.put("query", query);
 
-            String agentUrl = masterAgentUrl + "/api/datasource/search-tables";
+            String agentUrl = proxyAgentUrl + "/api/datasource/search-tables";
             log.info("Calling agent API: {} with request: dbType={}, host={}, query={}",
                     agentUrl, datasource.getDbType().name(), datasource.getHost(), query);
 
@@ -493,13 +492,13 @@ public class DatasourceService {
      * Agent를 통해 컬럼 검색
      */
     private List<DatasourceDto.ColumnSearchResult> searchColumnsViaAgent(Datasource datasource, String tableName, String query) {
-        String masterAgentUrl = getMasterAgentUrl(datasource.getZone());
-        if (masterAgentUrl == null) {
-            log.warn("No master agent URL found for zone: {}, falling back to direct search", datasource.getZone());
+        String proxyAgentUrl = getProxyAgentUrl(datasource.getZone());
+        if (proxyAgentUrl == null) {
+            log.warn("No proxy agent URL found for zone: {}, falling back to direct search", datasource.getZone());
             return searchColumnsInternal(datasource, tableName, query);
         }
 
-        log.info("Searching columns via agent: {}", masterAgentUrl);
+        log.info("Searching columns via agent: {}", proxyAgentUrl);
 
         try {
             var request = new java.util.HashMap<String, Object>();
@@ -512,7 +511,7 @@ public class DatasourceService {
             request.put("tableName", tableName);
             request.put("query", query);
 
-            String agentUrl = masterAgentUrl + "/api/datasource/search-columns";
+            String agentUrl = proxyAgentUrl + "/api/datasource/search-columns";
             var response = restTemplate.postForEntity(agentUrl, request, DatasourceDto.ColumnSearchResult[].class);
 
             if (response.getBody() != null) {
@@ -574,21 +573,21 @@ public class DatasourceService {
     }
 
     /**
-     * Zone의 Master Agent URL 조회 (ZoneConfig 우선, Agent fallback)
+     * Zone의 프록시 Agent URL 조회
      */
-    private String getMasterAgentUrl(String zone) {
-        log.info("getMasterAgentUrl called for zone: {}", zone);
+    private String getProxyAgentUrl(String zone) {
+        log.info("getProxyAgentUrl called for zone: {}", zone);
 
         // ZoneConfig에서 조회
         var zoneConfig = zoneConfigRepository.findByZoneAndIsActiveTrue(zone);
         log.info("ZoneConfig lookup result: {}", zoneConfig.isPresent() ? "found" : "not found");
 
-        String url = zoneConfig.map(ZoneConfig::getMasterAgentUrl).orElse(null);
+        String url = zoneConfig.map(ZoneConfig::getProxyAgentUrl).orElse(null);
 
         if (url != null) {
-            log.info("Using ZoneConfig masterAgentUrl: {}", url);
+            log.info("Using ZoneConfig proxyAgentUrl: {}", url);
         } else {
-            log.warn("No master agent URL found for zone: {}", zone);
+            log.warn("No proxy agent URL found for zone: {}", zone);
         }
 
         return url;

@@ -9,6 +9,7 @@ import com.sync.orchestrator.domain.datasource.Datasource;
 import com.sync.orchestrator.domain.datasource.DatasourceRepository;
 import com.sync.orchestrator.domain.datasource.DatasourceTable;
 import com.sync.orchestrator.domain.datasource.DatasourceTableRepository;
+import com.sync.orchestrator.domain.zone.ZoneConfig;
 import com.sync.orchestrator.domain.zone.ZoneConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,7 @@ public class ExecutionService {
     private final RestTemplate restTemplate;
 
     /**
-     * Agent별 실행 이력 조회 (Agent DB에서)
+     * Agent별 실행 이력 조회 (프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> findByAgentIdFromAgent(Long id) {
@@ -60,8 +61,9 @@ public class ExecutionService {
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
         try {
-            String url = agent.getEndpointUrl() + "/api/execution-data";
-            log.info("Fetching executions from agent: {}", url);
+            String proxyUrl = getProxyUrlForAgent(agent);
+            String url = proxyUrl + "/api/execution-data";
+            log.info("Fetching executions from proxy: {}", url);
 
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody() != null ? response.getBody() : List.of();
@@ -99,15 +101,16 @@ public class ExecutionService {
     }
 
     /**
-     * 실행 상세 정보 조회 (Agent DB에서)
+     * 실행 상세 정보 조회 (프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getExecutionDetail(String executionId) {
         Agent agent = findAgentByExecutionId(executionId);
 
         try {
-            String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId;
-            log.info("Fetching execution detail from agent: {}", url);
+            String proxyUrl = getProxyUrlForAgent(agent);
+            String url = proxyUrl + "/api/execution-data/" + executionId;
+            log.info("Fetching execution detail from proxy: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
@@ -118,7 +121,7 @@ public class ExecutionService {
     }
 
     /**
-     * 실행 데이터 조회 (Agent 프록시) - 페이징/검색 지원
+     * 실행 데이터 조회 (프록시 Agent 경유) - 페이징/검색 지원
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getExecutionData(String executionId, String dataType,
@@ -141,8 +144,9 @@ public class ExecutionService {
                 endpoint.append("?").append(searchParams.toQueryString());
             }
 
-            String url = agent.getEndpointUrl() + endpoint;
-            log.info("Fetching execution data from agent: {}", url);
+            String proxyUrl = getProxyUrlForAgent(agent);
+            String url = proxyUrl + endpoint;
+            log.info("Fetching execution data from proxy: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
@@ -153,15 +157,16 @@ public class ExecutionService {
     }
 
     /**
-     * 테이블별 통계 조회 (Agent DB에서)
+     * 테이블별 통계 조회 (프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getTableStats(String executionId) {
         Agent agent = findAgentByExecutionId(executionId);
 
         try {
-            String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables";
-            log.info("Fetching table stats from agent: {}", url);
+            String proxyUrl = getProxyUrlForAgent(agent);
+            String url = proxyUrl + "/api/execution-data/" + executionId + "/tables";
+            log.info("Fetching table stats from proxy: {}", url);
 
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
@@ -172,16 +177,16 @@ public class ExecutionService {
     }
 
     /**
-     * 특정 테이블의 레코드 조회 (Agent DB에서)
-     * Agent의 getTableLog()는 SyncLog 단일 객체를 반환하므로 Map으로 역직렬화
+     * 특정 테이블의 레코드 조회 (프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getTableRecords(String executionId, String tableName) {
         Agent agent = findAgentByExecutionId(executionId);
 
         try {
-            String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables/" + tableName;
-            log.info("Fetching table records from agent: {}", url);
+            String proxyUrl = getProxyUrlForAgent(agent);
+            String url = proxyUrl + "/api/execution-data/" + executionId + "/tables/" + tableName;
+            log.info("Fetching table records from proxy: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
@@ -192,15 +197,16 @@ public class ExecutionService {
     }
 
     /**
-     * 특정 테이블의 실패 레코드 조회 (Agent DB에서)
+     * 특정 테이블의 실패 레코드 조회 (프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getTableFailedRecords(String executionId, String tableName) {
         Agent agent = findAgentByExecutionId(executionId);
 
         try {
-            String url = agent.getEndpointUrl() + "/api/execution-data/" + executionId + "/tables/" + tableName + "/failed";
-            log.info("Fetching table failed records from agent: {}", url);
+            String proxyUrl = getProxyUrlForAgent(agent);
+            String url = proxyUrl + "/api/execution-data/" + executionId + "/tables/" + tableName + "/failed";
+            log.info("Fetching table failed records from proxy: {}", url);
 
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
@@ -211,7 +217,7 @@ public class ExecutionService {
     }
 
     /**
-     * Source PK로 데이터 추적 (Source → IF → Target)
+     * Source PK로 데이터 추적 (Source → IF → Target, 프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> traceBySourcePk(String executionId, String pkValue, String pkColumn, String sourceTable, String ifTableName, String targetTableName) {
@@ -238,8 +244,9 @@ public class ExecutionService {
         }
 
         try {
+            String proxyUrl = getProxyUrlForAgent(agent);
             UriComponentsBuilder builder = UriComponentsBuilder
-                    .fromHttpUrl(agent.getEndpointUrl())
+                    .fromHttpUrl(proxyUrl)
                     .path("/api/execution-data/{executionId}/trace")
                     .queryParam("pkValue", pkValue)
                     .queryParam("pkColumn", pkColumn)
@@ -264,15 +271,16 @@ public class ExecutionService {
     }
 
     /**
-     * Target에서 Source로 역추적 (sourceRefs 기반)
+     * Target에서 Source로 역추적 (sourceRefs 기반, 프록시 Agent 경유)
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> traceToSource(String executionId, String sourceRefs, String sourceTable) {
         Agent agent = findAgentByExecutionId(executionId);
 
         try {
+            String proxyUrl = getProxyUrlForAgent(agent);
             UriComponentsBuilder builder = UriComponentsBuilder
-                    .fromHttpUrl(agent.getEndpointUrl())
+                    .fromHttpUrl(proxyUrl)
                     .path("/api/execution-data/{executionId}/trace-source")
                     .queryParam("sourceRefs", sourceRefs);
 
@@ -570,6 +578,17 @@ public class ExecutionService {
         String agentCode = extractAgentCodeFromExecutionId(executionId);
         return agentRepository.findByAgentCode(agentCode)
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentCode));
+    }
+
+    /**
+     * Agent의 zone에 해당하는 프록시 Agent URL 조회
+     * 실행 데이터 조회는 프록시 Agent를 통해 수행
+     */
+    private String getProxyUrlForAgent(Agent agent) {
+        return zoneConfigRepository.findByZoneAndIsActiveTrue(agent.getZone())
+                .map(ZoneConfig::getProxyAgentUrl)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No proxy agent URL configured for zone: " + agent.getZone()));
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================

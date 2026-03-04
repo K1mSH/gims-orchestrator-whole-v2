@@ -268,10 +268,13 @@ public class ExecutionDataController {
 
             // Source 테이블명으로 매칭되는 IF 테이블 찾기
             // 예: sec_obsvdata_view → if_rsv_sec_obsvdata (source 기본명 포함)
-            String sourceBase = sourceTableName.replaceAll("(?i)_view$", "");
+            // 내부망 RCV: if_snd_sec_obsvdata → if_rsv_sec_obsvdata (IF prefix 제거 후 코어명 비교)
+            String sourceBase = stripIfPrefix(sourceTableName.replaceAll("(?i)_view$", ""));
             String matchedIfTable = null;
             for (String ifTable : ifTableNames) {
-                if (ifTable.toLowerCase().contains(sourceBase.toLowerCase())) {
+                String ifBase = stripIfPrefix(ifTable);
+                if (ifBase.equalsIgnoreCase(sourceBase)
+                        || ifTable.toLowerCase().contains(sourceBase.toLowerCase())) {
                     matchedIfTable = ifTable;
                     break;
                 }
@@ -313,6 +316,16 @@ public class ExecutionDataController {
             log.warn("Source PK 추출 실패 (fallback to 전체): {}", e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * IF prefix 제거하여 코어 테이블명 추출
+     * 예: if_rsv_sec_obsvdata → sec_obsvdata, if_snd_sec_obsvdata → sec_obsvdata
+     * IF prefix가 아닌 일반 테이블은 그대로 반환
+     */
+    private String stripIfPrefix(String tableName) {
+        if (tableName == null) return null;
+        return tableName.replaceAll("(?i)^if_(rsv|snd|loader)_", "");
     }
 
     /**
@@ -671,14 +684,6 @@ public class ExecutionDataController {
                 log.debug("Resolved ifTableName: {} for sourceTable: {}", ifTableName, sourceTable);
             }
 
-            if (ifTableName == null || ifTableName.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "error", "target 테이블을 찾을 수 없습니다.",
-                    "sourceTable", sourceTable,
-                    "executionId", executionId
-                ));
-            }
-
             // Execution에서 targetDatasourceId 조회 (IF 테이블이 위치한 DB)
             Execution execution = executionService.getExecution(executionId).orElse(null);
             String targetDsId = (execution != null && execution.getTargetDatasourceId() != null)
@@ -686,6 +691,53 @@ public class ExecutionDataController {
                     : dataSourceProvider.getTargetDatasourceId();
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
 
+            // 이름 매칭 실패 시 source_refs 기반 폴백:
+            // TARGET 테이블의 source_refs에서 sourceTable:pkValue 패턴으로 직접 검색
+            if (ifTableName == null || ifTableName.isBlank()) {
+                List<SyncLog> fallbackLogs = syncLogRepository.findByExecutionId(executionId);
+                List<String> targetTables = fallbackLogs.stream()
+                        .filter(l -> "TARGET".equals(l.getTableType()))
+                        .map(SyncLog::getTableName)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+
+                for (String candidateTable : targetTables) {
+                    try {
+                        String probeSql = String.format(
+                                "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ? LIMIT 5",
+                                candidateTable);
+                        String searchPattern = "%:" + sourceTable + ":" + pkValue + "%";
+                        List<Map<String, Object>> probeResults =
+                                targetJdbc.queryForList(probeSql, searchPattern, executionId);
+                        if (!probeResults.isEmpty()) {
+                            ifTableName = candidateTable;
+                            log.debug("Resolved target via source_refs probe: {} -> {} ({} rows)",
+                                    sourceTable, candidateTable, probeResults.size());
+                            // 이미 데이터를 찾았으므로 바로 결과 반환
+                            Map<String, Object> result = new LinkedHashMap<>();
+                            result.put("pkColumn", pkColumn);
+                            result.put("pkValue", pkValue);
+                            result.put("executionId", executionId);
+                            result.put("targetTableName", candidateTable);
+                            result.put("targetRecords", probeResults);
+                            result.put("targetCount", probeResults.size());
+                            result.put("traceStatus", "SYNCED");
+                            return ResponseEntity.ok(result);
+                        }
+                    } catch (Exception e) {
+                        log.debug("source_refs probe failed for {}: {}", candidateTable, e.getMessage());
+                    }
+                }
+            }
+
+            if (ifTableName == null || ifTableName.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "target 테이블을 찾을 수 없습니다.",
+                    "sourceTable", sourceTable,
+                    "executionId", executionId
+                ));
+            }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("pkColumn", pkColumn);
             result.put("pkValue", pkValue);
@@ -849,6 +901,15 @@ public class ExecutionDataController {
                         log.debug("Loader trace: resolved TARGET {} -> SOURCE {}", sourceTable, resolvedSource);
                         sourceTable = resolvedSource;
                         isLoaderTarget = true;
+                    } else {
+                        // 이름 매칭 실패 시 source_refs에서 직접 테이블명 추출
+                        // I:dsId:tableName:pk 형식 (Internal) → tableName 사용
+                        String refsTable = parseSourceRefsTableName(sourceRefs);
+                        if (refsTable != null) {
+                            log.debug("Resolved sourceTable from source_refs: {} -> {}", sourceTable, refsTable);
+                            sourceTable = refsTable;
+                            isLoaderTarget = true;
+                        }
                     }
                 }
             }
@@ -1356,6 +1417,35 @@ public class ExecutionDataController {
         }
 
         return pks;
+    }
+
+    /**
+     * source_refs에서 테이블명 추출
+     * I:dsId:tableName:pk 형식 (Internal) → tableName이 실제 테이블명
+     * D/E:dsId:tableId:pk 형식 (External) → tableId가 숫자이므로 null 반환
+     */
+    private String parseSourceRefsTableName(String sourceRefs) {
+        if (sourceRefs == null || sourceRefs.isBlank()) return null;
+        try {
+            String content = sourceRefs.startsWith("[")
+                    ? sourceRefs.substring(1, sourceRefs.length() - 1)
+                    : sourceRefs;
+            String trimmed = content.split(",")[0].trim().replace("\"", "");
+            String[] parts = trimmed.split(":", 4);
+            if (parts.length >= 4 && "I".equals(parts[0])) {
+                // Internal 형식: tableName이 숫자가 아닌 실제 테이블명
+                String tableName = parts[2];
+                try {
+                    Long.parseLong(tableName);
+                    return null; // 숫자면 tableId → 해석 불가
+                } catch (NumberFormatException e) {
+                    return tableName; // 문자열이면 실제 테이블명
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to parse table name from sourceRefs: {}", sourceRefs);
+        }
+        return null;
     }
 
     // ==================== DB Dialect Helpers ====================

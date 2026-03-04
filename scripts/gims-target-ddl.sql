@@ -46,11 +46,14 @@ CREATE TABLE IF NOT EXISTS pm_gd970201 (
     result_id BIGINT REFERENCES tm_gd970101(result_id) ON DELETE CASCADE,
     obsrvn_dta_value NUMERIC,
     obsrvn_dt TIMESTAMP NOT NULL,
-    qlt_id INTEGER DEFAULT 1
+    qlt_id INTEGER DEFAULT 1,
+    execution_id VARCHAR(100),
+    source_refs TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_pm_gd970201_result_id ON pm_gd970201 (result_id);
 CREATE INDEX IF NOT EXISTS idx_pm_gd970201_obsrvn_dt ON pm_gd970201 (obsrvn_dt);
+CREATE INDEX IF NOT EXISTS idx_pm_gd970201_execution_id ON pm_gd970201 (execution_id);
 
 -- 4. Link 증분 추적
 CREATE TABLE IF NOT EXISTS tm_gd980002 (

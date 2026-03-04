@@ -3,7 +3,12 @@ package com.sync.agent.bojo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+import com.sync.agent.common.controller.ExecutionDataController;
+import com.sync.agent.common.controller.DatasourceController;
 
 /**
  * Bojo Agent - 통합 Agent (RCV + Loader + SND)
@@ -12,8 +17,17 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * - RCV 10개: Source DB → IF_RSV 추출
  * - Loader 1개: IF_RSV → Target 적재
  * - SND 1개: Target → IF_SND 추출
+ *
+ * DB 프록시 엔드포인트는 전용 프록시 Agent(sync-proxy-dmz)로 분리됨
  */
-@SpringBootApplication(scanBasePackages = {"com.sync.agent.bojo", "com.sync.agent.common"})
+@SpringBootApplication
+@ComponentScan(
+        basePackages = {"com.sync.agent.bojo", "com.sync.agent.common"},
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = {ExecutionDataController.class, DatasourceController.class}
+        )
+)
 @EntityScan(basePackages = {
         "com.sync.agent.bojo.entity",       // 모든 엔티티 (local, source, iftable, target)
         "com.sync.agent.common.entity"      // Execution, SyncLog

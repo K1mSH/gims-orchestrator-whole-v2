@@ -49,7 +49,7 @@ SELECT 'datasource 테이블 확인:' AS info;
 SELECT datasource_id, id, datasource_name FROM datasource ORDER BY id;
 
 SELECT 'zone_config 테이블 확인:' AS info;
-SELECT zone, short_code, master_agent_url FROM zone_config ORDER BY zone;
+SELECT zone, short_code, proxy_agent_url FROM zone_config ORDER BY zone;
 
 
 -- =====================================================

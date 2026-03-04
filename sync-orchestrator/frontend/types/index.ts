@@ -1,6 +1,6 @@
 // Agent 관련 타입
 export type AgentStatus = 'ONLINE' | 'OFFLINE' | 'RUNNING';
-export type AgentType = 'RCV' | 'SND' | 'LOADER';
+export type AgentType = 'RCV' | 'SND' | 'LOADER' | 'DB_CON_PROXY';
 
 export interface Agent {
   id: number;
@@ -179,7 +179,7 @@ export interface ExecutionDetail {
 // Table Stats (from Agent)
 export interface TableStats {
   tableName: string;
-  tableType: 'SOURCE' | 'TARGET_IF' | 'TARGET';
+  tableType: 'SOURCE' | 'TARGET_IF' | 'TARGET' | 'LINK';
   totalCount: number;
   successCount: number;
   failedCount: number;

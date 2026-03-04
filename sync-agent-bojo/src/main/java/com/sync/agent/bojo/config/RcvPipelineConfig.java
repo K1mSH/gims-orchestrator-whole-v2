@@ -110,7 +110,7 @@ public class RcvPipelineConfig {
         List<StepExecutor> steps;
         if (useLinkTable) {
             LinkTableUpdateStep linkStep = new LinkTableUpdateStep(
-                    dataSourceProvider, obsvCfg.getTargetTable(), linkTableName);
+                    dataSourceProvider, obsvCfg.getTargetTable(), linkTableName, syncLogRepository);
             steps = List.of(jewonStep, obsvStep, linkStep);
         } else {
             steps = List.of(jewonStep, obsvStep);

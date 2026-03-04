@@ -159,16 +159,9 @@ export default function ExecutionDetailPage() {
     if (!tableType || (tableType !== 'SOURCE' && tableType !== 'TARGET_IF' && tableType !== 'TARGET') || !tableData) return;
 
     // 행 식별용 키 계산 (렌더링의 rowPk 계산과 동일하게)
-    // TARGET_IF/TARGET은 sourceRefs에서 pk 추출, SOURCE는 첫 번째 컬럼 사용
-    let rowId: string;
-    if (tableType === 'TARGET_IF' || tableType === 'TARGET') {
-      const sourceRefs = (row.sourceRefs || row.source_refs) as string;
-      const parsed = parseSourceRefs(sourceRefs);
-      rowId = parsed?.refs[0]?.pk || String(rowIndex);
-    } else {
-      const pkColumn = tableData.columns[0];
-      rowId = pkColumn ? String(row[pkColumn] ?? rowIndex) : String(rowIndex);
-    }
+    // 모든 테이블 타입: 첫 번째 컬럼(PK) 사용 — 행별 유니크 보장
+    const pkColumn = tableData.columns[0];
+    const rowId = pkColumn ? String(row[pkColumn] ?? rowIndex) : String(rowIndex);
     if (!rowId) return;
 
     // 이미 확장된 행 클릭 시 접기
@@ -287,9 +280,17 @@ export default function ExecutionDetailPage() {
     return <div className="empty-state">실행 정보를 찾을 수 없습니다</div>;
   }
 
-  const totalReadCount = executionDetail.totalReadCount ?? 0;
-  const totalWriteCount = executionDetail.totalWriteCount ?? 0;
-  const totalSkipCount = executionDetail.totalSkipCount ?? 0;
+  // 테이블 현황(SyncLog)이 있으면 그 합산 사용, 없으면 Execution 값 fallback
+  const hasTableStats = tableStats.length > 0;
+  const totalReadCount = hasTableStats
+    ? tableStats.filter(s => s.tableType === 'SOURCE').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
+    : (executionDetail.totalReadCount ?? 0);
+  const totalWriteCount = hasTableStats
+    ? tableStats.filter(s => s.tableType !== 'SOURCE').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
+    : (executionDetail.totalWriteCount ?? 0);
+  const totalSkipCount = hasTableStats
+    ? tableStats.reduce((sum, s) => sum + (s.skipCount ?? 0), 0)
+    : (executionDetail.totalSkipCount ?? 0);
 
   // 현재 선택된 테이블의 타입
   const selectedTableStat = selectedTable
@@ -413,7 +414,7 @@ export default function ExecutionDetailPage() {
                   ) : (
                     // SOURCE → TARGET_IF → TARGET 순서로 정렬
                     [...tableStats].sort((a, b) => {
-                      const typeOrder = { SOURCE: 0, TARGET_IF: 1, TARGET: 2 };
+                      const typeOrder = { SOURCE: 0, TARGET_IF: 1, TARGET: 2, LINK: 3 };
                       const orderA = typeOrder[a.tableType as keyof typeof typeOrder] ?? 99;
                       const orderB = typeOrder[b.tableType as keyof typeof typeOrder] ?? 99;
                       return orderA - orderB;
@@ -422,21 +423,24 @@ export default function ExecutionDetailPage() {
                         SOURCE: { label: 'SOURCE', bg: 'var(--blue-100)', color: 'var(--blue-700)', borderColor: 'var(--blue-500)' },
                         TARGET_IF: { label: 'IF', bg: 'var(--yellow-100)', color: 'var(--yellow-700)', borderColor: 'var(--yellow-500)' },
                         TARGET: { label: 'TARGET', bg: 'var(--green-100)', color: 'var(--green-700)', borderColor: 'var(--green-500)' },
+                        LINK: { label: 'LINK', bg: 'var(--purple-100)', color: 'var(--purple-700)', borderColor: 'var(--purple-500)' },
                       }[stat.tableType] ?? { label: stat.tableType, bg: 'var(--gray-100)', color: 'var(--gray-700)', borderColor: 'var(--gray-500)' };
 
                       const isSelected = selectedTable?.tableName === stat.tableName && selectedTable?.tableType === stat.tableType;
                       const hasFailed = (stat.failedCount ?? 0) > 0;
 
+                      const isClickable = stat.tableType !== 'LINK';
+
                       return (
                         <tr
                           key={`${stat.tableType}-${stat.tableName}`}
                           style={{
-                            cursor: 'pointer',
+                            cursor: isClickable ? 'pointer' : 'default',
                             background: isSelected ? typeConfig.bg : hasFailed ? 'var(--red-50)' : 'transparent',
                             borderLeft: isSelected ? `4px solid ${typeConfig.borderColor}` : '4px solid transparent',
                             fontWeight: isSelected ? 600 : 400,
                           }}
-                          onClick={() => setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType })}
+                          onClick={() => isClickable && setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType })}
                         >
                           <td>
                             <span style={{
@@ -460,15 +464,19 @@ export default function ExecutionDetailPage() {
                             {stat.failedCount}
                           </td>
                           <td>
-                            <button
-                              className={isSelected ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType });
-                              }}
-                            >
-                              {isSelected ? '선택됨' : '상세'}
-                            </button>
+                            {isClickable ? (
+                              <button
+                                className={isSelected ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType });
+                                }}
+                              >
+                                {isSelected ? '선택됨' : '상세'}
+                              </button>
+                            ) : (
+                              <span style={{ color: 'var(--gray-400)', fontSize: '0.8rem' }}>-</span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -672,17 +680,9 @@ export default function ExecutionDetailPage() {
                   </thead>
                   <tbody>
                     {tableData.data.map((row, idx) => {
-                      // SOURCE는 첫 번째 컬럼(id), IF/TARGET은 sourceRefs에서 PK 추출
-                      let rowPk: string;
-                      if (isIfTable || isTargetTable) {
-                        const sourceRefs = (row.sourceRefs || row.source_refs) as string;
-                        // 신규 간결 형식 (D:1:5:12345) 또는 레거시 JSON 형식 모두 지원
-                        const parsed = parseSourceRefs(sourceRefs);
-                        rowPk = parsed?.refs[0]?.pk || String(idx);
-                      } else {
-                        const pkColumn = tableData.columns[0];
-                        rowPk = pkColumn ? String(row[pkColumn] ?? idx) : String(idx);
-                      }
+                      // 모든 테이블: 첫 번째 컬럼(PK) 사용 — 행별 유니크 보장
+                      const pkColumn = tableData.columns[0];
+                      const rowPk = pkColumn ? String(row[pkColumn] ?? idx) : String(idx);
                       const isExpanded = isTraceable && expandedRowPk === rowPk;
 
                       return (

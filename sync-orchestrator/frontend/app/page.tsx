@@ -10,6 +10,7 @@ const AGENT_TYPE_LABELS: Record<AgentType, string> = {
   RCV: '수신(RCV)',
   SND: '송신(SND)',
   LOADER: 'Loader',
+  DB_CON_PROXY: 'DB Proxy',
 };
 
 const ZONE_LABELS: Record<Zone, string> = {

@@ -212,7 +212,8 @@
       "Bash(echo bojo-int restarting...:*)",
       "Bash(cd D:/dev/claude/GIMS/orchestrator_v2/sync-orchestrator/frontend && npm run dev 2>&1)",
       "Bash(echo === $ds ===:*)",
-      "Bash(grep \"tableName\":*)"
+      "Bash(grep \"tableName\":*)",
+      "Bash(jar tf:*)"
     ]
   },
   "hooks": {

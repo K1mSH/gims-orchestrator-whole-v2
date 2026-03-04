@@ -149,6 +149,19 @@ public class AgentService {
                 }
             }
 
+            // DB_CON_PROXY (프록시 Agent는 파이프라인 없이 단일 Agent)
+            String agentType = (String) healthData.get("type");
+            if ("DB_CON_PROXY".equals(agentType)) {
+                String appName = (String) healthData.get("appName");
+                if (appName != null) {
+                    agents.add(Map.of(
+                            "agentCode", appName,
+                            "type", "DB_CON_PROXY",
+                            "registered", registeredCodes.contains(appName)
+                    ));
+                }
+            }
+
             result.put("agents", agents);
             log.info("Discovered {} agents from {}", agents.size(), endpointUrl);
 
