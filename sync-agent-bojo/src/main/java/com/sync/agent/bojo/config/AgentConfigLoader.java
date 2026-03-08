@@ -5,8 +5,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
-import org.yaml.snakeyaml.LoaderOptions;
 
 import javax.annotation.PostConstruct;
 import java.io.InputStream;
@@ -131,4 +129,5 @@ public class AgentConfigLoader {
                 .filter(d -> type.equals(d.getType()))
                 .toList();
     }
+
 }

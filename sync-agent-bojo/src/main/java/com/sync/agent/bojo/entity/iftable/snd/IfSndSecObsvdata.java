@@ -1,26 +1,20 @@
 package com.sync.agent.bojo.entity.iftable.snd;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
 import java.sql.Date;
 import java.sql.Time;
 import java.time.LocalDateTime;
 
-/**
- * IF_SND_SEC_OBSVDATA - IF 송신용 관측데이터 테이블 (Target DB)
- *
- * 사용: relay-dmz-snd-bojo (쓰기), 외부 시스템 (읽기)
- * 흐름: sec_obsvdata (Target DB) → if_snd_sec_obsvdata (Target DB) → External
- *
- * PK: Source의 ID를 그대로 사용 (auto-generated 아님)
- */
 @Entity
 @Table(name = "if_snd_sec_obsvdata",
        uniqueConstraints = @UniqueConstraint(
            name = "uk_if_snd_sec_obsvdata_source_refs",
            columnNames = {"source_refs"}
        ))
+@org.hibernate.annotations.Table(appliesTo = "if_snd_sec_obsvdata", comment = "IF_SND 송신 관측데이터")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,56 +22,61 @@ import java.time.LocalDateTime;
 @Builder
 public class IfSndSecObsvdata {
 
-    /**
-     * Source 테이블의 ID를 그대로 사용 (PK)
-     * IF 테이블은 소문자 컬럼명 사용
-     */
     @Id
     @Column(name = "id")
+    @Comment("Source ID 그대로 사용 (PK)")
     private Integer id;
 
-    // ========== 비즈니스 컬럼 (복합 키) ==========
+    // ========== 비즈니스 컬럼 ==========
 
     @Column(name = "obsv_code")
+    @Comment("관측소 코드")
     private String obsvCode;
 
     @Column(name = "obsv_date")
+    @Comment("관측 일자")
     private Date obsvDate;
 
     @Column(name = "obsv_time")
+    @Comment("관측 시각")
     private Time obsvTime;
 
-    // ========== 비즈니스 컬럼 (데이터) ==========
-
     @Column(name = "gwdep")
+    @Comment("지하수위 (m)")
     private Double gwdep;
 
     @Column(name = "gwtemp")
+    @Comment("지하수온도 (°C)")
     private Double gwtemp;
 
     @Column(name = "ec")
+    @Comment("전기전도도 (μS/cm)")
     private Double ec;
 
     @Column(name = "remark")
+    @Comment("비고")
     private String remark;
 
     // ========== IF 메타 컬럼 ==========
 
     @Column(name = "source_refs", columnDefinition = "TEXT")
+    @Comment("원본 참조키 (UK)")
     private String sourceRefs;
 
-    /** 연계 상태 (PENDING, SUCCESS, FAILED) */
     @Builder.Default
     @Column(name = "link_status", length = 20)
+    @Comment("연계 상태 (PENDING/SUCCESS/FAILED)")
     private String linkStatus = "PENDING";
 
     @Column(name = "extracted_at")
+    @Comment("추출 시각")
     private LocalDateTime extractedAt;
 
     @Column(name = "updated_at")
+    @Comment("수정 시각")
     private LocalDateTime updatedAt;
 
-    /** 이 IF 테이블에 데이터를 쓴 Agent의 execution ID */
     @Column(name = "execution_id")
+    @Comment("처리 실행 ID")
     private String executionId;
 }
