@@ -2,17 +2,15 @@ package com.sync.orchestrator.domain.zone;
 
 import javax.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
-/**
- * Zone별 프록시 Agent URL 설정
- * DB 조회(연결 테스트, 테이블/컬럼 스키마, 실행 데이터)를 해당 zone의 프록시 Agent로 라우팅
- */
 @Entity
 @Table(name = "zone_config")
+@org.hibernate.annotations.Table(appliesTo = "zone_config", comment = "네트워크 존 설정")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,26 +20,33 @@ public class ZoneConfig {
 
     @Id
     @Column(name = "zone", length = 50)
-    private String zone;  // EXTERNAL, DMZ, INTERNAL_COMMON, INTERNAL_SERVICE
+    @Comment("존 이름 (PK)")
+    private String zone;
 
     @Column(name = "short_code", length = 5, nullable = false)
-    private String shortCode;  // E, D, IC, IS
+    @Comment("존 약어 (E/D/IC/IS)")
+    private String shortCode;
 
     @Column(name = "proxy_agent_url", length = 500, nullable = false)
-    private String proxyAgentUrl;  // http://192.168.1.100:8083
+    @Comment("프록시 에이전트 URL")
+    private String proxyAgentUrl;
 
     @Column(name = "description", length = 500)
+    @Comment("설명")
     private String description;
 
     @Column(name = "is_active")
+    @Comment("활성화 여부")
     @Builder.Default
     private Boolean isActive = true;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
+    @Comment("생성 시각")
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
+    @Comment("수정 시각")
     private LocalDateTime updatedAt;
 }

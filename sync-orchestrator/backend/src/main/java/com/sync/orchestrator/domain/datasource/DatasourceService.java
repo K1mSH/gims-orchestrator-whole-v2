@@ -16,6 +16,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -75,6 +76,20 @@ public class DatasourceService {
         return datasourceRepository.findByIsActiveTrue().stream()
                 .map(DatasourceDto.SimpleResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 테이블 alias 전역 조회 (tableName → tableAlias 매핑)
+     * 같은 테이블명이 여러 datasource에 있을 수 있으므로, alias가 있는 것을 우선 사용
+     */
+    public Map<String, String> getTableAliasMap() {
+        return tableRepository.findAll().stream()
+                .filter(t -> t.getTableAlias() != null && !t.getTableAlias().isEmpty())
+                .collect(Collectors.toMap(
+                        DatasourceTable::getTableName,
+                        DatasourceTable::getTableAlias,
+                        (existing, replacement) -> existing
+                ));
     }
 
     /**

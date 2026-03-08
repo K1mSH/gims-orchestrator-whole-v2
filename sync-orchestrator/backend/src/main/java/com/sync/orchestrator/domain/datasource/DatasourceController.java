@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/datasources")
@@ -46,6 +47,14 @@ public class DatasourceController {
     @GetMapping("/sourceref-lookup")
     public ResponseEntity<DatasourceDto.SourceRefLookup> getSourceRefLookup() {
         return ResponseEntity.ok(datasourceService.getSourceRefLookup());
+    }
+
+    /**
+     * 테이블 alias 전역 조회 (tableName → tableAlias 매핑)
+     */
+    @GetMapping("/table-alias-map")
+    public ResponseEntity<Map<String, String>> getTableAliasMap() {
+        return ResponseEntity.ok(datasourceService.getTableAliasMap());
     }
 
     /**

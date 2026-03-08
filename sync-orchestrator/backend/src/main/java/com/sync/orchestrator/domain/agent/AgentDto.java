@@ -184,6 +184,8 @@ public class AgentDto {
         private List<StepDefinitionResponse> stepDefinitions;
         // 실행 모드
         private List<ExecutionModeResponse> executionModes;
+        // Retention 설정 JSON
+        private String retentionConfig;
 
         public static Response from(Agent agent) {
             List<Long> sourceIds = agent.getAgentTables().stream()
@@ -225,6 +227,7 @@ public class AgentDto {
                     .executionParams(execParams)
                     .stepDefinitions(stepDefs)
                     .executionModes(modes)
+                    .retentionConfig(agent.getRetentionConfig())
                     .build();
         }
     }

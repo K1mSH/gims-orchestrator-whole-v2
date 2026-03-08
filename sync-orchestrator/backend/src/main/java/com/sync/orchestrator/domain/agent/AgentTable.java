@@ -2,14 +2,12 @@ package com.sync.orchestrator.domain.agent;
 
 import javax.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Comment;
 
-/**
- * Agent가 동기화에 사용할 테이블 매핑
- * Datasource에 등록된 테이블 중 Agent가 실제 사용할 테이블을 선택
- */
 @Entity
 @Table(name = "agent_table",
         uniqueConstraints = @UniqueConstraint(columnNames = {"agent_id", "datasource_table_id"}))
+@org.hibernate.annotations.Table(appliesTo = "agent_table", comment = "에이전트-테이블 매핑")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,6 +17,7 @@ public class AgentTable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("PK")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -26,14 +25,12 @@ public class AgentTable {
     private Agent agent;
 
     @Column(name = "datasource_table_id", nullable = false)
+    @Comment("데이터소스 테이블 FK")
     private Long datasourceTableId;
 
-    /**
-     * SOURCE: source datasource의 테이블
-     * TARGET: target datasource의 테이블
-     */
     @Enumerated(EnumType.STRING)
     @Column(name = "table_type", length = 20, nullable = false)
+    @Comment("테이블 유형 (SOURCE/TARGET)")
     private TableType tableType;
 
     public enum TableType {

@@ -115,6 +115,22 @@ public class AgentController {
     }
 
     /**
+     * Agent의 retention(자동삭제) 설정 조회 (DB)
+     */
+    @GetMapping("/{id}/retention")
+    public ResponseEntity<?> getRetentionConfig(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getRetentionConfig(id));
+    }
+
+    /**
+     * Agent의 retention(자동삭제) 설정 저장
+     */
+    @PutMapping("/{id}/retention")
+    public ResponseEntity<?> updateRetentionConfig(@PathVariable Long id, @RequestBody String body) {
+        return ResponseEntity.ok(agentService.updateRetentionConfig(id, body));
+    }
+
+    /**
      * Agent의 source DB에 테스트 데이터 생성 요청
      */
     @PostMapping("/{id}/generate-test-data")

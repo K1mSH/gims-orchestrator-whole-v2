@@ -1,5 +1,6 @@
 package com.sync.orchestrator.domain.agent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sync.orchestrator.common.CredentialEncryptor;
 import com.sync.orchestrator.domain.datasource.Datasource;
 import com.sync.orchestrator.domain.datasource.DatasourceRepository;
@@ -25,6 +26,7 @@ public class AgentService {
     private final CredentialEncryptor credentialEncryptor;
     private final RestTemplate restTemplate;
     private final EntityManager entityManager;
+    private final ObjectMapper objectMapper;
 
     public List<AgentDto.Response> findAll() {
         return agentRepository.findAll().stream()
@@ -519,6 +521,43 @@ public class AgentService {
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
         agent.setStatus(status);
         agentRepository.save(agent);
+    }
+
+    /**
+     * Agent의 retention(자동삭제) 설정 조회 (DB)
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getRetentionConfig(Long id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+        String json = agent.getRetentionConfig();
+        if (json == null || json.isBlank()) {
+            return Map.of("enabled", false, "targets", java.util.Collections.emptyList());
+        }
+        try {
+            return objectMapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            log.warn("Retention config 파싱 실패: agent={}", agent.getAgentCode(), e);
+            return Map.of("enabled", false, "targets", java.util.Collections.emptyList());
+        }
+    }
+
+    /**
+     * Agent의 retention(자동삭제) 설정 저장
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> updateRetentionConfig(Long id, String configJson) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+        agent.setRetentionConfig(configJson);
+        agentRepository.save(agent);
+        log.info("Retention config 저장: agent={}", agent.getAgentCode());
+        try {
+            return objectMapper.readValue(configJson, Map.class);
+        } catch (Exception e) {
+            return Map.of("saved", true);
+        }
     }
 
     /**

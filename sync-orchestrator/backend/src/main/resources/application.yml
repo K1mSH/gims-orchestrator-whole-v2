@@ -25,6 +25,10 @@ spring:
     init:
       mode: always
 
+# Retention(자동삭제) 스케줄
+retention:
+  cron: "0 0 2 * * *"  # 매일 새벽 2시
+
 # Jasypt 암호화 설정
 jasypt:
   encryptor:
