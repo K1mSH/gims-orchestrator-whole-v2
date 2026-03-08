@@ -98,6 +98,13 @@ export const agentApi = {
   // Agent에서 실행 모드 가져와서 DB 갱신
   refreshExecutionModes: (id: number) =>
     api.post<ExecutionModeResponse[]>(`/agents/${id}/refresh-execution-modes`).then((res) => res.data),
+
+  // Retention(자동삭제) 설정 조회/수정
+  getRetentionConfig: (id: number) =>
+    api.get<{ enabled: boolean; targetDatasourceId?: string; targets: { table: string; dateColumn: string; retentionDays: number }[] }>(`/agents/${id}/retention`).then((res) => res.data),
+
+  updateRetentionConfig: (id: number, config: { enabled: boolean; targetDatasourceId?: string; targets: { table: string; dateColumn: string; retentionDays: number }[] }) =>
+    api.put(`/agents/${id}/retention`, config).then((res) => res.data),
 };
 
 // Schedule API
@@ -368,6 +375,10 @@ export const datasourceApi = {
     api.get<{ datasources: Record<string, string>; tables: Record<string, string> }>(
       '/datasources/sourceref-lookup'
     ).then((res) => res.data),
+
+  // 테이블 alias 전역 조회 (tableName → tableAlias)
+  getTableAliasMap: () =>
+    api.get<Record<string, string>>('/datasources/table-alias-map').then((res) => res.data),
 };
 
 export default api;

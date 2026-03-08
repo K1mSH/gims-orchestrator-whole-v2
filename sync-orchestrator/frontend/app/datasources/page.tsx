@@ -688,6 +688,7 @@ function TableManagementModal({
     try {
       const columns: ColumnCreateRequest[] = selectedColumns.map((col) => ({
         columnName: col.columnName,
+        columnAlias: col.remarks || undefined,
         dataType: col.dataType,
         isPrimaryKey: col.isPrimaryKey,
         isNullable: col.isNullable,
@@ -695,6 +696,7 @@ function TableManagementModal({
 
       await datasourceApi.registerTable(datasource.datasourceId, {
         tableName: selectedTable.tableName,
+        tableAlias: selectedTable.remarks || undefined,
         columns,
       });
 
@@ -927,7 +929,10 @@ function TableManagementModal({
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: '1rem' }}>{table.tableName}</strong>
+                    <span>
+                      <strong style={{ fontSize: '1rem' }}>{table.tableName}</strong>
+                      {table.tableAlias && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
+                    </span>
                     <button
                       className="btn btn-danger btn-sm"
                       onClick={() => handleDeleteTable(table.id)}

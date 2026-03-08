@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { agentApi, scheduleApi, datasourceApi } from '@/lib/api';
 import type { Agent, Zone, Schedule, ScheduleCreateRequest, AgentType, Datasource, DatasourceTable, DatasourceSimple, ExecutionParamResponse } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
@@ -264,6 +264,92 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   // 실행 옵션
   const [executionParams, setExecutionParams] = useState<ExecutionParamResponse[]>(agent.executionParams || []);
   const [refreshingParams, setRefreshingParams] = useState(false);
+
+  // Retention 설정
+  type RetentionTarget = { table: string; dateColumn: string; retentionDays: number };
+  type RetentionState = { enabled: boolean; targetDatasourceId?: string; targets: RetentionTarget[] };
+  const [retentionConfig, setRetentionConfig] = useState<RetentionState | null>(null);
+  const [retentionEditMode, setRetentionEditMode] = useState(false);
+  const [retentionForm, setRetentionForm] = useState<RetentionState>({ enabled: false, targets: [] });
+  const [retentionSaving, setRetentionSaving] = useState(false);
+  const [retentionTables, setRetentionTables] = useState<DatasourceTable[]>([]);
+
+  const fetchRetention = useCallback(async () => {
+    if (agent.agentType === 'DB_CON_PROXY') return;
+    try {
+      const config = await agentApi.getRetentionConfig(agent.id);
+      setRetentionConfig(config);
+    } catch {
+      setRetentionConfig(null);
+    }
+    // retention select용: target datasource의 전체 등록 테이블
+    const dsId = agent.targetDatasourceId;
+    if (dsId) {
+      try {
+        const tables = await datasourceApi.getRegisteredTables(dsId);
+        setRetentionTables(tables);
+      } catch { /* ignore */ }
+    }
+  }, [agent.id, agent.agentType, agent.targetDatasourceId]);
+
+  useEffect(() => {
+    fetchRetention();
+  }, [fetchRetention]);
+
+  const handleRetentionEdit = () => {
+    setRetentionForm(retentionConfig
+      ? { ...retentionConfig, targets: retentionConfig.targets.map(t => ({ ...t })) }
+      : { enabled: true, targetDatasourceId: agent.targetDatasourceId || '', targets: [] });
+    setRetentionEditMode(true);
+  };
+
+  const handleRetentionSave = async () => {
+    setRetentionSaving(true);
+    try {
+      await agentApi.updateRetentionConfig(agent.id, retentionForm);
+      setRetentionEditMode(false);
+      fetchRetention();
+    } catch (error) {
+      console.error('Retention 설정 저장 실패:', error);
+      alert('저장에 실패했습니다.');
+    } finally {
+      setRetentionSaving(false);
+    }
+  };
+
+  const handleRetentionAddTarget = () => {
+    const usedTables = retentionForm.targets.map(t => t.table);
+    const firstAvailable = retentionTables.find(tb => !usedTables.includes(tb.tableName));
+    setRetentionForm(prev => ({
+      ...prev,
+      targets: [...prev.targets, {
+        table: firstAvailable?.tableName || '',
+        dateColumn: firstAvailable?.columns[0]?.columnName || '',
+        retentionDays: 365
+      }]
+    }));
+  };
+
+  const handleRetentionRemoveTarget = (index: number) => {
+    setRetentionForm(prev => ({
+      ...prev,
+      targets: prev.targets.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleRetentionTargetChange = (index: number, field: keyof RetentionTarget, value: string | number) => {
+    setRetentionForm(prev => ({
+      ...prev,
+      targets: prev.targets.map((t, i) => {
+        if (i !== index) return t;
+        if (field === 'table') {
+          const selected = retentionTables.find(tb => tb.tableName === value);
+          return { ...t, table: value as string, dateColumn: selected?.columns[0]?.columnName || '' };
+        }
+        return { ...t, [field]: value };
+      })
+    }));
+  };
 
   // Datasource 목록 로드
   useEffect(() => {
@@ -580,6 +666,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               onChange={() => handleSourceTableToggle(table.id)}
                             />
                             <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
+                            {table.tableAlias && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.tableAlias})</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -617,6 +704,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               onChange={() => handleTargetTableToggle(table.id)}
                             />
                             <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
+                            {table.tableAlias && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.tableAlias})</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -653,7 +741,10 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                     <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', overflow: 'hidden' }}>
                       {sourceTables.map((table, idx) => (
                         <div key={table.id} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < sourceTables.length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
-                          <div style={{ fontWeight: 500 }}>{table.tableName}</div>
+                          <div style={{ fontWeight: 500 }}>
+                            {table.tableName}
+                            {table.tableAlias && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
+                          </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {table.columns.map(c => c.columnName).join(', ')}
                           </div>
@@ -684,7 +775,10 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                     <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', overflow: 'hidden' }}>
                       {targetTables.map((table, idx) => (
                         <div key={table.id} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < targetTables.length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
-                          <div style={{ fontWeight: 500 }}>{table.tableName}</div>
+                          <div style={{ fontWeight: 500 }}>
+                            {table.tableName}
+                            {table.tableAlias && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
+                          </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {table.columns.map(c => c.columnName).join(', ')}
                           </div>
@@ -751,6 +845,110 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
           </div>
         )}
       </div>
+      )}
+
+      {/* Retention 설정 (프록시 Agent 제외) */}
+      {agent.agentType !== 'DB_CON_PROXY' && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div className="card-header">
+            <h2 className="card-title">데이터 보존 (Retention)</h2>
+            {!retentionEditMode ? (
+              <button className="btn btn-secondary btn-sm" onClick={handleRetentionEdit}>설정</button>
+            ) : (
+              <div>
+                <button className="btn btn-primary btn-sm" onClick={handleRetentionSave} disabled={retentionSaving} style={{ marginRight: '0.5rem' }}>
+                  {retentionSaving ? '저장중...' : '저장'}
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setRetentionEditMode(false)}>취소</button>
+              </div>
+            )}
+          </div>
+
+          {retentionEditMode ? (
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={retentionForm.enabled} onChange={(e) => setRetentionForm(prev => ({ ...prev, enabled: e.target.checked }))} />
+                  활성화
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label className="form-label" style={{ margin: 0, fontSize: '0.875rem' }}>Target Datasource ID:</label>
+                  <input type="text" className="form-input" value={retentionForm.targetDatasourceId || ''} onChange={(e) => setRetentionForm(prev => ({ ...prev, targetDatasourceId: e.target.value }))} style={{ width: '150px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} placeholder={agent.targetDatasourceId || ''} />
+                </div>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>테이블</th>
+                      <th>기준 날짜 컬럼</th>
+                      <th>보존 기간 (일)</th>
+                      <th style={{ width: '60px' }}>삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {retentionForm.targets.map((t, i) => {
+                      const selectedTable = retentionTables.find(tb => tb.tableName === t.table);
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <select className="form-input" value={t.table} onChange={(e) => handleRetentionTargetChange(i, 'table', e.target.value)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
+                              <option value="">-- 테이블 선택 --</option>
+                              {retentionTables.map(tb => (
+                                <option key={tb.id} value={tb.tableName}>{tb.tableName}{tb.tableAlias ? ` (${tb.tableAlias})` : ''}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select className="form-input" value={t.dateColumn} onChange={(e) => handleRetentionTargetChange(i, 'dateColumn', e.target.value)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
+                              <option value="">-- 컬럼 선택 --</option>
+                              {selectedTable?.columns.map(c => (
+                                <option key={c.id} value={c.columnName}>{c.columnName}{c.dataType ? ` (${c.dataType})` : ''}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td><input type="number" className="form-input" value={t.retentionDays} onChange={(e) => handleRetentionTargetChange(i, 'retentionDays', parseInt(e.target.value) || 0)} style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} /></td>
+                          <td><button className="btn btn-danger btn-sm" onClick={() => handleRetentionRemoveTarget(i)}>X</button></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={handleRetentionAddTarget} style={{ marginTop: '0.5rem' }}>+ 테이블 추가</button>
+            </div>
+          ) : retentionConfig && retentionConfig.enabled && retentionConfig.targets.length > 0 ? (
+            <div>
+              <div className="table-container" style={{ marginTop: '1rem' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>테이블</th>
+                      <th>기준 날짜 컬럼</th>
+                      <th>보존 기간</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {retentionConfig.targets.map((t, i) => (
+                      <tr key={i}>
+                        <td><code>{t.table}</code></td>
+                        <td><code>{t.dateColumn}</code></td>
+                        <td>{t.retentionDays}일 ({Math.floor(t.retentionDays / 365) > 0 ? `${Math.floor(t.retentionDays / 365)}년` : `${t.retentionDays}일`})</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                * 기준 날짜 컬럼 기준으로 보존 기간 이전 데이터가 자동 삭제됩니다.
+              </p>
+            </div>
+          ) : (
+            <div className="empty-state" style={{ marginTop: '1rem', padding: '1.5rem', textAlign: 'center' }}>
+              설정된 보존 정책이 없습니다. &quot;설정&quot; 버튼을 눌러 추가하세요.
+            </div>
+          )}
+        </div>
       )}
 
       {/* 스케줄 (프록시 Agent 제외) */}

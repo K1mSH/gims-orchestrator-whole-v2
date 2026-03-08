@@ -60,6 +60,9 @@ export default function ExecutionDetailPage() {
     tables: Record<string, string>;
   } | null>(null);
 
+  // 테이블 alias lookup (tableName → alias)
+  const [tableAliasMap, setTableAliasMap] = useState<Record<string, string>>({});
+
   const fetchExecution = useCallback(async () => {
     try {
       // Agent DB에서 실행 상세 정보 조회
@@ -211,11 +214,14 @@ export default function ExecutionDetailPage() {
     fetchExecution();
   }, [fetchExecution]);
 
-  // sourceRef lookup 데이터 로드 (한 번만)
+  // sourceRef lookup 데이터 + table alias map 로드 (한 번만)
   useEffect(() => {
     datasourceApi.getSourceRefLookup()
       .then(setSourceRefLookup)
       .catch((err) => console.log('SourceRef lookup 로드 실패:', err));
+    datasourceApi.getTableAliasMap()
+      .then(setTableAliasMap)
+      .catch((err) => console.log('Table alias map 로드 실패:', err));
   }, []);
 
   // 테이블 선택이 변경되면 검색/필터/정렬 초기화 후 데이터 조회
@@ -286,10 +292,10 @@ export default function ExecutionDetailPage() {
     ? tableStats.filter(s => s.tableType === 'SOURCE').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
     : (executionDetail.totalReadCount ?? 0);
   const totalWriteCount = hasTableStats
-    ? tableStats.filter(s => s.tableType !== 'SOURCE').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
+    ? tableStats.filter(s => s.tableType !== 'SOURCE' && s.tableType !== 'LINK').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
     : (executionDetail.totalWriteCount ?? 0);
   const totalSkipCount = hasTableStats
-    ? tableStats.reduce((sum, s) => sum + (s.skipCount ?? 0), 0)
+    ? tableStats.filter(s => s.tableType !== 'LINK').reduce((sum, s) => sum + (s.skipCount ?? 0), 0)
     : (executionDetail.totalSkipCount ?? 0);
 
   // 현재 선택된 테이블의 타입
@@ -412,35 +418,33 @@ export default function ExecutionDetailPage() {
                       </td>
                     </tr>
                   ) : (
-                    // SOURCE → TARGET_IF → TARGET 순서로 정렬
-                    [...tableStats].sort((a, b) => {
-                      const typeOrder = { SOURCE: 0, TARGET_IF: 1, TARGET: 2, LINK: 3 };
+                    // SOURCE → TARGET_IF → TARGET 순서로 정렬 (LINK 제외)
+                    [...tableStats].filter(s => s.tableType !== 'LINK').sort((a, b) => {
+                      const typeOrder = { SOURCE: 0, TARGET_IF: 1, TARGET: 2 };
                       const orderA = typeOrder[a.tableType as keyof typeof typeOrder] ?? 99;
                       const orderB = typeOrder[b.tableType as keyof typeof typeOrder] ?? 99;
                       return orderA - orderB;
                     }).map((stat) => {
-                      const typeConfig = {
+                      const typeConfigMap: Record<string, { label: string; bg: string; color: string; borderColor: string }> = {
                         SOURCE: { label: 'SOURCE', bg: 'var(--blue-100)', color: 'var(--blue-700)', borderColor: 'var(--blue-500)' },
                         TARGET_IF: { label: 'IF', bg: 'var(--yellow-100)', color: 'var(--yellow-700)', borderColor: 'var(--yellow-500)' },
                         TARGET: { label: 'TARGET', bg: 'var(--green-100)', color: 'var(--green-700)', borderColor: 'var(--green-500)' },
-                        LINK: { label: 'LINK', bg: 'var(--purple-100)', color: 'var(--purple-700)', borderColor: 'var(--purple-500)' },
-                      }[stat.tableType] ?? { label: stat.tableType, bg: 'var(--gray-100)', color: 'var(--gray-700)', borderColor: 'var(--gray-500)' };
+                      };
+                      const typeConfig = typeConfigMap[stat.tableType] ?? { label: stat.tableType, bg: 'var(--gray-100)', color: 'var(--gray-700)', borderColor: 'var(--gray-500)' };
 
                       const isSelected = selectedTable?.tableName === stat.tableName && selectedTable?.tableType === stat.tableType;
                       const hasFailed = (stat.failedCount ?? 0) > 0;
-
-                      const isClickable = stat.tableType !== 'LINK';
 
                       return (
                         <tr
                           key={`${stat.tableType}-${stat.tableName}`}
                           style={{
-                            cursor: isClickable ? 'pointer' : 'default',
+                            cursor: 'pointer',
                             background: isSelected ? typeConfig.bg : hasFailed ? 'var(--red-50)' : 'transparent',
                             borderLeft: isSelected ? `4px solid ${typeConfig.borderColor}` : '4px solid transparent',
                             fontWeight: isSelected ? 600 : 400,
                           }}
-                          onClick={() => isClickable && setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType })}
+                          onClick={() => setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType })}
                         >
                           <td>
                             <span style={{
@@ -454,7 +458,10 @@ export default function ExecutionDetailPage() {
                               {typeConfig.label}
                             </span>
                           </td>
-                          <td><code>{stat.tableName}</code></td>
+                          <td>
+                            <code>{stat.tableName}</code>
+                            {tableAliasMap[stat.tableName] && <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginLeft: '0.5rem' }}>({tableAliasMap[stat.tableName]})</span>}
+                          </td>
                           <td style={{ fontWeight: 500 }}>{stat.totalCount}</td>
                           <td style={{ color: 'var(--green-600)', fontWeight: 500 }}>{stat.successCount}</td>
                           <td style={{
@@ -464,19 +471,15 @@ export default function ExecutionDetailPage() {
                             {stat.failedCount}
                           </td>
                           <td>
-                            {isClickable ? (
-                              <button
-                                className={isSelected ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType });
-                                }}
-                              >
-                                {isSelected ? '선택됨' : '상세'}
-                              </button>
-                            ) : (
-                              <span style={{ color: 'var(--gray-400)', fontSize: '0.8rem' }}>-</span>
-                            )}
+                            <button
+                              className={isSelected ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTable({ tableName: stat.tableName, tableType: stat.tableType });
+                              }}
+                            >
+                              {isSelected ? '선택됨' : '상세'}
+                            </button>
                           </td>
                         </tr>
                       );
@@ -548,6 +551,7 @@ export default function ExecutionDetailPage() {
                   {typeConfig.label}
                 </span>
                 <code style={{ fontSize: '0.9rem', fontWeight: 500 }}>{tableName}</code>
+                {tableAliasMap[tableName] && <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>({tableAliasMap[tableName]})</span>}
               </div>
             );
           })()}

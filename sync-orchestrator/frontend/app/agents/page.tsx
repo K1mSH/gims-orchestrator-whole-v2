@@ -628,6 +628,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                               onChange={() => toggleTableSelection(table.id, 'source')}
                             />
                             <span>{table.tableName}</span>
+                            {table.tableAlias && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.tableAlias})</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -665,6 +666,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                               onChange={() => toggleTableSelection(table.id, 'target')}
                             />
                             <span>{table.tableName}</span>
+                            {table.tableAlias && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.tableAlias})</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
