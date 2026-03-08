@@ -34,4 +34,9 @@ public interface SyncLogRepository extends JpaRepository<SyncLog, Long> {
     @Query("SELECT COALESCE(SUM(s.successCount), 0), COALESCE(SUM(s.failedCount), 0), COALESCE(SUM(s.skipCount), 0) " +
            "FROM SyncLog s WHERE s.executionId = :executionId")
     Object[] sumCountsByExecutionId(@Param("executionId") String executionId);
+
+    /** 실행별 총 성공/실패/스킵 건수 합계 (LINK 타입 제외) */
+    @Query("SELECT COALESCE(SUM(s.successCount), 0), COALESCE(SUM(s.failedCount), 0), COALESCE(SUM(s.skipCount), 0) " +
+           "FROM SyncLog s WHERE s.executionId = :executionId AND (s.tableType IS NULL OR s.tableType <> 'LINK')")
+    Object[] sumCountsByExecutionIdExcludeLink(@Param("executionId") String executionId);
 }

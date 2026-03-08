@@ -36,7 +36,7 @@ public class ExecutionDataController {
     @GetMapping("/{executionId}/summary")
     public ResponseEntity<Map<String, Object>> getSummary(@PathVariable String executionId) {
         // SyncLog에서 총 성공/실패/스킵 건수 합계
-        Object result = syncLogRepository.sumCountsByExecutionId(executionId);
+        Object result = syncLogRepository.sumCountsByExecutionIdExcludeLink(executionId);
 
         long successCount = 0L;
         long failedCount = 0L;
@@ -562,6 +562,11 @@ public class ExecutionDataController {
                 continue;
             }
 
+            // LINK 타입은 모니터링에서 제외 (데이터 처리 로직에서만 사용)
+            if ("LINK".equals(tableType)) {
+                continue;
+            }
+
             // tableType이 없으면 테이블명으로 추론
             if (tableType == null || tableType.isBlank()) {
                 if (tableName.startsWith("if_")) {
@@ -623,9 +628,10 @@ public class ExecutionDataController {
      * Source PK로 데이터 추적 (Source → Target)
      * Orchestrator가 Agent의 테이블 매핑 정보를 기반으로 targetTable(구 ifTableName)을 자동 해석
      *
-     * 조회 방식:
-     * 1. 먼저 PK 컬럼으로 직접 조회 시도 (IF 테이블의 id = Source의 id인 경우)
-     * 2. 없으면 source_refs 컬럼에서 검색 (IF 테이블의 id ≠ Source의 id인 경우)
+     * 3단계 source_refs 기반 forward trace:
+     * Step 1: source_refs에 PK가 임베딩된 경우 (RCV, SND, Internal)
+     * Step 2: source_refs 값 일치 — Loader 복사 패턴
+     * Step 3: 직접 PK fallback (최후 수단)
      */
     @GetMapping("/{executionId}/trace")
     public ResponseEntity<Map<String, Object>> traceBySourcePk(
@@ -633,195 +639,145 @@ public class ExecutionDataController {
             @RequestParam String pkValue,
             @RequestParam(defaultValue = "id") String pkColumn,
             @RequestParam(required = false) String sourceTable,
-            @RequestParam(required = false) String ifTableName) {  // ifTableName = 실제 target 테이블
+            @RequestParam(required = false) String ifTableName) {
 
         try {
-            // 필수 파라미터 체크
             if (sourceTable == null || sourceTable.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "sourceTable 파라미터가 필요합니다."));
             }
 
-            // ifTableName이 없으면 /tables 엔드포인트와 동일한 방식으로 조회
-            if (ifTableName == null || ifTableName.isBlank()) {
-                // sourceTable 이름에서 베이스 이름 추출 (예: SEC_JEWON_VIEW → sec_jewon)
-                // toLowerCase() 후 _view 제거하면 대소문자 모두 처리됨
-                String sourceBase = sourceTable.toLowerCase().replace("_view", "");
-
-                // 전체 SyncLog에서 TARGET/TARGET_IF 타입 중 sourceBase를 포함하는 테이블 찾기
-                List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
-                log.debug("Found {} sync logs for execution: {}", allLogs.size(), executionId);
-
-                // DB에는 tableType이 "IF" 또는 "TARGET"으로 저장됨 (TARGET_IF는 표시용)
-                ifTableName = allLogs.stream()
-                        .filter(l -> "TARGET".equals(l.getTableType()) || "IF".equals(l.getTableType()))
-                        .filter(l -> l.getTableName() != null &&
-                                     l.getTableName().toLowerCase().contains(sourceBase))
-                        .map(SyncLog::getTableName)
-                        .findFirst()
-                        .orElse(null);
-
-                // Loader 대응: sourceBase가 if_rsv_sec_jewon처럼 IF 접두사를 포함하면
-                // 접두사 제거 후 재시도 (sec_jewon으로 매칭)
-                if (ifTableName == null) {
-                    String strippedBase = sourceBase
-                            .replaceFirst("^if_rsv_", "")
-                            .replaceFirst("^if_snd_", "");
-                    if (!strippedBase.equals(sourceBase)) {
-                        String finalStripped = strippedBase;
-                        ifTableName = allLogs.stream()
-                                .filter(l -> "TARGET".equals(l.getTableType()) || "IF".equals(l.getTableType()))
-                                .filter(l -> l.getTableName() != null &&
-                                             l.getTableName().toLowerCase().contains(finalStripped))
-                                .map(SyncLog::getTableName)
-                                .findFirst()
-                                .orElse(null);
-                        if (ifTableName != null) {
-                            log.debug("Resolved target via stripped IF prefix: {} -> {}", sourceBase, ifTableName);
-                        }
-                    }
-                }
-
-                log.debug("Resolved ifTableName: {} for sourceTable: {}", ifTableName, sourceTable);
-            }
-
-            // Execution에서 targetDatasourceId 조회 (IF 테이블이 위치한 DB)
+            // Execution에서 targetDatasourceId 조회
             Execution execution = executionService.getExecution(executionId).orElse(null);
             String targetDsId = (execution != null && execution.getTargetDatasourceId() != null)
                     ? execution.getTargetDatasourceId()
                     : dataSourceProvider.getTargetDatasourceId();
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
 
-            // 이름 매칭 실패 시 source_refs 기반 폴백:
-            // TARGET 테이블의 source_refs에서 sourceTable:pkValue 패턴으로 직접 검색
-            if (ifTableName == null || ifTableName.isBlank()) {
-                List<SyncLog> fallbackLogs = syncLogRepository.findByExecutionId(executionId);
-                List<String> targetTables = fallbackLogs.stream()
-                        .filter(l -> "TARGET".equals(l.getTableType()))
-                        .map(SyncLog::getTableName)
-                        .filter(Objects::nonNull)
-                        .distinct()
-                        .toList();
+            // SyncLog에서 TARGET/IF 타입 테이블 목록 (이름 매칭 없이 전체)
+            List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
+            List<String> targetTables = allLogs.stream()
+                    .filter(l -> "TARGET".equals(l.getTableType()) || "IF".equals(l.getTableType()))
+                    .map(SyncLog::getTableName)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
 
-                for (String candidateTable : targetTables) {
-                    try {
-                        String probeSql = String.format(
-                                "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ? LIMIT 5",
-                                candidateTable);
-                        String searchPattern = "%:" + sourceTable + ":" + pkValue + "%";
-                        List<Map<String, Object>> probeResults =
-                                targetJdbc.queryForList(probeSql, searchPattern, executionId);
-                        if (!probeResults.isEmpty()) {
-                            ifTableName = candidateTable;
-                            log.debug("Resolved target via source_refs probe: {} -> {} ({} rows)",
-                                    sourceTable, candidateTable, probeResults.size());
-                            // 이미 데이터를 찾았으므로 바로 결과 반환
-                            Map<String, Object> result = new LinkedHashMap<>();
-                            result.put("pkColumn", pkColumn);
-                            result.put("pkValue", pkValue);
-                            result.put("executionId", executionId);
-                            result.put("targetTableName", candidateTable);
-                            result.put("targetRecords", probeResults);
-                            result.put("targetCount", probeResults.size());
-                            result.put("traceStatus", "SYNCED");
-                            return ResponseEntity.ok(result);
-                        }
-                    } catch (Exception e) {
-                        log.debug("source_refs probe failed for {}: {}", candidateTable, e.getMessage());
-                    }
-                }
-            }
-
-            if (ifTableName == null || ifTableName.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "error", "target 테이블을 찾을 수 없습니다.",
-                    "sourceTable", sourceTable,
-                    "executionId", executionId
-                ));
-            }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("pkColumn", pkColumn);
             result.put("pkValue", pkValue);
             result.put("executionId", executionId);
 
-            // pkValue를 적절한 타입으로 변환 (숫자면 Long, 아니면 String)
-            Object pkValueTyped;
-            try {
-                pkValueTyped = Long.parseLong(pkValue);
-            } catch (NumberFormatException e) {
-                pkValueTyped = pkValue;
-            }
+            List<Map<String, Object>> targetRecords = new ArrayList<>();
+            String matchedTable = null;
 
-            List<Map<String, Object>> targetRecords;
+            // ─── Step 1: source_refs에 PK가 임베딩된 경우 ───
+            // RCV, SND, Internal RCV, Internal Loader에서 target이 source_refs를 새로 생성
+            for (String candidateTable : targetTables) {
+                try {
+                    // Pattern A (정밀): sourceTable:pkValue 패턴
+                    String patternA = "%:" + sourceTable + ":" + pkValue + "\"]";
+                    String sqlA = String.format(
+                            "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ?",
+                            candidateTable);
+                    List<Map<String, Object>> rows = targetJdbc.queryForList(sqlA, patternA, executionId);
+                    if (!rows.isEmpty()) {
+                        targetRecords.addAll(rows);
+                        matchedTable = candidateTable;
+                        log.debug("Step 1A matched: {} -> {} ({} rows)", sourceTable, candidateTable, rows.size());
+                        break;
+                    }
 
-            // 1차 시도: PK 컬럼으로 직접 조회 (IF 테이블 id = Source id인 경우)
-            String executionIdCol = "execution_id";
-            String directSql = String.format(
-                    "SELECT * FROM %s WHERE %s = ? AND %s = ?",
-                    ifTableName, pkColumn, executionIdCol);
-            targetRecords = targetJdbc.queryForList(directSql, pkValueTyped, executionId);
-
-            // 2차 시도: source_refs에서 검색 (IF 테이블 id ≠ Source id인 경우)
-            if (targetRecords.isEmpty()) {
-                log.debug("Direct PK lookup returned no results, trying source_refs search...");
-                // source_refs 형식: ["D:dsId:tbId:pk"] - pk 부분이 pkValue와 일치하는지 검색
-                String sourceRefsSql = String.format(
-                        "SELECT * FROM %s WHERE source_refs LIKE ? AND %s = ?",
-                        ifTableName, executionIdCol);
-                String searchPattern = "%:" + pkValue + "\"]";  // 예: %:493"]
-                targetRecords = targetJdbc.queryForList(sourceRefsSql, searchPattern, executionId);
-
-                if (!targetRecords.isEmpty()) {
-                    log.debug("Found {} records via source_refs search", targetRecords.size());
+                    // Pattern B (범용): pkValue만으로 검색
+                    String patternB = "%:" + pkValue + "\"]";
+                    String sqlB = String.format(
+                            "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ?",
+                            candidateTable);
+                    rows = targetJdbc.queryForList(sqlB, patternB, executionId);
+                    if (!rows.isEmpty()) {
+                        targetRecords.addAll(rows);
+                        matchedTable = candidateTable;
+                        log.debug("Step 1B matched: {} -> {} ({} rows)", sourceTable, candidateTable, rows.size());
+                        break;
+                    }
+                } catch (Exception e) {
+                    log.debug("Step 1 failed for {}: {}", candidateTable, e.getMessage());
                 }
             }
 
-            // 3차 시도: 유니크 키로 검색 (source PK → source record → UK 값 → IF 테이블 검색)
+            // ─── Step 2: source_refs 값 일치 (Loader 복사 패턴) ───
+            // Loader는 IF의 source_refs를 target에 그대로 복사
             if (targetRecords.isEmpty()) {
-                log.debug("source_refs search failed, trying business key lookup...");
-                targetRecords = traceByBusinessKey(targetJdbc, sourceTable, ifTableName,
-                        pkColumn, pkValueTyped, executionId);
+                try {
+                    String actualSourceTable = findActualTableName(targetJdbc, sourceTable);
+                    if (actualSourceTable != null) {
+                        Object pkTyped = typedValue(pkValue);
+                        String srcDbType = detectDbType(targetJdbc);
+                        List<String> srcPkCols = findPkColumns(targetJdbc, actualSourceTable, srcDbType);
+                        String srcPkCol = srcPkCols.isEmpty() ? pkColumn : srcPkCols.get(0);
+
+                        String readSql = String.format("SELECT source_refs FROM %s WHERE %s = ?",
+                                qi(actualSourceTable, srcDbType), qi(srcPkCol, srcDbType));
+                        List<Map<String, Object>> srcRows = targetJdbc.queryForList(readSql, pkTyped);
+
+                        if (!srcRows.isEmpty()) {
+                            Object refsObj = findValueIgnoreCase(srcRows.get(0), "source_refs");
+                            if (refsObj != null) {
+                                String refsValue = refsObj.toString();
+                                log.debug("Step 2: source_refs from {} = {}", actualSourceTable, refsValue);
+
+                                for (String candidateTable : targetTables) {
+                                    if (candidateTable.equalsIgnoreCase(actualSourceTable)) continue;
+                                    try {
+                                        String sql = String.format(
+                                                "SELECT * FROM %s WHERE source_refs = ? AND execution_id = ?",
+                                                candidateTable);
+                                        List<Map<String, Object>> rows =
+                                                targetJdbc.queryForList(sql, refsValue, executionId);
+                                        if (!rows.isEmpty()) {
+                                            targetRecords.addAll(rows);
+                                            matchedTable = candidateTable;
+                                            log.debug("Step 2 matched: {} -> {} ({} rows)",
+                                                    actualSourceTable, candidateTable, rows.size());
+                                            break;
+                                        }
+                                    } catch (Exception e) {
+                                        log.debug("Step 2 failed for {}: {}", candidateTable, e.getMessage());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Step 2 source read failed: {}", e.getMessage());
+                }
             }
 
-            // 4차 시도: 같은 Agent의 다른 execution에서 조회 (UPSERT로 덮어씌워진 경우)
-            // execution_id를 완전히 제거하지 않고, agentCode 접두사로 필터링
-            boolean traceFallback = false;
+            // ─── Step 3: 직접 PK fallback (최후 수단) ───
             if (targetRecords.isEmpty()) {
-                String agentCode = extractAgentCode(executionId);
-                String agentPattern = agentCode + "_%";
-                log.debug("Trying agent-scoped fallback with pattern: {}", agentPattern);
-
-                // PK로 직접 조회 (같은 Agent의 execution만)
-                String agentFilterSql = String.format(
-                        "SELECT * FROM %s WHERE %s = ? AND %s LIKE ?",
-                        ifTableName, pkColumn, executionIdCol);
-                targetRecords = targetJdbc.queryForList(agentFilterSql, pkValueTyped, agentPattern);
-
-                // source_refs로 재시도 (같은 Agent의 execution만)
-                if (targetRecords.isEmpty()) {
-                    String agentFilterRefsSql = String.format(
-                            "SELECT * FROM %s WHERE source_refs LIKE ? AND %s LIKE ?",
-                            ifTableName, executionIdCol);
-                    String searchPattern = "%:" + pkValue + "\"]";
-                    targetRecords = targetJdbc.queryForList(agentFilterRefsSql, searchPattern, agentPattern);
-                }
-
-                if (!targetRecords.isEmpty()) {
-                    log.debug("Found {} records via agent-scoped fallback (agent: {})", targetRecords.size(), agentCode);
-                    traceFallback = true;
+                Object pkTyped = typedValue(pkValue);
+                for (String candidateTable : targetTables) {
+                    try {
+                        String sql = String.format(
+                                "SELECT * FROM %s WHERE %s = ? AND execution_id = ?",
+                                candidateTable, pkColumn);
+                        List<Map<String, Object>> rows = targetJdbc.queryForList(sql, pkTyped, executionId);
+                        if (!rows.isEmpty()) {
+                            targetRecords.addAll(rows);
+                            matchedTable = candidateTable;
+                            log.debug("Step 3 matched: {} ({} rows)", candidateTable, rows.size());
+                            break;
+                        }
+                    } catch (Exception e) {
+                        log.debug("Step 3 failed for {} (column '{}' may not exist): {}",
+                                candidateTable, pkColumn, e.getMessage());
+                    }
                 }
             }
 
-            result.put("targetTableName", ifTableName);  // ifTableName이 실제 target
+            result.put("targetTableName", matchedTable != null ? matchedTable : "");
             result.put("targetRecords", targetRecords);
             result.put("targetCount", targetRecords.size());
-
-            // 처리 상태 요약
-            String traceStatus = targetRecords.isEmpty() ? "NOT_SYNCED" : "SYNCED";
-            if (traceFallback) {
-                traceStatus = "FOUND_IN_IF";
-                result.put("fallbackMode", true);
-            }
-            result.put("traceStatus", traceStatus);
+            result.put("traceStatus", targetRecords.isEmpty() ? "NOT_SYNCED" : "SYNCED");
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -1168,103 +1124,7 @@ public class ExecutionDataController {
         return result;
     }
 
-    /**
-     * trace API용: Source 레코드의 유니크 키로 IF 테이블 검색
-     * Source PK/source_refs 검색 실패 시 fallback으로 사용
-     * IF 테이블의 유니크 제약 컬럼을 DB 메타데이터에서 동적으로 조회
-     */
-    private List<Map<String, Object>> traceByBusinessKey(
-            JdbcTemplate targetJdbc, String sourceTable, String ifTableName,
-            String pkColumn, Object pkValue, String executionId) {
 
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        try {
-            // IF 테이블의 유니크 키 컬럼 동적 조회 (PK 제외)
-            List<String> ukColumns = getUniqueKeyColumns(targetJdbc, ifTableName);
-            if (ukColumns.isEmpty()) {
-                log.debug("No unique key columns found for IF table: {}", ifTableName);
-                return result;
-            }
-
-            // Execution에서 sourceDatasourceId 조회
-            Execution execution = executionService.getExecution(executionId).orElse(null);
-            if (execution == null) {
-                return result;
-            }
-
-            String datasourceId = execution.getSourceDatasourceId();
-            if (datasourceId == null || datasourceId.isBlank()) {
-                datasourceId = dataSourceProvider.getSourceDatasourceId();
-            }
-
-            JdbcTemplate sourceJdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
-
-            // Source 테이블 이름 해석
-            String actualSourceTable = findActualTableName(sourceJdbc, sourceTable);
-            if (actualSourceTable == null) {
-                return result;
-            }
-
-            // Source 테이블에서 PK로 레코드 조회
-            String srcDbType = dataSourceProvider.getDbType(datasourceId);
-            String sourceSql = String.format(
-                    "SELECT * FROM %s WHERE %s = ?",
-                    qi(actualSourceTable, srcDbType), qi(pkColumn, srcDbType));
-            List<Map<String, Object>> sourceRecords = sourceJdbc.queryForList(sourceSql, pkValue);
-
-            if (sourceRecords.isEmpty()) {
-                return result;
-            }
-
-            Map<String, Object> sourceRecord = sourceRecords.get(0);
-
-            // 유니크 키 컬럼 값을 source record에서 추출하여 WHERE 절 구성
-            StringBuilder whereClause = new StringBuilder();
-            List<Object> params = new ArrayList<>();
-            boolean allFound = true;
-
-            for (int i = 0; i < ukColumns.size(); i++) {
-                String ukCol = ukColumns.get(i);
-                Object value = findValueIgnoreCase(sourceRecord, ukCol);
-                if (value == null) { allFound = false; break; }
-                if (i > 0) whereClause.append(" AND ");
-                whereClause.append(ukCol).append(" = ?");
-                params.add(value);
-            }
-
-            if (!allFound || params.isEmpty()) {
-                log.debug("Could not extract all unique key values {} from source record", ukColumns);
-                return result;
-            }
-
-            // IF 테이블에서 유니크 키로 검색 (execution_id 포함)
-            List<Object> paramsWithExecId = new ArrayList<>(params);
-            paramsWithExecId.add(executionId);
-            String ifSql = String.format(
-                    "SELECT * FROM %s WHERE %s AND execution_id = ?",
-                    ifTableName.toLowerCase(), whereClause);
-            result = targetJdbc.queryForList(ifSql, paramsWithExecId.toArray());
-
-            // Fallback: execution_id 없이 재조회 (UPSERT 덮어쓰기 대응)
-            if (result.isEmpty()) {
-                String noFilterSql = String.format(
-                        "SELECT * FROM %s WHERE %s",
-                        ifTableName.toLowerCase(), whereClause);
-                result = targetJdbc.queryForList(noFilterSql, params.toArray());
-                if (!result.isEmpty()) {
-                    log.debug("Found {} IF records via unique key (without execution_id filter)", result.size());
-                }
-            } else {
-                log.debug("Found {} IF records via unique key {}", result.size(), ukColumns);
-            }
-        } catch (Exception e) {
-            log.warn("Business key trace failed for sourceTable={}, pkValue={}: {}",
-                    sourceTable, pkValue, e.getMessage());
-        }
-
-        return result;
-    }
 
     /**
      * 테이블의 유니크 키 컬럼 조회 (PK 제외)
@@ -1481,16 +1341,6 @@ public class ExecutionDataController {
     }
 
     // ==================== Helper Methods ====================
-
-    /**
-     * executionId에서 agentCode 추출
-     * 형식: {agentCode}_{uuid} → agentCode
-     */
-    private String extractAgentCode(String executionId) {
-        if (executionId == null) return "";
-        int lastUnderscore = executionId.lastIndexOf('_');
-        return lastUnderscore > 0 ? executionId.substring(0, lastUnderscore) : executionId;
-    }
 
     /**
      * PK 값 타입 변환
