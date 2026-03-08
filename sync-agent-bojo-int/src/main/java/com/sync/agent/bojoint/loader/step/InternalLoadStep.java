@@ -137,9 +137,9 @@ public class InternalLoadStep implements StepExecutor {
                         java.sql.Date.valueOf(paramEndTime.toLocalDate()));
                 log.info("[{}] Time-range query: {} ~ {}", getStepId(), paramStartTime, paramEndTime);
             } else {
-                // 기본 실행: PENDING만
+                // 기본 실행: PENDING 또는 RESYNC
                 pendingObsv = sourceJdbc.queryForList(
-                        "SELECT * FROM " + ifObsvdataTable + " WHERE link_status = 'PENDING'");
+                        "SELECT * FROM " + ifObsvdataTable + " WHERE link_status IN ('PENDING', 'RESYNC')");
             }
 
             obsvReadCount = pendingObsv.size();
@@ -221,7 +221,7 @@ public class InternalLoadStep implements StepExecutor {
                 // batch INSERT
                 if (!expandedRows.isEmpty()) {
                     int inserted = targetRepo.batchInsertObsvdata(targetObsvdataTable, expandedRows);
-                    writeCount += inserted;
+                    writeCount = obsvSuccess;  // 논리적 레코드 수 기준 (EAV 확장 행 수가 아닌 IF 처리 건수)
                     log.info("[{}] Inserted {} EAV obsvdata rows (from {} IF records)",
                             getStepId(), inserted, obsvSuccess);
                 }
