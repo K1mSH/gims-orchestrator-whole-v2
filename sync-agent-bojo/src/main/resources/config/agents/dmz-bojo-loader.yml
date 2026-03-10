@@ -8,4 +8,11 @@ target-table:
   obsvdata: sec_obsvdata
 step:
   batch-size: 1000
+table-mappings:
+  - name: jewon
+    source: [if_rsv_sec_jewon]
+    target: [sec_jewon]
+  - name: obsvdata
+    source: [if_rsv_sec_obsvdata]
+    target: [sec_obsvdata]
 

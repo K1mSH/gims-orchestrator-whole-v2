@@ -11,6 +11,10 @@ target-table:
 step:
   id: internal-load
   name: 내부망 GIMS 적재
+table-mappings:
+  - name: obsvdata
+    source: [if_rsv_sec_obsvdata]
+    target: [pm_gd970201]
 execution-modes:
   - mode-id: incremental
     mode-name: 증분 적재

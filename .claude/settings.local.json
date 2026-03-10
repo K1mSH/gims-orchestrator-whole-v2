@@ -239,7 +239,15 @@
       "Bash(echo === Internal RCV \\(시간범위\\) ===:*)",
       "Bash(echo === DMZ RCV: daejeon \\(ID=7\\) ===:*)",
       "Bash(echo === DMZ RCV: keunsan \\(ID=12\\) ===:*)",
-      "Bash(echo Infoworld exec: $INFOWORLD_EXEC:*)"
+      "Bash(echo Infoworld exec: $INFOWORLD_EXEC:*)",
+      "Bash(npm run:*)",
+      "Bash(do printf:*)",
+      "Bash(sleep 150 && echo \"=== RCV 결과 ===\" && for id in 7 12 9; do curl -s \"http://localhost:8080/api/executions/history/agent/$id\" | python -c \"\nimport json,sys\nd=json.load\\(sys.stdin\\)[0]\nprint\\(f\\\\\"{d['agentCode']}: {d['status']} read={d['totalReadCount']} write={d['totalWriteCount']}\\\\\"\\)\" 2>/dev/null; done)",
+      "Bash(/c/tools/mysql-8.0.40-winx64/bin/mysql -h localhost -P 29010 -u k1m -p1111 infoworld_local -e \"SELECT COUNT\\(*\\) as jewon FROM sec_jewon_view; SELECT COUNT\\(*\\) as obsvdata FROM sec_obsvdata_view;\" 2>/dev/null)",
+      "Read(//c//**)",
+      "Bash(find /c -name mysql.exe -maxdepth 4)",
+      "Bash(EXEC_ID=\"dmz-bojo-rcv-daejeon_2b2ac401-ce2f-4e7f-b410-599992a32555\"\ncurl -s \"http://localhost:8083/api/execution-data/source?executionId=${EXEC_ID}&sourceTable=sec_jewon_view\" | python3 -m json.tool 2>/dev/null | head -20)",
+      "Bash(EXEC_ID=\"dmz-bojo-rcv-daejeon_2b2ac401-ce2f-4e7f-b410-599992a32555\"\ncurl -s \"http://localhost:8083/api/execution-data/${EXEC_ID}/source?sourceTable=sec_jewon_view\" | python3 -m json.tool 2>/dev/null)"
     ]
   },
   "hooks": {

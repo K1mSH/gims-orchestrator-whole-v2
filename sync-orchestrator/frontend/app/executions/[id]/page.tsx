@@ -286,21 +286,48 @@ export default function ExecutionDetailPage() {
     return <div className="empty-state">실행 정보를 찾을 수 없습니다</div>;
   }
 
+  // 매핑 데이터를 이전 형식(테이블별 행)으로 변환
+  // SOURCE 행 = sourceTables, TARGET 행 = targetTables
+  type FlatTableStat = { tableName: string; tableType: string; totalCount: number; successCount: number; failedCount: number; skipCount: number };
+  const flatTableStats: FlatTableStat[] = [];
+  for (const stat of tableStats) {
+    for (const t of (stat.sourceTables ?? [])) {
+      flatTableStats.push({
+        tableName: t,
+        tableType: 'SOURCE',
+        totalCount: stat.readCount ?? 0,
+        successCount: stat.readCount ?? 0,
+        failedCount: stat.failedCount ?? 0,
+        skipCount: stat.skipCount ?? 0,
+      });
+    }
+    for (const t of (stat.targetTables ?? [])) {
+      flatTableStats.push({
+        tableName: t,
+        tableType: 'TARGET',
+        totalCount: stat.writeCount ?? 0,
+        successCount: stat.writeCount ?? 0,
+        failedCount: stat.failedCount ?? 0,
+        skipCount: stat.skipCount ?? 0,
+      });
+    }
+  }
+
   // 테이블 현황(SyncLog)이 있으면 그 합산 사용, 없으면 Execution 값 fallback
   const hasTableStats = tableStats.length > 0;
   const totalReadCount = hasTableStats
-    ? tableStats.filter(s => s.tableType === 'SOURCE').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
+    ? tableStats.reduce((sum, s) => sum + (s.readCount ?? 0), 0)
     : (executionDetail.totalReadCount ?? 0);
   const totalWriteCount = hasTableStats
-    ? tableStats.filter(s => s.tableType !== 'SOURCE' && s.tableType !== 'LINK').reduce((sum, s) => sum + (s.successCount ?? 0), 0)
+    ? tableStats.reduce((sum, s) => sum + (s.writeCount ?? 0), 0)
     : (executionDetail.totalWriteCount ?? 0);
   const totalSkipCount = hasTableStats
-    ? tableStats.filter(s => s.tableType !== 'LINK').reduce((sum, s) => sum + (s.skipCount ?? 0), 0)
+    ? tableStats.reduce((sum, s) => sum + (s.skipCount ?? 0), 0)
     : (executionDetail.totalSkipCount ?? 0);
 
   // 현재 선택된 테이블의 타입
   const selectedTableStat = selectedTable
-    ? tableStats.find(s => s.tableName === selectedTable.tableName && s.tableType === selectedTable.tableType)
+    ? flatTableStats.find(s => s.tableName === selectedTable.tableName && s.tableType === selectedTable.tableType)
     : null;
   const isSourceTable = selectedTable?.tableType === 'SOURCE';
   const isIfTable = selectedTable?.tableType === 'TARGET_IF';
@@ -411,15 +438,15 @@ export default function ExecutionDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableStats.length === 0 ? (
+                  {flatTableStats.length === 0 ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '2rem' }}>
                         테이블 통계 정보가 없습니다
                       </td>
                     </tr>
                   ) : (
-                    // SOURCE → TARGET_IF → TARGET 순서로 정렬 (LINK 제외)
-                    [...tableStats].filter(s => s.tableType !== 'LINK').sort((a, b) => {
+                    // SOURCE → TARGET 순서로 정렬
+                    [...flatTableStats].sort((a, b) => {
                       const typeOrder = { SOURCE: 0, TARGET_IF: 1, TARGET: 2 };
                       const orderA = typeOrder[a.tableType as keyof typeof typeOrder] ?? 99;
                       const orderB = typeOrder[b.tableType as keyof typeof typeOrder] ?? 99;

@@ -110,9 +110,7 @@ public class LinkTableUpdateStep implements StepExecutor {
 
             log.info("[{}] Link 테이블 업데이트 완료: {} 건", STEP_ID, updateCount);
 
-            // SyncLog에 LINK 타입으로 기록 (테이블 처리 현황에 표시)
-            saveSyncLogSummary(context.getExecutionId(), linkTable, "LINK",
-                    (long) updateCount, 0L, 0L);
+            // Link 테이블은 매핑/SyncLog/모니터링 대상에서 제외 (처리 로직만 유지)
 
             return StepResult.builder()
                     .stepId(STEP_ID)
@@ -262,21 +260,5 @@ public class LinkTableUpdateStep implements StepExecutor {
         }
     }
 
-    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
-                                     Long successCount, Long failedCount, Long skipCount) {
-        try {
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(STEP_ID)
-                    .tableName(tableName)
-                    .tableType(tableType)
-                    .successCount(successCount)
-                    .failedCount(failedCount)
-                    .skipCount(skipCount)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("Failed to save SyncLog for {}: {}", tableName, e.getMessage());
-        }
-    }
+    // Link SyncLog 기록 제거 - 매핑/모니터링 대상에서 제외
 }

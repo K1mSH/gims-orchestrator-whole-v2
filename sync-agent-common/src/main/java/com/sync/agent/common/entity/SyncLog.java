@@ -8,15 +8,15 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 /**
- * 실행별 테이블 처리 요약 로그
- * 레코드별이 아닌 실행+테이블별로 요약 저장
+ * 실행별 매핑 단위 처리 요약 로그
+ * per-table이 아닌 per-mapping 단위로 저장 (YAML table-mappings 기반)
  */
 @Entity
 @Table(name = "sync_log", indexes = {
     @Index(name = "idx_sync_log_execution", columnList = "execution_id"),
-    @Index(name = "idx_sync_log_table", columnList = "execution_id, table_name")
+    @Index(name = "idx_sync_log_mapping", columnList = "execution_id, mapping_name")
 })
-@org.hibernate.annotations.Table(appliesTo = "sync_log", comment = "동기화 처리 로그 (Step별 테이블 단위 처리 결과)")
+@org.hibernate.annotations.Table(appliesTo = "sync_log", comment = "동기화 처리 로그 (매핑 단위 처리 결과)")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,18 +38,27 @@ public class SyncLog {
     @Comment("Step 식별자")
     private String stepId;
 
-    @Column(name = "table_name", length = 100)
-    @Comment("처리 대상 테이블명")
-    private String tableName;
+    @Column(name = "mapping_name", length = 100)
+    @Comment("매핑 이름 (YAML table-mappings의 name)")
+    private String mappingName;
 
-    @Column(name = "table_type", length = 20)
-    @Comment("테이블 유형 (SOURCE/IF/TARGET)")
-    private String tableType;
+    @Column(name = "source_tables", columnDefinition = "TEXT")
+    @Comment("source 테이블 목록 (JSON 배열)")
+    private String sourceTables;
 
-    @Column(name = "success_count")
-    @Comment("성공 건수")
+    @Column(name = "target_tables", columnDefinition = "TEXT")
+    @Comment("target 테이블 목록 (JSON 배열)")
+    private String targetTables;
+
+    @Column(name = "read_count")
+    @Comment("읽기 건수 (source에서 읽은 수)")
     @Builder.Default
-    private Long successCount = 0L;
+    private Long readCount = 0L;
+
+    @Column(name = "write_count")
+    @Comment("쓰기 건수 (target에 쓴 수)")
+    @Builder.Default
+    private Long writeCount = 0L;
 
     @Column(name = "failed_count")
     @Comment("실패 건수")
@@ -80,14 +89,24 @@ public class SyncLog {
 
     // ========== Helper Methods ==========
 
-    /** 총 처리 건수 (skip 제외: 실제 처리된 success + failed만) */
+    /** 총 처리 건수 (write + failed) */
     public long getTotalCount() {
-        return (successCount != null ? successCount : 0L)
+        return (writeCount != null ? writeCount : 0L)
              + (failedCount != null ? failedCount : 0L);
     }
 
     /** 성공 여부 (실패 건수가 0이면 성공) */
     public boolean isSuccess() {
         return failedCount == null || failedCount == 0L;
+    }
+
+    /** source_tables JSON 문자열에 특정 테이블명이 포함되어 있는지 */
+    public boolean containsSourceTable(String tableName) {
+        return sourceTables != null && sourceTables.toLowerCase().contains("\"" + tableName.toLowerCase() + "\"");
+    }
+
+    /** target_tables JSON 문자열에 특정 테이블명이 포함되어 있는지 */
+    public boolean containsTargetTable(String tableName) {
+        return targetTables != null && targetTables.toLowerCase().contains("\"" + tableName.toLowerCase() + "\"");
     }
 }

@@ -11,7 +11,8 @@ import java.sql.Date;
        uniqueConstraints = @UniqueConstraint(
            name = "uk_sec_jewon_source_refs",
            columnNames = {"source_refs"}
-       ))
+       ),
+       indexes = @Index(name = "idx_sec_jewon_exec_id", columnList = "execution_id"))
 @org.hibernate.annotations.Table(appliesTo = "sec_jewon", comment = "Target 제원")
 @Getter
 @Setter

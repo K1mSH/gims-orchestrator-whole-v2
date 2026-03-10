@@ -22,7 +22,8 @@ import java.time.LocalDateTime;
        uniqueConstraints = @UniqueConstraint(
            name = "uk_if_rsv_sec_jewon_source_refs",
            columnNames = {"source_refs"}
-       ))
+       ),
+       indexes = @Index(name = "idx_if_rsv_sec_jewon_exec_id", columnList = "execution_id"))
 @org.hibernate.annotations.Table(appliesTo = "if_rsv_sec_jewon", comment = "IF_RSV 보조지하수관측망 제원 (외부→RCV→IF 적재, Loader가 읽어서 매핑용)")
 @Getter
 @Setter

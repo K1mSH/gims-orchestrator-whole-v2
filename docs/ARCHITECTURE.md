@@ -113,6 +113,7 @@ link:
 **OrchestratorClient 동적 생성:**
 - v1: 앱별 싱글톤 (`@PostConstruct`에서 1회 생성)
 - v2: 실행마다 해당 agentId로 새 인스턴스 생성 (OrchestratorClient는 stateless)
+- 콜백 재시도: `notifyStarted`/`notifyFinished` 최대 3회 재시도 (간격 2s/4s/6s)
 
 **프로젝트 구조:**
 ```
@@ -459,7 +460,7 @@ Target: PENDING (Loader 적재) → SYNCED (SND 처리 후)
 
 **사용 방식:**
 - RCV가 각 obsv_code별로 마지막 동기화 시점 조회
-- 해당 시점 이후 데이터만 Source에서 추출
+- 해당 시점 **초과** 데이터만 Source에서 추출 (같은 시점 = 이미 동기화됨, 중복 방지)
 - 동기화 완료 후 link_ngwis 업데이트 (**더 최신 데이터일 때만**)
 
 **업데이트 조건 (더 최신 데이터일 때만):**
@@ -706,7 +707,7 @@ if ("RESYNC".equals(sourceLinkStatus)) {
 
 **RCV:**
 1. `link_ngwis`에서 obsv_code별 마지막 동기화 시점 조회
-2. 해당 시점 이후 데이터만 Source에서 추출
+2. 해당 시점 **초과**(>) 데이터만 Source에서 추출 (같은 시점 중복 방지)
 3. IF_RSV에 적재 (link_status: PENDING)
    - jewon: **UPSERT** (fullCopy=true)
    - obsvdata: **INSERT** (중복 시 무시)
@@ -804,3 +805,4 @@ RCV 기간지정 → IF_RSV(RESYNC) → Loader 일반 → Target(RESYNC) → SND
 | 2026-02-12 | v2 통합 아키텍처 반영: 3개 분리 모듈 → sync-agent-bojo 1개 통합, RSV→RCV 명칭 변경, PipelineRegistry/AgentConfigLoader 추가, 파일 기반 Agent 설정 |
 | 2026-02-19 | Tracing 기능 강화: 복합 PK 지원, JDBC 메타데이터 기반 PK 자동 감지, source_refs 형식 업데이트 (JSON배열), 소스 테이블 자동 등록, MySQL/PG 호환성 (SQL 방언 분기) |
 | 2026-02-24 | 내부망 Agent(sync-agent-bojo-int) 추가, [ARCHITECTURE_INTERNAL.md](ARCHITECTURE_INTERNAL.md) 분리 |
+| 2026-03-10 | LinkTableObsvDataFetcher 시간 비교 `>=` → `>` (극점 중복 방지), OrchestratorClient 콜백 재시도 3회 추가 |

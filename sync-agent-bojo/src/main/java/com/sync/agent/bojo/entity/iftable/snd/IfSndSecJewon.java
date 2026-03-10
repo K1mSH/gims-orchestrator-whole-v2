@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
        uniqueConstraints = @UniqueConstraint(
            name = "uk_if_snd_sec_jewon_source_refs",
            columnNames = {"source_refs"}
-       ))
+       ),
+       indexes = @Index(name = "idx_if_snd_sec_jewon_exec_id", columnList = "execution_id"))
 @org.hibernate.annotations.Table(appliesTo = "if_snd_sec_jewon", comment = "IF_SND 송신 제원")
 @Getter
 @Setter

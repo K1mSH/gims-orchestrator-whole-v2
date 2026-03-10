@@ -17,3 +17,10 @@ obsvdata:
 link:
   use-link-table: true
   table-name: link_ngwis
+table-mappings:
+  - name: jewon
+    source: [sec_jewon_view]
+    target: [if_rsv_sec_jewon]
+  - name: obsvdata
+    source: [sec_obsvdata_view]
+    target: [if_rsv_sec_obsvdata]

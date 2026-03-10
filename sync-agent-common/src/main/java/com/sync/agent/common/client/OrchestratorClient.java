@@ -50,69 +50,81 @@ public class OrchestratorClient implements com.sync.agent.common.pipeline.StepPr
         log.debug("Step finished: executionId={}, step={}, status={}", executionId, result.getStepId(), result.getStatus());
     }
 
+    private static final int MAX_RETRY = 3;
+    private static final long RETRY_DELAY_MS = 2000;
+
     public void notifyStarted(String executionId, String triggeredBy) {
-        try {
-            ExecutionStartRequest request = ExecutionStartRequest.builder()
-                    .executionId(executionId)
-                    .agentId(agentId)
-                    .startedAt(LocalDateTime.now())
-                    .triggeredBy(triggeredBy != null ? triggeredBy : "MANUAL")
-                    .build();
+        ExecutionStartRequest request = ExecutionStartRequest.builder()
+                .executionId(executionId)
+                .agentId(agentId)
+                .startedAt(LocalDateTime.now())
+                .triggeredBy(triggeredBy != null ? triggeredBy : "MANUAL")
+                .build();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<ExecutionStartRequest> entity = new HttpEntity<>(request, headers);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<ExecutionStartRequest> entity = new HttpEntity<>(request, headers);
 
-            String url = orchestratorUrl + "/api/callback/started";
-            restTemplate.postForEntity(url, entity, Void.class);
-
-            log.info("Notified orchestrator: execution started. executionId={}", executionId);
-        } catch (Exception e) {
-            log.error("Failed to notify orchestrator about execution start: {}", e.getMessage());
-        }
+        String url = orchestratorUrl + "/api/callback/started";
+        sendWithRetry(url, entity, "started", executionId);
     }
 
     public void notifyFinished(PipelineResult result) {
-        try {
-            // Step 결과를 DTO로 변환
-            AtomicInteger order = new AtomicInteger(1);
-            List<ExecutionFinishRequest.StepResultDto> stepDtos = result.getStepResults().stream()
-                    .map(step -> ExecutionFinishRequest.StepResultDto.builder()
-                            .stepId(step.getStepId())
-                            .status(step.getStatus().name())
-                            .readCount(step.getReadCount())
-                            .writeCount(step.getWriteCount())
-                            .skipCount(step.getSkipCount())
-                            .durationMs(step.getDurationMs())
-                            .errorMessage(step.getErrorMessage())
-                            .stepOrder(order.getAndIncrement())
-                            .build())
-                    .collect(Collectors.toList());
+        // Step 결과를 DTO로 변환
+        AtomicInteger order = new AtomicInteger(1);
+        List<ExecutionFinishRequest.StepResultDto> stepDtos = result.getStepResults().stream()
+                .map(step -> ExecutionFinishRequest.StepResultDto.builder()
+                        .stepId(step.getStepId())
+                        .status(step.getStatus().name())
+                        .readCount(step.getReadCount())
+                        .writeCount(step.getWriteCount())
+                        .skipCount(step.getSkipCount())
+                        .durationMs(step.getDurationMs())
+                        .errorMessage(step.getErrorMessage())
+                        .stepOrder(order.getAndIncrement())
+                        .build())
+                .collect(Collectors.toList());
 
-            ExecutionFinishRequest request = ExecutionFinishRequest.builder()
-                    .executionId(result.getExecutionId())
-                    .agentId(agentId)
-                    .status(result.getStatus().name())
-                    .totalReadCount(result.getTotalReadCount())
-                    .totalWriteCount(result.getTotalWriteCount())
-                    .totalSkipCount(result.getTotalSkipCount())
-                    .durationMs(result.getTotalDurationMs())
-                    .errorMessage(result.getErrorMessage())
-                    .finishedAt(LocalDateTime.now())
-                    .stepResults(stepDtos)
-                    .build();
+        ExecutionFinishRequest request = ExecutionFinishRequest.builder()
+                .executionId(result.getExecutionId())
+                .agentId(agentId)
+                .status(result.getStatus().name())
+                .totalReadCount(result.getTotalReadCount())
+                .totalWriteCount(result.getTotalWriteCount())
+                .totalSkipCount(result.getTotalSkipCount())
+                .durationMs(result.getTotalDurationMs())
+                .errorMessage(result.getErrorMessage())
+                .finishedAt(LocalDateTime.now())
+                .stepResults(stepDtos)
+                .build();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<ExecutionFinishRequest> entity = new HttpEntity<>(request, headers);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<ExecutionFinishRequest> entity = new HttpEntity<>(request, headers);
 
-            String url = orchestratorUrl + "/api/callback/finished";
-            restTemplate.postForEntity(url, entity, Void.class);
+        String url = orchestratorUrl + "/api/callback/finished";
+        sendWithRetry(url, entity, "finished", result.getExecutionId());
+    }
 
-            log.info("Notified orchestrator: execution finished. executionId={}, status={}, steps={}",
-                    result.getExecutionId(), result.getStatus(), stepDtos.size());
-        } catch (Exception e) {
-            log.error("Failed to notify orchestrator about execution finish: {}", e.getMessage());
+    private void sendWithRetry(String url, HttpEntity<?> entity, String callbackType, String executionId) {
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                restTemplate.postForEntity(url, entity, Void.class);
+                log.info("Notified orchestrator: execution {}. executionId={}", callbackType, executionId);
+                return;
+            } catch (Exception e) {
+                log.warn("Callback {} 전송 실패 (시도 {}/{}): executionId={}, error={}",
+                        callbackType, attempt, MAX_RETRY, executionId, e.getMessage());
+                if (attempt < MAX_RETRY) {
+                    try {
+                        Thread.sleep(RETRY_DELAY_MS * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
         }
+        log.error("Callback {} 전송 최종 실패: executionId={} ({}회 재시도 모두 실패)", callbackType, executionId, MAX_RETRY);
     }
 }

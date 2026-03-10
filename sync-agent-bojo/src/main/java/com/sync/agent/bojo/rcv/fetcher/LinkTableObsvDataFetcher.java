@@ -321,7 +321,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                     tc = qi(timeColumn, dbType);
                     sql = String.format(
                             "SELECT * FROM %s WHERE %s = ? " +
-                                    "AND ((%s = STR_TO_DATE(?, '%%Y%%m%%d') AND DATE_FORMAT(%s, '%%H%%i%%s') >= ?) " +
+                                    "AND ((%s = STR_TO_DATE(?, '%%Y%%m%%d') AND DATE_FORMAT(%s, '%%H%%i%%s') > ?) " +
                                     "OR %s > STR_TO_DATE(?, '%%Y%%m%%d')) " +
                                     "ORDER BY %s, %s",
                             qi(table, dbType), kc, dc, tc, dc, dc, tc);
@@ -332,7 +332,7 @@ public class LinkTableObsvDataFetcher implements DataFetcher {
                     tc = qi(colCase.equals("upper") ? timeColumn.toUpperCase() : timeColumn.toLowerCase(), dbType);
                     sql = String.format(
                             "SELECT * FROM %s WHERE %s = ? " +
-                                    "AND ((%s = TO_DATE(?, 'YYYYMMDD') AND TO_CHAR(%s, 'HH24MISS') >= ?) " +
+                                    "AND ((%s = TO_DATE(?, 'YYYYMMDD') AND TO_CHAR(%s, 'HH24MISS') > ?) " +
                                     "OR %s > TO_DATE(?, 'YYYYMMDD')) " +
                                     "ORDER BY %s, %s",
                             qi(table, dbType), kc, dc, tc, dc, dc, tc);

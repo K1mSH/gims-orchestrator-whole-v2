@@ -1,5 +1,6 @@
 package com.sync.agent.bojoint.config;
 
+import com.sync.agent.common.model.TableMapping;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -27,6 +28,9 @@ public class AgentDefinition {
 
     // Step 설정 (Loader)
     private StepConfig step;
+
+    // table-mappings (Source→Target 관계 명시)
+    private List<TableMapping> tableMappings = new ArrayList<>();
 
     // 실행 모드 목록
     private List<ExecutionModeConfig> executionModes = new ArrayList<>();

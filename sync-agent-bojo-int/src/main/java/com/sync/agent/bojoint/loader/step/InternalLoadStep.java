@@ -262,17 +262,13 @@ public class InternalLoadStep implements StepExecutor {
             log.info("[{}] Completed: read={}, write={}, skip={}, duration={}ms",
                     getStepId(), readCount, writeCount, skipCount, durationMs);
 
-            // ===== 4. SyncLog 요약 저장 =====
-            saveSyncLogSummary(executionId, ifObsvdataTable, "SOURCE",
-                    (long) obsvReadCount, 0L, 0L, null, null);
-            saveSyncLogSummary(executionId, targetObsvdataTable, "TARGET",
-                    (long) obsvSuccess, (long) obsvFailed, 0L,
+            // ===== 4. SyncLog 요약 저장 (매핑 단위, link 제외) =====
+            saveSyncLogMapping(executionId, "obsvdata",
+                    List.of(ifObsvdataTable),
+                    List.of(targetObsvdataTable),
+                    (long) obsvReadCount, (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     obsvFirstError);
-            if (targetLinkTable != null && linkUpdated > 0) {
-                saveSyncLogSummary(executionId, targetLinkTable, "LINK",
-                        (long) linkUpdated, 0L, 0L, null, null);
-            }
 
             return StepResult.builder()
                     .stepId(getStepId())
@@ -291,10 +287,10 @@ public class InternalLoadStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "SOURCE",
-                    (long) obsvReadCount, 0L, 0L, null, null);
-            saveSyncLogSummary(context.getExecutionId(), targetObsvdataTable, "TARGET",
-                    (long) obsvSuccess, (long) obsvFailed, 0L,
+            saveSyncLogMapping(context.getExecutionId(), "obsvdata",
+                    List.of(ifObsvdataTable),
+                    List.of(targetObsvdataTable),
+                    (long) obsvReadCount, (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     errorMessage);
 
@@ -380,24 +376,30 @@ public class InternalLoadStep implements StepExecutor {
         }
     }
 
-    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
-                                     Long successCount, Long failedCount, Long skipCount,
+    private void saveSyncLogMapping(String executionId, String mappingName,
+                                     List<String> sourceTables, List<String> targetTables,
+                                     Long readCount, Long writeCount, Long failedCount, Long skipCount,
                                      String failedKeys, String errorSummary) {
         try {
+            String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+            String targetJson = "[" + targetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+
             SyncLog logEntry = SyncLog.builder()
                     .executionId(executionId)
                     .stepId(getStepId())
-                    .tableName(tableName)
-                    .tableType(tableType)
-                    .successCount(successCount)
-                    .failedCount(failedCount)
-                    .skipCount(skipCount)
+                    .mappingName(mappingName)
+                    .sourceTables(sourceJson)
+                    .targetTables(targetJson)
+                    .readCount(readCount != null ? readCount : 0L)
+                    .writeCount(writeCount != null ? writeCount : 0L)
+                    .failedCount(failedCount != null ? failedCount : 0L)
+                    .skipCount(skipCount != null ? skipCount : 0L)
                     .failedKeys(failedKeys)
                     .errorSummary(errorSummary)
                     .build();
             syncLogRepository.save(logEntry);
         } catch (Exception e) {
-            log.warn("Failed to save SyncLog for {}: {}", tableName, e.getMessage());
+            log.warn("Failed to save SyncLog for mapping {}: {}", mappingName, e.getMessage());
         }
     }
 }

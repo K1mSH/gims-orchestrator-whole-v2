@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
        uniqueConstraints = @UniqueConstraint(
            name = "uk_if_snd_sec_obsvdata_source_refs",
            columnNames = {"source_refs"}
-       ))
+       ),
+       indexes = @Index(name = "idx_if_snd_sec_obsvdata_exec_id", columnList = "execution_id"))
 @org.hibernate.annotations.Table(appliesTo = "if_snd_sec_obsvdata", comment = "IF_SND 송신 관측데이터")
 @Getter
 @Setter

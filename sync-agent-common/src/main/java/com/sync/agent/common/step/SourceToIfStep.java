@@ -53,6 +53,11 @@ public class SourceToIfStep implements StepExecutor {
     private final SyncLogRepository syncLogRepository;
     private final long stepDelayMs;
     private final int batchSize;
+    private String mappingName;  // YAML table-mappings name
+
+    public void setMappingName(String mappingName) {
+        this.mappingName = mappingName;
+    }
 
     public SourceToIfStep(
             ExtractStepConfig config,
@@ -173,8 +178,7 @@ public class SourceToIfStep implements StepExecutor {
             }
 
             if (records.isEmpty()) {
-                saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE", 0L, 0L, 0L, null, null);
-                saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF", 0L, 0L, 0L, null, null);
+                saveSyncLogMapping(context.getExecutionId(), 0L, 0L, 0L, null, null, config.getPrimaryKeyColumn());
 
                 return StepResult.builder()
                         .stepId(getStepId())
@@ -361,12 +365,11 @@ public class SourceToIfStep implements StepExecutor {
                         getStepId(), config.isSkipSourceStatusUpdate(), config.isCustomStaging());
             }
 
-            // 4. SyncLog 요약 저장 (SOURCE와 IF 건수 일치시킴)
+            // 4. SyncLog 요약 저장 (매핑 단위)
             String failedKeysJson = failedKeys.isEmpty() ? null : String.join(",", failedKeys);
-            saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
-                    (long) writeCount, 0L, (long) skipCount, null, null, config.getPrimaryKeyColumn());
-            saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF",
-                    (long) writeCount, 0L, (long) skipCount, failedKeysJson, firstError);
+            saveSyncLogMapping(context.getExecutionId(),
+                    (long) readCount, (long) writeCount, (long) skipCount,
+                    failedKeysJson, firstError, config.getPrimaryKeyColumn());
 
             return StepResult.builder()
                     .stepId(getStepId())
@@ -387,12 +390,11 @@ public class SourceToIfStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            long failedCount = (long) (readCount - writeCount - skipCount);
+            long failedCountVal = (long) (readCount - writeCount - skipCount);
             String failedKeysJson = failedKeys.isEmpty() ? null : String.join(",", failedKeys);
-            saveSyncLogSummary(context.getExecutionId(), config.getSourceTable(), "SOURCE",
-                    (long) writeCount, failedCount, (long) skipCount, null, null, config.getPrimaryKeyColumn());
-            saveSyncLogSummary(context.getExecutionId(), config.getTargetIfTable(), "IF",
-                    (long) writeCount, failedCount, (long) skipCount, failedKeysJson, errorMessage);
+            saveSyncLogMapping(context.getExecutionId(),
+                    (long) readCount, (long) writeCount, (long) skipCount,
+                    failedKeysJson, errorMessage, config.getPrimaryKeyColumn());
 
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
         }
@@ -652,23 +654,25 @@ public class SourceToIfStep implements StepExecutor {
 
     // ==================== SyncLog / 이력 ====================
 
-    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
-                                     Long successCount, Long failedCount, Long skipCount,
-                                     String failedKeys, String errorSummary) {
-        saveSyncLogSummary(executionId, tableName, tableType, successCount, failedCount, skipCount, failedKeys, errorSummary, null);
-    }
-
-    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
-                                     Long successCount, Long failedCount, Long skipCount,
+    private void saveSyncLogMapping(String executionId,
+                                     Long readCount, Long writeCount, Long skipCount,
                                      String failedKeys, String errorSummary, String sourcePkColumn) {
+        String resolvedMappingName = mappingName != null ? mappingName : config.getStepId();
+        String sourceJson = "[\"" + config.getSourceTable() + "\"]";
+        String targetJson = "[\"" + config.getTargetIfTable() + "\"]";
+        long failedCount = readCount != null && writeCount != null && skipCount != null
+                ? Math.max(0, readCount - writeCount - skipCount) : 0L;
+
         SyncLog logEntry = SyncLog.builder()
                 .executionId(executionId)
                 .stepId(getStepId())
-                .tableName(tableName)
-                .tableType(tableType)
-                .successCount(successCount)
+                .mappingName(resolvedMappingName)
+                .sourceTables(sourceJson)
+                .targetTables(targetJson)
+                .readCount(readCount != null ? readCount : 0L)
+                .writeCount(writeCount != null ? writeCount : 0L)
                 .failedCount(failedCount)
-                .skipCount(skipCount)
+                .skipCount(skipCount != null ? skipCount : 0L)
                 .failedKeys(failedKeys)
                 .errorSummary(errorSummary)
                 .sourcePkColumn(sourcePkColumn)

@@ -176,12 +176,13 @@ export interface ExecutionDetail {
   finishedAt: string | null;
 }
 
-// Table Stats (from Agent)
+// Table Stats (from Agent) - 매핑 단위
 export interface TableStats {
-  tableName: string;
-  tableType: 'SOURCE' | 'TARGET_IF' | 'TARGET' | 'LINK';
-  totalCount: number;
-  successCount: number;
+  mappingName: string;
+  sourceTables: string[];
+  targetTables: string[];
+  readCount: number;
+  writeCount: number;
   failedCount: number;
   skipCount: number;
 }

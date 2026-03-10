@@ -229,22 +229,16 @@ public class DaejeonLoadStep implements StepExecutor {
             log.info("[{}] Loaded {} records ({} skipped) in {}ms",
                     getStepId(), writeCount, skipCount, System.currentTimeMillis() - startTime);
 
-            // 4. SyncLog 요약 저장
-            // Loader 관점: if_rsv = 읽기 대상(SOURCE), sec = 쓰기 대상(TARGET)
-            // table_type은 물리적 위치가 아니라 파이프라인에서의 논리적 역할로 기록
-            saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "SOURCE",
-                    (long) pendingJewon.size(), 0L, 0L, null, null);
-
-            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "SOURCE",
-                    (long) pendingObsvData.size(), 0L, 0L, null, null);
-
-            saveSyncLogSummary(context.getExecutionId(), targetJewonTable, "TARGET",
-                    (long) jewonSuccess, (long) jewonFailed, 0L,
+            // 4. SyncLog 요약 저장 (매핑 단위)
+            saveSyncLogMapping(context.getExecutionId(), "jewon",
+                    List.of(ifJewonTable), List.of(targetJewonTable),
+                    (long) pendingJewon.size(), (long) jewonSuccess, (long) jewonFailed, 0L,
                     jewonFailedKeys.isEmpty() ? null : String.join(",", jewonFailedKeys),
                     jewonFirstError);
 
-            saveSyncLogSummary(context.getExecutionId(), targetObsvdataTable, "TARGET",
-                    (long) obsvSuccess, (long) obsvFailed, 0L,
+            saveSyncLogMapping(context.getExecutionId(), "obsvdata",
+                    List.of(ifObsvdataTable), List.of(targetObsvdataTable),
+                    (long) pendingObsvData.size(), (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     obsvFirstError);
 
@@ -265,16 +259,14 @@ public class DaejeonLoadStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            saveSyncLogSummary(context.getExecutionId(), ifJewonTable, "SOURCE",
-                    (long) readCount, 0L, 0L, null, null);
-            saveSyncLogSummary(context.getExecutionId(), ifObsvdataTable, "SOURCE",
-                    0L, 0L, 0L, null, null);
-            saveSyncLogSummary(context.getExecutionId(), targetJewonTable, "TARGET",
-                    (long) jewonSuccess, (long) jewonFailed, 0L,
+            saveSyncLogMapping(context.getExecutionId(), "jewon",
+                    List.of(ifJewonTable), List.of(targetJewonTable),
+                    (long) readCount, (long) jewonSuccess, (long) jewonFailed, 0L,
                     jewonFailedKeys.isEmpty() ? null : String.join(",", jewonFailedKeys),
                     errorMessage);
-            saveSyncLogSummary(context.getExecutionId(), targetObsvdataTable, "TARGET",
-                    (long) obsvSuccess, (long) obsvFailed, 0L,
+            saveSyncLogMapping(context.getExecutionId(), "obsvdata",
+                    List.of(ifObsvdataTable), List.of(targetObsvdataTable),
+                    0L, (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     errorMessage);
 
@@ -304,19 +296,25 @@ public class DaejeonLoadStep implements StepExecutor {
     }
 
     /**
-     * 테이블별 처리 요약 저장
+     * 매핑 단위 처리 요약 저장
      */
-    private void saveSyncLogSummary(String executionId, String tableName, String tableType,
-                                     Long successCount, Long failedCount, Long skipCount,
+    private void saveSyncLogMapping(String executionId, String mappingName,
+                                     List<String> sourceTables, List<String> targetTables,
+                                     Long readCount, Long writeCount, Long failedCount, Long skipCount,
                                      String failedKeys, String errorSummary) {
+        String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+        String targetJson = "[" + targetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+
         SyncLog logEntry = SyncLog.builder()
                 .executionId(executionId)
                 .stepId(getStepId())
-                .tableName(tableName)
-                .tableType(tableType)
-                .successCount(successCount)
-                .failedCount(failedCount)
-                .skipCount(skipCount)
+                .mappingName(mappingName)
+                .sourceTables(sourceJson)
+                .targetTables(targetJson)
+                .readCount(readCount != null ? readCount : 0L)
+                .writeCount(writeCount != null ? writeCount : 0L)
+                .failedCount(failedCount != null ? failedCount : 0L)
+                .skipCount(skipCount != null ? skipCount : 0L)
                 .failedKeys(failedKeys)
                 .errorSummary(errorSummary)
                 .build();

@@ -1,8 +1,11 @@
 package com.sync.agent.bojo.config;
 
+import com.sync.agent.common.model.TableMapping;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +31,9 @@ public class AgentDefinition {
 
     // Step 설정 (Loader)
     private StepConfig step;
+
+    // table-mappings (Source→Target 관계 명시)
+    private List<TableMapping> tableMappings = new ArrayList<>();
 
     @Getter
     @Setter

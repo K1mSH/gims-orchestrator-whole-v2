@@ -35,36 +35,37 @@ public class ExecutionDataController {
      */
     @GetMapping("/{executionId}/summary")
     public ResponseEntity<Map<String, Object>> getSummary(@PathVariable String executionId) {
-        // SyncLog에서 총 성공/실패/스킵 건수 합계
-        Object result = syncLogRepository.sumCountsByExecutionIdExcludeLink(executionId);
+        // SyncLog에서 총 read/write/failed/skip 건수 합계
+        Object result = syncLogRepository.sumCountsByExecutionId(executionId);
 
-        long successCount = 0L;
+        long readCount = 0L;
+        long writeCount = 0L;
         long failedCount = 0L;
         long skipCount = 0L;
 
         if (result != null) {
             Object[] sums;
-            // JPA 버전에 따라 Object[] 또는 단일 행 배열로 반환될 수 있음
             if (result instanceof Object[] arr) {
-                // 첫 번째 요소가 배열인지 확인 (List<Object[]> 형태로 반환된 경우)
                 if (arr.length > 0 && arr[0] instanceof Object[]) {
                     sums = (Object[]) arr[0];
                 } else {
                     sums = arr;
                 }
-                successCount = sums.length > 0 && sums[0] != null ? ((Number) sums[0]).longValue() : 0L;
-                failedCount = sums.length > 1 && sums[1] != null ? ((Number) sums[1]).longValue() : 0L;
-                skipCount = sums.length > 2 && sums[2] != null ? ((Number) sums[2]).longValue() : 0L;
+                readCount = sums.length > 0 && sums[0] != null ? ((Number) sums[0]).longValue() : 0L;
+                writeCount = sums.length > 1 && sums[1] != null ? ((Number) sums[1]).longValue() : 0L;
+                failedCount = sums.length > 2 && sums[2] != null ? ((Number) sums[2]).longValue() : 0L;
+                skipCount = sums.length > 3 && sums[3] != null ? ((Number) sums[3]).longValue() : 0L;
             }
         }
-        long totalCount = successCount + failedCount;
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("executionId", executionId);
-        summary.put("successCount", successCount);
+        summary.put("readCount", readCount);
+        summary.put("writeCount", writeCount);
+        summary.put("successCount", writeCount);  // 하위 호환
         summary.put("failedCount", failedCount);
         summary.put("skipCount", skipCount);
-        summary.put("totalCount", totalCount);
+        summary.put("totalCount", writeCount + failedCount);
 
         return ResponseEntity.ok(summary);
     }
@@ -174,48 +175,23 @@ public class ExecutionDataController {
             String srcDbType = dataSourceProvider.getDbType(datasourceId);
             String quotedTableName = qi(actualTableName, srcDbType);
 
-            // IF 테이블에서 이번 실행의 source PK 목록 추출
+            // target 테이블에서 이번 실행의 source_refs 수집 → source 필터링
             String targetDsId = execution.getTargetDatasourceId();
-            List<String> sourcePks = getSourcePksFromIfTable(executionId, tableName, targetDsId);
+            SourceFilterResult sourceFilter = buildSourceFilter(executionId, tableName, targetDsId, sourceJdbc, actualTableName, srcDbType);
 
             StringBuilder whereClause = new StringBuilder("1=1");
             List<Object> params = new ArrayList<>();
 
-            if (sourcePks != null && !sourcePks.isEmpty()) {
-                // source PK로 필터링 (이번 실행에서 추출된 데이터만)
-                // source_refs의 PK는 detectSourcePrimaryKey가 감지한 DB PK (보통 id/ID)
-                // 대소문자 구분 DB 대응: findActualColumnName으로 실제 컬럼명 해석
-                String actualPkCol = findActualColumnName(sourceJdbc, actualTableName, "id");
-                if (actualPkCol == null) {
-                    // id 컬럼이 없는 경우 → SyncLog의 sourcePkColumn (YAML primary-key) fallback
-                    List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
-                    String fallbackPkCol = syncLogs.stream()
-                            .filter(l -> "SOURCE".equals(l.getTableType())
-                                    && tableName.equalsIgnoreCase(l.getTableName()))
-                            .map(SyncLog::getSourcePkColumn)
-                            .filter(Objects::nonNull)
-                            .findFirst().orElse(null);
-                    if (fallbackPkCol != null) {
-                        actualPkCol = findActualColumnName(sourceJdbc, actualTableName, fallbackPkCol);
-                    }
-                }
-                String pkColumn = qi(actualPkCol != null ? actualPkCol : "id", srcDbType);
-                String placeholders = String.join(",", sourcePks.stream().map(pk -> "?").toList());
-                whereClause.append(" AND ").append(pkColumn).append(" IN (").append(placeholders).append(")");
-                for (String pk : sourcePks) {
-                    try {
-                        params.add(Long.parseLong(pk));
-                    } catch (NumberFormatException e) {
-                        params.add(pk);
-                    }
-                }
-                log.debug("Source 필터: {} PK로 제한 (executionId={})", sourcePks.size(), executionId);
-            } else if (sourcePks != null) {
-                // IF 테이블은 있지만 해당 실행의 데이터가 없음
+            if (sourceFilter != null && !sourceFilter.isEmpty()) {
+                whereClause.append(" AND ").append(sourceFilter.whereFragment);
+                params.addAll(sourceFilter.params);
+                log.debug("Source 필터: {}건 (executionId={}, mode={})", sourceFilter.params.size(), executionId, sourceFilter.mode);
+            } else if (sourceFilter != null) {
+                // 매핑은 있지만 해당 실행의 데이터가 없음
                 return ResponseEntity.ok(buildPageResult(tableName, getTableColumns(sourceJdbc, actualTableName),
                         List.of(), 0, page, size));
             }
-            // sourcePks == null: IF 테이블을 찾지 못한 경우 → 전체 데이터 표시 (fallback)
+            // sourceFilter == null: 매핑을 찾지 못한 경우 → 전체 데이터 표시 (fallback)
 
             // 검색 조건 추가
             String searchClause = buildSearchClause(sourceJdbc, actualTableName, search, searchColumn, params);
@@ -246,46 +222,59 @@ public class ExecutionDataController {
     }
 
     /**
-     * IF 테이블에서 이번 실행의 source PK 목록 추출
-     * SyncLog에서 매칭되는 IF 테이블을 찾고, source_refs에서 PK 파싱
-     *
-     * @return PK 목록. IF 테이블을 찾지 못하면 null (전체 데이터 fallback)
+     * Source 필터 결과 (WHERE 절 조각 + 파라미터)
      */
-    private List<String> getSourcePksFromIfTable(String executionId, String sourceTableName, String targetDatasourceId) {
+    private static class SourceFilterResult {
+        final String whereFragment;
+        final List<Object> params;
+        final String mode; // "source_refs" 또는 "pk"
+
+        SourceFilterResult(String whereFragment, List<Object> params, String mode) {
+            this.whereFragment = whereFragment;
+            this.params = params;
+            this.mode = mode;
+        }
+
+        boolean isEmpty() {
+            return params.isEmpty();
+        }
+    }
+
+    /**
+     * SyncLog 매핑 기반으로 source 필터 조건 생성
+     *
+     * 1. SyncLog에서 sourceTable → targetTable 매핑 조회
+     * 2. target WHERE execution_id = ? → source_refs 수집
+     * 3. source에 source_refs 컬럼이 있으면 → source_refs IN (값) 매칭
+     *    source에 source_refs 컬럼이 없으면 → id IN (PK 파싱) 매칭
+     *
+     * @return 필터 결과. 매핑을 찾지 못하면 null (전체 데이터 fallback)
+     */
+    private SourceFilterResult buildSourceFilter(String executionId, String sourceTableName,
+                                                  String targetDatasourceId,
+                                                  JdbcTemplate sourceJdbc, String actualSourceTable,
+                                                  String srcDbType) {
         try {
-            // SyncLog에서 TARGET_IF 테이블 목록 조회
+            // SyncLog에서 source_tables에 요청된 sourceTable이 포함된 매핑 찾기
             List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
-            List<String> ifTableNames = syncLogs.stream()
-                    .filter(l -> "TARGET_IF".equals(l.getTableType()) || "IF".equals(l.getTableType()))
-                    .map(SyncLog::getTableName)
-                    .filter(Objects::nonNull)
-                    .toList();
+            SyncLog matchedMapping = syncLogs.stream()
+                    .filter(l -> l.containsSourceTable(sourceTableName))
+                    .findFirst()
+                    .orElse(null);
 
-            if (ifTableNames.isEmpty()) {
-                log.debug("이 실행에 TARGET_IF SyncLog가 없음: {}", executionId);
+            if (matchedMapping == null) {
+                log.debug("Source '{}'에 매칭되는 매핑 없음 (executionId={})", sourceTableName, executionId);
                 return null;
             }
 
-            // Source 테이블명으로 매칭되는 IF 테이블 찾기
-            // 예: sec_obsvdata_view → if_rsv_sec_obsvdata (source 기본명 포함)
-            // 내부망 RCV: if_snd_sec_obsvdata → if_rsv_sec_obsvdata (IF prefix 제거 후 코어명 비교)
-            String sourceBase = stripIfPrefix(sourceTableName.replaceAll("(?i)_view$", ""));
-            String matchedIfTable = null;
-            for (String ifTable : ifTableNames) {
-                String ifBase = stripIfPrefix(ifTable);
-                if (ifBase.equalsIgnoreCase(sourceBase)
-                        || ifTable.toLowerCase().contains(sourceBase.toLowerCase())) {
-                    matchedIfTable = ifTable;
-                    break;
-                }
-            }
-
-            if (matchedIfTable == null) {
-                log.debug("Source '{}'에 매칭되는 IF 테이블 없음 (후보: {})", sourceTableName, ifTableNames);
+            // target_tables에서 테이블명 추출
+            List<String> targetTableNames = parseJsonArray(matchedMapping.getTargetTables());
+            if (targetTableNames.isEmpty()) {
+                log.debug("매핑 '{}'에 target 테이블 없음", matchedMapping.getMappingName());
                 return null;
             }
 
-            // IF 테이블에서 source_refs 조회 (Execution의 targetDatasourceId 사용)
+            // target 테이블에서 source_refs 조회
             JdbcTemplate targetJdbc;
             try {
                 String dsId = (targetDatasourceId != null) ? targetDatasourceId : dataSourceProvider.getTargetDatasourceId();
@@ -300,32 +289,113 @@ public class ExecutionDataController {
                 }
             }
 
-            String sql = String.format("SELECT source_refs FROM %s WHERE execution_id = ?", matchedIfTable);
-            List<String> sourceRefsList = targetJdbc.queryForList(sql, String.class, executionId);
-
-            // source_refs에서 PK 파싱
-            List<String> pks = new ArrayList<>();
-            for (String refs : sourceRefsList) {
-                pks.addAll(parseSourceRefsPks(refs));
+            // 모든 target 테이블에서 source_refs 원본값 수집
+            Set<String> sourceRefsSet = new LinkedHashSet<>();
+            for (String targetTable : targetTableNames) {
+                try {
+                    if (!tableExists(targetJdbc, targetTable)) continue;
+                    String sql = String.format("SELECT source_refs FROM %s WHERE execution_id = ?", targetTable);
+                    List<String> refsList = targetJdbc.queryForList(sql, String.class, executionId);
+                    sourceRefsSet.addAll(refsList.stream().filter(r -> r != null && !r.isBlank()).toList());
+                } catch (Exception e) {
+                    log.debug("target 테이블 '{}' source_refs 조회 실패: {}", targetTable, e.getMessage());
+                }
             }
 
-            log.info("Source PK 추출: {} → {} ({}건, executionId={})",
-                    sourceTableName, matchedIfTable, pks.size(), executionId);
-            return pks;
+            if (sourceRefsSet.isEmpty()) {
+                log.info("Source 필터: target에서 source_refs 0건 (executionId={})", executionId);
+                return new SourceFilterResult("", List.of(), "empty");
+            }
+
+            // source 테이블에 source_refs 컬럼이 있는지 확인
+            boolean hasSourceRefs = hasColumn(sourceJdbc, actualSourceTable, "source_refs");
+
+            if (hasSourceRefs) {
+                // source_refs 값 매칭 시도 (Loader 패턴: IF → Target에서 source_refs 복사)
+                // target의 source_refs 값이 source의 source_refs와 동일한지 샘플 1건으로 확인
+                String sampleRef = sourceRefsSet.iterator().next();
+                boolean sourceRefsMatch = false;
+                try {
+                    String checkSql = String.format("SELECT COUNT(*) FROM %s WHERE %s = ? LIMIT 1",
+                            qi(actualSourceTable, srcDbType), qi("source_refs", srcDbType));
+                    Integer matchCount = sourceJdbc.queryForObject(checkSql, Integer.class, sampleRef);
+                    sourceRefsMatch = (matchCount != null && matchCount > 0);
+                } catch (Exception e) {
+                    log.debug("source_refs 샘플 매칭 확인 실패: {}", e.getMessage());
+                }
+
+                if (sourceRefsMatch) {
+                    // source_refs 값 동일 → source_refs IN 매칭 (Loader 패턴)
+                    List<Object> params = new ArrayList<>(sourceRefsSet);
+                    String placeholders = String.join(",", sourceRefsSet.stream().map(r -> "?").toList());
+                    String fragment = qi("source_refs", srcDbType) + " IN (" + placeholders + ")";
+
+                    log.info("Source 필터(source_refs): {} → {} ({}건, executionId={})",
+                            sourceTableName, targetTableNames, sourceRefsSet.size(), executionId);
+                    return new SourceFilterResult(fragment, params, "source_refs");
+                }
+                // source_refs 값이 다름 → PK 파싱으로 fallthrough (SND 패턴)
+                log.debug("source_refs 값 불일치, PK 파싱으로 전환 (source={}, sampleRef={})", sourceTableName, sampleRef);
+            }
+            {
+                // PK 파싱 매칭 (외부 DB source — source_refs 컬럼 없음)
+                Set<String> pkSet = new LinkedHashSet<>();
+                for (String refs : sourceRefsSet) {
+                    pkSet.addAll(parseSourceRefsPks(refs));
+                }
+
+                if (pkSet.isEmpty()) {
+                    return new SourceFilterResult("", List.of(), "empty");
+                }
+
+                // PK 컬럼 감지
+                String actualPkCol = findActualColumnName(sourceJdbc, actualSourceTable, "id");
+                if (actualPkCol == null) {
+                    String fallbackPkCol = syncLogs.stream()
+                            .filter(l -> l.containsSourceTable(sourceTableName))
+                            .map(SyncLog::getSourcePkColumn)
+                            .filter(Objects::nonNull)
+                            .findFirst().orElse(null);
+                    if (fallbackPkCol != null) {
+                        actualPkCol = findActualColumnName(sourceJdbc, actualSourceTable, fallbackPkCol);
+                    }
+                }
+                String pkColumn = qi(actualPkCol != null ? actualPkCol : "id", srcDbType);
+
+                List<Object> params = new ArrayList<>();
+                for (String pk : pkSet) {
+                    try {
+                        params.add(Long.parseLong(pk));
+                    } catch (NumberFormatException e) {
+                        params.add(pk);
+                    }
+                }
+                String placeholders = String.join(",", pkSet.stream().map(pk -> "?").toList());
+                String fragment = pkColumn + " IN (" + placeholders + ")";
+
+                log.info("Source 필터(PK): {} → {} ({}건, executionId={})",
+                        sourceTableName, targetTableNames, pkSet.size(), executionId);
+                return new SourceFilterResult(fragment, params, "pk");
+            }
         } catch (Exception e) {
-            log.warn("Source PK 추출 실패 (fallback to 전체): {}", e.getMessage());
+            log.warn("Source 필터 생성 실패 (fallback to 전체): {}", e.getMessage());
             return null;
         }
     }
 
     /**
-     * IF prefix 제거하여 코어 테이블명 추출
-     * 예: if_rsv_sec_obsvdata → sec_obsvdata, if_snd_sec_obsvdata → sec_obsvdata
-     * IF prefix가 아닌 일반 테이블은 그대로 반환
+     * JSON 배열 문자열 파싱 (간이)
+     * 예: ["if_rsv_sec_obsvdata","pm_gd970201"] → List.of("if_rsv_sec_obsvdata", "pm_gd970201")
      */
-    private String stripIfPrefix(String tableName) {
-        if (tableName == null) return null;
-        return tableName.replaceAll("(?i)^if_(rsv|snd|loader)_", "");
+    private List<String> parseJsonArray(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        List<String> result = new ArrayList<>();
+        // 간단한 파싱: 따옴표 사이 문자열 추출
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"([^\"]+)\"").matcher(json);
+        while (m.find()) {
+            result.add(m.group(1));
+        }
+        return result;
     }
 
     /**
@@ -532,13 +602,14 @@ public class ExecutionDataController {
         List<SyncLog> failedLogs = syncLogRepository.findFailedByExecutionId(executionId);
 
         List<Map<String, Object>> result = failedLogs.stream()
-                .map(log -> {
+                .map(syncLog -> {
                     Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("tableName", log.getTableName());
-                    item.put("tableType", log.getTableType());
-                    item.put("failedCount", log.getFailedCount());
-                    item.put("failedKeys", log.getFailedKeys());
-                    item.put("errorSummary", log.getErrorSummary());
+                    item.put("mappingName", syncLog.getMappingName());
+                    item.put("sourceTables", syncLog.getSourceTables());
+                    item.put("targetTables", syncLog.getTargetTables());
+                    item.put("failedCount", syncLog.getFailedCount());
+                    item.put("failedKeys", syncLog.getFailedKeys());
+                    item.put("errorSummary", syncLog.getErrorSummary());
                     return item;
                 })
                 .toList();
@@ -547,45 +618,27 @@ public class ExecutionDataController {
     }
 
     /**
-     * 테이블별 통계 조회 (SyncLog 요약 기반)
+     * 매핑별 통계 조회 (SyncLog 매핑 단위)
      */
     @GetMapping("/{executionId}/tables")
     public ResponseEntity<List<TableStatsDto>> getTableStats(@PathVariable String executionId) {
         List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
 
         List<TableStatsDto> tableStats = new ArrayList<>();
-        for (SyncLog log : syncLogs) {
-            String tableName = log.getTableName();
-            String tableType = log.getTableType();
-
-            if (tableName == null || tableName.isBlank()) {
+        for (SyncLog syncLog : syncLogs) {
+            String mappingName = syncLog.getMappingName();
+            if (mappingName == null || mappingName.isBlank()) {
                 continue;
             }
-
-            // LINK 타입은 모니터링에서 제외 (데이터 처리 로직에서만 사용)
-            if ("LINK".equals(tableType)) {
-                continue;
-            }
-
-            // tableType이 없으면 테이블명으로 추론
-            if (tableType == null || tableType.isBlank()) {
-                if (tableName.startsWith("if_")) {
-                    tableType = "IF";
-                } else {
-                    tableType = "TARGET";
-                }
-            }
-
-            // IF → TARGET_IF로 변환 (프론트엔드 호환)
-            String displayType = "IF".equals(tableType) ? "TARGET_IF" : tableType;
 
             tableStats.add(TableStatsDto.builder()
-                    .tableName(tableName)
-                    .tableType(displayType)
-                    .totalCount(log.getTotalCount())
-                    .successCount(log.getSuccessCount() != null ? log.getSuccessCount() : 0L)
-                    .failedCount(log.getFailedCount() != null ? log.getFailedCount() : 0L)
-                    .skipCount(log.getSkipCount() != null ? log.getSkipCount() : 0L)
+                    .mappingName(mappingName)
+                    .sourceTables(parseJsonArray(syncLog.getSourceTables()))
+                    .targetTables(parseJsonArray(syncLog.getTargetTables()))
+                    .readCount(syncLog.getReadCount() != null ? syncLog.getReadCount() : 0L)
+                    .writeCount(syncLog.getWriteCount() != null ? syncLog.getWriteCount() : 0L)
+                    .failedCount(syncLog.getFailedCount() != null ? syncLog.getFailedCount() : 0L)
+                    .skipCount(syncLog.getSkipCount() != null ? syncLog.getSkipCount() : 0L)
                     .build());
         }
 
@@ -593,32 +646,32 @@ public class ExecutionDataController {
     }
 
     /**
-     * 특정 테이블의 처리 로그 조회
+     * 특정 매핑의 처리 로그 조회
      */
-    @GetMapping("/{executionId}/tables/{tableName}")
+    @GetMapping("/{executionId}/tables/{mappingName}")
     public ResponseEntity<SyncLog> getTableLog(
             @PathVariable String executionId,
-            @PathVariable String tableName) {
-        return syncLogRepository.findByExecutionIdAndTableName(executionId, tableName)
+            @PathVariable String mappingName) {
+        return syncLogRepository.findByExecutionIdAndMappingName(executionId, mappingName)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     /**
-     * 특정 테이블의 실패 정보 조회
+     * 특정 매핑의 실패 정보 조회
      */
-    @GetMapping("/{executionId}/tables/{tableName}/failed")
+    @GetMapping("/{executionId}/tables/{mappingName}/failed")
     public ResponseEntity<Map<String, Object>> getTableFailedInfo(
             @PathVariable String executionId,
-            @PathVariable String tableName) {
-        return syncLogRepository.findByExecutionIdAndTableName(executionId, tableName)
-                .filter(log -> log.getFailedCount() != null && log.getFailedCount() > 0)
-                .map(log -> {
+            @PathVariable String mappingName) {
+        return syncLogRepository.findByExecutionIdAndMappingName(executionId, mappingName)
+                .filter(syncLog -> syncLog.getFailedCount() != null && syncLog.getFailedCount() > 0)
+                .map(syncLog -> {
                     Map<String, Object> result = new LinkedHashMap<>();
-                    result.put("tableName", log.getTableName());
-                    result.put("failedCount", log.getFailedCount());
-                    result.put("failedKeys", log.getFailedKeys());
-                    result.put("errorSummary", log.getErrorSummary());
+                    result.put("mappingName", syncLog.getMappingName());
+                    result.put("failedCount", syncLog.getFailedCount());
+                    result.put("failedKeys", syncLog.getFailedKeys());
+                    result.put("errorSummary", syncLog.getErrorSummary());
                     return ResponseEntity.ok(result);
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -653,12 +706,12 @@ public class ExecutionDataController {
                     : dataSourceProvider.getTargetDatasourceId();
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
 
-            // SyncLog에서 TARGET/IF 타입 테이블 목록 (이름 매칭 없이 전체)
+            // SyncLog에서 모든 매핑의 target 테이블 목록 추출
             List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
             List<String> targetTables = allLogs.stream()
-                    .filter(l -> "TARGET".equals(l.getTableType()) || "IF".equals(l.getTableType()))
-                    .map(SyncLog::getTableName)
+                    .map(SyncLog::getTargetTables)
                     .filter(Objects::nonNull)
+                    .flatMap(json -> parseJsonArray(json).stream())
                     .distinct()
                     .toList();
 
@@ -706,18 +759,38 @@ public class ExecutionDataController {
 
             // ─── Step 2: source_refs 값 일치 (Loader 복사 패턴) ───
             // Loader는 IF의 source_refs를 target에 그대로 복사
+            // source 테이블은 source datasource에 있으므로 sourceJdbc 사용
             if (targetRecords.isEmpty()) {
                 try {
-                    String actualSourceTable = findActualTableName(targetJdbc, sourceTable);
+                    // source datasource에서 source 테이블 조회
+                    String sourceDsId = (execution != null && execution.getSourceDatasourceId() != null)
+                            ? execution.getSourceDatasourceId() : null;
+                    JdbcTemplate sourceJdbc2 = null;
+                    if (sourceDsId != null) {
+                        try {
+                            sourceJdbc2 = dataSourceProvider.getJdbcTemplate(sourceDsId);
+                        } catch (Exception e) {
+                            log.debug("Source datasource '{}' not found for trace Step 2, falling back to target", sourceDsId);
+                        }
+                    }
+                    // source datasource에서 먼저 시도, 없으면 target에서 시도
+                    JdbcTemplate sourceReadJdbc = sourceJdbc2 != null ? sourceJdbc2 : targetJdbc;
+
+                    String actualSourceTable = findActualTableName(sourceReadJdbc, sourceTable);
+                    if (actualSourceTable == null && sourceJdbc2 != null) {
+                        // source datasource에 없으면 target에서 재시도
+                        sourceReadJdbc = targetJdbc;
+                        actualSourceTable = findActualTableName(targetJdbc, sourceTable);
+                    }
                     if (actualSourceTable != null) {
                         Object pkTyped = typedValue(pkValue);
-                        String srcDbType = detectDbType(targetJdbc);
-                        List<String> srcPkCols = findPkColumns(targetJdbc, actualSourceTable, srcDbType);
+                        String srcDbType = detectDbType(sourceReadJdbc);
+                        List<String> srcPkCols = findPkColumns(sourceReadJdbc, actualSourceTable, srcDbType);
                         String srcPkCol = srcPkCols.isEmpty() ? pkColumn : srcPkCols.get(0);
 
                         String readSql = String.format("SELECT source_refs FROM %s WHERE %s = ?",
                                 qi(actualSourceTable, srcDbType), qi(srcPkCol, srcDbType));
-                        List<Map<String, Object>> srcRows = targetJdbc.queryForList(readSql, pkTyped);
+                        List<Map<String, Object>> srcRows = sourceReadJdbc.queryForList(readSql, pkTyped);
 
                         if (!srcRows.isEmpty()) {
                             Object refsObj = findValueIgnoreCase(srcRows.get(0), "source_refs");
@@ -834,10 +907,10 @@ public class ExecutionDataController {
                     List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
                     String finalBaseName = baseName;
                     sourceTable = allLogs.stream()
-                            .filter(l -> "SOURCE".equals(l.getTableType()))
-                            .filter(l -> l.getTableName() != null &&
-                                        l.getTableName().toLowerCase().contains(finalBaseName))
-                            .map(SyncLog::getTableName)
+                            .map(SyncLog::getSourceTables)
+                            .filter(Objects::nonNull)
+                            .flatMap(json -> parseJsonArray(json).stream())
+                            .filter(t -> t.toLowerCase().contains(finalBaseName))
                             .findFirst()
                             .orElse(sourceTable);  // 못 찾으면 원본 유지
                     log.debug("Resolved sourceTable from IF table: {} -> {}", lowerTable, sourceTable);
@@ -847,10 +920,10 @@ public class ExecutionDataController {
                     // sec_jewon → if_rsv_sec_jewon (SOURCE), source_refs로 매칭
                     List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
                     String resolvedSource = allLogs.stream()
-                            .filter(l -> "SOURCE".equals(l.getTableType()))
-                            .filter(l -> l.getTableName() != null &&
-                                        l.getTableName().toLowerCase().contains(lowerTable))
-                            .map(SyncLog::getTableName)
+                            .map(SyncLog::getSourceTables)
+                            .filter(Objects::nonNull)
+                            .flatMap(json -> parseJsonArray(json).stream())
+                            .filter(t -> t.toLowerCase().contains(lowerTable))
                             .findFirst()
                             .orElse(null);
                     if (resolvedSource != null) {
@@ -874,8 +947,9 @@ public class ExecutionDataController {
             if (sourceTable == null || sourceTable.isBlank()) {
                 List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
                 sourceTable = allLogs.stream()
-                        .filter(l -> "SOURCE".equals(l.getTableType()))
-                        .map(SyncLog::getTableName)
+                        .map(SyncLog::getSourceTables)
+                        .filter(Objects::nonNull)
+                        .flatMap(json -> parseJsonArray(json).stream())
                         .findFirst()
                         .orElse(null);
             }

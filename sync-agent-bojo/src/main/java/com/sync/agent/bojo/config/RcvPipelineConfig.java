@@ -70,6 +70,7 @@ public class RcvPipelineConfig {
                 .build();
         SourceToIfStep jewonStep = new SourceToIfStep(
                 jewonConfig, dataSourceProvider, syncLogRepository);
+        jewonStep.setMappingName("jewon");
 
         // Step 2: 관측데이터 추출
         ExtractStepConfig obsvConfig;
@@ -105,6 +106,7 @@ public class RcvPipelineConfig {
         }
         SourceToIfStep obsvStep = new SourceToIfStep(
                 obsvConfig, dataSourceProvider, syncLogRepository);
+        obsvStep.setMappingName("obsvdata");
 
         // Steps
         List<StepExecutor> steps;

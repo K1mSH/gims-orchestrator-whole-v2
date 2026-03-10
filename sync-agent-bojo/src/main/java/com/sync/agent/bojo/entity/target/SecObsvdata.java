@@ -12,7 +12,8 @@ import java.sql.Time;
        uniqueConstraints = @UniqueConstraint(
            name = "uk_sec_obsvdata_source_refs",
            columnNames = {"source_refs"}
-       ))
+       ),
+       indexes = @Index(name = "idx_sec_obsvdata_exec_id", columnList = "execution_id"))
 @org.hibernate.annotations.Table(appliesTo = "sec_obsvdata", comment = "Target 관측데이터")
 @Getter
 @Setter

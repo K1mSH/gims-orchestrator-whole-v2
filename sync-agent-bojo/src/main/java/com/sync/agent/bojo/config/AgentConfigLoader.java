@@ -6,6 +6,8 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
+import com.sync.agent.common.model.TableMapping;
+
 import javax.annotation.PostConstruct;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -115,6 +117,18 @@ public class AgentConfigLoader {
             step.setId((String) stepMap.get("id"));
             step.setName((String) stepMap.get("name"));
             def.setStep(step);
+        }
+
+        // table-mappings
+        List<Map<String, Object>> mappingsList = (List<Map<String, Object>>) data.get("table-mappings");
+        if (mappingsList != null) {
+            for (Map<String, Object> mappingMap : mappingsList) {
+                TableMapping mapping = new TableMapping();
+                mapping.setName((String) mappingMap.get("name"));
+                mapping.setSource((List<String>) mappingMap.get("source"));
+                mapping.setTarget((List<String>) mappingMap.get("target"));
+                def.getTableMappings().add(mapping);
+            }
         }
 
         return def;
