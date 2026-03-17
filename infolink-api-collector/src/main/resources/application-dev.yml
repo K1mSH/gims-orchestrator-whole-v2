@@ -1,0 +1,4 @@
+# 개발 환경용 프로파일 — 운영에서는 사용하지 않음
+jasypt:
+  encryptor:
+    password: infolink-secret-key-2026

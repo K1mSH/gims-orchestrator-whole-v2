@@ -1,0 +1,171 @@
+def gitFetchWithCredential() {
+  withCredentials([usernamePassword(credentialsId: 'gitlab-repo-credentials-02', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+    sh '''
+      git fetch --tags "http://$GIT_USERNAME:$GIT_PASSWORD@soda-host-dev.iptime.org:37380/podo/be/infolink-api-collector.git"
+    '''
+  }
+}
+
+pipeline {
+  agent any
+
+  environment {
+    DEFAULT_IMAGE_TAG = 'latest'
+    DOCKER_REGISTRY = "192.168.0.176:5000/repository/gims-docker-hosted"
+    GITLAB_REPO_CREDENTIALS = 'gitlab-repo-credentials-02'
+    SSH_CREDENTIALS_ID = 'ssh-key-credentials-219'
+    SSH_USER = 'gims'
+    REMOTE_HOST = '192.168.0.177'
+    REMOTE_HOST_PORT = '22024'
+    MODULE_NAME = 'infolink-api-collector'
+  }
+
+  stages {
+    stage('젠킨스 작업 디렉토리 삭제') {
+      steps {
+        deleteDir()
+      }
+    }
+
+    stage('Git 레포지토리 코드 체크아웃') {
+      steps {
+        echo "GitLab 레포지토리를 체크아웃합니다."
+        git branch: 'main',
+            credentialsId: "${GITLAB_REPO_CREDENTIALS}",
+            url: "http://soda-host-dev.iptime.org:37380/podo/be/${MODULE_NAME}.git"
+      }
+    }
+
+    stage('Git 태그 확인') {
+      steps {
+        script {
+          echo "Git Tag(Version) 확인"
+          gitFetchWithCredential()
+
+          env.RECENT_TAG = sh(
+              script: "git describe --tags --abbrev=0 || echo '${DEFAULT_IMAGE_TAG}'",
+              returnStdout: true
+          ).trim()
+
+          echo "Docker 이미지 태그로 사용할 Git 태그: ${env.RECENT_TAG}"
+        }
+      }
+    }
+
+    stage('Gradle 빌드 실행') {
+      steps {
+        script {
+          try {
+            sh "chmod +x ./gradlew"
+          } catch (Exception e) {
+            echo "gradlew 권한 설정 실패: ${e.message}"
+          }
+
+          echo "Gradle 빌드 실행"
+          sh "./gradlew clean build --no-daemon -x test"
+        }
+      }
+    }
+
+    stage('NEXUS 로그인') {
+      steps {
+        script {
+          withCredentials([usernamePassword(credentialsId: 'nexus-credentials-docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+            sh 'echo $DOCKER_PASSWORD | docker login ${DOCKER_REGISTRY} -u $DOCKER_USERNAME --password-stdin'
+          }
+        }
+      }
+    }
+
+    stage('Docker 이미지 빌드 및 푸시') {
+      steps {
+        script {
+          def imageTag = sh(script: 'git describe --tags', returnStdout: true).trim()
+          echo "Git 태그로 설정된 이미지 태그: ${imageTag}"
+
+          sh """
+            docker build --no-cache \
+              --build-arg GIT_TAG=${imageTag} \
+              -f Dockerfile \
+              -t ${DOCKER_REGISTRY}/${MODULE_NAME}:${imageTag} .
+          """
+
+          sh """
+            docker push ${DOCKER_REGISTRY}/${MODULE_NAME}:${imageTag}
+          """
+
+          sh """
+            docker rmi ${DOCKER_REGISTRY}/${MODULE_NAME}:${imageTag}
+          """
+        }
+      }
+    }
+
+    stage('Docker Compose 배포') {
+      steps {
+        script {
+          echo "Git Tag(Version) 확인"
+          gitFetchWithCredential()
+
+          env.IMAGE_TAG = sh(script: "git describe --tags || echo 'latest'", returnStdout: true).trim()
+          echo "Git Image Tag: ${env.IMAGE_TAG}"
+
+          sshagent([SSH_CREDENTIALS_ID]) {
+            echo "모듈 ${MODULE_NAME} 배포 시작 (태그: ${env.IMAGE_TAG})"
+
+            def remoteDir = "/home/gims/app/${MODULE_NAME}"
+
+            sh """
+              ssh -o StrictHostKeyChecking=no -p ${REMOTE_HOST_PORT} ${SSH_USER}@${REMOTE_HOST} 'mkdir -p ${remoteDir}'
+            """
+
+            sh """
+              scp -o StrictHostKeyChecking=no -P ${REMOTE_HOST_PORT} docker-compose.yaml ${SSH_USER}@${REMOTE_HOST}:${remoteDir}/docker-compose.yaml
+              scp -o StrictHostKeyChecking=no -P ${REMOTE_HOST_PORT} .env ${SSH_USER}@${REMOTE_HOST}:${remoteDir}/.env
+            """
+
+            sh """
+              ssh -o StrictHostKeyChecking=no -p ${REMOTE_HOST_PORT} ${SSH_USER}@${REMOTE_HOST} 'IMAGE_TAG=${env.IMAGE_TAG} docker compose -f ${remoteDir}/docker-compose.yaml pull'
+            """
+
+            sh """
+              ssh -o StrictHostKeyChecking=no -p ${REMOTE_HOST_PORT} ${SSH_USER}@${REMOTE_HOST} 'docker compose -f ${remoteDir}/docker-compose.yaml down || true'
+            """
+
+            def projectName = "gims"
+
+            sh """
+              ssh -o StrictHostKeyChecking=no -p ${REMOTE_HOST_PORT} ${SSH_USER}@${REMOTE_HOST} 'IMAGE_TAG=${env.IMAGE_TAG} docker compose -f ${remoteDir}/docker-compose.yaml -p ${projectName} up -d --pull never'
+            """
+
+            echo "모듈 ${MODULE_NAME} 배포 완료"
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "파이프라인이 종료되었습니다."
+    }
+    success {
+      echo "Docker 이미지 생성 및 푸시에 성공했습니다."
+      slackSend (
+        channel: '#젠킨스빌드소식',
+        color: '#00FF00',
+        message: """
+          배포성공: 서비스명 ${env.JOB_NAME} [${env.BUILD_NUMBER}]
+        """
+      )
+    }
+    failure {
+      echo "빌드 또는 배포 과정에서 오류가 발생했습니다."
+      slackSend (
+        channel: '#젠킨스빌드소식',
+        color: '#FF0000',
+        message: "배포실패: 서비스명 ${env.JOB_NAME} [${env.BUILD_NUMBER}]"
+      )
+    }
+  }
+}

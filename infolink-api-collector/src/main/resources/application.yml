@@ -6,9 +6,9 @@ spring:
     name: infolink-api-collector
 
   datasource:
-    url: jdbc:postgresql://localhost:29001/api_collector
-    username: k1m
-    password: 1111
+    url: ENC(JuW0/2U2bSAtEGNxxn6FkZQgf18EHzqKPd+r+mfceiPBw05AWmQ2zn+FUTxnwSdjI335KfxJxziJ9C2omOr2eOaDX5K+aGNNEskOwv6nh0E=)
+    username: ENC(yFdNzBUZC56DfPjongW3r4yZxc641T+kyQFmCC8Xf+dLAj0ckvN/G4qaVihVIpn9)
+    password: ENC(PaubXinnwCX+svepYBVcdW4TNidVHQDR+UPQJkkrDrj6wnDZPR9TExuVMEST6m0A)
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -19,6 +19,13 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: true
+
+# Jasypt 암호화 설정
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD}
+    algorithm: PBEWithHMACSHA512AndAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
 logging:
   level:

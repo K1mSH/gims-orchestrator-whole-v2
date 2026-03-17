@@ -1,0 +1,31 @@
+services:
+  infolink-api-collector:
+    image: ${DOCKER_REGISTRY}/infolink-api-collector:${IMAGE_TAG}
+    env_file:
+      - .env
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS}
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1g
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=${SERVER_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - JASYPT_PASSWORD=${JASYPT_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${SERVER_PORT}/api/endpoints || exit 1"]
+      interval: 30s
+      retries: 5
+      timeout: 20s
+      start_period: 60s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
