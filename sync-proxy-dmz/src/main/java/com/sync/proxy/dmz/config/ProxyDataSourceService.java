@@ -2,6 +2,7 @@ package com.sync.proxy.dmz.config;
 
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.datasource.DataSourceInfo;
+import com.sync.agent.common.datasource.PasswordEncryptor;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import javax.annotation.PreDestroy;
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProxyDataSourceService implements DataSourceProvider {
 
     private final JdbcTemplate defaultJdbcTemplate;
+    private final PasswordEncryptor passwordEncryptor;
 
     @Value("${agent.orchestrator-url:http://localhost:8080}")
     private String orchestratorUrl;
@@ -38,8 +40,10 @@ public class ProxyDataSourceService implements DataSourceProvider {
     private final Map<String, HikariDataSource> dataSources = new ConcurrentHashMap<>();
     private final Map<String, JdbcTemplate> jdbcTemplates = new ConcurrentHashMap<>();
 
-    public ProxyDataSourceService(DataSource dataSource) {
+    public ProxyDataSourceService(DataSource dataSource,
+                                   @Value("${jasypt.encryptor.password}") String secretKey) {
         this.defaultJdbcTemplate = new JdbcTemplate(dataSource);
+        this.passwordEncryptor = new PasswordEncryptor(secretKey);
     }
 
     @Override
@@ -109,11 +113,16 @@ public class ProxyDataSourceService implements DataSourceProvider {
         hikariConfig.setUsername(info.getUsername());
         hikariConfig.setPassword(info.getPassword());
         hikariConfig.setDriverClassName(info.getDriverClassName());
-        hikariConfig.setMaximumPoolSize(5);
-        hikariConfig.setMinimumIdle(1);
+        hikariConfig.setMaximumPoolSize(10);
+        hikariConfig.setMinimumIdle(2);
+        hikariConfig.setConnectionTimeout(10_000);
+        hikariConfig.setMaxLifetime(600_000);
+        hikariConfig.setKeepaliveTime(120_000);
+        hikariConfig.setConnectionTestQuery("SELECT 1");
+        hikariConfig.setLeakDetectionThreshold(60_000);
 
         HikariDataSource ds = new HikariDataSource(hikariConfig);
-        log.info("[Proxy] DataSource created: {} -> {}", datasourceId, info.getJdbcUrl());
+        log.info("[Proxy] DataSource created: {} -> {} (maxPool=10, timeout=10s, leak=60s)", datasourceId, info.getJdbcUrl());
         return ds;
     }
 
@@ -141,8 +150,8 @@ public class ProxyDataSourceService implements DataSourceProvider {
                     .port(response.get("port") instanceof Integer ? (Integer) response.get("port")
                             : Integer.parseInt(response.get("port").toString()))
                     .databaseName((String) response.get("databaseName"))
-                    .username((String) response.get("username"))
-                    .password((String) response.get("password"))
+                    .username(passwordEncryptor.decrypt((String) response.get("username")))
+                    .password(passwordEncryptor.decrypt((String) response.get("password")))
                     .build();
 
             log.info("[Proxy] Fetched datasource from Orchestrator: {} ({}:{})",

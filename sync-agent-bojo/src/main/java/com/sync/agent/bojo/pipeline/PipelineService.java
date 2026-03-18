@@ -98,16 +98,43 @@ public class PipelineService {
                                     String executionId, String agentCode, Map<String, Object> params) {
         PipelineResult result = null;
         try {
-            // ThreadLocal에 현재 파이프라인의 datasource 연결 정보 설정
-            DataSourceInfo sourceInfo = buildDataSourceInfo(params, "source");
-            DataSourceInfo targetInfo = buildDataSourceInfo(params, "target");
+            // Proxy 경유로 credentials 해석 (params에 credentials 없이 datasourceId만으로 동작)
+            String sourceDatasourceId = (String) params.get("sourceDatasourceId");
+            String targetDatasourceId = (String) params.get("targetDatasourceId");
+
+            DataSourceInfo sourceInfo;
+            DataSourceInfo targetInfo;
+
+            // params에 credentials가 있으면 무시하고 Proxy에서 해석
+            if (sourceDatasourceId != null) {
+                sourceInfo = syncDataSourceService.resolveFromProxy(sourceDatasourceId);
+            } else {
+                sourceInfo = buildDataSourceInfo(params, "source");
+            }
+
+            if (targetDatasourceId != null) {
+                targetInfo = syncDataSourceService.resolveFromProxy(targetDatasourceId);
+            } else {
+                targetInfo = buildDataSourceInfo(params, "target");
+            }
+
             syncDataSourceService.setCurrentDatasources(sourceInfo, targetInfo);
             log.info("[Bojo] Pipeline datasource configured - source: {} ({}:{}), target: {} ({}:{})",
                     sourceInfo.getDatasourceId(), sourceInfo.getHost(), sourceInfo.getPort(),
                     targetInfo.getDatasourceId(), targetInfo.getHost(), targetInfo.getPort());
 
+            // Connection 풀 상태 검사 (기존 풀이 있는 경우)
+            String sourcePoolIssue = syncDataSourceService.checkPoolHealth(sourceInfo.getDatasourceId());
+            if (sourcePoolIssue != null) {
+                throw new IllegalStateException(sourcePoolIssue);
+            }
+            String targetPoolIssue = syncDataSourceService.checkPoolHealth(targetInfo.getDatasourceId());
+            if (targetPoolIssue != null) {
+                throw new IllegalStateException(targetPoolIssue);
+            }
+
             // 로컬 DB에 실행 시작 기록
-            executionService.startExecution(executionId, agentCode, sourceInfo.getDatasourceId(), targetInfo.getDatasourceId());
+            executionService.recordExecutionStart(executionId, agentCode, sourceInfo.getDatasourceId(), targetInfo.getDatasourceId());
 
             // Orchestrator에 시작 알림
             String triggeredBy = params.get("triggeredBy") != null ? params.get("triggeredBy").toString() : "MANUAL";
@@ -120,19 +147,19 @@ public class PipelineService {
             // 파이프라인 실행
             result = runner.run(executionId, enrichedParams);
             executionResults.put(executionId, result);
-            executionService.finishExecution(executionId, result);
+            executionService.recordExecutionFinish(executionId, result);
 
             log.info("[Bojo] Pipeline completed: {} with status {}", executionId, result.getStatus());
         } catch (Exception e) {
             log.error("[Bojo] Pipeline failed: {} - {}", executionId, e.getMessage(), e);
             result = buildFailedResult(executionId, e.getMessage());
             executionResults.put(executionId, result);
-            try { executionService.finishExecution(executionId, result); } catch (Exception ex) { /* ignore */ }
+            try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } catch (Error err) {
             log.error("[Bojo] CRITICAL ERROR: {} - {}", executionId, err.getMessage(), err);
             result = buildFailedResult(executionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
             executionResults.put(executionId, result);
-            try { executionService.finishExecution(executionId, result); } catch (Exception ex) { /* ignore */ }
+            try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } finally {
             if (result != null) {
                 try { orchestratorClient.notifyFinished(result); } catch (Exception e) {

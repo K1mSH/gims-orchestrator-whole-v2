@@ -2,12 +2,17 @@ package com.sync.agent.bojoint.config;
 
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.datasource.DataSourceInfo;
+import com.sync.agent.common.datasource.PasswordEncryptor;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -23,9 +28,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SyncDataSourceService implements DataSourceProvider {
 
     private final JdbcTemplate defaultJdbcTemplate;
+    private final PasswordEncryptor passwordEncryptor;
 
     @Value("${agent.orchestrator-url:http://localhost:8080}")
     private String orchestratorUrl;
+
+    @Value("${agent.proxy-url:}")
+    private String proxyUrl;
+
+    @Value("${agent.api-key:}")
+    private String proxyApiKey;
 
     private static final ThreadLocal<DataSourceInfo> currentSourceDatasource = new ThreadLocal<>();
     private static final ThreadLocal<DataSourceInfo> currentTargetDatasource = new ThreadLocal<>();
@@ -34,8 +46,10 @@ public class SyncDataSourceService implements DataSourceProvider {
     private final Map<String, HikariDataSource> dataSources = new ConcurrentHashMap<>();
     private final Map<String, JdbcTemplate> jdbcTemplates = new ConcurrentHashMap<>();
 
-    public SyncDataSourceService(DataSource dataSource) {
+    public SyncDataSourceService(DataSource dataSource,
+                                  @Value("${jasypt.encryptor.password}") String secretKey) {
         this.defaultJdbcTemplate = new JdbcTemplate(dataSource);
+        this.passwordEncryptor = new PasswordEncryptor(secretKey);
     }
 
     @Override
@@ -79,12 +93,6 @@ public class SyncDataSourceService implements DataSourceProvider {
             return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
         }
 
-        DataSourceInfo fetched = fetchFromOrchestrator(datasourceId);
-        if (fetched != null) {
-            cachedDataSourceInfos.put(datasourceId, fetched);
-            return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
-        }
-
         log.debug("[BojoInt] DataSource '{}' not resolved, using default JdbcTemplate (local DB)", datasourceId);
         return defaultJdbcTemplate;
     }
@@ -108,25 +116,61 @@ public class SyncDataSourceService implements DataSourceProvider {
         hikariConfig.setUsername(info.getUsername());
         hikariConfig.setPassword(info.getPassword());
         hikariConfig.setDriverClassName(info.getDriverClassName());
-        hikariConfig.setMaximumPoolSize(5);
-        hikariConfig.setMinimumIdle(1);
+        hikariConfig.setMaximumPoolSize(10);
+        hikariConfig.setMinimumIdle(2);
+        hikariConfig.setConnectionTimeout(10_000);
+        hikariConfig.setMaxLifetime(600_000);
+        hikariConfig.setKeepaliveTime(120_000);
+        hikariConfig.setConnectionTestQuery("SELECT 1");
+        hikariConfig.setLeakDetectionThreshold(60_000);
 
         HikariDataSource ds = new HikariDataSource(hikariConfig);
-        log.info("[BojoInt] DataSource created: {} -> {}", datasourceId, info.getJdbcUrl());
+        log.info("[BojoInt] DataSource created: {} -> {} (maxPool=10, timeout=10s, leak=60s)", datasourceId, info.getJdbcUrl());
         return ds;
     }
 
-    private DataSourceInfo fetchFromOrchestrator(String datasourceId) {
+    /**
+     * Proxy 경유로 datasource 연결 정보 해석
+     * Proxy가 Orchestrator의 connection-info를 암호문 그대로 패스스루한다.
+     * Agent가 직접 PasswordEncryptor로 복호화하여 DataSource를 생성한다.
+     * Orchestrator 직접 조회는 허용하지 않음 (Proxy 필수).
+     */
+    public DataSourceInfo resolveFromProxy(String datasourceId) {
+        DataSourceInfo cached = cachedDataSourceInfos.get(datasourceId);
+        if (cached != null) {
+            log.debug("[BojoInt] DataSource resolved from cache: {}", datasourceId);
+            return cached;
+        }
+
+        if (proxyUrl == null || proxyUrl.isEmpty()) {
+            throw new IllegalStateException("[BojoInt] proxy-url 미설정. 자격증명 해석 불가: " + datasourceId);
+        }
+
+        DataSourceInfo info = fetchConnectionInfoFromProxy(datasourceId);
+        if (info != null) { // 캐싱
+            cachedDataSourceInfos.put(datasourceId, info);
+            return info;
+        }
+
+        throw new IllegalStateException("[BojoInt] Proxy에서 datasource 해석 실패: " + datasourceId);
+    }
+
+    private DataSourceInfo fetchConnectionInfoFromProxy(String datasourceId) {
         try {
-            String url = orchestratorUrl + "/api/datasources/" + datasourceId + "/connection-info";
-            log.info("[BojoInt] Fetching datasource info from Orchestrator: {}", datasourceId);
+            String url = proxyUrl + "/api/datasources/" + datasourceId + "/connection-info";
+            log.info("[BojoInt] Fetching datasource info from Proxy: {}", datasourceId);
 
             RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            if (proxyApiKey != null && !proxyApiKey.isEmpty()) {
+                headers.set("X-API-Key", proxyApiKey);
+            }
+            ResponseEntity<Map> responseEntity = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> response = responseEntity.getBody();
 
             if (response == null || response.isEmpty()) {
-                log.warn("[BojoInt] Empty response from Orchestrator for datasource: {}", datasourceId);
+                log.warn("[BojoInt] Empty response from Proxy for datasource: {}", datasourceId);
                 return null;
             }
 
@@ -137,17 +181,49 @@ public class SyncDataSourceService implements DataSourceProvider {
                     .port(response.get("port") instanceof Integer ? (Integer) response.get("port")
                             : Integer.parseInt(response.get("port").toString()))
                     .databaseName((String) response.get("databaseName"))
-                    .username((String) response.get("username"))
-                    .password((String) response.get("password"))
+                    .username(passwordEncryptor.decrypt((String) response.get("username")))
+                    .password(passwordEncryptor.decrypt((String) response.get("password")))
                     .build();
 
-            log.info("[BojoInt] Fetched datasource from Orchestrator: {} ({}:{})",
+            log.info("[BojoInt] Fetched datasource from Proxy: {} ({}:{})",
                     datasourceId, info.getHost(), info.getPort());
             return info;
         } catch (Exception e) {
-            log.warn("[BojoInt] Failed to fetch datasource from Orchestrator: {} - {}", datasourceId, e.getMessage());
+            log.warn("[BojoInt] Failed to fetch datasource from Proxy: {} - {}", datasourceId, e.getMessage());
             return null;
         }
+    }
+
+    public String checkPoolHealth(String datasourceId) {
+        HikariDataSource ds = dataSources.get(datasourceId);
+        if (ds == null) return null;
+
+        if (ds.isClosed()) {
+            return "Connection pool 비활성 (datasource: " + datasourceId + ")";
+        }
+
+        var pool = ds.getHikariPoolMXBean();
+        if (pool == null) return null;
+
+        int active = pool.getActiveConnections();
+        int waiting = pool.getThreadsAwaitingConnection();
+        int max = ds.getMaximumPoolSize();
+        int total = pool.getTotalConnections();
+
+        log.info("[BojoInt] Pool health check '{}': active={}/{}, waiting={}, total={}",
+                datasourceId, active, max, waiting, total);
+
+        if (waiting > 0) {
+            return String.format("Connection pool 대기열 존재 (datasource: %s, waiting: %d)", datasourceId, waiting);
+        }
+        if (active >= max * 0.8) {
+            return String.format("Connection pool 사용률 과다 (datasource: %s, active: %d/%d)", datasourceId, active, max);
+        }
+        if (total == 0 && active == 0) {
+            return String.format("Connection pool 비활성 — DB 연결 확인 필요 (datasource: %s)", datasourceId);
+        }
+
+        return null;
     }
 
     public void setCurrentDatasources(DataSourceInfo sourceDatasource, DataSourceInfo targetDatasource) {

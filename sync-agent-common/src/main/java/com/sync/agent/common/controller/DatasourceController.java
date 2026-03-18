@@ -25,6 +25,12 @@ import java.util.Set;
 @RequestMapping("/api/datasource")
 public class DatasourceController {
 
+    private final DataSourceProvider dataSourceProvider;
+
+    public DatasourceController(@org.springframework.lang.Nullable DataSourceProvider dataSourceProvider) {
+        this.dataSourceProvider = dataSourceProvider;
+    }
+
     /**
      * DB 연결 테스트
      * Orchestrator가 자신이 접근할 수 없는 zone의 DB 테스트를 위임
@@ -197,6 +203,7 @@ public class DatasourceController {
         }
     }
 
+
     // ==================== Request/Response DTOs ====================
 
     @Getter
@@ -279,4 +286,5 @@ public class DatasourceController {
         private Boolean isPrimaryKey;
         private String remarks;
     }
+
 }

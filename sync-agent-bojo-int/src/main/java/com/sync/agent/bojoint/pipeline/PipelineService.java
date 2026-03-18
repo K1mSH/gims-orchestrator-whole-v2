@@ -83,14 +83,41 @@ public class PipelineService {
                                     String executionId, String agentCode, Map<String, Object> params) {
         PipelineResult result = null;
         try {
-            DataSourceInfo sourceInfo = buildDataSourceInfo(params, "source");
-            DataSourceInfo targetInfo = buildDataSourceInfo(params, "target");
+            // Proxy 경유로 credentials 해석
+            String sourceDatasourceId = (String) params.get("sourceDatasourceId");
+            String targetDatasourceId = (String) params.get("targetDatasourceId");
+
+            DataSourceInfo sourceInfo;
+            DataSourceInfo targetInfo;
+
+            if (sourceDatasourceId != null) {
+                sourceInfo = syncDataSourceService.resolveFromProxy(sourceDatasourceId);
+            } else {
+                sourceInfo = buildDataSourceInfo(params, "source");
+            }
+
+            if (targetDatasourceId != null) {
+                targetInfo = syncDataSourceService.resolveFromProxy(targetDatasourceId);
+            } else {
+                targetInfo = buildDataSourceInfo(params, "target");
+            }
+
             syncDataSourceService.setCurrentDatasources(sourceInfo, targetInfo);
             log.info("[BojoInt] Pipeline datasource configured - source: {} ({}:{}), target: {} ({}:{})",
                     sourceInfo.getDatasourceId(), sourceInfo.getHost(), sourceInfo.getPort(),
                     targetInfo.getDatasourceId(), targetInfo.getHost(), targetInfo.getPort());
 
-            executionService.startExecution(executionId, agentCode, sourceInfo.getDatasourceId(), targetInfo.getDatasourceId());
+            // Connection 풀 상태 검사
+            String sourcePoolIssue = syncDataSourceService.checkPoolHealth(sourceInfo.getDatasourceId());
+            if (sourcePoolIssue != null) {
+                throw new IllegalStateException(sourcePoolIssue);
+            }
+            String targetPoolIssue = syncDataSourceService.checkPoolHealth(targetInfo.getDatasourceId());
+            if (targetPoolIssue != null) {
+                throw new IllegalStateException(targetPoolIssue);
+            }
+
+            executionService.recordExecutionStart(executionId, agentCode, sourceInfo.getDatasourceId(), targetInfo.getDatasourceId());
 
             String triggeredBy = params.get("triggeredBy") != null ? params.get("triggeredBy").toString() : "MANUAL";
             orchestratorClient.notifyStarted(executionId, triggeredBy);
@@ -100,19 +127,19 @@ public class PipelineService {
 
             result = runner.run(executionId, enrichedParams);
             executionResults.put(executionId, result);
-            executionService.finishExecution(executionId, result);
+            executionService.recordExecutionFinish(executionId, result);
 
             log.info("[BojoInt] Pipeline completed: {} with status {}", executionId, result.getStatus());
         } catch (Exception e) {
             log.error("[BojoInt] Pipeline failed: {} - {}", executionId, e.getMessage(), e);
             result = buildFailedResult(executionId, e.getMessage());
             executionResults.put(executionId, result);
-            try { executionService.finishExecution(executionId, result); } catch (Exception ex) { /* ignore */ }
+            try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } catch (Error err) {
             log.error("[BojoInt] CRITICAL ERROR: {} - {}", executionId, err.getMessage(), err);
             result = buildFailedResult(executionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
             executionResults.put(executionId, result);
-            try { executionService.finishExecution(executionId, result); } catch (Exception ex) { /* ignore */ }
+            try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } finally {
             if (result != null) {
                 try { orchestratorClient.notifyFinished(result); } catch (Exception e) {
