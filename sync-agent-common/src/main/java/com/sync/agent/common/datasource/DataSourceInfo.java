@@ -2,6 +2,16 @@ package com.sync.agent.common.datasource;
 
 import lombok.*;
 
+/**
+ * 데이터소스 연결 정보 DTO
+ *
+ * Orchestrator → Proxy → Agent로 전달되는 DB 연결 정보를 담는다.
+ * Proxy에서 수신 시 username/password는 암호문 상태이며,
+ * Agent의 SyncDataSourceService.fetchConnectionInfoFromProxy()에서 PasswordEncryptor로 복호화 후 저장.
+ * getJdbcUrl()/getDriverClassName()으로 dbType에 맞는 JDBC URL/드라이버를 자동 생성.
+ *
+ * 지원 DB: PostgreSQL, Oracle, MySQL, MariaDB, MSSQL
+ */
 @Getter
 @Setter
 @NoArgsConstructor

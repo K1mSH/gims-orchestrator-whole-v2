@@ -6,6 +6,12 @@ import org.hibernate.annotations.Comment;
 
 import java.time.LocalDateTime;
 
+/**
+ * 파이프라인 실행 이력 JPA 엔티티 (Agent 로컬 DB)
+ *
+ * ExecutionService.recordExecutionStart()에서 INSERT, recordExecutionFinish()에서 UPDATE.
+ * Orchestrator 중앙 DB의 ExecutionHistory와 별개로, 각 Agent가 자신의 실행 이력을 독립 관리.
+ */
 @Entity
 @Table(name = "execution", indexes = {
     @Index(name = "idx_execution_started", columnList = "started_at DESC"),

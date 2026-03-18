@@ -13,8 +13,27 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 타겟 테이블 자동삭제(Retention) REST 엔드포인트
- * - Orchestrator가 DB에서 읽은 retention 설정을 POST body로 전달
+ * Target 테이블의 오래된 데이터를 자동 삭제하는 Retention REST API
+ *
+ * Orchestrator가 Agent별 retention 설정을 DB에서 읽어 POST body로 전달하면,
+ * 이 컨트롤러가 DataRetentionService를 호출하여 실제 DELETE를 수행한다.
+ *
+ * ── 엔드포인트 ──
+ * POST /api/cleanup/{agentCode}
+ *   Body: RetentionConfig JSON
+ *   { "enabled": true, "targetDatasourceId": "internal",
+ *     "targets": [{"table":"pm_gd970201", "dateColumn":"obsrvn_dt", "retentionDays":90}] }
+ *   Response: 테이블별 삭제 건수
+ *
+ * ── retentionDays 음수 방어 (4계층) ──
+ * 1. 프론트: input min=1 제한
+ * 2. Orchestrator API: 저장 시 검증
+ * 3. 이 Controller: retentionDays < 1이면 예외
+ * 4. DataRetentionService: retentionDays < 1이면 skip
+ *
+ * ── 사용처 ──
+ * - Orchestrator의 스케줄 또는 수동 트리거로 호출
+ * - sync-agent-bojo, sync-agent-bojo-int 모두 대상
  */
 @Slf4j
 @RestController

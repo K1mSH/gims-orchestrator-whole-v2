@@ -798,14 +798,74 @@ Bojo-Pipeline-2 스레드: dmz-bojo-rcv-bytek 실행 중 (source=ext_bytek)
            filters, conditions, timeRange를 구조화된 객체로 변환
 ```
 
+### Step 구현체가 결정되는 시점 — 부팅 시 PipelineConfig
+
+Runner의 `steps` 리스트에는 **부팅 시 이미 구체적인 Step 객체**가 들어가 있다.
+런타임에 if/switch로 분기하는 게 아니라, PipelineConfig에서 `new SourceToIfStep(...)` 또는
+`new InternalLoadStep(...)`으로 생성한 객체가 리스트에 담긴다.
+
+**RCV (DMZ) — RcvPipelineConfig.createRcvRunner():**
+```
+[L60-70] ExtractStepConfig jewonConfig = ... .sourceTable("sec_jewon_view") ...
+         // YAML의 jewon 섹션 값으로 config 생성
+
+[L71-72] SourceToIfStep jewonStep = new SourceToIfStep(jewonConfig, dataSourceProvider, ...)
+         // ★ 구체적 Step 객체 생성 (StepExecutor 구현체)
+
+[L84-93] obsvConfig = ... .extractType(CUSTOM_STAGING) .customDataFetcher(fetcher) ...
+[L107]   SourceToIfStep obsvStep = new SourceToIfStep(obsvConfig, ...)
+         // ★ 같은 클래스, 다른 config
+
+[L114]   LinkTableUpdateStep linkStep = new LinkTableUpdateStep(...)
+         // ★ 별도 Step 구현체
+
+[L116]   steps = List.of(jewonStep, obsvStep, linkStep)
+         // ★★★ 이 리스트가 Runner에 들어감 — 순서 고정
+
+[L121]   return new PipelineRunner(agentCode, steps)
+         // Runner.steps = [SourceToIfStep, SourceToIfStep, LinkTableUpdateStep]
+```
+
+**Loader (Internal) — LoaderPipelineConfig:**
+```
+[L55-66] InternalLoadStep loadStep = new InternalLoadStep(stepId, ifObsvTable, targetJewonTable, ...)
+         // ★ InternalLoadStep 객체 (StepExecutor 구현체)
+
+[L68]    PipelineRunner runner = new PipelineRunner(agentCode, List.of(loadStep))
+         // Runner.steps = [InternalLoadStep]
+```
+
+**각 Runner의 steps 내용물:**
+```
+dmz-bojo-rcv-daejeon의 Runner.steps = [
+    SourceToIfStep(jewon config),        // 0번 — SIMPLE_COPY
+    SourceToIfStep(obsvdata config),     // 1번 — CUSTOM_STAGING
+    LinkTableUpdateStep(link config)     // 2번
+]
+
+internal-bojo-loader의 Runner.steps = [
+    InternalLoadStep(loader config)      // 0번
+]
+
+dmz-bojo-snd의 Runner.steps = [
+    SourceToIfStep(jewon config),        // 0번 — SIMPLE_COPY
+    SourceToIfStep(obsvdata config)      // 1번 — SIMPLE_COPY
+]
+```
+
 ### Step 순차 실행 루프 (L153-233)
+
+Runner는 Step의 내부 구현을 구분하지 않는다. `StepExecutor` 인터페이스의 `execute(context)`만 호출.
+`step.execute(context)` 호출 시 Java 다형성에 의해 해당 객체의 메서드가 실행된다.
+SourceToIfStep이면 SourceToIfStep.execute(), InternalLoadStep이면 InternalLoadStep.execute().
+SIMPLE_COPY / CUSTOM_STAGING 분기도 Step 내부(SourceToIfStep L160-170)에서 처리된다.
 
 ```
 for (StepExecutor step : steps) {
     // ① dmz-bojo-rcv-daejeon의 경우 3개 Step:
-    //    jewon-extract (SourceToIfStep)
-    //    obsvdata-extract (SourceToIfStep)
-    //    link-table-update (LinkTableUpdateStep)
+    //    jewon-extract (SourceToIfStep)      — 내부에서 SIMPLE_COPY
+    //    obsvdata-extract (SourceToIfStep)   — 내부에서 CUSTOM_STAGING (Link 기반)
+    //    link-table-update (LinkTableUpdateStep) — Link 테이블 갱신
 
     [L154-174] selectedStepIds 확인
                // 사용자가 특정 Step만 선택했으면 나머지 SKIP

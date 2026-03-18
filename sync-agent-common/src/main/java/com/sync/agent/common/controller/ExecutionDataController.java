@@ -14,8 +14,31 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 /**
- * 실행 데이터 API 공통 컨트롤러
- * Agent DB에서 실행 데이터를 조회하는 표준 엔드포인트 제공
+ * Agent 로컬 DB의 실행 데이터를 조회하는 공통 REST API 컨트롤러
+ *
+ * Orchestrator가 프론트 모니터링/추적 화면에서 Agent 데이터를 조회할 때 사용.
+ * 모든 Agent가 동일한 엔드포인트로 응답하도록 common 모듈에 표준화.
+ *
+ * ── 주요 엔드포인트 ──
+ * GET /{executionId}          — 실행 상세 (상태, 시간, 오류)
+ * GET /{executionId}/summary  — 실행 통계 (read/write/failed/skip)
+ * GET /{executionId}/source   — Source 테이블 데이터 (페이징)
+ * GET /{executionId}/target-if — IF 테이블 데이터
+ * GET /{executionId}/target   — Target 테이블 데이터
+ * GET /{executionId}/tables   — 매핑별 통계 (SyncLog 기반)
+ * GET /{executionId}/trace    — Source PK → Target 추적 (forward)
+ * GET /{executionId}/trace-source — Target → Source 역추적 (backward)
+ *
+ * ── Source 필터링 3단계 (buildSourceFilter) ──
+ * execution_id는 항상 target에만 존재하므로, source 조회 시 source_refs 매칭이 필요.
+ * 1. source에 source_refs 없음 → PK 파싱 매칭 (RCV — 외부 DB)
+ * 2. source_refs 있고 target 값과 동일 → source_refs IN 매칭 (Loader — IF→Target 복사)
+ * 3. source_refs 있지만 target 값과 다름 → PK 파싱 매칭 (SND — 새 source_refs 생성)
+ * 판별: 샘플 1건 SELECT COUNT(*) WHERE source_refs = ? 체크
+ *
+ * ── 사용처 ──
+ * - sync-agent-bojo-int, sync-proxy-dmz, sync-proxy-internal: 그대로 사용
+ * - sync-agent-bojo: excludeFilters로 제외 (bojo는 Proxy 경유만 허용)
  *
  * Agent별 커스텀 구현이 필요한 경우 ComponentScan excludeFilters로 이 컨트롤러를 제외하고
  * 별도의 컨트롤러를 구현하세요.

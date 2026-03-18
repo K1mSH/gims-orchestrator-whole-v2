@@ -20,6 +20,21 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 동적 EntityManagerFactory 생성 및 관리 서비스.
+ *
+ * <p>DataSourceInfo(Orchestrator에서 전달)별로 독립적인 HikariDataSource와
+ * EntityManagerFactory를 생성하여 ConcurrentHashMap에 캐싱한다.</p>
+ *
+ * <ul>
+ *   <li>Source/Target/IF 등 datasourceId별 EntityManager 제공</li>
+ *   <li>DB 대소문자 감지(information_schema 조회)로 PhysicalNamingStrategy 분기</li>
+ *   <li>PostgreSQL / MySQL Dialect 자동 선택</li>
+ *   <li>JdbcTemplate 인스턴스도 함께 관리</li>
+ * </ul>
+ *
+ * @see SyncDataSourceService
+ */
 @Slf4j
 @Service
 public class DynamicEntityManagerService {

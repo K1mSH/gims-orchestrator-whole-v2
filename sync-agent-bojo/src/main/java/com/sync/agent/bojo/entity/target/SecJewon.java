@@ -6,6 +6,17 @@ import org.hibernate.annotations.Comment;
 import javax.persistence.*;
 import java.sql.Date;
 
+/**
+ * Target DB 제원(관측소 기본정보) 엔티티.
+ *
+ * <p>Loader 파이프라인에서 IF_RSV의 데이터를 UPSERT하는 최종 목적지이다.
+ * {@code source_refs}로 원본 Source를 추적하며, {@code execution_id}로
+ * 실행 이력을 조회할 수 있다.</p>
+ *
+ * <p>테이블: {@code sec_jewon} (UK: source_refs, IDX: execution_id)</p>
+ *
+ * @see com.sync.agent.bojo.loader.repository.TargetRepositoryService
+ */
 @Entity
 @Table(name = "sec_jewon",
        uniqueConstraints = @UniqueConstraint(

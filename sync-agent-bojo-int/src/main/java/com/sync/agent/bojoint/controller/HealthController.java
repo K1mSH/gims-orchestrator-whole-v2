@@ -13,6 +13,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 내부망 Agent 상태 확인 및 디버그 정보 제공 컨트롤러.
+ *
+ * <ul>
+ *   <li>{@code GET /health} - Agent 기동 상태, 등록된 Agent 목록(RCV/Loader) 반환</li>
+ *   <li>{@code GET /debug/datasources} - 캐시된 DataSource 설정 정보 조회 (디버그용)</li>
+ * </ul>
+ *
+ * <p>Orchestrator 및 운영 모니터링에서 내부망 Agent 생존 확인 용도로 호출된다.</p>
+ */
 @RestController
 @RequiredArgsConstructor
 public class HealthController {

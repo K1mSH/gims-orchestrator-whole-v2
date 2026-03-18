@@ -8,6 +8,10 @@ import java.util.List;
 /**
  * Source → IF 테이블 추출 Step 설정
  *
+ * SourceToIfStep에 주입되는 설정 객체.
+ * YAML(config/agents/*.yml)의 jewon/obsvdata 섹션 값이 PipelineConfig에서 이 객체로 변환된다.
+ * 동일한 SourceToIfStep 클래스를 config만 바꿔서 RCV/SND/Internal RCV에서 재사용.
+ *
  * IF 테이블 메타 컬럼:
  * - source_refs: 출처 정보 JSON 배열 ["zone:dsId:tbId:pk", ...]
  * - link_status: 연계 상태 (PENDING → SUCCESS/FAILED)

@@ -6,6 +6,14 @@ import org.hibernate.annotations.Comment;
 import javax.persistence.*;
 import java.sql.Date;
 
+/**
+ * 외부 소스 DB의 제원(관측소 기본정보) 뷰 엔티티 (읽기 전용).
+ *
+ * <p>RCV 파이프라인에서 외부 업체 DB의 제원 데이터를 SELECT할 때 사용된다.
+ * PK는 {@code obsv_code}이며, 뷰이므로 INSERT/UPDATE 대상이 아니다.</p>
+ *
+ * <p>테이블(뷰): {@code sec_jewon_view}</p>
+ */
 @Entity
 @Table(name = "sec_jewon_view")
 @org.hibernate.annotations.Table(appliesTo = "sec_jewon_view", comment = "외부 소스 제원 뷰")

@@ -5,6 +5,15 @@ import com.sync.agent.common.step.StepResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 내부망 Agent용 OrchestratorClient 콜백 래퍼.
+ *
+ * <p>파이프라인 실행 중 각 Step의 시작/종료 이벤트를 Orchestrator에 전달한다.
+ * 콜백 호출 실패 시 예외를 삼키고 경고 로그만 남겨, 파이프라인 실행에
+ * 영향을 주지 않도록 한다.</p>
+ *
+ * @see com.sync.agent.common.pipeline.StepProgressCallback
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class CompositeStepCallback implements StepProgressCallback {

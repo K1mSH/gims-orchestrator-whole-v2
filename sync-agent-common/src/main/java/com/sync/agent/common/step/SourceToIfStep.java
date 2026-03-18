@@ -19,21 +19,39 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Source → IF 테이블 동기화 Step (공통)
+ * Source → IF 테이블 동기화 Step (공통 copy 엔진)
  *
  * Source 테이블에서 데이터를 조회(Extract)하고 IF 테이블에 적재(Load)하는 통합 Step.
  * ETL에서 E+L을 하나의 Step으로 처리하며, IF 테이블에 UPSERT 방식으로 적재한다.
  *
- * 주요 기능:
- * - Source 데이터 조회 (SIMPLE_COPY / CUSTOM_STAGING 두 가지 모드)
- * - IF 테이블에 배치 UPSERT (ON CONFLICT DO UPDATE)
- * - source_refs 추적 정보 자동 생성
- * - link_status 관리 (PENDING/RESYNC/SUCCESS/FAILED)
- * - SyncLog 요약 저장 (테이블별 성공/실패 건수)
+ * ── 사용처 ──
+ * RCV/SND/Internal RCV 파이프라인이 공통으로 사용하는 범용 데이터 복사 Step.
+ * Loader(DefaultLoadStep/InternalLoadStep)만 별도 Step 클래스를 사용한다.
  *
- * 두 가지 모드:
- * 1. SIMPLE_COPY: Source 1개 → IF (1:1), 전체 추적 가능
- * 2. CUSTOM_STAGING: 커스텀 DataFetcher로 데이터 조회, IF→Target만 추적
+ *   Agent 타입       | PipelineConfig           | extractType
+ *   RCV (DMZ)        | RcvPipelineConfig        | jewon=SIMPLE_COPY, obsvdata=CUSTOM_STAGING(Link)
+ *   SND (DMZ)        | SndPipelineConfig        | 전부 SIMPLE_COPY
+ *   RCV (Internal)   | RcvPipelineConfig (int)  | 전부 SIMPLE_COPY
+ *
+ * 각 PipelineConfig에서 ExtractStepConfig에 YAML 설정값(source-table, target-table, PK 등)을
+ * 주입하여 new SourceToIfStep(config, ...)으로 생성한다.
+ * 동일 클래스를 config만 바꿔서 재사용하는 구조.
+ *
+ * ── 두 가지 모드 ──
+ * 1. SIMPLE_COPY: 직접 SQL 조회 (fetchSimpleCopy)
+ *    - 전체 복사 (fullCopy=true) 또는 link_status 기반 증분
+ *    - 조건실행(conditions) / 시간범위(timeRange) 실행 시 강제 적용
+ * 2. CUSTOM_STAGING: 커스텀 DataFetcher로 데이터 조회
+ *    - Link 테이블(link_ngwis) 기반 증분 동기화 (RCV obsvdata에서 사용)
+ *    - conditions/timeRange가 있으면 SIMPLE_COPY로 오버라이드됨
+ *
+ * ── 주요 기능 ──
+ * - Source 데이터 조회 (위 두 모드 중 하나)
+ * - IF 테이블에 배치 UPSERT (ON CONFLICT DO UPDATE, batchSize=1000)
+ * - source_refs 추적 정보 자동 생성 (zone:dsDbId:tableId:pk 형식)
+ * - link_status 관리 (PENDING/RESYNC/SUCCESS/FAILED)
+ * - Source 테이블 link_status 업데이트 (성공/실패)
+ * - SyncLog 요약 저장 (매핑별 성공/실패 건수)
  */
 @Slf4j
 public class SourceToIfStep implements StepExecutor {

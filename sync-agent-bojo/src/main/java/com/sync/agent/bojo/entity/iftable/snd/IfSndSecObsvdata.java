@@ -8,6 +8,16 @@ import java.sql.Date;
 import java.sql.Time;
 import java.time.LocalDateTime;
 
+/**
+ * IF_SND 관측데이터 엔티티.
+ *
+ * <p>SND 파이프라인에서 Target DB의 관측데이터를 IF_SND 테이블로 추출할 때 사용된다.
+ * 수위(gwdep), 수온(gwtemp), 전기전도도(ec) 등의 시계열 관측값을 보관한다.</p>
+ *
+ * <p>테이블: {@code if_snd_sec_obsvdata}</p>
+ *
+ * @see com.sync.agent.bojo.entity.target.SecObsvdata
+ */
 @Entity
 @Table(name = "if_snd_sec_obsvdata",
        uniqueConstraints = @UniqueConstraint(

@@ -7,6 +7,17 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
+/**
+ * DMZ Agent 파이프라인 비동기 실행을 위한 ThreadPool 설정.
+ *
+ * <p>{@code pipelineExecutor} 빈을 등록하며, PipelineService에서
+ * {@code @Async("pipelineExecutor")}로 파이프라인을 병렬 실행할 때 사용된다.</p>
+ *
+ * <ul>
+ *   <li>core=6, max=15, queue=50</li>
+ *   <li>스레드 접두사: {@code Bojo-Pipeline-}</li>
+ * </ul>
+ */
 @Configuration
 @EnableAsync
 public class AsyncConfig {

@@ -50,6 +50,15 @@ public class RcvPipelineConfig {
         }
     }
 
+    /**
+     * RCV Runner 생성 — YAML 설정 기반으로 Step 객체를 조립하여 PipelineRunner에 담는다.
+     *
+     * 여기서 new SourceToIfStep(...), new LinkTableUpdateStep(...)으로 생성한 구체적 객체가
+     * Runner의 steps 리스트에 들어간다. 런타임에 runner.run()이 호출되면
+     * for (step : steps) { step.execute(context) }로 순차 실행되며,
+     * Java 다형성에 의해 각 객체의 execute()가 호출된다.
+     * Runner는 Step의 구체적 타입을 모르고, StepExecutor 인터페이스만 알고 있다.
+     */
     private PipelineRunner createRcvRunner(AgentDefinition def) {
         AgentDefinition.TableConfig jewonCfg = def.getJewon();
         AgentDefinition.TableConfig obsvCfg = def.getObsvdata();
@@ -108,16 +117,20 @@ public class RcvPipelineConfig {
                 obsvConfig, dataSourceProvider, syncLogRepository);
         obsvStep.setMappingName("obsvdata");
 
-        // Steps
+        // Step 리스트 조립 — 이 순서대로 런타임에 순차 실행됨
+        // 각 객체는 StepExecutor 구현체이며, Runner는 구체적 타입을 구분하지 않음
         List<StepExecutor> steps;
         if (useLinkTable) {
             LinkTableUpdateStep linkStep = new LinkTableUpdateStep(
                     dataSourceProvider, obsvCfg.getTargetTable(), linkTableName, syncLogRepository);
+            // [SourceToIfStep(jewon), SourceToIfStep(obsvdata), LinkTableUpdateStep]
             steps = List.of(jewonStep, obsvStep, linkStep);
         } else {
+            // [SourceToIfStep(jewon), SourceToIfStep(obsvdata)]
             steps = List.of(jewonStep, obsvStep);
         }
 
+        // ★ 이 Runner가 PipelineRegistry에 등록되어, 실행 요청 시 getRunner(agentCode)로 꺼내 실행
         return new PipelineRunner(def.getAgentCode(), steps);
     }
 

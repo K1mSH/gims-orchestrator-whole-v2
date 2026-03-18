@@ -52,6 +52,10 @@ public class LoaderPipelineConfig {
                     continue;
                 }
 
+                // InternalLoadStep 생성 — StepExecutor 구현체
+                // YAML의 if-table/target-table 설정값이 생성자로 주입됨
+                // Runner.steps = [InternalLoadStep] (1개 Step)
+                // 런타임에 step.execute(context) 호출 시 Java 다형성으로 InternalLoadStep.execute() 실행
                 InternalLoadStep loadStep = new InternalLoadStep(
                         stepCfg.getId(),
                         stepCfg.getName(),

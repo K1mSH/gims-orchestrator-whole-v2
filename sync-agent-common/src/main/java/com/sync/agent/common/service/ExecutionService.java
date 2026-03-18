@@ -12,6 +12,26 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Agent 로컬 DB에 파이프라인 실행 이력을 기록하는 서비스
+ *
+ * 실제 파이프라인 실행은 PipelineService의 runner.run()에서 이루어지며,
+ * 이 서비스는 실행 전후에 Execution 엔티티를 DB에 INSERT/UPDATE하는 역할만 담당한다.
+ *
+ * ── 호출 시점 (PipelineService.executeWithRunner 기준) ──
+ * 1. recordExecutionStart()  — runner.run() 호출 직전
+ * 2. runner.run()            — 실제 파이프라인 실행 (이 서비스와 무관)
+ * 3. recordExecutionFinish() — runner.run() 완료 직후
+ *
+ * ── Orchestrator와의 관계 ──
+ * - 이 서비스: Agent 로컬 DB(execution 테이블)에 기록
+ * - OrchestratorClient: Orchestrator 중앙 DB에 콜백으로 동일 정보 전달
+ * - 둘은 독립적으로 동작 (하나가 실패해도 다른 하나에 영향 없음)
+ *
+ * ── 사용처 ──
+ * - sync-agent-bojo: PipelineService
+ * - sync-agent-bojo-int: PipelineService
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

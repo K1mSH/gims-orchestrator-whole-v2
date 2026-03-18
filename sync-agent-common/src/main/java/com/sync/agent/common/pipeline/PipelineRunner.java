@@ -15,6 +15,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * 파이프라인 실행기 — Step 체인을 순차 실행
+ *
+ * 등록된 Step들을 순서대로 step.execute(context) 호출한다.
+ * Runner는 Step의 내부 구현(SourceToIfStep, DefaultLoadStep, LinkTableUpdateStep 등)을
+ * 구분하지 않으며, StepExecutor 인터페이스만 알고 있다.
+ * SIMPLE_COPY / CUSTOM_STAGING 등의 분기는 각 Step 내부에서 처리된다.
+ *
+ * ── 실행 규칙 ──
+ * - 순차 실행: Step 1 → Step 2 → Step 3 순서대로
+ * - First-failure-stop: 한 Step이 FAILED 반환 시 이후 Step 실행 안 함 (break)
+ * - 선택 실행: selectedStepIds 지정 시 해당 Step만 실행, 나머지 SKIP
+ * - 진행 콜백: 각 Step 시작/종료 시 OrchestratorClient에 알림
+ *
+ * ── 생성 시점 ──
+ * 앱 부팅 시 PipelineConfig(@PostConstruct)에서 Step 체인을 조립하여 생성.
+ * PipelineRegistry에 agentCode 기반으로 등록되며, 실행 요청 시 getRunner(agentCode)로 조회.
+ */
 @Slf4j
 public class PipelineRunner {
 
@@ -185,6 +203,10 @@ public class PipelineRunner {
             }
 
             try {
+                // ★ Step 실행 — Runner는 내부 구현을 모르고 StepExecutor.execute()만 호출
+                // SourceToIfStep이면 내부에서 SIMPLE_COPY/CUSTOM_STAGING 분기
+                // DefaultLoadStep이면 IF→Target 적재 로직
+                // LinkTableUpdateStep이면 Link 테이블 갱신 로직
                 StepResult result = step.execute(context);
                 stepResults.add(result);
 
@@ -202,6 +224,7 @@ public class PipelineRunner {
                     }
                 }
 
+                // First-failure-stop: FAILED 발생 시 이후 Step 실행 안 함
                 if (result.getStatus() == Status.FAILED) {
                     finalStatus = Status.FAILED;
                     errorMessage = result.getErrorMessage();

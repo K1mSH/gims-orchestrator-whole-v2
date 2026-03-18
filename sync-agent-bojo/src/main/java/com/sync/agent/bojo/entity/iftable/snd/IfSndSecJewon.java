@@ -7,6 +7,16 @@ import javax.persistence.*;
 import java.sql.Date;
 import java.time.LocalDateTime;
 
+/**
+ * IF_SND 제원(관측소 기본정보) 엔티티.
+ *
+ * <p>SND 파이프라인에서 Target DB의 제원 데이터를 IF_SND 테이블로 추출할 때 사용된다.
+ * {@code source_refs}에 UK, {@code execution_id}에 인덱스가 설정되어 있다.</p>
+ *
+ * <p>테이블: {@code if_snd_sec_jewon}</p>
+ *
+ * @see com.sync.agent.bojo.entity.target.SecJewon
+ */
 @Entity
 @Table(name = "if_snd_sec_jewon",
        uniqueConstraints = @UniqueConstraint(

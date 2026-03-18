@@ -7,6 +7,15 @@ import javax.persistence.*;
 import java.sql.Date;
 import java.sql.Time;
 
+/**
+ * Target DB 관측데이터 엔티티.
+ *
+ * <p>Loader 파이프라인에서 IF_RSV의 관측 시계열 데이터를 UPSERT하는 최종 목적지이다.
+ * 수위(gwdep), 수온(gwtemp), 전기전도도(ec) 등을 저장하며,
+ * {@code source_refs}로 원본 추적, {@code execution_id}로 실행 이력 조회가 가능하다.</p>
+ *
+ * <p>테이블: {@code sec_obsvdata} (UK: source_refs, IDX: execution_id)</p>
+ */
 @Entity
 @Table(name = "sec_obsvdata",
        uniqueConstraints = @UniqueConstraint(

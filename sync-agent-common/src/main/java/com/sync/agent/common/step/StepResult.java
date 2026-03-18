@@ -3,6 +3,12 @@ package com.sync.agent.common.step;
 import lombok.Builder;
 import lombok.Getter;
 
+/**
+ * 개별 Step 실행 결과
+ *
+ * StepExecutor.execute()가 반환하며, PipelineRunner가 stepResults 리스트에 수집.
+ * 팩토리 메서드: success(), failed(), skipped()로 생성.
+ */
 @Getter
 @Builder
 public class StepResult {

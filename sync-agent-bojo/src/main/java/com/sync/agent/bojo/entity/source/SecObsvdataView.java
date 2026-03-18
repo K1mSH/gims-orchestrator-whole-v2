@@ -7,6 +7,16 @@ import javax.persistence.*;
 import java.sql.Date;
 import java.sql.Time;
 
+/**
+ * 외부 소스 DB의 관측데이터 뷰 엔티티 (읽기 전용).
+ *
+ * <p>RCV 파이프라인에서 외부 업체 DB의 관측 시계열 데이터를 SELECT할 때 사용된다.
+ * 복합PK: {@code obsv_code} + {@code obsv_date} + {@code obsv_time}.</p>
+ *
+ * <p>테이블(뷰): {@code sec_obsvdata_view}</p>
+ *
+ * @see SecObsvdataViewId
+ */
 @Entity
 @Table(name = "sec_obsvdata_view")
 @org.hibernate.annotations.Table(appliesTo = "sec_obsvdata_view", comment = "외부 소스 관측데이터 뷰")
