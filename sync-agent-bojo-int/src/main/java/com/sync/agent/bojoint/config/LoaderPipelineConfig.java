@@ -5,7 +5,6 @@ import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.pipeline.PipelineRunner;
 import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.service.IfTableService;
-import com.sync.agent.common.step.ExecutionModeDefinition;
 import com.sync.agent.common.step.StepDefinition;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,9 +67,8 @@ public class LoaderPipelineConfig {
 
                 PipelineRunner runner = new PipelineRunner(def.getAgentCode(), List.of(loadStep));
                 List<StepDefinition> stepDefs = buildStepDefinitions(def);
-                List<ExecutionModeDefinition> modes = buildExecutionModes(def);
-                pipelineRegistry.register(def.getAgentCode(), "LOADER", runner, stepDefs, modes);
-                log.info("Registered Loader pipeline: {} (step={}, modes={})", def.getAgentCode(), stepCfg.getId(), modes.size());
+                pipelineRegistry.register(def.getAgentCode(), "LOADER", runner, stepDefs);
+                log.info("Registered Loader pipeline: {} (step={})", def.getAgentCode(), stepCfg.getId());
 
             } catch (Exception e) {
                 log.error("Failed to register Loader pipeline: {}", def.getAgentCode(), e);
@@ -93,17 +91,4 @@ public class LoaderPipelineConfig {
         return defs;
     }
 
-    private List<ExecutionModeDefinition> buildExecutionModes(AgentDefinition def) {
-        List<ExecutionModeDefinition> modes = new ArrayList<>();
-        for (AgentDefinition.ExecutionModeConfig cfg : def.getExecutionModes()) {
-            modes.add(ExecutionModeDefinition.builder()
-                    .modeId(cfg.getModeId())
-                    .modeName(cfg.getModeName())
-                    .description(cfg.getDescription())
-                    .displayOrder(cfg.getDisplayOrder())
-                    .isDefault(cfg.isDefault())
-                    .build());
-        }
-        return modes;
-    }
 }

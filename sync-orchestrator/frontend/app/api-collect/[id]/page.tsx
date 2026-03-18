@@ -57,9 +57,6 @@ export default function ApiCollectDetailPage() {
           &larr; 목록
         </button>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{endpoint.apiName}</h1>
-        <code style={{ fontSize: '0.8rem', background: 'var(--gray-100)', padding: '4px 8px', borderRadius: '4px' }}>
-          {endpoint.apiCode}
-        </code>
         <span style={{
           display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
           background: endpoint.isActive ? 'var(--success)' : 'var(--gray-400)',

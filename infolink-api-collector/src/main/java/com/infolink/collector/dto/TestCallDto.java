@@ -16,6 +16,33 @@ public class TestCallDto {
         private Map<String, String> paramOverrides;
     }
 
+    /** 저장 없이 인라인 테스트 요청 */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class InlineRequest {
+        private String url;
+        private String httpMethod;
+        private String contentType;
+        private String headers;
+        private String authType;
+        private String authConfig;
+        private List<InlineParam> params;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class InlineParam {
+        private String paramName;
+        private String paramType;
+        private String valueType;
+        private String staticValue;
+        private String dynamicType;
+        private String dynamicFormat;
+        private Integer dynamicOffset;
+    }
+
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder

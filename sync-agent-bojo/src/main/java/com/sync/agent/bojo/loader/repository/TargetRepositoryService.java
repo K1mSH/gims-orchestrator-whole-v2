@@ -1203,4 +1203,62 @@ public class TargetRepositoryService {
     public List<IfRsvSecObsvdata> findIfRsvObsvdataByObsvCodeAndRsvExecutionId(String obsvCode, String executionId) {
         return findIfRsvObsvdataByObsvCodeAndExecutionId(obsvCode, executionId);
     }
+
+    // ==================== 동적 조건 기반 조회 (Resync) ====================
+
+    /**
+     * IF_RSV 제원 - 동적 조건으로 조회 (resync 실행용)
+     * ConditionBuilder로 WHERE 절 생성 후 native query 실행
+     *
+     * @param conditions 동적 조건 (null/empty면 전체 조회)
+     * @return 조건에 맞는 IF_RSV 제원 목록
+     */
+    @SuppressWarnings("unchecked")
+    public List<IfRsvSecJewon> findIfRsvJewonForResync(
+            java.util.List<com.sync.agent.common.step.ExecutionCondition> conditions) {
+        String dbType = entityManagerService.getTargetDbType();
+        com.sync.agent.common.step.ConditionBuilder.WhereClause where =
+                com.sync.agent.common.step.ConditionBuilder.build(conditions, dbType);
+
+        EntityManager em = entityManagerService.getTargetEntityManager();
+        try {
+            String sql = "SELECT * FROM if_rsv_sec_jewon" + where.toWhereSql();
+            javax.persistence.Query query = em.createNativeQuery(sql, IfRsvSecJewon.class);
+            Object[] params = where.getParamsArray();
+            for (int i = 0; i < params.length; i++) {
+                query.setParameter(i + 1, params[i]);
+            }
+            return query.getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * IF_RSV 관측데이터 - 동적 조건으로 조회 (resync 실행용)
+     * ConditionBuilder로 WHERE 절 생성 후 native query 실행
+     *
+     * @param conditions 동적 조건 (null/empty면 전체 조회)
+     * @return 조건에 맞는 IF_RSV 관측데이터 목록
+     */
+    @SuppressWarnings("unchecked")
+    public List<IfRsvSecObsvdata> findIfRsvObsvdataForResync(
+            java.util.List<com.sync.agent.common.step.ExecutionCondition> conditions) {
+        String dbType = entityManagerService.getTargetDbType();
+        com.sync.agent.common.step.ConditionBuilder.WhereClause where =
+                com.sync.agent.common.step.ConditionBuilder.build(conditions, dbType);
+
+        EntityManager em = entityManagerService.getTargetEntityManager();
+        try {
+            String sql = "SELECT * FROM if_rsv_sec_obsvdata" + where.toWhereSql();
+            javax.persistence.Query query = em.createNativeQuery(sql, IfRsvSecObsvdata.class);
+            Object[] params = where.getParamsArray();
+            for (int i = 0; i < params.length; i++) {
+                query.setParameter(i + 1, params[i]);
+            }
+            return query.getResultList();
+        } finally {
+            em.close();
+        }
+    }
 }

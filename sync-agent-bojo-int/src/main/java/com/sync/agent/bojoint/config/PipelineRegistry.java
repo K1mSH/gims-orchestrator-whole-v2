@@ -1,7 +1,6 @@
 package com.sync.agent.bojoint.config;
 
 import com.sync.agent.common.pipeline.PipelineRunner;
-import com.sync.agent.common.step.ExecutionModeDefinition;
 import com.sync.agent.common.step.StepDefinition;
 import com.sync.agent.common.step.StepDefinitionProvider;
 import lombok.extern.slf4j.Slf4j;
@@ -12,54 +11,85 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * PipelineRegistry - agentCode -> PipelineRunner 라우팅
+ * PipelineRegistry - (agentCode, modeId) -> PipelineRunner 라우팅
  * StepDefinitionProvider 구현하여 Step 메타데이터 제공
  */
 @Slf4j
 @Component
 public class PipelineRegistry implements StepDefinitionProvider {
 
-    private final Map<String, PipelineRunner> runners = new ConcurrentHashMap<>();
+    private static final String DEFAULT_MODE = "default";
+
+    // agentCode -> (modeId -> PipelineRunner)
+    private final Map<String, Map<String, PipelineRunner>> runners = new ConcurrentHashMap<>();
     private final Map<String, String> agentTypes = new ConcurrentHashMap<>();
     private final Map<String, List<StepDefinition>> stepDefs = new ConcurrentHashMap<>();
-    private final Map<String, List<ExecutionModeDefinition>> executionModes = new ConcurrentHashMap<>();
 
+    /**
+     * PipelineRunner 등록 (default 모드, StepDefinition 없이)
+     */
     public void register(String agentCode, String agentType, PipelineRunner runner) {
-        register(agentCode, agentType, runner, List.of());
+        register(agentCode, agentType, DEFAULT_MODE, runner, List.of());
     }
 
+    /**
+     * PipelineRunner 등록 (default 모드, StepDefinition 포함)
+     */
     public void register(String agentCode, String agentType, PipelineRunner runner,
                           List<StepDefinition> stepDefinitions) {
-        register(agentCode, agentType, runner, stepDefinitions, List.of());
+        register(agentCode, agentType, DEFAULT_MODE, runner, stepDefinitions);
     }
 
-    public void register(String agentCode, String agentType, PipelineRunner runner,
-                          List<StepDefinition> stepDefinitions,
-                          List<ExecutionModeDefinition> modes) {
-        runners.put(agentCode, runner);
+    /**
+     * PipelineRunner 등록 (모드 지정, StepDefinition 없이)
+     */
+    public void register(String agentCode, String agentType, String modeId, PipelineRunner runner) {
+        register(agentCode, agentType, modeId, runner, List.of());
+    }
+
+    /**
+     * PipelineRunner 등록 (모드 지정, StepDefinition 포함)
+     */
+    public void register(String agentCode, String agentType, String modeId, PipelineRunner runner,
+                          List<StepDefinition> stepDefinitions) {
+        runners.computeIfAbsent(agentCode, k -> new ConcurrentHashMap<>()).put(modeId, runner);
         agentTypes.put(agentCode, agentType);
         if (stepDefinitions != null && !stepDefinitions.isEmpty()) {
             stepDefs.put(agentCode, stepDefinitions);
         }
-        if (modes != null && !modes.isEmpty()) {
-            executionModes.put(agentCode, modes);
-        }
-        log.info("Registered pipeline: agentCode={}, type={}, steps={}, modes={}",
-                agentCode, agentType,
-                stepDefinitions != null ? stepDefinitions.size() : 0,
-                modes != null ? modes.size() : 0);
+        log.info("Registered pipeline: agentCode={}, type={}, modeId={}, steps={}",
+                agentCode, agentType, modeId,
+                stepDefinitions != null ? stepDefinitions.size() : 0);
     }
 
-    public List<ExecutionModeDefinition> getExecutionModes(String agentCode) {
-        return executionModes.getOrDefault(agentCode, List.of());
-    }
-
-    public PipelineRunner getRunner(String agentCode) {
-        PipelineRunner runner = runners.get(agentCode);
-        if (runner == null) {
+    /**
+     * agentCode + modeId로 PipelineRunner 조회 (modeId 없으면 default fallback)
+     */
+    public PipelineRunner getRunner(String agentCode, String modeId) {
+        Map<String, PipelineRunner> modeRunners = runners.get(agentCode);
+        if (modeRunners == null) {
             throw new IllegalArgumentException("Unknown agentCode: " + agentCode + ". Registered: " + runners.keySet());
         }
+
+        PipelineRunner runner = modeRunners.get(modeId);
+        if (runner == null) {
+            runner = modeRunners.get(DEFAULT_MODE);
+            if (runner != null) {
+                log.info("ModeId '{}' not found for agentCode={}, falling back to default", modeId, agentCode);
+            }
+        }
+        if (runner == null) {
+            throw new IllegalArgumentException("No pipeline found for agentCode=" + agentCode
+                    + ", modeId=" + modeId + ". Available modes: " + modeRunners.keySet());
+        }
         return runner;
+    }
+
+    /**
+     * agentCode로 PipelineRunner 조회 (default 모드)
+     */
+    public PipelineRunner getRunner(String agentCode) {
+        return getRunner(agentCode, DEFAULT_MODE);
     }
 
     public String getAgentType(String agentCode) {
@@ -88,6 +118,6 @@ public class PipelineRegistry implements StepDefinitionProvider {
     }
 
     public int size() {
-        return runners.size();
+        return (int) runners.values().stream().mapToLong(Map::size).sum();
     }
 }

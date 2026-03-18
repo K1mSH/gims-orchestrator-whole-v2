@@ -5,6 +5,9 @@ import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.service.IfTableService;
+import com.sync.agent.common.step.ConditionBuilder;
+import com.sync.agent.common.step.ExecutionCondition;
+import com.sync.agent.common.step.ExecutionOptions;
 import com.sync.agent.common.step.StepContext;
 import com.sync.agent.common.step.StepExecutor;
 import com.sync.agent.common.step.StepResult;
@@ -101,13 +104,18 @@ public class InternalLoadStep implements StepExecutor {
 
             String executionId = context.getExecutionId();
 
-            // 시간설정 실행 여부
-            LocalDateTime paramStartTime = context.getParam("startTime");
-            LocalDateTime paramEndTime = context.getParam("endTime");
-            boolean isTimeRangeExecution = (paramStartTime != null || paramEndTime != null);
+            // 조건실행 판별
+            ExecutionOptions options = context.getExecutionOptions();
+            boolean isResyncExecution = options.hasConditions() || options.isTimeRangeExecution();
 
-            if (isTimeRangeExecution) {
-                log.info("[{}] Time-range execution: {} ~ {}", getStepId(), paramStartTime, paramEndTime);
+            // 통합 조건 빌드
+            List<ExecutionCondition> mergedConditions = buildMergedConditions(options);
+
+            if (isResyncExecution) {
+                log.info("[{}] Resync execution: {} conditions", getStepId(), mergedConditions.size());
+                for (ExecutionCondition c : mergedConditions) {
+                    log.info("[{}]   condition: {} {} {}", getStepId(), c.getColumn(), c.getOperator(), c.getValue());
+                }
             }
 
             // ===== 1. 사전 매핑 로드 (Target DB에서 READ) =====
@@ -128,14 +136,12 @@ public class InternalLoadStep implements StepExecutor {
             log.info("[{}] Phase 2: Loading obsvdata (EAV expansion)", getStepId());
 
             List<Map<String, Object>> pendingObsv;
-            if (isTimeRangeExecution) {
-                // 시간설정 실행: 해당 구간 전체 조회
-                pendingObsv = sourceJdbc.queryForList(
-                        "SELECT * FROM " + ifObsvdataTable +
-                        " WHERE obsv_date >= ? AND obsv_date <= ?",
-                        java.sql.Date.valueOf(paramStartTime.toLocalDate()),
-                        java.sql.Date.valueOf(paramEndTime.toLocalDate()));
-                log.info("[{}] Time-range query: {} ~ {}", getStepId(), paramStartTime, paramEndTime);
+            String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
+            if (isResyncExecution) {
+                // Resync 실행: 통합 조건으로 조회
+                ConditionBuilder.WhereClause where = ConditionBuilder.build(mergedConditions, sourceDbType);
+                String sql = "SELECT * FROM " + ifObsvdataTable + where.toWhereSql();
+                pendingObsv = sourceJdbc.queryForList(sql, where.getParamsArray());
             } else {
                 // 기본 실행: PENDING 또는 RESYNC
                 pendingObsv = sourceJdbc.queryForList(
@@ -145,7 +151,7 @@ public class InternalLoadStep implements StepExecutor {
             obsvReadCount = pendingObsv.size();
             readCount += obsvReadCount;
             log.info("[{}] Read {} {} obsvdata records from IF_RSV", getStepId(), obsvReadCount,
-                    isTimeRangeExecution ? "time-range" : "pending");
+                    isResyncExecution ? "resync (conditions)" : "pending");
 
             if (!pendingObsv.isEmpty()) {
                 List<Object[]> expandedRows = new ArrayList<>();
@@ -235,27 +241,30 @@ public class InternalLoadStep implements StepExecutor {
                 }
 
                 // ===== 3. Link 테이블 갱신 (batch UPSERT) =====
-                // 현행(레거시): 관측소별 개별 SELECT + INSERT/UPDATE (2N회 DB 호출)
-                // 개선: COALESCE로 frst 보존을 SQL에 위임, batch UPSERT로 일괄 처리
-                log.info("[{}] Phase 3: Batch upserting link table ({} codes)", getStepId(), maxDateTimePerCode.size());
+                // Resync 실행 시 Link 갱신 스킵 (과거 데이터로 덮어쓰기 방지)
+                if (isResyncExecution) {
+                    log.info("[{}] Phase 3: Link table update SKIPPED (resync execution)", getStepId());
+                } else {
+                    log.info("[{}] Phase 3: Batch upserting link table ({} codes)", getStepId(), maxDateTimePerCode.size());
 
-                Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-                List<Object[]> linkRows = new ArrayList<>();
-                for (Map.Entry<String, String[]> entry : maxDateTimePerCode.entrySet()) {
-                    String obsvCode = entry.getKey();
-                    String[] dateTime = entry.getValue();
-                    Long spotId = spotIdMap.get(obsvCode);
-                    if (spotId == null) continue;
+                    Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+                    List<Object[]> linkRows = new ArrayList<>();
+                    for (Map.Entry<String, String[]> entry : maxDateTimePerCode.entrySet()) {
+                        String obsvCode = entry.getKey();
+                        String[] dateTime = entry.getValue();
+                        Long spotId = spotIdMap.get(obsvCode);
+                        if (spotId == null) continue;
 
-                    linkRows.add(new Object[]{
-                            obsvCode, spotId,
-                            dateTime[0], dateTime[1],  // last_obsrvn_de, last_obsrvn_time
-                            now,                        // change_dt
-                            dateTime[0], dateTime[1]    // frst_date, frst_time (신규 INSERT 시만 사용)
-                    });
+                        linkRows.add(new Object[]{
+                                obsvCode, spotId,
+                                dateTime[0], dateTime[1],  // last_obsrvn_de, last_obsrvn_time
+                                now,                        // change_dt
+                                dateTime[0], dateTime[1]    // frst_date, frst_time (신규 INSERT 시만 사용)
+                        });
+                    }
+                    linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
+                    log.info("[{}] Upserted {} link records", getStepId(), linkUpdated);
                 }
-                linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
-                log.info("[{}] Upserted {} link records", getStepId(), linkUpdated);
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
@@ -296,6 +305,44 @@ public class InternalLoadStep implements StepExecutor {
 
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
         }
+    }
+
+    // ==================== 조건 빌드 ====================
+
+    /**
+     * ExecutionOptions에서 통합 조건 목록 생성
+     */
+    private List<ExecutionCondition> buildMergedConditions(ExecutionOptions options) {
+        List<ExecutionCondition> merged = new ArrayList<>();
+
+        // 1. 사용자 동적 조건
+        if (options.hasConditions()) {
+            merged.addAll(options.getConditions());
+        }
+
+        // 2. 시간 범위 → obsv_date 조건
+        if (options.isTimeRangeExecution()) {
+            LocalDateTime start = options.getTimeRange().getStartTime();
+            LocalDateTime end = options.getTimeRange().getEndTime();
+            if (start != null && end != null) {
+                merged.add(ExecutionCondition.between("obsv_date",
+                        start.toLocalDate().toString(), end.toLocalDate().toString()));
+            } else if (start != null) {
+                merged.add(ExecutionCondition.gte("obsv_date", start.toLocalDate().toString()));
+            }
+        }
+
+        // 3. obsv-code 파라미터 → obsv_code 조건
+        String filterObsvCode = options.getParamValue("obsv-code");
+        if (filterObsvCode != null) {
+            if (filterObsvCode.contains(",")) {
+                merged.add(ExecutionCondition.in("obsv_code", filterObsvCode));
+            } else {
+                merged.add(ExecutionCondition.eq("obsv_code", filterObsvCode.trim()));
+            }
+        }
+
+        return merged;
     }
 
     // ==================== 헬퍼 메서드 ====================

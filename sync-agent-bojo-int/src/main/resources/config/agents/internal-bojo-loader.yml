@@ -1,28 +1,38 @@
+# ── Internal Loader Agent ──
+# 내부망 IF_RSV 데이터를 GIMS 실테이블에 적재한다.
+# 파이프라인의 최종 단계로, 실제 GIMS 시스템에서 사용하는 테이블에 데이터를 반영한다.
+# 파이프라인 흐름: IF_RSV(if-table) → GIMS 실테이블(target-table)
 agent-code: internal-bojo-loader
 type: LOADER
+
+# IF 테이블: Loader가 SELECT하는 소스 (Internal RCV가 적재한 데이터)
 if-table:
   jewon: if_rsv_sec_jewon
   obsvdata: if_rsv_sec_obsvdata
+
+# Target 테이블: Loader가 INSERT/UPSERT하는 대상 (GIMS 실테이블)
 target-table:
-  jewon: tm_gd970001
-  obsvdata: pm_gd970201
-  link: tm_gd980002
-  result: tm_gd970101
+  jewon: tm_gd970001                  # GIMS 제원 테이블
+  obsvdata: pm_gd970201              # GIMS 관측데이터 테이블
+  link: tm_gd980002                  # GIMS 관측소 매핑 테이블 (link_ngwis → GIMS 매핑)
+  result: tm_gd970101                # GIMS 종합결과 테이블
+
+# Step 실행 설정: 내부망 전용 로직 (GIMS 스키마에 맞춘 변환/적재)
 step:
   id: internal-load
   name: 내부망 GIMS 적재
+
+# 프론트엔드 "조건실행 > WHERE 조건"에서 사용자가 선택할 수 있는 테이블 목록.
+# tm_gd970001은 target-table이지만 재동기화 시 SELECT 조건 대상이 되므로 포함한다.
+select-tables:
+  - if_rsv_sec_jewon
+  - if_rsv_sec_obsvdata
+  - tm_gd970001
+
+# 프론트엔드 모니터링/추적용 메타데이터. 실제 파이프라인 로직은 위의 if-table/target-table을 사용한다.
+# jewon 매핑은 생략: tm_gd970001은 link/result와 함께 내부 로직에서 처리되어 단순 1:1 매핑이 아님.
 table-mappings:
   - name: obsvdata
     source: [if_rsv_sec_obsvdata]
     target: [pm_gd970201]
-execution-modes:
-  - mode-id: incremental
-    mode-name: 증분 적재
-    description: PENDING 상태 데이터만 적재 (기본 동작)
-    display-order: 1
-    is-default: true
-  - mode-id: full-reload
-    mode-name: 전체 재적재
-    description: 모든 IF_RSV 데이터를 Target에 재적재 (시간 범위 무시)
-    display-order: 2
-    is-default: false
+

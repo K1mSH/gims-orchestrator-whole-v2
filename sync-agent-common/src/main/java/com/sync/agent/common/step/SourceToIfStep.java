@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -144,14 +145,27 @@ public class SourceToIfStep implements StepExecutor {
             log.info("[{}] Columns: all={}, select={}, insert={} (auto-increment PK excluded from INSERT only)",
                     getStepId(), allColumns.size(), selectColumns.size(), columns.size());
 
+            // conditions 실행 시 link 테이블 갱신 스킵 플래그 설정
+            ExecutionOptions execOptions = context.getExecutionOptions();
+            if (execOptions != null && execOptions.hasConditions()) {
+                context.getSharedData().put("skipLinkUpdate", true);
+                log.info("[{}] Condition execution detected — link table update will be skipped", getStepId());
+            }
+
             // 1. 데이터 조회 (타입에 따라 다른 방식) - selectColumns 사용 (id 포함)
             List<Map<String, Object>> records;
 
-            if (config.isCustomStaging() && config.getCustomDataFetcher() != null) {
+            // conditions 실행 시 CUSTOM_STAGING이어도 SIMPLE_COPY 경로 사용
+            // → Link 기반 증분 로직은 기본 스케줄 실행 전용, 조건 실행은 직접 조회
+            boolean useSimpleCopy = execOptions != null && (execOptions.hasConditions() || execOptions.isTimeRangeExecution());
+
+            if (config.isCustomStaging() && config.getCustomDataFetcher() != null && !useSimpleCopy) {
                 log.info("[{}] Using custom DataFetcher for CUSTOM_STAGING", getStepId());
                 records = config.getCustomDataFetcher().fetch(context);
             } else {
-                log.info("[{}] Using default fetch for SIMPLE_COPY", getStepId());
+                if (useSimpleCopy && config.isCustomStaging()) {
+                    log.info("[{}] Conditions/TimeRange present — bypassing CUSTOM_STAGING, using SIMPLE_COPY", getStepId());
+                }
                 records = fetchSimpleCopy(context, selectColumns);
             }
 
@@ -198,13 +212,16 @@ public class SourceToIfStep implements StepExecutor {
             String actualTargetIfTable = JdbcTableNameResolver.resolve(
                     targetJdbc.getDataSource(), targetDsId, config.getTargetIfTable());
 
-            // 기간 지정 실행 여부 확인 (RESYNC 상태 결정용)
+            // 조건 실행 여부 확인 (conditions 또는 기존 시간범위)
+            ExecutionOptions execOpts = context.getExecutionOptions();
+            boolean isConditionExecution = execOpts != null && execOpts.hasConditions();
             LocalDateTime paramStartTime = context.getParam("startTime");
             LocalDateTime paramEndTime = context.getParam("endTime");
             boolean isTimeRangeExecution = (paramStartTime != null && paramEndTime != null);
+            boolean isResyncExecution = isConditionExecution || isTimeRangeExecution;
 
             String targetDbType = dataSourceProvider.getDbType(targetDsId);
-            boolean useUpsert = config.isFullCopy() || isTimeRangeExecution;
+            boolean useUpsert = config.isFullCopy() || isResyncExecution;
             String insertSql = buildUpsertSql(actualTargetIfTable, columns, targetDbType, useUpsert);
             log.info("[{}] {} SQL: {}", getStepId(), useUpsert ? "UPSERT" : "INSERT (DO NOTHING)", insertSql);
             String conflictInfo = (config.getConflictKey() != null && !config.getConflictKey().isEmpty())
@@ -249,7 +266,7 @@ public class SourceToIfStep implements StepExecutor {
                 // link_status 결정
                 Object sourceLinkStatus = getRecordValue(record, "link_status");
                 String recordLinkStatus;
-                if (isTimeRangeExecution) {
+                if (isResyncExecution) {
                     recordLinkStatus = "RESYNC";
                 } else if ("RESYNC".equals(sourceLinkStatus)) {
                     recordLinkStatus = "RESYNC";
@@ -538,9 +555,12 @@ public class SourceToIfStep implements StepExecutor {
 
     /**
      * SIMPLE_COPY 모드: 조건에 따라 데이터 조회
-     * - fullCopy=true: 전체 조회 (RSV 제원 등 외부 DB용)
-     * - 기간 지정 실행: startTime/endTime 범위
-     * - 일반 실행: link_status = 'PENDING' 또는 NULL
+     *
+     * 디폴트 조건:
+     * - fullCopy=true: 조건 없음 (전체 조회)
+     * - fullCopy=false: link_status IN ('PENDING', 'RESYNC', 'FAILED') OR IS NULL
+     *
+     * 실행 시 conditions가 있으면 같은 컬럼은 대체, 다른 컬럼은 추가.
      */
     private List<Map<String, Object>> fetchSimpleCopy(StepContext context, List<String> columns) {
         String sourceDsId = getSourceDatasourceId(context);
@@ -550,38 +570,78 @@ public class SourceToIfStep implements StepExecutor {
         String actualSourceTable = JdbcTableNameResolver.resolve(
                 sourceJdbc.getDataSource(), sourceDsId, config.getSourceTable());
 
-        List<Map<String, Object>> records;
+        ExecutionOptions execOptions = context.getExecutionOptions();
+        boolean hasConditions = execOptions != null && execOptions.hasConditions();
 
-        if (config.isFullCopy()) {
-            String selectSql = buildFullCopySelectSql(actualSourceTable, columns, sourceDbType);
-            records = sourceJdbc.queryForList(selectSql);
-            log.info("[{}] Full copy mode - Found {} records from source table '{}'",
-                    getStepId(), records.size(), actualSourceTable);
-        } else {
-            LocalDateTime paramStartTime = context.getParam("startTime");
-            LocalDateTime paramEndTime = context.getParam("endTime");
-
-            if (paramStartTime != null && paramEndTime != null) {
-                log.info("[{}] Time-range execution: {} ~ {}", getStepId(), paramStartTime, paramEndTime);
-
-                String selectSql = buildSelectSql(actualSourceTable, columns, sourceDbType);
-                records = sourceJdbc.queryForList(selectSql,
-                        Timestamp.valueOf(paramStartTime), Timestamp.valueOf(paramEndTime));
-
-                log.info("[{}] Found {} records from source table '{}' in range {} ~ {}",
-                        getStepId(), records.size(), actualSourceTable, paramStartTime, paramEndTime);
-            } else {
-                log.info("[{}] Normal execution: querying PENDING records", getStepId());
-
-                String selectSql = buildPendingSelectSql(actualSourceTable, columns, sourceDbType);
-                records = sourceJdbc.queryForList(selectSql);
-
-                log.info("[{}] Found {} PENDING records from source table '{}'",
-                        getStepId(), records.size(), actualSourceTable);
+        // 디폴트 조건 결정
+        Map<String, ExecutionCondition> defaults = new LinkedHashMap<>();
+        if (!config.isFullCopy()) {
+            // fullCopy가 아니면 PENDING/RESYNC/FAILED 필터가 디폴트
+            // 단, 동적 conditions가 있으면 이 디폴트를 사용하지 않음 (재동기화 목적이므로)
+            if (!hasConditions) {
+                defaults.put("link_status", ExecutionCondition.in("link_status", "PENDING,RESYNC,FAILED"));
             }
         }
 
+        // 하위호환: 기존 startTime/endTime도 conditions로 변환
+        if (!hasConditions) {
+            LocalDateTime paramStartTime = context.getParam("startTime");
+            LocalDateTime paramEndTime = context.getParam("endTime");
+            if (paramStartTime != null && paramEndTime != null) {
+                String timeCol = resolveTimeColumn();
+                if (timeCol != null) {
+                    defaults.remove("link_status"); // 시간범위 실행 시 link_status 필터 제거
+                    defaults.put(timeCol, ExecutionCondition.between(timeCol,
+                            paramStartTime.toString(), paramEndTime.toString()));
+                    log.info("[{}] Time-range execution (legacy): {} ~ {}", getStepId(), paramStartTime, paramEndTime);
+                }
+            }
+        }
+
+        // conditions merge + WHERE 빌드
+        List<ExecutionCondition> execConditions = (execOptions != null) ? execOptions.getConditions() : null;
+        ConditionBuilder.WhereClause where = ConditionBuilder.buildMerged(defaults, execConditions, sourceDbType);
+
+        // SQL 생성
+        String columnList = columns.stream()
+                .map(c -> qi(c, sourceDbType))
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
+        String quotedTable = qi(actualSourceTable, sourceDbType);
+
+        // link_status가 디폴트에 있으면 SELECT에 포함 (Source link_status 업데이트용)
+        String selectColumns = columnList;
+        if (!config.isFullCopy() && !hasConditions && defaults.containsKey("link_status")) {
+            selectColumns = columnList + ", " + qi("link_status", sourceDbType);
+        }
+
+        String sql = "SELECT " + selectColumns + " FROM " + quotedTable + where.toWhereSql();
+
+        List<Map<String, Object>> records = sourceJdbc.queryForList(sql, where.getParamsArray());
+
+        if (hasConditions) {
+            log.info("[{}] Condition execution - Found {} records from '{}' with {} conditions",
+                    getStepId(), records.size(), actualSourceTable,
+                    execConditions != null ? execConditions.size() : 0);
+        } else {
+            log.info("[{}] Found {} records from source table '{}'",
+                    getStepId(), records.size(), actualSourceTable);
+        }
+
         return records;
+    }
+
+    /**
+     * 시간 컬럼명 결정 (하위호환용)
+     */
+    private String resolveTimeColumn() {
+        if (config.getTimeColumn() != null && !config.getTimeColumn().isBlank()) {
+            return config.getTimeColumn();
+        }
+        if (config.getDateColumn() != null && !config.getDateColumn().isBlank()) {
+            return config.getDateColumn();
+        }
+        return null;
     }
 
     private String buildPendingSelectSql(String actualTableName, List<String> columns, String dbType) {

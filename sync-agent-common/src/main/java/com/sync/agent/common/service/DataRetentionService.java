@@ -38,6 +38,11 @@ public class DataRetentionService {
 
         for (RetentionConfig.TableRetention target : config.getTargets()) {
             try {
+                if (target.getRetentionDays() < 1) {
+                    log.warn("[Retention] retentionDays가 1 미만({}), 테이블 스킵: {}", target.getRetentionDays(), target.getTable());
+                    results.add(new TableResult(target.getTable(), 0, null, "retentionDays must be >= 1, got: " + target.getRetentionDays()));
+                    continue;
+                }
                 LocalDate cutoffDate = LocalDate.now().minusDays(target.getRetentionDays());
                 LocalDateTime cutoffDateTime = cutoffDate.atStartOfDay();
                 String sql = String.format("DELETE FROM %s WHERE %s < ?",

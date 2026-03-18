@@ -1,6 +1,6 @@
 package com.infolink.collector.service;
 
-import com.infolink.collector.domain.ApiParam;
+import com.infolink.collector.entity.ApiParam;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;

@@ -103,21 +103,6 @@ public class Agent {
     @Builder.Default
     private List<AgentTable> agentTables = new ArrayList<>();
 
-    // Agent 실행 파라미터 메타데이터
-    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<AgentExecutionParam> executionParams = new ArrayList<>();
-
-    // Agent Step 메타데이터
-    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<AgentStepDefinition> stepDefinitions = new ArrayList<>();
-
-    // Agent 실행 모드 메타데이터
-    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<AgentExecutionMode> executionModes = new ArrayList<>();
-
     @Column(name = "retention_config", columnDefinition = "TEXT")
     @Comment("데이터 보존(Retention) 설정 JSON")
     private String retentionConfig;

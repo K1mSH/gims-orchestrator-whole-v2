@@ -1,6 +1,6 @@
 package com.infolink.collector.controller;
 
-import com.infolink.collector.domain.ApiExecutionHistoryRepository;
+import com.infolink.collector.repository.ApiExecutionHistoryRepository;
 import com.infolink.collector.dto.ApiExecutionHistoryDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

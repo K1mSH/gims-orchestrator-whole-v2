@@ -32,6 +32,9 @@ public class AgentDefinition {
     // Step 설정 (Loader)
     private StepConfig step;
 
+    // select-tables: 프론트 WHERE 조건 드롭다운에 노출할 테이블 목록
+    private List<String> selectTables = new ArrayList<>();
+
     // table-mappings (Source→Target 관계 명시)
     private List<TableMapping> tableMappings = new ArrayList<>();
 

@@ -7,9 +7,9 @@ spring:
 
   # Agent 자체 DB (로그, 실행 기록 저장용) - 내부망 PostgreSQL
   datasource:
-    url: jdbc:postgresql://localhost:29002/dev
-    username: k1m
-    password: 1111
+    url: ENC(uroYs9u+QwUMtCKphJCYSN2YXVhl2eZ5cDZnCvmwoG6ejQ33E/06ypmEzm069+cTNHC74pYJxcsqtKdkyxxyKCT/RYPjfeVBONmg3dCE+MI=)
+    username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
+    password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -24,7 +24,9 @@ spring:
 
 # Agent 공통 설정
 agent:
-  orchestrator-url: http://localhost:8080
+  orchestrator-url: ENC(OFVnMq6khLyzmLltDmT5G/bAMDkvZsa9Vm2o8a+aLtyOS63df427nLFCxDL/JjiahkhTBHS+FOALkdpIYMpPLA==)
+  proxy-url: ENC(GRtON1jZVP+jUZGRd5nOGYX2J8Qg1El8K/c34XrjAtD+H25i30qHZxNG44OQDqDsfgHH8rFNfcblA3iU0EzFLw==)
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
   zone: INTERNAL
   debug:
     step-delay-ms: 0

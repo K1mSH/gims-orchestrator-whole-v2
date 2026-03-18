@@ -1,13 +1,31 @@
+# ── DMZ Loader Agent ──
+# IF_RSV(인터페이스) 테이블에서 데이터를 읽어 DMZ Target DB에 적재한다.
+# 파이프라인 흐름: IF_RSV(if-table) → Target DB(target-table)
 agent-code: dmz-bojo-loader
 type: LOADER
+
+# IF 테이블: Loader가 SELECT하는 소스 (RCV가 적재한 데이터)
 if-table:
   jewon: if_rsv_sec_jewon
   obsvdata: if_rsv_sec_obsvdata
+
+# Target 테이블: Loader가 INSERT/UPSERT하는 대상
 target-table:
   jewon: sec_jewon
   obsvdata: sec_obsvdata
+
+# Step 실행 설정
 step:
-  batch-size: 1000
+  batch-size: 1000                   # JDBC batch UPSERT 단위 (건수)
+
+# 프론트엔드 "조건실행 > WHERE 조건"에서 사용자가 선택할 수 있는 테이블 목록.
+# sec_jewon은 target-table이지만 재동기화 시 SELECT 조건 대상이 되므로 포함한다.
+select-tables:
+  - if_rsv_sec_jewon
+  - if_rsv_sec_obsvdata
+  - sec_jewon
+
+# 프론트엔드 모니터링/추적용 메타데이터
 table-mappings:
   - name: jewon
     source: [if_rsv_sec_jewon]
@@ -15,4 +33,3 @@ table-mappings:
   - name: obsvdata
     source: [if_rsv_sec_obsvdata]
     target: [sec_obsvdata]
-

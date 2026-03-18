@@ -66,6 +66,19 @@ public class LinkTableUpdateStep implements StepExecutor {
         int updateCount = 0;
 
         try {
+            // conditions 실행 시 link 테이블 갱신 스킵 (과거 데이터로 덮어쓰기 방지)
+            Boolean skipLinkUpdate = (Boolean) context.getSharedData().get("skipLinkUpdate");
+            if (Boolean.TRUE.equals(skipLinkUpdate)) {
+                log.info("[{}] skipLinkUpdate=true — Link 테이블 갱신 스킵 (condition 실행)", STEP_ID);
+                return StepResult.builder()
+                        .stepId(STEP_ID)
+                        .status(com.sync.agent.common.step.Status.SUCCESS)
+                        .readCount(0).writeCount(0).skipCount(0)
+                        .durationMs(System.currentTimeMillis() - startTime)
+                        .sourceTable(ifTable).targetTable(linkTable)
+                        .build();
+            }
+
             String targetDsId = dataSourceProvider.getTargetDatasourceId();
             String dbType = dataSourceProvider.getDbType(targetDsId);
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);

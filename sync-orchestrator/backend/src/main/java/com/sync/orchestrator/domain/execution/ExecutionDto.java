@@ -105,12 +105,6 @@ public class ExecutionDto {
         private LocalDateTime endTime;    // 동기화 종료 시간 (optional)
 
         /**
-         * 실행 모드 ID (optional)
-         * Agent에 정의된 실행 방식 (예: "incremental", "full-reload")
-         */
-        private String executionModeId;
-
-        /**
          * 실행 필터 목록 (optional)
          * 각 필터: {"paramId":"sido","category":"FILTER","column":"sido","operator":"EQ","value":"경기도"}
          */
@@ -121,6 +115,14 @@ public class ExecutionDto {
          * 지정 시 해당 stepId만 실행, 미지정 시 전체 실행
          */
         private java.util.List<String> selectedStepIds;
+
+        /**
+         * 동적 WHERE 조건 (optional)
+         * 각 조건: {"column":"obsv_code","operator":"LIKE","value":"GPM-305%"}
+         * 지정 시 해당 조건으로 데이터 조회 (재동기화 모드, Link 증분 우회)
+         * 최소 1개 이상 필수 (전체 데이터 긁어오기 방지)
+         */
+        private java.util.List<java.util.Map<String, Object>> conditions;
     }
 
     /**

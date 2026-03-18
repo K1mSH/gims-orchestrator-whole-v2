@@ -1,6 +1,6 @@
 package com.infolink.collector.dto;
 
-import com.infolink.collector.domain.*;
+import com.infolink.collector.entity.*;
 import lombok.*;
 
 import javax.validation.constraints.NotBlank;
@@ -16,7 +16,6 @@ public class ApiEndpointDto {
     @Builder
     public static class CreateRequest {
         @NotBlank private String apiName;
-        @NotBlank private String apiCode;
         @NotBlank private String url;
         @NotBlank private String httpMethod;
         private String contentType;
@@ -52,7 +51,6 @@ public class ApiEndpointDto {
     public static class ListResponse {
         private Long id;
         private String apiName;
-        private String apiCode;
         private String url;
         private String httpMethod;
         private ApiEndpoint.AuthType authType;
@@ -67,7 +65,6 @@ public class ApiEndpointDto {
             return ListResponse.builder()
                     .id(e.getId())
                     .apiName(e.getApiName())
-                    .apiCode(e.getApiCode())
                     .url(e.getUrl())
                     .httpMethod(e.getHttpMethod())
                     .authType(e.getAuthType())
@@ -87,7 +84,6 @@ public class ApiEndpointDto {
     public static class DetailResponse {
         private Long id;
         private String apiName;
-        private String apiCode;
         private String url;
         private String httpMethod;
         private String contentType;
@@ -110,7 +106,6 @@ public class ApiEndpointDto {
             return DetailResponse.builder()
                     .id(e.getId())
                     .apiName(e.getApiName())
-                    .apiCode(e.getApiCode())
                     .url(e.getUrl())
                     .httpMethod(e.getHttpMethod())
                     .contentType(e.getContentType())

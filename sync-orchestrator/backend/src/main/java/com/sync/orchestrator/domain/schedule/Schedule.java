@@ -38,7 +38,7 @@ public class Schedule {
     private Boolean isEnabled = true;
 
     @Column(name = "execution_options", columnDefinition = "TEXT")
-    @Comment("실행 옵션 JSON")
+    @Comment("조건실행 옵션 JSON")
     private String executionOptions;
 
     @CreationTimestamp

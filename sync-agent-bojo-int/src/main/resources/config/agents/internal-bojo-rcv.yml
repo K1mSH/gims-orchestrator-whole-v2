@@ -1,19 +1,35 @@
+# ── Internal RCV Agent ──
+# DMZ에서 송신된 IF_SND 데이터를 내부망 IF_RSV(수신 인터페이스) 테이블에 적재한다.
+# DMZ → 내부망 데이터 전달의 수신 측 Agent.
+# 파이프라인 흐름: IF_SND(source, Proxy 경유) → IF_RSV(target)
 agent-code: internal-bojo-rcv
 type: RCV
+
+# 제원(관측소 기본정보) 수신 설정
 jewon:
-  source-table: if_snd_sec_jewon
-  target-table: if_rsv_sec_jewon
-  primary-key: id
-  conflict-key: source_refs
-  full-copy: true
-  skip-source-status-update: false
+  source-table: if_snd_sec_jewon      # SELECT 대상 (DMZ IF_SND 테이블, Proxy 경유 접근)
+  target-table: if_rsv_sec_jewon      # INSERT/UPSERT 대상 (내부망 IF_RSV 테이블)
+  primary-key: id                     # source 테이블의 PK (SELECT 시 사용)
+  conflict-key: source_refs           # UPSERT 충돌 판단 기준 (ON CONFLICT 키)
+  full-copy: true                     # true: 매 실행마다 전체 복사 (증분 아님)
+  skip-source-status-update: false    # false: source 테이블의 처리 상태를 업데이트함
+
+# 관측데이터 수신 설정
 obsvdata:
-  source-table: if_snd_sec_obsvdata
-  target-table: if_rsv_sec_obsvdata
+  source-table: if_snd_sec_obsvdata   # SELECT 대상 (DMZ IF_SND 테이블, Proxy 경유 접근)
+  target-table: if_rsv_sec_obsvdata   # INSERT/UPSERT 대상 (내부망 IF_RSV 테이블)
   primary-key: id
   conflict-key: source_refs
-  date-column: obsv_date
-  time-column: obsv_time
+  date-column: obsv_date              # 증분 추출 시 시간 비교에 사용하는 날짜 컬럼
+  time-column: obsv_time              # 증분 추출 시 시간 비교에 사용하는 시각 컬럼
+
+# 프론트엔드 "조건실행 > WHERE 조건"에서 사용자가 선택할 수 있는 테이블 목록.
+# source-table/target-table 구분과 무관하게, 실제 조건 실행의 대상이 되는 테이블을 나열한다.
+select-tables:
+  - if_snd_sec_jewon
+  - if_snd_sec_obsvdata
+
+# 프론트엔드 모니터링/추적용 메타데이터. 실제 파이프라인 로직은 위의 source/target-table을 사용한다.
 table-mappings:
   - name: jewon
     source: [if_snd_sec_jewon]

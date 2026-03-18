@@ -17,6 +17,24 @@ interface InfoTabProps {
   onUpdate: () => void;
 }
 
+// JSON string → key-value 배열
+function parseHeaders(json: string | null): { key: string; value: string }[] {
+  if (!json) return [];
+  try {
+    const obj = JSON.parse(json);
+    return Object.entries(obj).map(([key, value]) => ({ key, value: String(value) }));
+  } catch {
+    return json ? [{ key: json, value: '' }] : [];
+  }
+}
+
+// key-value 배열 → JSON string
+function headersToJson(rows: { key: string; value: string }[]): string {
+  const obj: Record<string, string> = {};
+  rows.filter(r => r.key.trim()).forEach(r => { obj[r.key.trim()] = r.value; });
+  return Object.keys(obj).length > 0 ? JSON.stringify(obj) : '';
+}
+
 export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   // --- 기본정보 ---
   const [form, setForm] = useState<ApiEndpointUpdateRequest>({
@@ -24,12 +42,14 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
     url: endpoint.url,
     httpMethod: endpoint.httpMethod,
     contentType: endpoint.contentType || '',
-    headers: endpoint.headers || '',
     authType: endpoint.authType,
     authConfig: endpoint.authConfig || '',
     description: endpoint.description || '',
     isActive: endpoint.isActive,
   });
+  const [headerRows, setHeaderRows] = useState<{ key: string; value: string }[]>(
+    parseHeaders(endpoint.headers)
+  );
   const [saving, setSaving] = useState(false);
 
   // --- 파라미터 ---
@@ -51,7 +71,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   const handleSaveInfo = async () => {
     try {
       setSaving(true);
-      await endpointApi.update(endpoint.id, form);
+      await endpointApi.update(endpoint.id, { ...form, headers: headersToJson(headerRows) });
       alert('저장되었습니다.');
       onUpdate();
     } catch (e: any) {
@@ -91,7 +111,6 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   const updateParam = (index: number, field: string, value: any) => {
     const updated = [...params];
     updated[index] = { ...updated[index], [field]: value };
-    // STATIC↔DYNAMIC 전환 시 관련 필드 초기화
     if (field === 'valueType') {
       if (value === 'STATIC') {
         updated[index].dynamicType = undefined;
@@ -107,66 +126,139 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
     setParams(updated);
   };
 
+  const sectionStyle = {
+    padding: '0.75rem 1rem',
+    borderBottom: '1px solid var(--gray-100)',
+  } as const;
+
+  const sectionLabel = {
+    fontSize: '0.75rem',
+    color: 'var(--gray-400)',
+    marginBottom: '0.5rem',
+    fontWeight: 600,
+  } as const;
+
+  const labelStyle = {
+    fontSize: '0.8rem',
+    color: 'var(--gray-500)',
+    marginBottom: '0.25rem',
+    fontWeight: 500,
+  } as const;
+
   return (
     <div>
       {/* 기본정보 섹션 */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header"><h3 className="card-title">기본정보</h3></div>
-        <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <div className="form-group">
-            <label className="form-label">API명</label>
-            <input className="form-input" value={form.apiName}
-              onChange={e => setForm({ ...form, apiName: e.target.value })} />
+
+        {/* 요청 설정 */}
+        <div style={sectionStyle}>
+          <div style={sectionLabel}>요청</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
+            <div>
+              <div style={labelStyle}>API명</div>
+              <input className="form-input" value={form.apiName}
+                onChange={e => setForm({ ...form, apiName: e.target.value })} />
+            </div>
+            <div>
+              <div style={labelStyle}>URL</div>
+              <input className="form-input" value={form.url}
+                onChange={e => setForm({ ...form, url: e.target.value })} />
+            </div>
+            <div>
+              <div style={labelStyle}>HTTP Method</div>
+              <select className="form-select" value={form.httpMethod}
+                onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+              </select>
+            </div>
+            <div>
+              <div style={labelStyle}>Content-Type</div>
+              <select className="form-select" value={form.contentType || ''}
+                onChange={e => setForm({ ...form, contentType: e.target.value })}>
+                <option value="">기본 (없음)</option>
+                <option value="application/json">application/json</option>
+                <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                <option value="multipart/form-data">multipart/form-data</option>
+              </select>
+            </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">API 코드</label>
-            <input className="form-input" value={endpoint.apiCode} disabled
-              style={{ background: 'var(--gray-100)' }} />
+        </div>
+
+        {/* 헤더 설정 */}
+        <div style={sectionStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={sectionLabel}>헤더</div>
+            <button className="btn btn-sm btn-primary"
+              onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])}
+              style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
           </div>
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">URL</label>
-            <input className="form-input" value={form.url}
-              onChange={e => setForm({ ...form, url: e.target.value })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">HTTP Method</label>
-            <select className="form-select" value={form.httpMethod}
-              onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">인증 유형</label>
-            <select className="form-select" value={form.authType}
-              onChange={e => setForm({ ...form, authType: e.target.value as AuthType })}>
-              <option value="NONE">없음</option>
-              <option value="BASIC">Basic Auth</option>
-              <option value="BEARER">Bearer Token</option>
-            </select>
-          </div>
-          {form.authType === 'BASIC' && (
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">인증 설정 (JSON)</label>
-              <input className="form-input" value={form.authConfig || ''}
-                onChange={e => setForm({ ...form, authConfig: e.target.value })}
-                placeholder='{"username": "...", "password": "..."}' />
+          {headerRows.length === 0 ? (
+            <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>
+              커스텀 헤더 없음 (필요 시 추가)
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {headerRows.map((h, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input className="form-input" value={h.key}
+                    style={{ fontSize: '0.85rem', flex: 1 }}
+                    onChange={e => { const u = [...headerRows]; u[i] = { ...u[i], key: e.target.value }; setHeaderRows(u); }}
+                    placeholder="Header Name" />
+                  <input className="form-input" value={h.value}
+                    style={{ fontSize: '0.85rem', flex: 2 }}
+                    onChange={e => { const u = [...headerRows]; u[i] = { ...u[i], value: e.target.value }; setHeaderRows(u); }}
+                    placeholder="Value" />
+                  <button className="btn btn-danger btn-sm" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))}
+                    style={{ fontSize: '0.75rem' }}>X</button>
+                </div>
+              ))}
             </div>
           )}
-          {form.authType === 'BEARER' && (
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label">Bearer Token</label>
-              <input className="form-input" value={form.authConfig || ''}
-                onChange={e => setForm({ ...form, authConfig: e.target.value })}
-                placeholder='{"token": "..."}' />
+        </div>
+
+        {/* 인증 설정 */}
+        <div style={sectionStyle}>
+          <div style={sectionLabel}>인증</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
+            <div>
+              <div style={labelStyle}>인증 유형</div>
+              <select className="form-select" value={form.authType}
+                onChange={e => setForm({ ...form, authType: e.target.value as AuthType })}>
+                <option value="NONE">없음</option>
+                <option value="BASIC">Basic Auth</option>
+                <option value="BEARER">Bearer Token</option>
+              </select>
             </div>
-          )}
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">설명</label>
-            <input className="form-input" value={form.description || ''}
-              onChange={e => setForm({ ...form, description: e.target.value })} />
+            {form.authType === 'BASIC' && (
+              <div>
+                <div style={labelStyle}>인증 설정 (JSON)</div>
+                <input className="form-input" value={form.authConfig || ''}
+                  onChange={e => setForm({ ...form, authConfig: e.target.value })}
+                  placeholder='{"username": "...", "password": "..."}' />
+              </div>
+            )}
+            {form.authType === 'BEARER' && (
+              <div>
+                <div style={labelStyle}>Bearer Token</div>
+                <input className="form-input" value={form.authConfig || ''}
+                  onChange={e => setForm({ ...form, authConfig: e.target.value })}
+                  placeholder='토큰 값 입력' />
+              </div>
+            )}
           </div>
-          <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
+        </div>
+
+        {/* 기타 */}
+        <div style={{ ...sectionStyle, borderBottom: 'none' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+            <div>
+              <div style={labelStyle}>설명</div>
+              <input className="form-input" value={form.description || ''}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                placeholder="API 설명 (선택)" />
+            </div>
             <button className="btn btn-primary" onClick={handleSaveInfo} disabled={saving}>
               {saving ? '저장 중...' : '기본정보 저장'}
             </button>

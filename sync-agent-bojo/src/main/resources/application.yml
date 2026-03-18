@@ -7,7 +7,7 @@ spring:
 
   # Agent 자체 DB (로그, 실행 기록 저장용) - DMZ PostgreSQL
   datasource:
-    url: jdbc:postgresql://localhost:29001/dev
+    url: ENC(5nfufl87NVC0km6eGdKSO2aaAZ0fpzItQEOSgO2NDo/aE1bbnC6nS7jVmPIc7JENMLKoQkRx3Z1rDGCEpU/21gSIKWOOjK1tCVeub82uPJE=)
     username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
     password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
     driver-class-name: org.postgresql.Driver
@@ -24,18 +24,20 @@ spring:
 
 # Agent 공통 설정
 agent:
-  orchestrator-url: http://localhost:8080
+  orchestrator-url: ENC(OFVnMq6khLyzmLltDmT5G/bAMDkvZsa9Vm2o8a+aLtyOS63df427nLFCxDL/JjiahkhTBHS+FOALkdpIYMpPLA==)
+  proxy-url: ENC(ZdOrUviyTKn8YvU+Vs725joK12w5RyS01fYyA5p8zN0jPVJVpDxiZjRRQWf3AnkWQQ2R7wKjhM6AScv+OveAaQ==)
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
   zone: DMZ
   debug:
     step-delay-ms: 0
   batch:
     insert-batch-size: 1000
 
-# Loader Step 설정 (DaejeonLoadStep @Value 바인딩용)
+# Loader Step 설정 (DefaultLoadStep @Value 바인딩용)
 loader:
   step:
-    id: daejeon-load
-    name: "대전 관측망 데이터 적재"
+    id: default-load
+    name: "보조망 데이터 적재 (default)"
   if-table:
     jewon: if_rsv_sec_jewon
     obsvdata: if_rsv_sec_obsvdata

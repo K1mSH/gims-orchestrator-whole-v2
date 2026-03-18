@@ -1,5 +1,7 @@
 package com.sync.agent.common.pipeline;
 
+import com.sync.agent.common.step.ConditionOperator;
+import com.sync.agent.common.step.ExecutionCondition;
 import com.sync.agent.common.step.ExecutionOptions;
 import com.sync.agent.common.step.Status;
 import com.sync.agent.common.step.StepContext;
@@ -121,7 +123,7 @@ public class PipelineRunner {
             }
         }
 
-        // ExecutionOptions 생성 (구조화된 실행 옵션)
+        // ExecutionOptions 생성 (조건실행 옵션)
         ExecutionOptions executionOptions = buildExecutionOptions(context.getParams(), params);
         context.setExecutionOptions(executionOptions);
 
@@ -257,12 +259,6 @@ public class PipelineRunner {
     private ExecutionOptions buildExecutionOptions(Map<String, Object> contextParams, Map<String, Object> rawParams) {
         ExecutionOptions.ExecutionOptionsBuilder builder = ExecutionOptions.builder();
 
-        // 0. ModeId
-        Object modeIdObj = rawParams.get("executionModeId");
-        if (modeIdObj instanceof String) {
-            builder.modeId((String) modeIdObj);
-        }
-
         // 1. TimeRange
         LocalDateTime startTime = contextParams.get("startTime") instanceof LocalDateTime
                 ? (LocalDateTime) contextParams.get("startTime") : null;
@@ -289,6 +285,34 @@ public class PipelineRunner {
             }
         }
         builder.params(execParams);
+
+        // 3. Conditions (동적 WHERE 조건)
+        List<ExecutionCondition> conditions = new ArrayList<>();
+        Object conditionsObj = rawParams.get("conditions");
+        if (conditionsObj instanceof List) {
+            List<Map<String, Object>> condMaps = (List<Map<String, Object>>) conditionsObj;
+            for (Map<String, Object> cm : condMaps) {
+                String column = (String) cm.get("column");
+                String operatorStr = (String) cm.get("operator");
+                String value = cm.get("value") != null ? String.valueOf(cm.get("value")) : null;
+                String value2 = cm.get("value2") != null ? String.valueOf(cm.get("value2")) : null;
+
+                if (column != null && operatorStr != null) {
+                    try {
+                        ConditionOperator operator = ConditionOperator.valueOf(operatorStr.toUpperCase());
+                        conditions.add(ExecutionCondition.builder()
+                                .column(column)
+                                .operator(operator)
+                                .value(value)
+                                .value2(value2)
+                                .build());
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Unknown condition operator: {}, skipping", operatorStr);
+                    }
+                }
+            }
+        }
+        builder.conditions(conditions);
 
         return builder.build();
     }

@@ -3,15 +3,25 @@
 > 보조관측망 시스템의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
 > 기능 추가/수정 시 해당 섹션을 업데이트하여 반복 사용한다.
 
+### 공통 테스트 규칙
+> **모든 실행 테스트는 추적(Trace) 검증을 포함한다.**
+> 실행 완료 후 반드시 Summary + Target/Source 데이터 조회 API로 건수와 데이터 정합성을 확인한다.
+> ```
+> GET /api/executions/{executionId}/data/summary   → read/write/total 건수
+> GET /api/executions/{executionId}/data/target?tableName=...  → target 데이터 (execution_id 기준)
+> GET /api/executions/{executionId}/data/source?tableName=...  → source 데이터 (3단계 분기 매칭)
+> ```
+
 ---
 
 ## 목차
 1. [시스템 구성](#1-시스템-구성)
 2. [E2E 파이프라인](#2-e2e-파이프라인)
-3. [Source 추적 (Trace)](#3-source-추적-trace)
-4. [Schedule (스케줄 실행)](#4-schedule-스케줄-실행)
-5. [Retention (데이터 보존)](#5-retention-데이터-보존)
-6. [프론트엔드 UI](#6-프론트엔드-ui)
+3. [동적 WHERE 조건 (Conditions)](#3-동적-where-조건-conditions)
+4. [Source 추적 (Trace)](#4-source-추적-trace)
+5. [Schedule (스케줄 실행)](#5-schedule-스케줄-실행)
+6. [Retention (데이터 보존)](#6-retention-데이터-보존)
+7. [프론트엔드 UI](#7-프론트엔드-ui)
 
 ---
 
@@ -130,6 +140,12 @@ UPDATE link_ngwis SET obsv_date = '테스트전날', obsv_time = '235959';
 - [ ] 콜백 정상 수신 (started + finished)
 - [ ] ExecutionHistory에 기록
 
+#### 추적 검증 (모든 실행 필수)
+- [ ] Summary API: read/write/total 건수 일치
+- [ ] Target 조회: execution_id 기준 target 테이블 데이터 확인
+- [ ] Source 조회: 3단계 분기(pk/source_refs) 매칭으로 source 데이터 확인
+- [ ] Target → Source 건수 대응 확인
+
 #### 데이터 정합성
 | 체크포인트 | jewon | obsvdata | 비고 |
 |-----------|-------|----------|------|
@@ -149,22 +165,135 @@ UPDATE link_ngwis SET obsv_date = '테스트전날', obsv_time = '235959';
 
 ---
 
-## 3. Source 추적 (Trace)
+## 3. 동적 WHERE 조건 (Conditions)
 
-### 3-1. 추적 API
+### 3-1. 개요
+- 수동 실행 시 프론트엔드에서 동적 WHERE 조건을 입력하여 특정 데이터만 재동기화
+- 흐름: 프론트 UI → Orchestrator API → Agent PipelineRunner → ConditionBuilder → SQL WHERE
+- 조건 실행 시 자동으로: CUSTOM_STAGING 바이패스(SIMPLE_COPY 강제), skipLinkUpdate=true
+
+### 3-2. ConditionBuilder 동작
+```
+defaults (Step 디폴트)  ─┐
+                          ├── merge → build → WHERE 절 + params
+conditions (사용자 입력) ─┘
+```
+- 같은 컬럼: 사용자 조건이 디폴트를 **대체**
+- 다른 컬럼: AND로 **추가**
+- conditions 없으면: 디폴트 그대로 (기존 동작)
+
+### 3-3. 지원 연산자
+| 연산자 | SQL | value2 필요 |
+|--------|-----|-------------|
+| EQ | `= ?` | N |
+| NEQ | `!= ?` | N |
+| GT | `> ?` | N |
+| GTE | `>= ?` | N |
+| LT | `< ?` | N |
+| LTE | `<= ?` | N |
+| BETWEEN | `BETWEEN ? AND ?` | Y |
+| IN | `IN (?, ?, ...)` | N (쉼표 구분) |
+| LIKE | `LIKE ?` | N |
+| IS_NULL | `IS NULL` | N |
+| IS_NOT_NULL | `IS NOT NULL` | N |
+
+### 3-4. 적용 범위 (Agent별)
+| Agent | Step | 적용 방식 | 비고 |
+|-------|------|----------|------|
+| DMZ RCV | SourceToIfStep (jewon) | SIMPLE_COPY + ConditionBuilder | fullCopy 디폴트 대체 |
+| DMZ RCV | SourceToIfStep (obsvdata) | SIMPLE_COPY + ConditionBuilder | CUSTOM_STAGING 바이패스 |
+| DMZ Loader | DefaultLoadStep | Native SQL (EntityManager) + ConditionBuilder | IF→Target 쿼리 |
+| Internal Loader | InternalLoadStep | JDBC + ConditionBuilder | IF→GIMS 쿼리 |
+
+### 3-5. 안전가드 (전체 데이터 긁어오기 방지)
+| 계층 | 방어 방식 |
+|------|----------|
+| 프론트엔드 | conditions UI 활성화 시 최소 1개 입력 필수 (실행 버튼 disable) |
+| Orchestrator | `conditions: []` (빈 배열) → 400 Bad Request |
+| Agent | 예외 발생 (최후 방어선) |
+
+### 3-6. 테스트 항목
+
+#### API 레벨
+```bash
+# 1. EQ 조건 (단일)
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": [{"column": "obsv_code", "operator": "EQ", "value": "DJ-DJC-G1-0001"}]}'
+
+# 2. LIKE 조건
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": [{"column": "obsv_code", "operator": "LIKE", "value": "DJ-%"}]}'
+
+# 3. BETWEEN 조건 (날짜 범위)
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": [{"column": "obsv_date", "operator": "BETWEEN", "value": "2024-01-01", "value2": "2024-12-31"}]}'
+
+# 4. 복합 조건 (EQ + BETWEEN)
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": [{"column": "obsv_code", "operator": "EQ", "value": "DJ-DJC-G1-0001"}, {"column": "obsv_date", "operator": "BETWEEN", "value": "2024-01-01", "value2": "2024-12-31"}]}'
+
+# 5. IN 조건 (쉼표 구분)
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": [{"column": "obsv_code", "operator": "IN", "value": "DJ-DJC-G1-0001,DJ-DJC-G1-0002"}]}'
+
+# 6. NONEXISTENT 값 → 0건 반환 확인
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": [{"column": "obsv_code", "operator": "EQ", "value": "NONEXISTENT"}]}'
+
+# 7. 빈 conditions → 400 거부
+curl -X POST http://localhost:8080/api/executions/{agentId}/run \
+  -H "Content-Type: application/json" \
+  -d '{"conditions": []}'
+```
+
+#### RCV 검증 (DMZ)
+- [ ] PG 소스 (daejeon 등): conditions 적용, 0건/필터건수 확인
+- [ ] MySQL 소스 (infoworld 등): MySQL 백틱 인용 정상
+- [ ] keunsan (대문자 테이블): 대문자 컬럼명 조건 정상
+- [ ] CUSTOM_STAGING 바이패스 로그 확인: `"bypassing CUSTOM_STAGING, using SIMPLE_COPY"`
+- [ ] skipLinkUpdate 로그 확인: `"skipLinkUpdate=true"`
+- [ ] 조건 없는 일반 실행: 기존 CUSTOM_STAGING 경로 정상
+
+#### Loader 검증 (DMZ + Internal)
+- [ ] DMZ Loader (DefaultLoadStep): conditions → IF 테이블 필터 쿼리 (Native SQL)
+- [ ] Internal Loader (InternalLoadStep): conditions → IF 테이블 필터 쿼리 (JDBC)
+- [ ] Loader conditions 없는 일반 실행: 기존 경로 정상
+
+#### 추적 검증 (조건실행)
+- [ ] RCV: Summary read/write 건수 확인, target(if_rsv) 조건 필터 건수 일치
+- [ ] DMZ Loader: target(sec_jewon/sec_obsvdata) 조건 건수 일치, source(if_rsv) 매칭
+- [ ] SND: target(if_snd) 건수, source(sec_*) 매칭
+- [ ] Internal RCV: target(if_rsv Internal) 건수, source(if_snd) 매칭
+- [ ] Internal Loader: target(pm_gd970201) = obsvdata × 3행, source(if_rsv Internal) 매칭
+
+#### 안전가드 검증
+- [ ] 빈 conditions `[]` → 400 응답
+- [ ] conditions 없이 body 비움 → 정상 증분 실행
+
+---
+
+## 4. Source 추적 (Trace)
+
+### 4-1. 추적 API
 ```
 GET /api/executions/{executionId}/source?tableName={sourceTable}
 GET /api/executions/{executionId}/trace
 ```
 
-### 3-2. 3단계 분기 로직
+### 4-2. 3단계 분기 로직
 | 조건 | 모드 | 해당 Agent | 설명 |
 |------|------|-----------|------|
 | source에 source_refs 컬럼 없음 | pk | RCV | 외부 DB — PK 파싱 매칭 |
 | source_refs 있고 값 일치 | source_refs | Loader | IF의 source_refs를 그대로 복사 |
 | source_refs 있지만 값 불일치 | pk | SND | PK 기반 새 source_refs 생성 |
 
-### 3-3. 검증 항목 (Agent별)
+### 4-3. 검증 항목 (Agent별)
 | Agent | Source 테이블 | 기대 모드 | 기대 건수 |
 |-------|-------------|----------|----------|
 | RCV daejeon | sec_jewon_view | pk | 업체당 건수 |
@@ -179,14 +308,14 @@ GET /api/executions/{executionId}/trace
 
 ---
 
-## 4. Schedule (스케줄 실행)
+## 5. Schedule (스케줄 실행)
 
-### 4-1. 개요
+### 5-1. 개요
 - Orchestrator가 cron 스케줄에 따라 Agent 파이프라인 자동 실행
 - DB `schedule` 테이블에 저장, 앱 기동 시 `ScheduleExecutor`가 로드
 - 실행 시 `executionService.triggerExecution()` → Agent POST
 
-### 4-2. API 엔드포인트
+### 5-2. API 엔드포인트
 | Method | URL | 설명 |
 |--------|-----|------|
 | GET | /api/schedules | 전체 조회 |
@@ -196,7 +325,7 @@ GET /api/executions/{executionId}/trace
 | PUT | /api/schedules/{id}/toggle | 활성/비활성 토글 |
 | DELETE | /api/schedules/{id} | 삭제 |
 
-### 4-3. 테스트 항목
+### 5-3. 테스트 항목
 
 #### CRUD
 - [ ] 스케줄 생성 (cronExpression, agentId, isEnabled)
@@ -211,17 +340,6 @@ GET /api/executions/{executionId}/trace
 - [ ] Agent 로그에 파이프라인 실행 로그
 - [ ] 콜백 정상 수신 (started + finished)
 - [ ] 비활성 스케줄은 실행 안 됨
-
-#### 필터 포함 실행 (선택)
-```json
-{
-  "agentId": 7,
-  "cronExpression": "0 */2 * * * *",
-  "isEnabled": true,
-  "executionOptions": "{\"filters\":[{\"paramId\":\"obsv-code\",\"value\":\"GPM-123\"}]}"
-}
-```
-- [ ] executionOptions의 filters가 Agent에 전달됨
 
 #### 테스트용 스케줄 예시
 ```bash
@@ -242,15 +360,15 @@ curl -X DELETE http://localhost:8080/api/schedules/{id}
 
 ---
 
-## 5. Retention (데이터 보존)
+## 6. Retention (데이터 보존)
 
-### 5-1. 개요
+### 6-1. 개요
 - Agent IF/Target 테이블의 오래된 데이터 자동 삭제
 - Orchestrator `DataRetentionScheduler`: 매일 새벽 2시 (기본, `retention.cron` 설정)
 - Agent별 `retentionConfig` JSON → Agent `POST /api/cleanup/{agentCode}` 호출
 - Agent `DataRetentionService`: `DELETE FROM table WHERE dateColumn < cutoff` 실행
 
-### 5-2. retentionConfig JSON 구조
+### 6-2. retentionConfig JSON 구조
 ```json
 {
   "enabled": true,
@@ -269,7 +387,7 @@ curl -X DELETE http://localhost:8080/api/schedules/{id}
 > **주의**: pm_gd970201의 날짜 컬럼은 `obsrvn_dt` (obsv_date 아님)
 > **⚠️ Internal Agent는 `targetDatasourceId` 필수** — 파이프라인 외부 호출 시 ThreadLocal 비어있어 fallback DS 잘못 참조
 
-### 5-3. API 엔드포인트
+### 6-3. API 엔드포인트
 
 #### Orchestrator (설정 관리)
 | Method | URL | 설명 |
@@ -282,7 +400,7 @@ curl -X DELETE http://localhost:8080/api/schedules/{id}
 |--------|-----|------|
 | POST | /api/cleanup/{agentCode} | 데이터 정리 실행 |
 
-### 5-4. 테스트 항목
+### 6-4. 테스트 항목
 
 #### 설정 CRUD
 - [ ] Retention 설정 조회 (초기 빈 상태)
@@ -343,28 +461,37 @@ curl -X POST http://localhost:8092/api/cleanup/internal-bojo-loader \
 
 ---
 
-## 6. 프론트엔드 UI
+## 7. 프론트엔드 UI
 
-### 6-1. Execution 목록/상세
+### 7-1. Execution 목록/상세
 - [ ] /executions — 실행 이력 목록 표시
 - [ ] /executions/{id} — 상세 (Step별 결과, Read/Write 건수)
 - [ ] triggeredBy 표시 (MANUAL / SCHEDULE / CHAIN)
 - [ ] 테이블명 옆 한글 alias 표시
 
-### 6-2. Agent 상세 → Schedule 섹션
+### 7-2. Agent 상세 → Schedule 섹션
 - [ ] 스케줄 목록 표시 (cron | 필터 | 상태 | 액션)
 - [ ] cron 한글 변환 표시 (예: "매일 오전 2시", "2분마다")
 - [ ] 스케줄 추가 (cron 입력 + 활성화 체크)
 - [ ] 스케줄 수정/토글/삭제
-- [ ] 필터 포함 스케줄 (executionParams 있는 Agent만)
 
-### 6-3. Agent 상세 → Retention 섹션
+### 7-3. Agent 상세 → Retention 섹션
 - [ ] Retention 설정 표시 (테이블 | dateColumn | retentionDays)
 - [ ] 설정 편집 (테이블/컬럼 드롭다운, 보존일수 입력)
 - [ ] 설정 저장/취소
 - [ ] DB_CON_PROXY 타입 Agent에서 비활성화
 
-### 6-4. Source 추적
+### 7-4. Agent 상세 → 조건실행 (Conditions)
+- [ ] "조건실행 ▾" 펼치면 WHERE 조건 입력 UI 표시
+- [ ] 조건 추가: 컬럼명 입력 + 연산자 선택 + 값 입력
+- [ ] BETWEEN 선택 시 value2 입력란 표시
+- [ ] IS_NULL/IS_NOT_NULL 선택 시 값 입력란 숨김
+- [ ] 조건 삭제 (X 버튼)
+- [ ] 조건 있으면 실행 버튼 활성화, 빈 조건이면 비활성화
+- [ ] 실행 시 conditions가 API에 전달됨
+- [ ] 취소 시 conditions 초기화
+
+### 7-5. Source 추적
 - [ ] Execution 상세 → Source 탭 데이터 표시
 - [ ] Trace (Forward/Backward) 동작
 

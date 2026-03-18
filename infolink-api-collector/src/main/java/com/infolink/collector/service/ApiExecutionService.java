@@ -1,6 +1,8 @@
 package com.infolink.collector.service;
 
-import com.infolink.collector.domain.*;
+import com.infolink.collector.config.DynamicDataSourceService;
+import com.infolink.collector.entity.*;
+import com.infolink.collector.repository.*;
 import com.infolink.collector.dto.ApiExecutionHistoryDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +35,8 @@ public class ApiExecutionService {
     private final ApiCallService callService;
     private final ResponseParser responseParser;
     private final DataTransformer dataTransformer;
-    private final DataSource dataSource;
+    private final DataSource dataSource;  // 자체 DB (fallback)
+    private final DynamicDataSourceService dynamicDataSourceService;
 
     @Transactional
     public ApiExecutionHistoryDto.Response run(Long endpointId, ApiExecutionHistory.TriggeredBy triggeredBy) {
@@ -107,8 +110,11 @@ public class ApiExecutionService {
 
             log.info("실행 SQL: {}", sql);
 
+            // Target DataSource 결정: targetDatasourceId 있으면 외부 DB, 없으면 자체 DB
+            DataSource targetDs = resolveTargetDataSource(endpoint);
+
             // 행 단위 INSERT — PG 트랜잭션 aborted 방지를 위해 savepoint 사용
-            try (Connection conn = dataSource.getConnection()) {
+            try (Connection conn = targetDs.getConnection()) {
                 conn.setAutoCommit(false);
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     for (Map<String, Object> record : records) {
@@ -152,6 +158,20 @@ public class ApiExecutionService {
         history.setFinishedAt(finishedAt);
         history.setDurationMs(java.time.Duration.between(startedAt, finishedAt).toMillis());
         historyRepository.save(history);
+    }
+
+    /**
+     * Target DataSource 결정
+     * targetDatasourceId가 설정되어 있으면 Orchestrator 등록 외부 DB, 없으면 자체 DB
+     */
+    private DataSource resolveTargetDataSource(ApiEndpoint endpoint) {
+        String dsId = endpoint.getTargetDatasourceId();
+        if (dsId != null && !dsId.isBlank()) {
+            log.info("외부 DataSource 사용: {}", dsId);
+            return dynamicDataSourceService.getDataSource(dsId);
+        }
+        log.info("자체 DataSource 사용 (fallback)");
+        return dataSource;
     }
 
     /**

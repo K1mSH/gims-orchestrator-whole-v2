@@ -27,11 +27,7 @@ import type {
   ExecutionStepHistory,
   ExecutionDashboardStats,
   ExecutionHistorySearchParams,
-  ExecutionParamDefinition,
-  ExecutionParamResponse,
-  ExecutionFilter,
-  ExecutionModeResponse,
-  StepDefinitionResponse,
+  ExecutionCondition,
   PageResponse,
 } from '@/types';
 
@@ -71,33 +67,9 @@ export const agentApi = {
   clearTestData: (id: number) =>
     api.delete<{ message: string; deleted: number }>(`/agents/${id}/clear-test-data`).then((res) => res.data),
 
-  // Agent에 정의된 실행 옵션 가져오기 (Agent API 프록시)
-  fetchExecutionParams: (id: number) =>
-    api.get<ExecutionParamDefinition[]>(`/agents/${id}/fetch-execution-params`).then((res) => res.data),
-
-  // DB에 저장된 실행 옵션 조회
-  getExecutionParams: (id: number) =>
-    api.get<ExecutionParamResponse[]>(`/agents/${id}/execution-params`).then((res) => res.data),
-
-  // Agent에서 실행 옵션 가져와서 DB 갱신
-  refreshExecutionParams: (id: number) =>
-    api.post<ExecutionParamResponse[]>(`/agents/${id}/refresh-execution-params`).then((res) => res.data),
-
-  // DB에 저장된 Step 정의 조회
-  getStepDefinitions: (id: number) =>
-    api.get<StepDefinitionResponse[]>(`/agents/${id}/step-definitions`).then((res) => res.data),
-
-  // Agent에서 Step 정의 가져와서 DB 갱신
-  refreshStepDefinitions: (id: number) =>
-    api.post<StepDefinitionResponse[]>(`/agents/${id}/refresh-step-definitions`).then((res) => res.data),
-
-  // DB에 저장된 실행 모드 조회
-  getExecutionModes: (id: number) =>
-    api.get<ExecutionModeResponse[]>(`/agents/${id}/execution-modes`).then((res) => res.data),
-
-  // Agent에서 실행 모드 가져와서 DB 갱신
-  refreshExecutionModes: (id: number) =>
-    api.post<ExecutionModeResponse[]>(`/agents/${id}/refresh-execution-modes`).then((res) => res.data),
+  // WHERE 조건 대상 테이블 (Agent YML select-tables)
+  getSelectTables: (id: number) =>
+    api.get<DatasourceTable[]>(`/agents/${id}/select-tables`).then((res) => res.data),
 
   // Retention(자동삭제) 설정 조회/수정
   getRetentionConfig: (id: number) =>
@@ -205,16 +177,10 @@ export const executionApi = {
     api.get<AgentExecutionSummary[]>('/executions/status').then((res) => res.data),
 
   // 실행 트리거 - Agent에 실행 요청
-  trigger: (id: number, startTime?: string, endTime?: string, filters?: ExecutionFilter[], selectedStepIds?: string[], executionModeId?: string) => {
-    const formatTime = (t?: string) => t && !t.match(/T\d{2}:\d{2}:\d{2}$/) ? `${t}:00` : t;
-    const hasOptions = startTime || endTime || (filters && filters.length > 0) || (selectedStepIds && selectedStepIds.length > 0) || executionModeId;
-    const body = hasOptions ? {
-      startTime: formatTime(startTime),
-      endTime: formatTime(endTime),
-      filters: filters && filters.length > 0 ? filters : undefined,
-      selectedStepIds: selectedStepIds && selectedStepIds.length > 0 ? selectedStepIds : undefined,
-      executionModeId: executionModeId || undefined,
-    } : undefined;
+  trigger: (id: number, conditions?: ExecutionCondition[]) => {
+    const body = conditions && conditions.length > 0
+      ? { conditions }
+      : undefined;
     return api.post<TriggerResponse>(`/executions/${id}/run`, body).then((res) => res.data);
   },
 

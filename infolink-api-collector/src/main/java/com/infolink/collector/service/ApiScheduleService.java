@@ -1,6 +1,7 @@
 package com.infolink.collector.service;
 
-import com.infolink.collector.domain.*;
+import com.infolink.collector.entity.*;
+import com.infolink.collector.repository.*;
 import com.infolink.collector.dto.ApiScheduleDto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

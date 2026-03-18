@@ -68,7 +68,7 @@ public class StepContext {
     private Map<String, Object> params = new HashMap<>();
 
     /**
-     * 구조화된 실행 옵션 (filters, timeRange 등)
+     * 구조화된 조건실행 옵션 (conditions, timeRange 등)
      * 기존 params Map과 동기화됨 (하위 호환)
      */
     @Setter

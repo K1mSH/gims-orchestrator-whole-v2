@@ -199,6 +199,26 @@ public class PipelineController {
     }
 
     /**
+     * WHERE 조건 대상 테이블 목록 조회
+     * 프론트엔드 "조건실행 > WHERE 조건" 드롭다운에 표시할 테이블 목록 반환.
+     * YML의 select-tables 필드에서 파싱한 값을 반환한다.
+     */
+    @GetMapping("/{agentCode}/select-tables")
+    public ResponseEntity<List<String>> getSelectTables(@PathVariable String agentCode) {
+        if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
+            if (agentCode.equals(def.getAgentCode())) {
+                return ResponseEntity.ok(def.getSelectTables());
+            }
+        }
+
+        return ResponseEntity.ok(List.of());
+    }
+
+    /**
      * 파이프라인 테이블 정보 조회
      * Orchestrator가 SOURCE 테이블 자동 등록에 사용
      * agentCode의 파이프라인 Step 설정에서 sourceTable, targetTable 정보 추출

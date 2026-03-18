@@ -119,6 +119,12 @@ public class AgentConfigLoader {
             def.setStep(step);
         }
 
+        // select-tables (WHERE 조건 대상 테이블)
+        List<String> selectTables = (List<String>) data.get("select-tables");
+        if (selectTables != null) {
+            def.setSelectTables(selectTables);
+        }
+
         // table-mappings
         List<Map<String, Object>> mappingsList = (List<Map<String, Object>>) data.get("table-mappings");
         if (mappingsList != null) {

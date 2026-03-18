@@ -6,9 +6,9 @@ spring:
     name: infolink-api-collector
 
   datasource:
-    url: ENC(JuW0/2U2bSAtEGNxxn6FkZQgf18EHzqKPd+r+mfceiPBw05AWmQ2zn+FUTxnwSdjI335KfxJxziJ9C2omOr2eOaDX5K+aGNNEskOwv6nh0E=)
-    username: ENC(yFdNzBUZC56DfPjongW3r4yZxc641T+kyQFmCC8Xf+dLAj0ckvN/G4qaVihVIpn9)
-    password: ENC(PaubXinnwCX+svepYBVcdW4TNidVHQDR+UPQJkkrDrj6wnDZPR9TExuVMEST6m0A)
+    url: ENC(hg7lOp9CmODutrzy16m5LCIW2UyuN0F4lprF8kklqqMQyVASUy5KwfPxKqA7DeYUTn2JyP/TYVDnHn7OD3tLezssUgNt7PybvQ8emHR5Yxo=)
+    username: ENC(Yvbz0txrJEIoyUw56bhkWX6nYetTyRTxVwVm3gwMLTdzfdLJujRS5Ltq0tcbMQmj)
+    password: ENC(qNWBRGoyzgVAlMEkvOE2jAtKJK60ZGjBP3RHzeJVmrt63UkW5C36MqxgtO8pGOoE)
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -23,9 +23,13 @@ spring:
 # Jasypt 암호화 설정
 jasypt:
   encryptor:
-    password: ${JASYPT_PASSWORD}
+    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
     algorithm: PBEWithHMACSHA512AndAES_256
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# Orchestrator 연결 (외부 Datasource 조회용)
+orchestrator:
+  url: ENC(xnxfkstDgp9riQKlSListH6OelTJ2wApZe1KoKpTflTGSVjEfbji9sEwXDzStFew8wJgPEhKP+yawGahOCubqw==)
 
 logging:
   level:

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { agentApi, scheduleApi, datasourceApi } from '@/lib/api';
-import type { Agent, Zone, ScheduleCreateRequest, DatasourceSimple, DatasourceTable, AgentType, ExecutionParamDefinition, ExecutionParamInput, DiscoverAgent } from '@/types';
+import type { Agent, Zone, ScheduleCreateRequest, DatasourceSimple, DatasourceTable, AgentType, DiscoverAgent } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import Link from 'next/link';
 
@@ -268,10 +268,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
   const [selectedSourceTableIds, setSelectedSourceTableIds] = useState<number[]>([]);
   const [selectedTargetTableIds, setSelectedTargetTableIds] = useState<number[]>([]);
 
-  // 실행 옵션
-  const [fetchedParams, setFetchedParams] = useState<ExecutionParamDefinition[]>([]);
-  const [selectedParamIds, setSelectedParamIds] = useState<Set<string>>(new Set());
-  const [fetchingParams, setFetchingParams] = useState(false);
 
   // Datasource 목록 로드
   useEffect(() => {
@@ -359,26 +355,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
     setFormData(prev => ({ ...prev, agentName: agent.agentCode }));
   };
 
-  const handleFetchExecutionParams = async () => {
-    if (!endpointUrl) {
-      alert('Endpoint URL을 먼저 입력하세요.');
-      return;
-    }
-    setFetchingParams(true);
-    try {
-      const response = await fetch(`${endpointUrl}/api/pipeline/execution-params`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const params: ExecutionParamDefinition[] = await response.json();
-      setFetchedParams(params);
-      setSelectedParamIds(new Set(params.map(p => p.paramId)));
-    } catch (error) {
-      console.error('실행 옵션 가져오기 실패:', error);
-      alert('실행 옵션을 가져오지 못했습니다. Agent URL을 확인하세요.');
-    } finally {
-      setFetchingParams(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAgentCode || !selectedAgentType) {
@@ -387,19 +363,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
     }
     setSubmitting(true);
     try {
-      // 선택된 실행 옵션 변환
-      const executionParams: ExecutionParamInput[] = fetchedParams
-        .filter(p => selectedParamIds.has(p.paramId))
-        .map(p => ({
-          paramId: p.paramId,
-          label: p.label,
-          description: p.description,
-          dataType: p.dataType,
-          defaultValue: p.defaultValue || undefined,
-          isEnabled: true,
-          displayOrder: p.displayOrder,
-        }));
-
       // 1. Agent 등록
       const createdAgent = await agentApi.create({
         agentCode: selectedAgentCode,
@@ -413,7 +376,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
         targetDatasourceId: formData.targetDatasourceId || undefined,
         sourceTableIds: selectedSourceTableIds,
         targetTableIds: selectedTargetTableIds,
-        executionParams: executionParams.length > 0 ? executionParams : undefined,
       });
 
       // 2. 스케줄 등록 (프록시 Agent는 스케줄 불필요)
@@ -536,6 +498,18 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
           )}
         </div>
+
+        {/* 임시: 폼 미리보기 버튼 */}
+        {!selectedAgentCode && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ marginBottom: '1rem' }}
+            onClick={() => { setSelectedAgentCode('preview-test'); setSelectedAgentType('RCV'); setFormData(prev => ({ ...prev, agentName: '미리보기 테스트' })); }}
+          >
+            [DEV] 폼 미리보기
+          </button>
+        )}
 
         {/* Step 2: 선택된 Agent 정보 + 추가 설정 */}
         {selectedAgentCode && (
@@ -675,52 +649,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                   )}
                 </div>
               </div>
-            </div>
-
-            )}
-
-            {/* 실행 옵션 섹션 (프록시 Agent는 제외) */}
-            {selectedAgentType !== 'DB_CON_PROXY' && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <strong>실행 옵션</strong>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleFetchExecutionParams}
-                  disabled={fetchingParams || !endpointUrl}
-                >
-                  {fetchingParams ? '가져오는 중...' : '실행 옵션 가져오기'}
-                </button>
-              </div>
-              {fetchedParams.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  &quot;실행 옵션 가져오기&quot; 버튼을 클릭하세요.
-                </div>
-              ) : (
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                  {fetchedParams.map(param => (
-                    <label key={param.paramId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedParamIds.has(param.paramId)}
-                        onChange={(e) => {
-                          setSelectedParamIds(prev => {
-                            const next = new Set(prev);
-                            if (e.target.checked) next.add(param.paramId);
-                            else next.delete(param.paramId);
-                            return next;
-                          });
-                        }}
-                      />
-                      <span style={{ fontWeight: 500 }}>{param.label}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({param.paramId})</span>
-                      <code style={{ fontSize: '0.75rem' }}>{param.dataType}</code>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>{param.description}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
             </div>
 
             )}

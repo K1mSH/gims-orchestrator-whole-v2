@@ -29,11 +29,11 @@ public class AgentDefinition {
     // Step 설정 (Loader)
     private StepConfig step;
 
+    // select-tables: 프론트 WHERE 조건 드롭다운에 노출할 테이블 목록
+    private List<String> selectTables = new ArrayList<>();
+
     // table-mappings (Source→Target 관계 명시)
     private List<TableMapping> tableMappings = new ArrayList<>();
-
-    // 실행 모드 목록
-    private List<ExecutionModeConfig> executionModes = new ArrayList<>();
 
     @Getter
     @Setter
@@ -55,13 +55,4 @@ public class AgentDefinition {
         private String name;
     }
 
-    @Getter
-    @Setter
-    public static class ExecutionModeConfig {
-        private String modeId;
-        private String modeName;
-        private String description;
-        private int displayOrder;
-        private boolean isDefault;
-    }
 }

@@ -20,9 +20,6 @@ export interface Agent {
   lastExecutionStatus: string | null;
   sourceTableIds: number[];
   targetTableIds: number[];
-  executionParams: ExecutionParamResponse[];
-  stepDefinitions: StepDefinitionResponse[];
-  executionModes: ExecutionModeResponse[];
 }
 
 export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
@@ -40,7 +37,6 @@ export interface AgentCreateRequest {
   description?: string;
   sourceTableIds?: number[];
   targetTableIds?: number[];
-  executionParams?: ExecutionParamInput[];
 }
 
 // Agent 조회(Discover) 관련 타입
@@ -57,62 +53,27 @@ export interface DiscoverResponse {
   error?: string;
 }
 
-// 실행 파라미터 관련 타입
-export interface ExecutionParamDefinition {
-  paramId: string;
-  label: string;
-  description: string;
-  dataType: string;
-  defaultValue: string | null;
-  required: boolean;
-  displayOrder: number;
+// 동적 WHERE 조건 (수동 실행 시 사용)
+export interface ExecutionCondition {
+  column: string;
+  operator: 'EQ' | 'NEQ' | 'GT' | 'GTE' | 'LT' | 'LTE' | 'BETWEEN' | 'IN' | 'LIKE' | 'IS_NULL' | 'IS_NOT_NULL';
+  value?: string;
+  value2?: string;  // BETWEEN 전용
 }
 
-export interface ExecutionParamInput {
-  paramId: string;
-  label: string;
-  description?: string;
-  dataType?: string;
-  defaultValue?: string;
-  isEnabled?: boolean;
-  displayOrder?: number;
-}
-
-export interface ExecutionParamResponse {
-  id: number;
-  paramId: string;
-  label: string;
-  description: string | null;
-  dataType: string;
-  defaultValue: string | null;
-  isEnabled: boolean;
-  displayOrder: number;
-}
-
-export interface ExecutionFilter {
-  paramId: string;
-  value: string;
-}
-
-// Step 정의 (Agent가 제공하는 Step 메타데이터)
-export interface StepDefinitionResponse {
-  id: number;
-  stepId: string;
-  stepName: string;
-  description: string | null;
-  displayOrder: number;
-  enabledByDefault: boolean;
-}
-
-// 실행 모드 (Agent가 제공하는 실행 방식 메타데이터)
-export interface ExecutionModeResponse {
-  id: number;
-  modeId: string;
-  modeName: string;
-  description: string | null;
-  displayOrder: number;
-  isDefault: boolean;
-}
+export const CONDITION_OPERATORS = [
+  { value: 'EQ', label: '=' },
+  { value: 'NEQ', label: '!=' },
+  { value: 'GT', label: '>' },
+  { value: 'GTE', label: '>=' },
+  { value: 'LT', label: '<' },
+  { value: 'LTE', label: '<=' },
+  { value: 'BETWEEN', label: 'BETWEEN' },
+  { value: 'IN', label: 'IN' },
+  { value: 'LIKE', label: 'LIKE' },
+  { value: 'IS_NULL', label: 'IS NULL' },
+  { value: 'IS_NOT_NULL', label: 'IS NOT NULL' },
+] as const;
 
 export interface HealthCheckResponse {
   id: number;

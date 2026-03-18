@@ -7,7 +7,7 @@ spring:
 
   # DMZ 프록시 로컬 DB (파이프라인 Agent와 동일한 DB 참조)
   datasource:
-    url: jdbc:postgresql://localhost:29001/dev
+    url: ENC(5nfufl87NVC0km6eGdKSO2aaAZ0fpzItQEOSgO2NDo/aE1bbnC6nS7jVmPIc7JENMLKoQkRx3Z1rDGCEpU/21gSIKWOOjK1tCVeub82uPJE=)
     username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
     password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
     driver-class-name: org.postgresql.Driver
@@ -24,7 +24,8 @@ spring:
 
 # 프록시 설정
 agent:
-  orchestrator-url: http://localhost:8080
+  orchestrator-url: ENC(OFVnMq6khLyzmLltDmT5G/bAMDkvZsa9Vm2o8a+aLtyOS63df427nLFCxDL/JjiahkhTBHS+FOALkdpIYMpPLA==)
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
   zone: DMZ
 
 # Jasypt 암호화 설정

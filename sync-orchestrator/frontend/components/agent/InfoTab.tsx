@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { agentApi, scheduleApi, datasourceApi } from '@/lib/api';
-import type { Agent, Zone, Schedule, ScheduleCreateRequest, AgentType, Datasource, DatasourceTable, DatasourceSimple, ExecutionParamResponse } from '@/types';
+import type { Agent, Zone, Schedule, ScheduleCreateRequest, AgentType, Datasource, DatasourceTable, DatasourceSimple } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 
 const ZONE_LABELS: Record<Zone, string> = {
@@ -261,9 +261,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   const [availableSourceTables, setAvailableSourceTables] = useState<DatasourceTable[]>([]);
   const [availableTargetTables, setAvailableTargetTables] = useState<DatasourceTable[]>([]);
 
-  // 실행 옵션
-  const [executionParams, setExecutionParams] = useState<ExecutionParamResponse[]>(agent.executionParams || []);
-  const [refreshingParams, setRefreshingParams] = useState(false);
+  // 조건실행
 
   // Retention 설정
   type RetentionTarget = { table: string; dateColumn: string; retentionDays: number };
@@ -459,20 +457,6 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
     useFilters: false,
     filters: {} as Record<string, { value: string }>,
   });
-
-  const handleRefreshExecutionParams = async () => {
-    setRefreshingParams(true);
-    try {
-      const params = await agentApi.refreshExecutionParams(agent.id);
-      setExecutionParams(params);
-      onUpdate();
-    } catch (error) {
-      console.error('실행 옵션 갱신 실패:', error);
-      alert('실행 옵션 갱신에 실패했습니다. Agent가 온라인 상태인지 확인하세요.');
-    } finally {
-      setRefreshingParams(false);
-    }
-  };
 
   const handleAgentUpdate = async () => {
     setSubmitting(true);
@@ -797,56 +781,6 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
         </div>
       )}
 
-      {/* 실행 옵션 (프록시 Agent 제외) */}
-      {agent.agentType !== 'DB_CON_PROXY' && (
-      <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div className="card-header">
-          <h2 className="card-title">실행 옵션</h2>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleRefreshExecutionParams}
-            disabled={refreshingParams || agent.status === 'OFFLINE'}
-          >
-            {refreshingParams ? '갱신중...' : 'Agent에서 가져오기'}
-          </button>
-        </div>
-        {executionParams.length === 0 ? (
-          <div className="empty-state" style={{ marginTop: '1rem', padding: '2rem', textAlign: 'center' }}>
-            등록된 실행 옵션이 없습니다.
-            <br />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Agent가 실행 옵션을 정의하고 있다면 &quot;Agent에서 가져오기&quot; 버튼을 클릭하세요.
-            </span>
-          </div>
-        ) : (
-          <div className="table-container" style={{ marginTop: '1rem' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>상태</th>
-                  <th>이름</th>
-                  <th>타입</th>
-                  <th>기본값</th>
-                  <th>설명</th>
-                </tr>
-              </thead>
-              <tbody>
-                {executionParams.map(param => (
-                  <tr key={param.id}>
-                    <td>{param.isEnabled ? '✅' : '⬜'}</td>
-                    <td><strong>{param.label}</strong> <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({param.paramId})</span></td>
-                    <td><code>{param.dataType}</code></td>
-                    <td style={{ fontSize: '0.875rem' }}>{param.defaultValue || '-'}</td>
-                    <td style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{param.description || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-      )}
-
       {/* Retention 설정 (프록시 Agent 제외) */}
       {agent.agentType !== 'DB_CON_PROXY' && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
@@ -907,7 +841,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               ))}
                             </select>
                           </td>
-                          <td><input type="number" className="form-input" value={t.retentionDays} onChange={(e) => handleRetentionTargetChange(i, 'retentionDays', parseInt(e.target.value) || 0)} style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} /></td>
+                          <td><input type="number" className="form-input" min={1} value={t.retentionDays} onChange={(e) => handleRetentionTargetChange(i, 'retentionDays', Math.max(1, parseInt(e.target.value) || 1))} style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} /></td>
                           <td><button className="btn btn-danger btn-sm" onClick={() => handleRetentionRemoveTarget(i)}>X</button></td>
                         </tr>
                       );
@@ -980,35 +914,6 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 </label>
               </div>
             </div>
-            {/* 스케줄 실행 필터 */}
-            {executionParams.filter(p => p.isEnabled).length > 0 && (
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--gray-100)', borderRadius: '0.375rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={newSchedule.useFilters}
-                    onChange={(e) => setNewSchedule({ ...newSchedule, useFilters: e.target.checked })}
-                  />
-                  실행 필터 설정
-                </label>
-                {newSchedule.useFilters && executionParams.filter(p => p.isEnabled).map(param => (
-                  <div key={param.paramId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ minWidth: '80px', fontSize: '0.875rem' }}>{param.label}</span>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={newSchedule.filters[param.paramId]?.value || ''}
-                      onChange={(e) => setNewSchedule(prev => ({
-                        ...prev,
-                        filters: { ...prev.filters, [param.paramId]: { value: e.target.value } }
-                      }))}
-                      placeholder={param.description || ''}
-                      style={{ width: '220px', padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
             <div style={{ marginTop: '1rem' }}>
               <button className="btn btn-primary btn-sm" onClick={handleAddSchedule} disabled={submitting} style={{ marginRight: '0.5rem' }}>
                 {submitting ? '등록중...' : '등록'}

@@ -69,11 +69,33 @@ export interface FieldInfo {
   sampleValue: string | null;
 }
 
+export interface InlineTestRequest {
+  url: string;
+  httpMethod: string;
+  contentType?: string;
+  headers?: string;
+  authType: string;
+  authConfig?: string;
+  params?: {
+    paramName: string;
+    paramType: string;
+    valueType: string;
+    staticValue?: string;
+    dynamicType?: string;
+    dynamicFormat?: string;
+    dynamicOffset?: number;
+  }[];
+}
+
 export const testApi = {
   call: (endpointId: number, paramOverrides?: Record<string, string>) =>
     collectorApi.post<TestCallResponse>(`/endpoints/${endpointId}/test`, {
       paramOverrides: paramOverrides || null,
     }).then(r => r.data),
+
+  /** 저장 없이 인라인 테스트 (등록 전 검증용) */
+  callInline: (request: InlineTestRequest) =>
+    collectorApi.post<TestCallResponse>('/endpoints/test-inline', request).then(r => r.data),
 };
 
 // --- Field Mappings ---

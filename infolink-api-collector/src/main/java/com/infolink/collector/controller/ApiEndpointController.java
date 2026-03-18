@@ -1,6 +1,6 @@
 package com.infolink.collector.controller;
 
-import com.infolink.collector.domain.ApiExecutionHistory;
+import com.infolink.collector.entity.ApiExecutionHistory;
 import com.infolink.collector.dto.ApiEndpointDto.*;
 import com.infolink.collector.dto.ApiExecutionHistoryDto;
 import com.infolink.collector.dto.TestCallDto;
@@ -64,6 +64,12 @@ public class ApiEndpointController {
     public TestCallDto.Response testCall(@PathVariable Long id, @RequestBody(required = false) TestCallDto.Request request) {
         Map<String, String> overrides = request != null ? request.getParamOverrides() : null;
         return testService.testCall(id, overrides);
+    }
+
+    /** 저장 없이 인라인 테스트 (등록 전 검증용) */
+    @PostMapping("/test-inline")
+    public TestCallDto.Response testCallInline(@RequestBody TestCallDto.InlineRequest request) {
+        return testService.testCallInline(request);
     }
 
     // --- Run ---

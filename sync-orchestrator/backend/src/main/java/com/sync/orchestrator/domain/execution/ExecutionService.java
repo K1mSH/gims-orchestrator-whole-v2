@@ -1,6 +1,6 @@
 package com.sync.orchestrator.domain.execution;
 
-import com.sync.orchestrator.common.CredentialEncryptor;
+import com.sync.agent.common.datasource.PasswordEncryptor;
 import com.sync.orchestrator.domain.agent.Agent;
 import com.sync.orchestrator.domain.agent.AgentRepository;
 import com.sync.orchestrator.domain.agent.AgentStatus;
@@ -49,7 +49,7 @@ public class ExecutionService {
     private final ZoneConfigRepository zoneConfigRepository;
     private final ExecutionHistoryRepository executionHistoryRepository;
     private final ExecutionStepHistoryRepository executionStepHistoryRepository;
-    private final CredentialEncryptor credentialEncryptor;
+    private final PasswordEncryptor passwordEncryptor;
     private final RestTemplate restTemplate;
 
     /**
@@ -344,14 +344,13 @@ public class ExecutionService {
     }
 
     /**
-     * 실행 트리거 - Agent에 실행 요청 (시간 범위, 필터, Step 선택, 실행 모드, 트리거 유형 지정)
+     * 실행 트리거 (시간 범위 + 필터 + Step 선택 + 동적 조건)
      */
-    @Transactional
     public ExecutionDto.TriggerResponse triggerExecution(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                           List<Map<String, Object>> filters,
                                                           List<String> selectedStepIds,
-                                                          String executionModeId, String triggeredBy) {
-        return triggerExecutionInternal(id, startTime, endTime, filters, selectedStepIds, executionModeId, triggeredBy);
+                                                          List<Map<String, Object>> conditions, String triggeredBy) {
+        return triggerExecutionInternal(id, startTime, endTime, filters, selectedStepIds, conditions, triggeredBy);
     }
 
     /**
@@ -370,7 +369,8 @@ public class ExecutionService {
     public ExecutionDto.TriggerResponse triggerExecutionInternal(Long id, LocalDateTime startTime, LocalDateTime endTime,
                                                                   List<Map<String, Object>> filters,
                                                                   List<String> selectedStepIds,
-                                                                  String executionModeId, String triggeredBy) {
+                                                                  List<Map<String, Object>> conditions,
+                                                                  String triggeredBy) {
         Agent agent = agentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
 
@@ -418,11 +418,7 @@ public class ExecutionService {
                         .orElseThrow(() -> new IllegalArgumentException("Source datasource not found: " + agent.getSourceDatasourceId()));
                 request.put("sourceDatasourceId", sourceDatasource.getDatasourceId());
                 request.put("sourceDbType", sourceDatasource.getDbType().name());
-                request.put("sourceHost", sourceDatasource.getHost());
-                request.put("sourcePort", sourceDatasource.getPort());
-                request.put("sourceDatabaseName", sourceDatasource.getDatabaseName());
-                request.put("sourceUsername", credentialEncryptor.decrypt(sourceDatasource.getUsername()));
-                request.put("sourcePassword", credentialEncryptor.decrypt(sourceDatasource.getPassword()));
+                // credentials는 Agent가 Proxy에서 자체 해석 (보안상 평문 전달 제거)
                 request.put("sourceZone", sourceDatasource.getZone());
                 request.put("sourceDatasourceDbId", sourceDatasource.getId());
                 String zoneShortCode = zoneConfigRepository.findShortCodeByZone(sourceDatasource.getZone());
@@ -504,11 +500,7 @@ public class ExecutionService {
                         .orElseThrow(() -> new IllegalArgumentException("Target datasource not found: " + agent.getTargetDatasourceId()));
                 request.put("targetDatasourceId", targetDatasource.getDatasourceId());
                 request.put("targetDbType", targetDatasource.getDbType().name());
-                request.put("targetHost", targetDatasource.getHost());
-                request.put("targetPort", targetDatasource.getPort());
-                request.put("targetDatabaseName", targetDatasource.getDatabaseName());
-                request.put("targetUsername", credentialEncryptor.decrypt(targetDatasource.getUsername()));
-                request.put("targetPassword", credentialEncryptor.decrypt(targetDatasource.getPassword()));
+                // credentials는 Agent가 Proxy에서 자체 해석 (보안상 평문 전달 제거)
             }
 
             // 실행 필터 전달
@@ -523,10 +515,10 @@ public class ExecutionService {
                 log.info("Triggering execution with selectedStepIds: {}", selectedStepIds);
             }
 
-            // 실행 모드
-            if (executionModeId != null && !executionModeId.isBlank()) {
-                request.put("executionModeId", executionModeId);
-                log.info("Triggering execution with executionModeId: {}", executionModeId);
+            // 동적 WHERE 조건
+            if (conditions != null && !conditions.isEmpty()) {
+                request.put("conditions", conditions);
+                log.info("Triggering execution with {} conditions", conditions.size());
             }
 
             log.info("Triggering execution on agent: {} with executionId: {}, source: {} (zone={}), target: {}, timeRange: {} ~ {}",

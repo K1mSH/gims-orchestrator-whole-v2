@@ -1,6 +1,6 @@
 package com.infolink.collector.dto;
 
-import com.infolink.collector.domain.ApiExecutionHistory;
+import com.infolink.collector.entity.ApiExecutionHistory;
 import lombok.*;
 
 import java.time.LocalDateTime;

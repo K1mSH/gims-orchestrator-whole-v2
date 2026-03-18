@@ -1,8 +1,8 @@
 package com.infolink.collector.service;
 
-import com.infolink.collector.domain.ApiExecutionHistory;
-import com.infolink.collector.domain.ApiSchedule;
-import com.infolink.collector.domain.ApiScheduleRepository;
+import com.infolink.collector.entity.ApiExecutionHistory;
+import com.infolink.collector.entity.ApiSchedule;
+import com.infolink.collector.repository.ApiScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.ContextRefreshedEvent;

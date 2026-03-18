@@ -110,6 +110,12 @@ public class AgentConfigLoader {
             def.setStep(step);
         }
 
+        // select-tables (WHERE 조건 대상 테이블)
+        List<String> selectTables = (List<String>) data.get("select-tables");
+        if (selectTables != null) {
+            def.setSelectTables(selectTables);
+        }
+
         // table-mappings
         List<Map<String, Object>> mappingsList = (List<Map<String, Object>>) data.get("table-mappings");
         if (mappingsList != null) {
@@ -119,20 +125,6 @@ public class AgentConfigLoader {
                 mapping.setSource((List<String>) mappingMap.get("source"));
                 mapping.setTarget((List<String>) mappingMap.get("target"));
                 def.getTableMappings().add(mapping);
-            }
-        }
-
-        // execution-modes
-        List<Map<String, Object>> modesList = (List<Map<String, Object>>) data.get("execution-modes");
-        if (modesList != null) {
-            for (Map<String, Object> modeMap : modesList) {
-                AgentDefinition.ExecutionModeConfig mode = new AgentDefinition.ExecutionModeConfig();
-                mode.setModeId((String) modeMap.get("mode-id"));
-                mode.setModeName((String) modeMap.get("mode-name"));
-                mode.setDescription((String) modeMap.get("description"));
-                mode.setDisplayOrder(modeMap.get("display-order") != null ? ((Number) modeMap.get("display-order")).intValue() : 0);
-                mode.setDefault(Boolean.TRUE.equals(modeMap.get("is-default")));
-                def.getExecutionModes().add(mode);
             }
         }
 

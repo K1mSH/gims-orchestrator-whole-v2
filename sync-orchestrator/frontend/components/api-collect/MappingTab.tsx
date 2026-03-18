@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { testApi, endpointApi, mappingApi, TreeNode, TestCallResponse } from '@/lib/collectorApi';
+import { datasourceApi } from '@/lib/api';
 import { ApiEndpointDetail, ApiFieldMappingRequest, TransformType } from '@/types/api-collect';
+import { DatasourceSimple, ColumnSearchResult } from '@/types';
 import axios from 'axios';
 
 interface MappingTabProps {
@@ -10,37 +12,47 @@ interface MappingTabProps {
   onUpdate: () => void;
 }
 
-// 자체 DB 메타데이터 API
-const metadataApi = axios.create({ baseURL: '/collector-api/metadata', headers: { 'Content-Type': 'application/json' } });
-
 export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestCallResponse | null>(null);
   const [selectedRoot, setSelectedRoot] = useState<string>(endpoint.dataRootPath || '');
 
+  // datasource 선택
+  const [datasources, setDatasources] = useState<DatasourceSimple[]>([]);
+  const [selectedDatasourceId, setSelectedDatasourceId] = useState<string>(endpoint.targetDatasourceId || '');
+
   // target 테이블/컬럼
-  const [tables, setTables] = useState<string[]>([]);
+  const [tables, setTables] = useState<{ tableName: string; tableType: string }[]>([]);
   const [targetTable, setTargetTable] = useState<string>(endpoint.targetTableName || '');
-  const [targetColumns, setTargetColumns] = useState<{ column_name: string; data_type: string; is_pk: string }[]>([]);
+  const [targetColumns, setTargetColumns] = useState<ColumnSearchResult[]>([]);
 
   // 매핑 행
   const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
 
-  // 테이블 목록 로드
+  // Orchestrator datasource 목록 로드
   useEffect(() => {
-    metadataApi.get<string[]>('/tables').then(r => setTables(r.data)).catch(() => {});
+    datasourceApi.getSimple().then(setDatasources).catch(() => {});
   }, []);
+
+  // datasource 선택 시 테이블 목록 로드
+  useEffect(() => {
+    if (selectedDatasourceId) {
+      datasourceApi.searchTables(selectedDatasourceId).then(setTables).catch(() => setTables([]));
+    } else {
+      setTables([]);
+    }
+  }, [selectedDatasourceId]);
 
   // target 테이블 변경 시 컬럼 로드
   const loadColumns = useCallback(async (tableName: string) => {
-    if (!tableName) { setTargetColumns([]); return; }
+    if (!tableName || !selectedDatasourceId) { setTargetColumns([]); return; }
     try {
-      const r = await metadataApi.get<{ column_name: string; data_type: string; is_pk: string }[]>(`/tables/${tableName}/columns`);
-      setTargetColumns(r.data);
+      const cols = await datasourceApi.searchColumns(selectedDatasourceId, tableName);
+      setTargetColumns(cols);
     } catch { setTargetColumns([]); }
-  }, []);
+  }, [selectedDatasourceId]);
 
   useEffect(() => {
     if (targetTable) loadColumns(targetTable);
@@ -99,12 +111,30 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     }
   };
 
+  const handleDatasourceChange = async (dsId: string) => {
+    setSelectedDatasourceId(dsId);
+    setTargetTable('');
+    setTargetColumns([]);
+    try {
+      await endpointApi.update(endpoint.id, {
+        apiName: endpoint.apiName, url: endpoint.url,
+        httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+        targetDatasourceId: dsId || undefined,
+        targetTableName: '',
+      });
+      onUpdate();
+    } catch (e: any) {
+      alert('Datasource 저장 실패');
+    }
+  };
+
   const handleTargetTableChange = async (tableName: string) => {
     setTargetTable(tableName);
     try {
       await endpointApi.update(endpoint.id, {
         apiName: endpoint.apiName, url: endpoint.url,
         httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+        targetDatasourceId: selectedDatasourceId || undefined,
         targetTableName: tableName,
       });
       onUpdate();
@@ -223,31 +253,49 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
         </div>
       )}
 
-      {/* Target 테이블 선택 */}
+      {/* Target Datasource + 테이블 선택 */}
       {selectedRoot && (
         <div className="card" style={{ marginBottom: '1rem' }}>
-          <div className="card-header"><h3 className="card-title">적재 테이블</h3></div>
-          <div style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <select className="form-select" value={targetTable} style={{ maxWidth: '300px' }}
-              onChange={e => handleTargetTableChange(e.target.value)}>
-              <option value="">-- 테이블 선택 --</option>
-              {tables.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <input className="form-input" value={targetTable} style={{ maxWidth: '300px' }}
-              onChange={e => setTargetTable(e.target.value)}
-              placeholder="또는 직접 입력" />
-            <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <input type="checkbox" checked={endpoint.upsertEnabled}
-                onChange={async (e) => {
-                  await endpointApi.update(endpoint.id, {
-                    apiName: endpoint.apiName, url: endpoint.url,
-                    httpMethod: endpoint.httpMethod, authType: endpoint.authType,
-                    upsertEnabled: e.target.checked,
-                  });
-                  onUpdate();
-                }} />
-              UPSERT
-            </label>
+          <div className="card-header"><h3 className="card-title">적재 설정</h3></div>
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Datasource 선택 */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <label className="form-label" style={{ minWidth: '100px', margin: 0 }}>Target DB</label>
+              <select className="form-select" value={selectedDatasourceId} style={{ maxWidth: '400px' }}
+                onChange={e => handleDatasourceChange(e.target.value)}>
+                <option value="">-- Datasource 선택 --</option>
+                {datasources.map(ds => (
+                  <option key={ds.datasourceId} value={ds.datasourceId}>
+                    {ds.datasourceName} ({ds.dbType})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* 테이블 선택 */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <label className="form-label" style={{ minWidth: '100px', margin: 0 }}>Target 테이블</label>
+              <select className="form-select" value={targetTable} style={{ maxWidth: '300px' }}
+                onChange={e => handleTargetTableChange(e.target.value)}
+                disabled={!selectedDatasourceId}>
+                <option value="">-- 테이블 선택 --</option>
+                {tables.map(t => <option key={t.tableName} value={t.tableName}>{t.tableName}</option>)}
+              </select>
+              <input className="form-input" value={targetTable} style={{ maxWidth: '200px' }}
+                onChange={e => setTargetTable(e.target.value)}
+                placeholder="또는 직접 입력" />
+              <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <input type="checkbox" checked={endpoint.upsertEnabled}
+                  onChange={async (e) => {
+                    await endpointApi.update(endpoint.id, {
+                      apiName: endpoint.apiName, url: endpoint.url,
+                      httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+                      upsertEnabled: e.target.checked,
+                    });
+                    onUpdate();
+                  }} />
+                UPSERT
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -297,8 +345,8 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                           onChange={e => updateRow(i, 'targetColumnName', e.target.value)}>
                           <option value="">-- 선택 --</option>
                           {targetColumns.map(c => (
-                            <option key={c.column_name} value={c.column_name}>
-                              {c.column_name} ({c.data_type})
+                            <option key={c.columnName} value={c.columnName}>
+                              {c.columnName} ({c.dataType}){c.isPrimaryKey ? ' [PK]' : ''}
                             </option>
                           ))}
                         </select>

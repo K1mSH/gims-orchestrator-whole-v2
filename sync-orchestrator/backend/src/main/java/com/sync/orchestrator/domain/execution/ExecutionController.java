@@ -47,11 +47,17 @@ public class ExecutionController {
             @RequestBody(required = false) ExecutionDto.TriggerRequest request) {
         if (request != null && (request.getStartTime() != null || request.getEndTime() != null
                 || request.getFilters() != null || request.getSelectedStepIds() != null
-                || request.getExecutionModeId() != null)) {
+                || request.getConditions() != null)) {
+
+            // conditions가 있으면 최소 1개 필수 (전체 데이터 긁어오기 방지)
+            if (request.getConditions() != null && request.getConditions().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
             return ResponseEntity.ok(executionService.triggerExecution(
                     id, request.getStartTime(), request.getEndTime(),
                     request.getFilters(), request.getSelectedStepIds(),
-                    request.getExecutionModeId(), "MANUAL"));
+                    request.getConditions(), "MANUAL"));
         }
         return ResponseEntity.ok(executionService.triggerExecution(id));
     }

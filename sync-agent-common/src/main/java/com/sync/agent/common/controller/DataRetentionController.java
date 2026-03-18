@@ -92,7 +92,11 @@ public class DataRetentionController {
                     RetentionConfig.TableRetention tr = new RetentionConfig.TableRetention();
                     tr.setTable((String) t.get("table"));
                     tr.setDateColumn((String) t.get("dateColumn"));
-                    tr.setRetentionDays(t.get("retentionDays") != null ? ((Number) t.get("retentionDays")).intValue() : 365);
+                    int days = t.get("retentionDays") != null ? ((Number) t.get("retentionDays")).intValue() : 365;
+                    if (days < 1) {
+                        throw new IllegalArgumentException("retentionDays는 1 이상이어야 합니다. (입력값: " + days + ", 테이블: " + tr.getTable() + ")");
+                    }
+                    tr.setRetentionDays(days);
                     config.getTargets().add(tr);
                 }
             }

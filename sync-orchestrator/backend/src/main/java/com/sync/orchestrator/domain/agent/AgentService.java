@@ -1,9 +1,10 @@
 package com.sync.orchestrator.domain.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sync.orchestrator.common.CredentialEncryptor;
+import com.sync.agent.common.datasource.PasswordEncryptor;
 import com.sync.orchestrator.domain.datasource.Datasource;
 import com.sync.orchestrator.domain.datasource.DatasourceRepository;
+import com.sync.orchestrator.domain.datasource.DatasourceTableRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,8 @@ public class AgentService {
 
     private final AgentRepository agentRepository;
     private final DatasourceRepository datasourceRepository;
-    private final CredentialEncryptor credentialEncryptor;
+    private final DatasourceTableRepository tableRepository;
+    private final PasswordEncryptor passwordEncryptor;
     private final RestTemplate restTemplate;
     private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
@@ -76,9 +78,6 @@ public class AgentService {
         // 선택된 테이블 추가
         addAgentTables(agent, request.getSourceTableIds(), AgentTable.TableType.SOURCE);
         addAgentTables(agent, request.getTargetTableIds(), AgentTable.TableType.TARGET);
-
-        // 실행 파라미터 추가
-        addExecutionParams(agent, request.getExecutionParams());
 
         Agent saved = agentRepository.save(agent);
         return AgentDto.Response.from(saved);
@@ -175,229 +174,6 @@ public class AgentService {
         return result;
     }
 
-    private void addExecutionParams(Agent agent, List<AgentDto.ExecutionParamInput> params) {
-        if (params == null || params.isEmpty()) return;
-        for (AgentDto.ExecutionParamInput input : params) {
-            AgentExecutionParam param = AgentExecutionParam.builder()
-                    .agent(agent)
-                    .paramId(input.getParamId())
-                    .label(input.getLabel())
-                    .description(input.getDescription())
-                    .dataType(input.getDataType() != null ? input.getDataType() : "STRING")
-                    .defaultValue(input.getDefaultValue())
-                    .isEnabled(input.getIsEnabled() != null ? input.getIsEnabled() : true)
-                    .displayOrder(input.getDisplayOrder() != null ? input.getDisplayOrder() : 0)
-                    .build();
-            agent.getExecutionParams().add(param);
-        }
-    }
-
-    /**
-     * Agent API에서 실행 파라미터 메타데이터 가져오기 (프록시)
-     */
-    @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> fetchExecutionParamsFromAgent(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        try {
-            String url = agent.getEndpointUrl() + "/api/pipeline/execution-params";
-            log.info("Fetching execution params from agent: {}", url);
-
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
-            return response.getBody() != null ? response.getBody() : List.of();
-        } catch (Exception e) {
-            log.error("Failed to fetch execution params from agent: {}", agent.getAgentCode(), e);
-            return List.of();
-        }
-    }
-
-    // ==================== Execution Mode 관련 메서드 ====================
-
-    /**
-     * Agent API에서 실행 모드 목록 가져오기 (프록시)
-     */
-    @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> fetchExecutionModesFromAgent(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        try {
-            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/execution-modes";
-            log.info("Fetching execution modes from agent: {}", url);
-
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
-            return response.getBody() != null ? response.getBody() : List.of();
-        } catch (Exception e) {
-            log.error("Failed to fetch execution modes from agent: {}", agent.getAgentCode(), e);
-            return List.of();
-        }
-    }
-
-    /**
-     * DB에 저장된 실행 모드 조회
-     */
-    public List<AgentDto.ExecutionModeResponse> getExecutionModes(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        return agent.getExecutionModes().stream()
-                .map(AgentDto.ExecutionModeResponse::from)
-                .toList();
-    }
-
-    /**
-     * Agent API에서 가져온 실행 모드를 DB에 저장 (기존 데이터 교체)
-     */
-    @Transactional
-    @SuppressWarnings("unchecked")
-    public List<AgentDto.ExecutionModeResponse> refreshExecutionModes(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        List<Map<String, Object>> fetched = fetchExecutionModesFromAgent(id);
-
-        // 기존 모드 제거
-        agent.getExecutionModes().clear();
-        entityManager.flush();
-
-        // 새로 추가
-        for (Map<String, Object> fm : fetched) {
-            AgentExecutionMode mode = AgentExecutionMode.builder()
-                    .agent(agent)
-                    .modeId((String) fm.get("modeId"))
-                    .modeName((String) fm.get("modeName"))
-                    .description((String) fm.get("description"))
-                    .displayOrder(fm.get("displayOrder") != null ? ((Number) fm.get("displayOrder")).intValue() : 0)
-                    .isDefault(fm.get("isDefault") != null ? (Boolean) fm.get("isDefault") : false)
-                    .build();
-            agent.getExecutionModes().add(mode);
-        }
-
-        log.info("Refreshed {} execution modes for agent: {}", fetched.size(), agent.getAgentCode());
-
-        return agent.getExecutionModes().stream()
-                .map(AgentDto.ExecutionModeResponse::from)
-                .toList();
-    }
-
-    // ==================== Step Definition 관련 메서드 ====================
-
-    /**
-     * Agent API에서 Step 정의 가져오기
-     */
-    @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> fetchStepDefinitionsFromAgent(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        try {
-            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/step-definitions";
-            log.info("Fetching step definitions from agent: {}", url);
-
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
-            return response.getBody() != null ? response.getBody() : List.of();
-        } catch (Exception e) {
-            log.error("Failed to fetch step definitions from agent: {}", agent.getAgentCode(), e);
-            return List.of();
-        }
-    }
-
-    /**
-     * DB에 저장된 Step 정의 조회
-     */
-    public List<AgentDto.StepDefinitionResponse> getStepDefinitions(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        return agent.getStepDefinitions().stream()
-                .map(AgentDto.StepDefinitionResponse::from)
-                .toList();
-    }
-
-    /**
-     * Agent API에서 가져온 Step 정의를 DB에 저장 (기존 데이터 교체)
-     */
-    @Transactional
-    @SuppressWarnings("unchecked")
-    public List<AgentDto.StepDefinitionResponse> refreshStepDefinitions(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        List<Map<String, Object>> fetched = fetchStepDefinitionsFromAgent(id);
-
-        // 기존 Step 정의 제거
-        agent.getStepDefinitions().clear();
-        entityManager.flush();
-
-        // 새로 추가
-        for (Map<String, Object> fm : fetched) {
-            AgentStepDefinition def = AgentStepDefinition.builder()
-                    .agent(agent)
-                    .stepId((String) fm.get("stepId"))
-                    .stepName((String) fm.get("stepName"))
-                    .description((String) fm.get("description"))
-                    .displayOrder(fm.get("displayOrder") != null ? ((Number) fm.get("displayOrder")).intValue() : 0)
-                    .enabledByDefault(fm.get("enabledByDefault") != null ? (Boolean) fm.get("enabledByDefault") : true)
-                    .build();
-            agent.getStepDefinitions().add(def);
-        }
-
-        log.info("Refreshed {} step definitions for agent: {}", fetched.size(), agent.getAgentCode());
-
-        return agent.getStepDefinitions().stream()
-                .map(AgentDto.StepDefinitionResponse::from)
-                .toList();
-    }
-
-    /**
-     * DB에 저장된 Agent 실행 파라미터 조회
-     */
-    public List<AgentDto.ExecutionParamResponse> getExecutionParams(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        return agent.getExecutionParams().stream()
-                .map(AgentDto.ExecutionParamResponse::from)
-                .toList();
-    }
-
-    /**
-     * Agent API에서 가져온 실행 파라미터를 DB에 저장 (기존 데이터 교체)
-     */
-    @Transactional
-    @SuppressWarnings("unchecked")
-    public List<AgentDto.ExecutionParamResponse> refreshExecutionParams(Long id) {
-        Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
-
-        // Agent API에서 가져오기
-        List<Map<String, Object>> fetched = fetchExecutionParamsFromAgent(id);
-
-        // 기존 파라미터 제거
-        agent.getExecutionParams().clear();
-        entityManager.flush();
-
-        // 새로 추가
-        for (Map<String, Object> fm : fetched) {
-            AgentExecutionParam param = AgentExecutionParam.builder()
-                    .agent(agent)
-                    .paramId((String) fm.get("paramId"))
-                    .label((String) fm.get("label"))
-                    .description((String) fm.get("description"))
-                    .dataType(fm.get("dataType") != null ? (String) fm.get("dataType") : "STRING")
-                    .defaultValue((String) fm.get("defaultValue"))
-                    .isEnabled(true)
-                    .displayOrder(fm.get("displayOrder") != null ? ((Number) fm.get("displayOrder")).intValue() : 0)
-                    .build();
-            agent.getExecutionParams().add(param);
-        }
-
-        return agent.getExecutionParams().stream()
-                .map(AgentDto.ExecutionParamResponse::from)
-                .toList();
-    }
-
     private void addAgentTables(Agent agent, List<Long> tableIds, AgentTable.TableType tableType) {
         if (tableIds == null || tableIds.isEmpty()) return;
 
@@ -453,13 +229,6 @@ public class AgentService {
             entityManager.flush();
             addAgentTables(agent, request.getSourceTableIds(), AgentTable.TableType.SOURCE);
             addAgentTables(agent, request.getTargetTableIds(), AgentTable.TableType.TARGET);
-        }
-
-        // 실행 파라미터 업데이트 (전달된 경우에만)
-        if (request.getExecutionParams() != null) {
-            agent.getExecutionParams().clear();
-            entityManager.flush();
-            addExecutionParams(agent, request.getExecutionParams());
         }
 
         return AgentDto.Response.from(agent);
@@ -550,6 +319,24 @@ public class AgentService {
     public Map<String, Object> updateRetentionConfig(Long id, String configJson) {
         Agent agent = agentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+
+        // retentionDays 음수/0 방어
+        try {
+            Map<String, Object> parsed = objectMapper.readValue(configJson, Map.class);
+            List<Map<String, Object>> targets = (List<Map<String, Object>>) parsed.get("targets");
+            if (targets != null) {
+                for (Map<String, Object> t : targets) {
+                    int days = t.get("retentionDays") != null ? ((Number) t.get("retentionDays")).intValue() : 365;
+                    if (days < 1) {
+                        throw new IllegalArgumentException(
+                                "retentionDays는 1 이상이어야 합니다. (입력값: " + days + ", 테이블: " + t.get("table") + ")");
+                    }
+                }
+            }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("Retention config JSON 파싱 실패: " + e.getMessage());
+        }
+
         agent.setRetentionConfig(configJson);
         agentRepository.save(agent);
         log.info("Retention config 저장: agent={}", agent.getAgentCode());
@@ -619,6 +406,52 @@ public class AgentService {
     }
 
     /**
+     * Agent YML에 정의된 select-tables(WHERE 조건 대상 테이블) 목록 조회.
+     * Agent API를 호출하여 테이블명 목록을 받고, Orchestrator에 등록된 DatasourceTable과 매칭하여 컬럼 정보를 포함해 반환.
+     */
+    public List<com.sync.orchestrator.domain.datasource.DatasourceDto.TableResponse> getSelectTables(Long agentId) {
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentId));
+
+        // 1. Agent에 select-tables 요청
+        List<String> tableNames;
+        try {
+            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/select-tables";
+            log.info("Fetching select-tables from agent: {}", url);
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            tableNames = response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            log.warn("Failed to fetch select-tables from agent {}: {}", agent.getAgentCode(), e.getMessage());
+            return List.of();
+        }
+
+        if (tableNames.isEmpty()) return List.of();
+
+        // 2. 등록된 DatasourceTable과 매칭 (source + target 양쪽 datasource에서 검색)
+        List<com.sync.orchestrator.domain.datasource.DatasourceDto.TableResponse> result = new ArrayList<>();
+        List<String> datasourceIds = new ArrayList<>();
+        if (agent.getSourceDatasourceId() != null) datasourceIds.add(agent.getSourceDatasourceId());
+        if (agent.getTargetDatasourceId() != null) datasourceIds.add(agent.getTargetDatasourceId());
+
+        for (String tableName : tableNames) {
+            boolean found = false;
+            for (String dsId : datasourceIds) {
+                var tableOpt = tableRepository.findByDatasourceIdAndTableName(dsId, tableName);
+                if (tableOpt.isPresent()) {
+                    result.add(com.sync.orchestrator.domain.datasource.DatasourceDto.TableResponse.from(tableOpt.get()));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                log.debug("select-table '{}' not found in registered tables", tableName);
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Datasource 연결 정보를 Map으로 변환 (Agent에 전달용)
      */
     private Map<String, Object> buildDatasourceRequest(Datasource datasource) {
@@ -628,8 +461,8 @@ public class AgentService {
         request.put("host", datasource.getHost());
         request.put("port", datasource.getPort());
         request.put("databaseName", datasource.getDatabaseName());
-        request.put("username", credentialEncryptor.decrypt(datasource.getUsername()));
-        request.put("password", credentialEncryptor.decrypt(datasource.getPassword()));
+        request.put("username", datasource.getUsername());
+        request.put("password", datasource.getPassword());
         return request;
     }
 }

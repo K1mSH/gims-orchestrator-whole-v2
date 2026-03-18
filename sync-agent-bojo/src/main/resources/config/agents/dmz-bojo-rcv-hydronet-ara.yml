@@ -1,5 +1,10 @@
+# ── DMZ RCV Agent: 하이드로넷 (아라) ──
+# 외부 원천 DB에서 제원/관측 데이터를 추출하여 IF(인터페이스) 테이블에 적재한다.
+# 파이프라인 흐름: 외부 DB(source) → IF_RSV(target)
+# 설정 상세 설명은 dmz-bojo-rcv-daejeon.yml 참고.
 agent-code: dmz-bojo-rcv-hydronet-ara
 type: RCV
+
 jewon:
   source-table: sec_jewon_view
   target-table: if_rsv_sec_jewon
@@ -7,6 +12,7 @@ jewon:
   conflict-key: source_refs
   full-copy: true
   skip-source-status-update: true
+
 obsvdata:
   source-table: sec_obsvdata_view
   target-table: if_rsv_sec_obsvdata
@@ -14,9 +20,15 @@ obsvdata:
   conflict-key: source_refs
   date-column: obsv_date
   time-column: obsv_time
+
 link:
   use-link-table: true
   table-name: link_ngwis
+
+select-tables:
+  - sec_jewon_view
+  - sec_obsvdata_view
+
 table-mappings:
   - name: jewon
     source: [sec_jewon_view]

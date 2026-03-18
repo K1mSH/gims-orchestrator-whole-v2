@@ -33,8 +33,6 @@ public class AgentDto {
         // 선택된 테이블 ID 목록
         private List<Long> sourceTableIds;
         private List<Long> targetTableIds;
-        // 실행 파라미터
-        private List<ExecutionParamInput> executionParams;
     }
 
     @Getter
@@ -56,102 +54,6 @@ public class AgentDto {
         // 선택된 테이블 ID 목록
         private List<Long> sourceTableIds;
         private List<Long> targetTableIds;
-        // 실행 파라미터
-        private List<ExecutionParamInput> executionParams;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class ExecutionParamInput {
-        private String paramId;
-        private String label;
-        private String description;
-        private String dataType;
-        private String defaultValue;
-        private Boolean isEnabled;
-        private Integer displayOrder;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class ExecutionParamResponse {
-        private Long id;
-        private String paramId;
-        private String label;
-        private String description;
-        private String dataType;
-        private String defaultValue;
-        private Boolean isEnabled;
-        private Integer displayOrder;
-
-        public static ExecutionParamResponse from(AgentExecutionParam param) {
-            return ExecutionParamResponse.builder()
-                    .id(param.getId())
-                    .paramId(param.getParamId())
-                    .label(param.getLabel())
-                    .description(param.getDescription())
-                    .dataType(param.getDataType())
-                    .defaultValue(param.getDefaultValue())
-                    .isEnabled(param.getIsEnabled())
-                    .displayOrder(param.getDisplayOrder())
-                    .build();
-        }
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class StepDefinitionResponse {
-        private Long id;
-        private String stepId;
-        private String stepName;
-        private String description;
-        private Integer displayOrder;
-        private Boolean enabledByDefault;
-
-        public static StepDefinitionResponse from(AgentStepDefinition def) {
-            return StepDefinitionResponse.builder()
-                    .id(def.getId())
-                    .stepId(def.getStepId())
-                    .stepName(def.getStepName())
-                    .description(def.getDescription())
-                    .displayOrder(def.getDisplayOrder())
-                    .enabledByDefault(def.getEnabledByDefault())
-                    .build();
-        }
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class ExecutionModeResponse {
-        private Long id;
-        private String modeId;
-        private String modeName;
-        private String description;
-        private Integer displayOrder;
-        private Boolean isDefault;
-
-        public static ExecutionModeResponse from(AgentExecutionMode mode) {
-            return ExecutionModeResponse.builder()
-                    .id(mode.getId())
-                    .modeId(mode.getModeId())
-                    .modeName(mode.getModeName())
-                    .description(mode.getDescription())
-                    .displayOrder(mode.getDisplayOrder())
-                    .isDefault(mode.getIsDefault())
-                    .build();
-        }
     }
 
     @Getter
@@ -178,12 +80,6 @@ public class AgentDto {
         // 선택된 테이블 ID 목록
         private List<Long> sourceTableIds;
         private List<Long> targetTableIds;
-        // 실행 파라미터
-        private List<ExecutionParamResponse> executionParams;
-        // Step 정의
-        private List<StepDefinitionResponse> stepDefinitions;
-        // 실행 모드
-        private List<ExecutionModeResponse> executionModes;
         // Retention 설정 JSON
         private String retentionConfig;
 
@@ -195,15 +91,6 @@ public class AgentDto {
             List<Long> targetIds = agent.getAgentTables().stream()
                     .filter(at -> at.getTableType() == AgentTable.TableType.TARGET)
                     .map(AgentTable::getDatasourceTableId)
-                    .toList();
-            List<ExecutionParamResponse> execParams = agent.getExecutionParams().stream()
-                    .map(ExecutionParamResponse::from)
-                    .toList();
-            List<StepDefinitionResponse> stepDefs = agent.getStepDefinitions().stream()
-                    .map(StepDefinitionResponse::from)
-                    .toList();
-            List<ExecutionModeResponse> modes = agent.getExecutionModes().stream()
-                    .map(ExecutionModeResponse::from)
                     .toList();
 
             return Response.builder()
@@ -224,9 +111,6 @@ public class AgentDto {
                     .createdAt(agent.getCreatedAt())
                     .sourceTableIds(sourceIds)
                     .targetTableIds(targetIds)
-                    .executionParams(execParams)
-                    .stepDefinitions(stepDefs)
-                    .executionModes(modes)
                     .retentionConfig(agent.getRetentionConfig())
                     .build();
         }

@@ -1,6 +1,6 @@
 package com.sync.orchestrator.domain.datasource;
 
-import com.sync.orchestrator.common.CredentialEncryptor;
+import com.sync.agent.common.datasource.PasswordEncryptor;
 import com.sync.orchestrator.domain.agent.Agent;
 import com.sync.orchestrator.domain.agent.AgentRepository;
 import com.sync.orchestrator.domain.zone.ZoneConfig;
@@ -31,7 +31,7 @@ public class DatasourceService {
     private final AgentRepository agentRepository;
     private final ZoneConfigRepository zoneConfigRepository;
     private final RestTemplate restTemplate;
-    private final CredentialEncryptor credentialEncryptor;
+    private final PasswordEncryptor passwordEncryptor;
 
     /**
      * 전체 목록 조회
@@ -52,8 +52,8 @@ public class DatasourceService {
     }
 
     /**
-     * Agent 내부용 연결 정보 조회 (자격증명 복호화 포함)
-     * Agent가 trace API 등에서 외부 DB 접속이 필요할 때 사용
+     * Agent 내부용 연결 정보 조회 (암호문 그대로 전달)
+     * Agent/Proxy/api-collector가 각자 PasswordEncryptor로 복호화
      */
     public DatasourceDto.ConnectionInfo getConnectionInfo(String datasourceId) {
         Datasource ds = datasourceRepository.findById(datasourceId)
@@ -64,8 +64,8 @@ public class DatasourceService {
                 .host(ds.getHost())
                 .port(ds.getPort())
                 .databaseName(ds.getDatabaseName())
-                .username(credentialEncryptor.decrypt(ds.getUsername()))
-                .password(credentialEncryptor.decrypt(ds.getPassword()))
+                .username(ds.getUsername())
+                .password(ds.getPassword())
                 .build();
     }
 
@@ -145,8 +145,8 @@ public class DatasourceService {
                 .host(request.getHost())
                 .port(request.getPort())
                 .databaseName(request.getDatabaseName())
-                .username(credentialEncryptor.encrypt(request.getUsername()))
-                .password(credentialEncryptor.encrypt(request.getPassword()))
+                .username(passwordEncryptor.encrypt(request.getUsername()))
+                .password(passwordEncryptor.encrypt(request.getPassword()))
                 .description(request.getDescription())
                 .zone(request.getZone())
                 .build();
@@ -181,10 +181,10 @@ public class DatasourceService {
         }
         // username/password는 빈값이 아닐 때만 업데이트 (수정 화면에서 빈값으로 표시)
         if (request.getUsername() != null && !request.getUsername().isEmpty()) {
-            datasource.setUsername(credentialEncryptor.encrypt(request.getUsername()));
+            datasource.setUsername(passwordEncryptor.encrypt(request.getUsername()));
         }
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            datasource.setPassword(credentialEncryptor.encrypt(request.getPassword()));
+            datasource.setPassword(passwordEncryptor.encrypt(request.getPassword()));
         }
         if (request.getDescription() != null) {
             datasource.setDescription(request.getDescription());
@@ -222,8 +222,8 @@ public class DatasourceService {
                 .orElseThrow(() -> new IllegalArgumentException("Datasource not found: " + datasourceId));
 
         // 복호화된 username/password
-        String decryptedUsername = credentialEncryptor.decrypt(datasource.getUsername());
-        String decryptedPassword = credentialEncryptor.decrypt(datasource.getPassword());
+        String decryptedUsername = passwordEncryptor.decrypt(datasource.getUsername());
+        String decryptedPassword = passwordEncryptor.decrypt(datasource.getPassword());
 
         // zone이 설정되어 있으면 해당 zone의 master Agent에게 프록시
         if (datasource.getZone() != null && !datasource.getZone().isEmpty()) {
@@ -423,8 +423,8 @@ public class DatasourceService {
             request.put("host", datasource.getHost());
             request.put("port", datasource.getPort());
             request.put("databaseName", datasource.getDatabaseName());
-            request.put("username", credentialEncryptor.decrypt(datasource.getUsername()));
-            request.put("password", credentialEncryptor.decrypt(datasource.getPassword()));
+            request.put("username", passwordEncryptor.decrypt(datasource.getUsername()));
+            request.put("password", passwordEncryptor.decrypt(datasource.getPassword()));
             request.put("query", query);
 
             String agentUrl = proxyAgentUrl + "/api/datasource/search-tables";
@@ -456,8 +456,8 @@ public class DatasourceService {
 
         try {
             Class.forName(datasource.getDriverClassName());
-            String decryptedUsername = credentialEncryptor.decrypt(datasource.getUsername());
-            String decryptedPassword = credentialEncryptor.decrypt(datasource.getPassword());
+            String decryptedUsername = passwordEncryptor.decrypt(datasource.getUsername());
+            String decryptedPassword = passwordEncryptor.decrypt(datasource.getPassword());
             try (Connection conn = DriverManager.getConnection(jdbcUrl, decryptedUsername, decryptedPassword)) {
                 DatabaseMetaData metaData = conn.getMetaData();
 
@@ -521,8 +521,8 @@ public class DatasourceService {
             request.put("host", datasource.getHost());
             request.put("port", datasource.getPort());
             request.put("databaseName", datasource.getDatabaseName());
-            request.put("username", credentialEncryptor.decrypt(datasource.getUsername()));
-            request.put("password", credentialEncryptor.decrypt(datasource.getPassword()));
+            request.put("username", passwordEncryptor.decrypt(datasource.getUsername()));
+            request.put("password", passwordEncryptor.decrypt(datasource.getPassword()));
             request.put("tableName", tableName);
             request.put("query", query);
 
@@ -548,8 +548,8 @@ public class DatasourceService {
 
         try {
             Class.forName(datasource.getDriverClassName());
-            String decryptedUsername = credentialEncryptor.decrypt(datasource.getUsername());
-            String decryptedPassword = credentialEncryptor.decrypt(datasource.getPassword());
+            String decryptedUsername = passwordEncryptor.decrypt(datasource.getUsername());
+            String decryptedPassword = passwordEncryptor.decrypt(datasource.getPassword());
             try (Connection conn = DriverManager.getConnection(jdbcUrl, decryptedUsername, decryptedPassword)) {
                 DatabaseMetaData metaData = conn.getMetaData();
 

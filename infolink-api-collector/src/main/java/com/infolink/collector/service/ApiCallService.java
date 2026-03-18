@@ -1,7 +1,7 @@
 package com.infolink.collector.service;
 
-import com.infolink.collector.domain.ApiEndpoint;
-import com.infolink.collector.domain.ApiParam;
+import com.infolink.collector.entity.ApiEndpoint;
+import com.infolink.collector.entity.ApiParam;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

@@ -56,6 +56,15 @@ public class DynamicEntityManagerService {
         );
     }
 
+    /**
+     * Target DB 타입 반환 (POSTGRESQL, MYSQL 등)
+     */
+    public String getTargetDbType() {
+        String dsId = getTargetDatasourceId();
+        DataSourceInfo info = findDataSourceInfo(dsId);
+        return info != null ? info.getDbType() : "POSTGRESQL";
+    }
+
     public JdbcTemplate getTargetJdbcTemplate() {
         String dsId = getTargetDatasourceId();
         DataSourceInfo info = findDataSourceInfo(dsId);

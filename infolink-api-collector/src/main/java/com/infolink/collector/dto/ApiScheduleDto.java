@@ -1,6 +1,6 @@
 package com.infolink.collector.dto;
 
-import com.infolink.collector.domain.ApiSchedule;
+import com.infolink.collector.entity.ApiSchedule;
 import lombok.*;
 
 import javax.validation.constraints.NotBlank;

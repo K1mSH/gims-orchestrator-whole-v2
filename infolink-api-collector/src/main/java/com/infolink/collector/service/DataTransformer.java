@@ -2,7 +2,7 @@ package com.infolink.collector.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infolink.collector.domain.ApiFieldMapping;
+import com.infolink.collector.entity.ApiFieldMapping;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

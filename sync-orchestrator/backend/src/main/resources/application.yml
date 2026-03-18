@@ -6,7 +6,7 @@ spring:
     name: sync-orchestrator
 
   datasource:
-    url: jdbc:postgresql://localhost:29001/orchestrator
+    url: ENC(BMigUUwEN738yfBUocoMn9furDkBOfQrHx+LnnM7ne2H/1Uwctqe4tFYdWOQ4tRHyGHOh3tc6AqG0foeYINsj/G6O1bLFb/Q5rvv1oMKb7s=)
     username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
     password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
     driver-class-name: org.postgresql.Driver
@@ -24,6 +24,10 @@ spring:
   sql:
     init:
       mode: always
+
+# Proxy API Key (Agent/Proxy 간 인증)
+proxy:
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
 
 # Retention(자동삭제) 스케줄
 retention:

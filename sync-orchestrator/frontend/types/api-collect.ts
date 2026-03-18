@@ -12,7 +12,7 @@ export type TriggeredBy = 'MANUAL' | 'SCHEDULE';
 export interface ApiEndpointListItem {
   id: number;
   apiName: string;
-  apiCode: string;
+
   url: string;
   httpMethod: string;
   authType: AuthType;
@@ -27,7 +27,7 @@ export interface ApiEndpointListItem {
 export interface ApiEndpointDetail {
   id: number;
   apiName: string;
-  apiCode: string;
+
   url: string;
   httpMethod: string;
   contentType: string | null;
@@ -49,7 +49,7 @@ export interface ApiEndpointDetail {
 
 export interface ApiEndpointCreateRequest {
   apiName: string;
-  apiCode: string;
+
   url: string;
   httpMethod: string;
   contentType?: string;

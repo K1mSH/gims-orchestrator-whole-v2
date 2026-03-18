@@ -59,62 +59,6 @@ public class AgentController {
     }
 
     /**
-     * DB에 저장된 실행 모드 조회
-     */
-    @GetMapping("/{id}/execution-modes")
-    public ResponseEntity<List<AgentDto.ExecutionModeResponse>> getExecutionModes(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.getExecutionModes(id));
-    }
-
-    /**
-     * Agent API에서 실행 모드를 새로 가져와 DB 업데이트
-     */
-    @PostMapping("/{id}/refresh-execution-modes")
-    public ResponseEntity<List<AgentDto.ExecutionModeResponse>> refreshExecutionModes(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.refreshExecutionModes(id));
-    }
-
-    /**
-     * DB에 저장된 Step 정의 조회
-     */
-    @GetMapping("/{id}/step-definitions")
-    public ResponseEntity<List<AgentDto.StepDefinitionResponse>> getStepDefinitions(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.getStepDefinitions(id));
-    }
-
-    /**
-     * Agent API에서 Step 정의를 새로 가져와 DB 업데이트
-     */
-    @PostMapping("/{id}/refresh-step-definitions")
-    public ResponseEntity<List<AgentDto.StepDefinitionResponse>> refreshStepDefinitions(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.refreshStepDefinitions(id));
-    }
-
-    /**
-     * Agent의 내장 실행 옵션 목록 조회 (Agent API 프록시)
-     */
-    @GetMapping("/{id}/fetch-execution-params")
-    public ResponseEntity<List<java.util.Map<String, Object>>> fetchExecutionParams(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.fetchExecutionParamsFromAgent(id));
-    }
-
-    /**
-     * DB에 저장된 실행 옵션 조회 (프론트엔드 실행 패널용)
-     */
-    @GetMapping("/{id}/execution-params")
-    public ResponseEntity<List<AgentDto.ExecutionParamResponse>> getExecutionParams(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.getExecutionParams(id));
-    }
-
-    /**
-     * Agent API에서 실행 옵션을 새로 가져와 DB 업데이트
-     */
-    @PostMapping("/{id}/refresh-execution-params")
-    public ResponseEntity<List<AgentDto.ExecutionParamResponse>> refreshExecutionParams(@PathVariable Long id) {
-        return ResponseEntity.ok(agentService.refreshExecutionParams(id));
-    }
-
-    /**
      * Agent의 retention(자동삭제) 설정 조회 (DB)
      */
     @GetMapping("/{id}/retention")
@@ -128,6 +72,14 @@ public class AgentController {
     @PutMapping("/{id}/retention")
     public ResponseEntity<?> updateRetentionConfig(@PathVariable Long id, @RequestBody String body) {
         return ResponseEntity.ok(agentService.updateRetentionConfig(id, body));
+    }
+
+    /**
+     * Agent YML의 select-tables 조회 (WHERE 조건 드롭다운용)
+     */
+    @GetMapping("/{id}/select-tables")
+    public ResponseEntity<?> getSelectTables(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getSelectTables(id));
     }
 
     /**

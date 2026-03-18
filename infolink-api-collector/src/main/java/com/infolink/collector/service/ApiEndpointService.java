@@ -1,6 +1,7 @@
 package com.infolink.collector.service;
 
-import com.infolink.collector.domain.*;
+import com.infolink.collector.entity.*;
+import com.infolink.collector.repository.*;
 import com.infolink.collector.dto.ApiEndpointDto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,8 @@ public class ApiEndpointService {
     private final ApiEndpointRepository endpointRepository;
     private final ApiParamRepository paramRepository;
     private final ApiFieldMappingRepository mappingRepository;
+    private final ApiScheduleRepository scheduleRepository;
+    private final ApiExecutionHistoryRepository historyRepository;
 
     @Transactional(readOnly = true)
     public List<ListResponse> getList() {
@@ -33,13 +36,8 @@ public class ApiEndpointService {
 
     @Transactional
     public DetailResponse create(CreateRequest request) {
-        if (endpointRepository.existsByApiCode(request.getApiCode())) {
-            throw new IllegalArgumentException("apiCode 중복: " + request.getApiCode());
-        }
-
         ApiEndpoint endpoint = ApiEndpoint.builder()
                 .apiName(request.getApiName())
-                .apiCode(request.getApiCode())
                 .url(request.getUrl())
                 .httpMethod(request.getHttpMethod())
                 .contentType(request.getContentType())
@@ -80,6 +78,8 @@ public class ApiEndpointService {
         if (!endpointRepository.existsById(id)) {
             throw new IllegalArgumentException("ApiEndpoint not found: " + id);
         }
+        historyRepository.deleteByApiEndpointId(id);
+        scheduleRepository.deleteByApiEndpointId(id);
         endpointRepository.deleteById(id);
     }
 
