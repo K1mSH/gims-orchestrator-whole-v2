@@ -1,4 +1,4 @@
-package com.sync.agent.bojoint.config;
+package com.sync.agent.bojo.config.pipeline;
 
 import com.sync.agent.common.pipeline.PipelineRunner;
 import com.sync.agent.common.step.StepDefinition;
@@ -12,6 +12,9 @@ import java.util.stream.Collectors;
 
 /**
  * PipelineRegistry - (agentCode, modeId) -> PipelineRunner 라우팅
+ *
+ * 12개 논리적 Agent를 하나의 물리적 앱에서 관리
+ * 각 Agent는 고유한 agentCode와 실행 모드별 PipelineRunner를 가짐
  * StepDefinitionProvider 구현하여 Step 메타데이터 제공
  */
 @Slf4j
@@ -22,7 +25,7 @@ public class PipelineRegistry implements StepDefinitionProvider {
 
     // agentCode -> (modeId -> PipelineRunner)
     private final Map<String, Map<String, PipelineRunner>> runners = new ConcurrentHashMap<>();
-    private final Map<String, String> agentTypes = new ConcurrentHashMap<>();
+    private final Map<String, String> agentTypes = new ConcurrentHashMap<>();  // agentCode -> "RCV"/"LOADER"/"SND"
     private final Map<String, List<StepDefinition>> stepDefs = new ConcurrentHashMap<>();
 
     /**
@@ -58,8 +61,7 @@ public class PipelineRegistry implements StepDefinitionProvider {
             stepDefs.put(agentCode, stepDefinitions);
         }
         log.info("Registered pipeline: agentCode={}, type={}, modeId={}, steps={}",
-                agentCode, agentType, modeId,
-                stepDefinitions != null ? stepDefinitions.size() : 0);
+                agentCode, agentType, modeId, stepDefinitions != null ? stepDefinitions.size() : 0);
     }
 
     /**
@@ -73,6 +75,7 @@ public class PipelineRegistry implements StepDefinitionProvider {
 
         PipelineRunner runner = modeRunners.get(modeId);
         if (runner == null) {
+            // 요청한 modeId가 없으면 default fallback
             runner = modeRunners.get(DEFAULT_MODE);
             if (runner != null) {
                 log.info("ModeId '{}' not found for agentCode={}, falling back to default", modeId, agentCode);
@@ -92,6 +95,9 @@ public class PipelineRegistry implements StepDefinitionProvider {
         return getRunner(agentCode, DEFAULT_MODE);
     }
 
+    /**
+     * agentCode의 Agent 타입 조회
+     */
     public String getAgentType(String agentCode) {
         String type = agentTypes.get(agentCode);
         if (type == null) {
@@ -100,16 +106,25 @@ public class PipelineRegistry implements StepDefinitionProvider {
         return type;
     }
 
+    /**
+     * 등록된 모든 agentCode 목록
+     */
     @Override
     public Set<String> getRegisteredAgentCodes() {
         return Collections.unmodifiableSet(runners.keySet());
     }
 
+    /**
+     * 특정 Agent의 Step 정의 목록 반환
+     */
     @Override
     public List<StepDefinition> getStepDefinitions(String agentCode) {
         return stepDefs.getOrDefault(agentCode, List.of());
     }
 
+    /**
+     * 특정 타입의 agentCode 목록
+     */
     public Set<String> getAgentCodesByType(String type) {
         return agentTypes.entrySet().stream()
                 .filter(e -> type.equals(e.getValue()))

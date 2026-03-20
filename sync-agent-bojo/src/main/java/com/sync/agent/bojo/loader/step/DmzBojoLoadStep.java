@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 기본 Loader Step (default 모드)
+ * DMZ Loader Step
  * IF_RSV 테이블 → Target 테이블 (sec_jewon, sec_obsvdata)
  *
  * 조회 전략:
@@ -29,7 +29,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
-public class DefaultLoadStep implements StepExecutor {
+public class DmzBojoLoadStep implements StepExecutor {
 
     private final TargetRepositoryService targetRepository;
     private final LoaderStepHelper helper;
@@ -52,7 +52,7 @@ public class DefaultLoadStep implements StepExecutor {
     @Value("${loader.target-table.obsvdata}")
     private String targetObsvdataTable;
 
-    public DefaultLoadStep(TargetRepositoryService targetRepository, LoaderStepHelper helper) {
+    public DmzBojoLoadStep(TargetRepositoryService targetRepository, LoaderStepHelper helper) {
         this.targetRepository = targetRepository;
         this.helper = helper;
     }
@@ -81,14 +81,13 @@ public class DefaultLoadStep implements StepExecutor {
             ExecutionOptions options = context.getExecutionOptions();
             boolean isResyncExecution = options.hasConditions() || options.isTimeRangeExecution();
 
-            // conditions + 시간범위 + obsv-code 파라미터를 통합 조건으로 merge
-            List<ExecutionCondition> mergedConditions = buildMergedConditions(options);
+            // conditions + 시간범위 + obsv-code 파라미터를 통합 조건으로 merge (테이블별 필터링)
+            List<ExecutionCondition> jewonConditions = buildMergedConditions(options, ifJewonTable);
+            List<ExecutionCondition> obsvdataConditions = buildMergedConditions(options, ifObsvdataTable);
 
             if (isResyncExecution) {
-                log.info("[{}] Resync execution mode: {} conditions", getStepId(), mergedConditions.size());
-                for (ExecutionCondition c : mergedConditions) {
-                    log.info("[{}]   condition: {} {} {}", getStepId(), c.getColumn(), c.getOperator(), c.getValue());
-                }
+                log.info("[{}] Resync execution mode: jewon={} conditions, obsvdata={} conditions",
+                        getStepId(), jewonConditions.size(), obsvdataConditions.size());
                 // Link 테이블 갱신 스킵 (과거 데이터로 덮어쓰기 방지)
                 context.getSharedData().put("skipLinkUpdate", true);
             }
@@ -96,28 +95,30 @@ public class DefaultLoadStep implements StepExecutor {
             String executionId = context.getExecutionId();
 
             // ===== 1. 제원 데이터 처리 =====
-            List<IfRsvSecJewon> pendingJewon = isResyncExecution
-                    ? targetRepository.findIfRsvJewonForResync(mergedConditions)
+            List<IfRsvSecJewon> pendingJewon = isResyncExecution && !jewonConditions.isEmpty()
+                    ? targetRepository.findIfRsvJewonForResync(jewonConditions)
+                    : isResyncExecution ? List.of()  // 조건은 있지만 jewon 대상 조건이 없으면 skip
                     : targetRepository.findIfRsvJewonPending(executionId);
 
             readCount += pendingJewon.size();
             log.info("[{}] Found {} {} jewon records", getStepId(), pendingJewon.size(),
                     isResyncExecution ? "matching conditions (resync)" : "pending");
 
-            jewonResult = helper.processJewon(pendingJewon, executionId, getStepId(), ifJewonTable);
+            jewonResult = helper.processJewon(pendingJewon, executionId, getStepId(), ifJewonTable, context);
             writeCount += jewonResult.getWriteCount();
             skipCount += jewonResult.getFailedCount();
 
             // ===== 2. 관측데이터 처리 =====
-            List<IfRsvSecObsvdata> pendingObsvData = isResyncExecution
-                    ? targetRepository.findIfRsvObsvdataForResync(mergedConditions)
+            List<IfRsvSecObsvdata> pendingObsvData = isResyncExecution && !obsvdataConditions.isEmpty()
+                    ? targetRepository.findIfRsvObsvdataForResync(obsvdataConditions)
+                    : isResyncExecution ? List.of()
                     : targetRepository.findIfRsvObsvdataPending(executionId);
 
             readCount += pendingObsvData.size();
             log.info("[{}] Found {} {} obsvdata records", getStepId(), pendingObsvData.size(),
                     isResyncExecution ? "matching conditions (resync)" : "pending");
 
-            obsvResult = helper.processObsvdata(pendingObsvData, executionId, getStepId(), ifObsvdataTable);
+            obsvResult = helper.processObsvdata(pendingObsvData, executionId, getStepId(), ifObsvdataTable, context);
             writeCount += obsvResult.getWriteCount();
             skipCount += obsvResult.getFailedCount();
 
@@ -166,17 +167,20 @@ public class DefaultLoadStep implements StepExecutor {
     }
 
     /**
-     * ExecutionOptions에서 통합 조건 목록 생성
-     * - conditions (동적 WHERE 조건)
+     * ExecutionOptions에서 통합 조건 목록 생성 (tableName 필터링 포함)
+     * - conditions (동적 WHERE 조건) — tableName이 지정된 조건은 해당 테이블만 적용
      * - timeRange → obsv_date BETWEEN 조건으로 변환
      * - obsv-code 파라미터 → obsv_code EQ/IN 조건으로 변환
      */
-    private List<ExecutionCondition> buildMergedConditions(ExecutionOptions options) {
+    private List<ExecutionCondition> buildMergedConditions(ExecutionOptions options, String targetTable) {
         List<ExecutionCondition> merged = new ArrayList<>();
 
-        // 1. 사용자 동적 조건
+        // 1. 사용자 동적 조건 (tableName 필터링)
         if (options.hasConditions()) {
-            merged.addAll(options.getConditions());
+            options.getConditions().stream()
+                    .filter(c -> c.getTableName() == null || c.getTableName().isEmpty()
+                            || c.getTableName().equalsIgnoreCase(targetTable))
+                    .forEach(merged::add);
         }
 
         // 2. 시간 범위 → obsv_date BETWEEN 조건

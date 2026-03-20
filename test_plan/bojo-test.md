@@ -16,12 +16,14 @@
 
 ## 목차
 1. [시스템 구성](#1-시스템-구성)
-2. [E2E 파이프라인](#2-e2e-파이프라인)
-3. [동적 WHERE 조건 (Conditions)](#3-동적-where-조건-conditions)
-4. [Source 추적 (Trace)](#4-source-추적-trace)
-5. [Schedule (스케줄 실행)](#5-schedule-스케줄-실행)
-6. [Retention (데이터 보존)](#6-retention-데이터-보존)
-7. [프론트엔드 UI](#7-프론트엔드-ui)
+2. [API Key / 엔드포인트 보안](#2-api-key--엔드포인트-보안)
+3. [Proxy 패스스루 / 암호문 통신](#3-proxy-패스스루--암호문-통신)
+4. [E2E 파이프라인](#4-e2e-파이프라인)
+5. [동적 WHERE 조건 (Conditions)](#5-동적-where-조건-conditions)
+6. [Source 추적 (Trace)](#6-source-추적-trace)
+7. [Schedule (스케줄 실행)](#7-schedule-스케줄-실행)
+8. [Retention (데이터 보존)](#8-retention-데이터-보존)
+9. [프론트엔드 UI](#9-프론트엔드-ui)
 
 ---
 
@@ -93,9 +95,95 @@ GIMS (pm_gd970201) — obsvdata만, jewon 매핑 없음
 
 ---
 
-## 2. E2E 파이프라인
+## 2. API Key / 엔드포인트 보안
 
-### 2-1. 사전 준비
+### 2-1. 개요
+- common 모듈의 컨트롤러에 `@ConditionalOnProperty`를 적용하여 모듈별 활성/비활성 제어
+- common 모듈에 `ApiKeyFilter`를 두어 Agent/Proxy 모두 `/api/**` 요청에 `X-API-Key` 필수
+- `/health`만 인증 없이 접근 가능, `/debug/datasources`는 제거됨
+
+### 2-2. 컨트롤러 활성화 현황
+
+| 컨트롤러 | Agent (bojo/bojo-int) | Proxy (DMZ/Internal) |
+|----------|:---:|:---:|
+| DataRetentionController (`/api/cleanup`) | O | **X** |
+| ExecutionDataController (`/api/execution-data`) | O | O |
+| DatasourceController (`/api/datasource`) | O | O |
+| ExecutionParamsController (`/api/pipeline/execution-params`) | O | **X** |
+| StepDefinitionController (`/api/pipeline/step-definitions`) | (ConditionalOnBean) | **X** |
+
+### 2-3. 테스트 항목
+
+#### API Key 인증 (Agent)
+- [ ] `X-API-Key` 없는 요청 → 401
+- [ ] `X-API-Key` 틀린 값 → 401
+- [ ] `X-API-Key` 정상 → 200 (정상 동작)
+- [ ] `/health` → 인증 없이 200
+
+#### API Key 인증 (Proxy)
+- [ ] `X-API-Key` 없는 요청 → 401
+- [ ] `X-API-Key` 정상 → 200 (정상 동작)
+- [ ] `/health` → 인증 없이 200
+
+#### Proxy 컨트롤러 차단
+- [ ] `POST /api/cleanup/...` → 404 (비활성)
+- [ ] `GET /api/pipeline/step-definitions` → 404 (비활성)
+- [ ] `GET /api/pipeline/execution-params` → 404 (비활성)
+- [ ] `GET /api/execution-data/...` → 200 (활성)
+- [ ] `POST /api/datasource/test-connection` → 200 (활성)
+
+#### 디버그 엔드포인트 제거
+- [ ] Agent `GET /debug/datasources` → 404
+- [ ] Proxy `GET /debug/datasources` → 404
+
+#### E2E 연동 (Orchestrator RestTemplate에 api-key 자동 포함)
+- [ ] Orchestrator → Agent 파이프라인 실행 → SUCCESS
+- [ ] Orchestrator → Proxy → execution-data 조회 → 정상
+- [ ] Orchestrator → Agent cleanup → 정상
+
+---
+
+## 3. Proxy 패스스루 / 암호문 통신
+
+### 3-1. 개요
+- 3/17~3/18 암호문 통신 전환으로 connection-info 흐름 변경
+- Agent는 **반드시 Proxy 경유**로만 datasource 정보를 받음 (Orchestrator 직접 fallback 제거)
+- Proxy는 Orchestrator 응답을 **복호화 없이 그대로** Agent에게 전달 (패스스루)
+- Agent가 로컬에서 복호화하여 JDBC 연결 생성
+
+### 3-2. 통신 흐름
+```
+Agent (connection-info 요청)
+  → Proxy (ConnectionInfoController — 패스스루)
+    → Orchestrator (GET /api/datasources/{id}/connection-info)
+    ← 암호화된 credential JSON 응답
+  ← 그대로 전달 (복호화 안 함)
+← Agent (Jasypt 복호화 → JdbcTemplate 생성)
+```
+
+### 3-3. 테스트 항목
+
+#### 정상 흐름
+- [ ] 파이프라인 실행 시 Proxy 로그: `[Proxy] Passthrough connection-info request: {datasourceId}`
+- [ ] Agent 로그: `Fetched datasource from Proxy: {datasourceId} ({host}:{port})`
+- [ ] Agent가 복호화된 credential로 외부 DB 연결 성공
+- [ ] DMZ (Proxy 8083 → Orchestrator 8080) 정상
+- [ ] Internal (Proxy 8093 → Orchestrator 8080) 정상
+
+#### 실패/예외 케이스
+- [ ] Proxy 미기동 시 Agent 즉시 예외 발생 (재시도/fallback 없음)
+- [ ] Orchestrator 미기동 시 Proxy가 에러 반환 → Agent 예외
+- [ ] 존재하지 않는 datasourceId 요청 → 404/에러 응답
+
+#### URL 통일 확인
+- [ ] Proxy → Orchestrator 경로: `GET /api/datasources/{id}/connection-info`
+- [ ] 이전 경로 `/api/datasource/connection-info/{id}` 는 404 (삭제됨)
+
+---
+
+## 4. E2E 파이프라인
+
+### 4-1. 사전 준비
 
 #### 데이터 초기화 (클린 테스트 시)
 ```sql
@@ -123,7 +211,7 @@ UPDATE link_ngwis SET obsv_date = '테스트전날', obsv_time = '235959';
 -- link_ngwis 기준점보다 이후 시점이어야 수집됨
 ```
 
-### 2-2. 실행 순서
+### 4-2. 실행 순서
 | 순서 | Agent | 방법 | 예상 결과 |
 |------|-------|------|----------|
 | 1 | RCV (3개 업체) | Orchestrator 실행 | 각 업체 jewon+obsvdata = 804건 |
@@ -132,7 +220,7 @@ UPDATE link_ngwis SET obsv_date = '테스트전날', obsv_time = '235959';
 | 4 | Internal RCV | Orchestrator 실행 | SND와 동일 건수 |
 | 5 | Internal Loader | Orchestrator 실행 | obsvdata만 (jewon 매핑 없음) |
 
-### 2-3. 검증 항목
+### 4-3. 검증 항목
 
 #### 파이프라인 실행
 - [ ] 각 Agent 상태 = SUCCESS
@@ -140,11 +228,37 @@ UPDATE link_ngwis SET obsv_date = '테스트전날', obsv_time = '235959';
 - [ ] 콜백 정상 수신 (started + finished)
 - [ ] ExecutionHistory에 기록
 
-#### 추적 검증 (모든 실행 필수)
+#### Proxy 패스스루 검증 (모든 실행 필수)
+- [ ] Proxy 로그: `[Proxy] Passthrough connection-info request: {datasourceId}` 출력
+- [ ] Agent 로그: `Fetched datasource from Proxy: {datasourceId}` 출력
+- [ ] Orchestrator에 connection-info 직접 요청 로그 없음 (fallback 제거됨)
+
+#### 추적 검증 (모든 실행 직후 즉시 검증 — 이후 조건실행으로 execution_id 덮어씌워지면 검증 불가)
+
+> **주의**: 추적 검증은 해당 실행 직후에 수행해야 함. UPSERT 구조라 이후 실행이 같은 행을 덮어쓰면
+> execution_id가 갱신되어 원래 실행의 target 데이터가 0건으로 보임.
+
+**각 Step 실행 후 필수 검증 항목:**
 - [ ] Summary API: read/write/total 건수 일치
-- [ ] Target 조회: execution_id 기준 target 테이블 데이터 확인
+- [ ] Target 조회: execution_id 기준 target 테이블 데이터 → read/write 건수와 일치
 - [ ] Source 조회: 3단계 분기(pk/source_refs) 매칭으로 source 데이터 확인
-- [ ] Target → Source 건수 대응 확인
+- [ ] Target 건수 = Source 건수 (EAV 확장 제외)
+
+**Step별 추적 검증 테이블:**
+
+| Step | Agent | target 테이블 | source 테이블 | 매칭 모드 | 비고 |
+|------|-------|-------------|-------------|----------|------|
+| 1 | RCV (대전) | if_rsv_sec_jewon, if_rsv_sec_obsvdata | sec_jewon_view, sec_obsvdata_view | pk | 외부 DB 뷰 |
+| 1 | RCV (근산) | if_rsv_sec_jewon, if_rsv_sec_obsvdata | SEC_JEWON_VIEW, SEC_OBSVDATA_VIEW | pk | 대문자 |
+| 1 | RCV (인포월드) | if_rsv_sec_jewon, if_rsv_sec_obsvdata | sec_jewon_view, sec_obsvdata_view | pk | MySQL |
+| 2 | DMZ Loader | sec_jewon, sec_obsvdata | if_rsv_sec_jewon, if_rsv_sec_obsvdata | source_refs | IF→Target |
+| 3 | DMZ SND | if_snd_sec_jewon, if_snd_sec_obsvdata | sec_jewon, sec_obsvdata | pk | Target→IF_SND |
+| 4 | Internal RCV | if_rsv_sec_jewon, if_rsv_sec_obsvdata | if_snd_sec_jewon, if_snd_sec_obsvdata | source_refs | IF_SND→IF_RSV |
+| 5 | Internal Loader | pm_gd970201 | if_rsv_sec_obsvdata | source_refs | 1:3 EAV 확장 |
+
+**Forward/Backward Trace (Step 2, 5에서 검증):**
+- [ ] Forward Trace: source PK → target 레코드 매칭 확인
+- [ ] Backward Trace: target source_refs → source 레코드 역추적 확인
 
 #### 데이터 정합성
 | 체크포인트 | jewon | obsvdata | 비고 |
@@ -165,14 +279,14 @@ UPDATE link_ngwis SET obsv_date = '테스트전날', obsv_time = '235959';
 
 ---
 
-## 3. 동적 WHERE 조건 (Conditions)
+## 5. 동적 WHERE 조건 (Conditions)
 
-### 3-1. 개요
+### 5-1. 개요
 - 수동 실행 시 프론트엔드에서 동적 WHERE 조건을 입력하여 특정 데이터만 재동기화
 - 흐름: 프론트 UI → Orchestrator API → Agent PipelineRunner → ConditionBuilder → SQL WHERE
 - 조건 실행 시 자동으로: CUSTOM_STAGING 바이패스(SIMPLE_COPY 강제), skipLinkUpdate=true
 
-### 3-2. ConditionBuilder 동작
+### 5-2. ConditionBuilder 동작
 ```
 defaults (Step 디폴트)  ─┐
                           ├── merge → build → WHERE 절 + params
@@ -182,7 +296,7 @@ conditions (사용자 입력) ─┘
 - 다른 컬럼: AND로 **추가**
 - conditions 없으면: 디폴트 그대로 (기존 동작)
 
-### 3-3. 지원 연산자
+### 5-3. 지원 연산자
 | 연산자 | SQL | value2 필요 |
 |--------|-----|-------------|
 | EQ | `= ?` | N |
@@ -197,22 +311,22 @@ conditions (사용자 입력) ─┘
 | IS_NULL | `IS NULL` | N |
 | IS_NOT_NULL | `IS NOT NULL` | N |
 
-### 3-4. 적용 범위 (Agent별)
+### 5-4. 적용 범위 (Agent별)
 | Agent | Step | 적용 방식 | 비고 |
 |-------|------|----------|------|
 | DMZ RCV | SourceToIfStep (jewon) | SIMPLE_COPY + ConditionBuilder | fullCopy 디폴트 대체 |
 | DMZ RCV | SourceToIfStep (obsvdata) | SIMPLE_COPY + ConditionBuilder | CUSTOM_STAGING 바이패스 |
-| DMZ Loader | DefaultLoadStep | Native SQL (EntityManager) + ConditionBuilder | IF→Target 쿼리 |
-| Internal Loader | InternalLoadStep | JDBC + ConditionBuilder | IF→GIMS 쿼리 |
+| DMZ Loader | DmzBojoLoadStep | Native SQL (EntityManager) + ConditionBuilder | IF→Target 쿼리 |
+| Internal Loader | InternalBojoLoadStep | JDBC + ConditionBuilder | IF→GIMS 쿼리 |
 
-### 3-5. 안전가드 (전체 데이터 긁어오기 방지)
+### 5-5. 안전가드 (전체 데이터 긁어오기 방지)
 | 계층 | 방어 방식 |
 |------|----------|
 | 프론트엔드 | conditions UI 활성화 시 최소 1개 입력 필수 (실행 버튼 disable) |
 | Orchestrator | `conditions: []` (빈 배열) → 400 Bad Request |
 | Agent | 예외 발생 (최후 방어선) |
 
-### 3-6. 테스트 항목
+### 5-6. 테스트 항목
 
 #### API 레벨
 ```bash
@@ -278,22 +392,22 @@ curl -X POST http://localhost:8080/api/executions/{agentId}/run \
 
 ---
 
-## 4. Source 추적 (Trace)
+## 6. Source 추적 (Trace)
 
-### 4-1. 추적 API
+### 6-1. 추적 API
 ```
 GET /api/executions/{executionId}/source?tableName={sourceTable}
 GET /api/executions/{executionId}/trace
 ```
 
-### 4-2. 3단계 분기 로직
+### 6-2. 3단계 분기 로직
 | 조건 | 모드 | 해당 Agent | 설명 |
 |------|------|-----------|------|
 | source에 source_refs 컬럼 없음 | pk | RCV | 외부 DB — PK 파싱 매칭 |
 | source_refs 있고 값 일치 | source_refs | Loader | IF의 source_refs를 그대로 복사 |
 | source_refs 있지만 값 불일치 | pk | SND | PK 기반 새 source_refs 생성 |
 
-### 4-3. 검증 항목 (Agent별)
+### 6-3. 검증 항목 (Agent별)
 | Agent | Source 테이블 | 기대 모드 | 기대 건수 |
 |-------|-------------|----------|----------|
 | RCV daejeon | sec_jewon_view | pk | 업체당 건수 |
@@ -308,14 +422,14 @@ GET /api/executions/{executionId}/trace
 
 ---
 
-## 5. Schedule (스케줄 실행)
+## 7. Schedule (스케줄 실행)
 
-### 5-1. 개요
+### 7-1. 개요
 - Orchestrator가 cron 스케줄에 따라 Agent 파이프라인 자동 실행
 - DB `schedule` 테이블에 저장, 앱 기동 시 `ScheduleExecutor`가 로드
 - 실행 시 `executionService.triggerExecution()` → Agent POST
 
-### 5-2. API 엔드포인트
+### 7-2. API 엔드포인트
 | Method | URL | 설명 |
 |--------|-----|------|
 | GET | /api/schedules | 전체 조회 |
@@ -325,7 +439,7 @@ GET /api/executions/{executionId}/trace
 | PUT | /api/schedules/{id}/toggle | 활성/비활성 토글 |
 | DELETE | /api/schedules/{id} | 삭제 |
 
-### 5-3. 테스트 항목
+### 7-3. 테스트 항목
 
 #### CRUD
 - [ ] 스케줄 생성 (cronExpression, agentId, isEnabled)
@@ -360,15 +474,15 @@ curl -X DELETE http://localhost:8080/api/schedules/{id}
 
 ---
 
-## 6. Retention (데이터 보존)
+## 8. Retention (데이터 보존)
 
-### 6-1. 개요
+### 8-1. 개요
 - Agent IF/Target 테이블의 오래된 데이터 자동 삭제
 - Orchestrator `DataRetentionScheduler`: 매일 새벽 2시 (기본, `retention.cron` 설정)
 - Agent별 `retentionConfig` JSON → Agent `POST /api/cleanup/{agentCode}` 호출
 - Agent `DataRetentionService`: `DELETE FROM table WHERE dateColumn < cutoff` 실행
 
-### 6-2. retentionConfig JSON 구조
+### 8-2. retentionConfig JSON 구조
 ```json
 {
   "enabled": true,
@@ -387,7 +501,7 @@ curl -X DELETE http://localhost:8080/api/schedules/{id}
 > **주의**: pm_gd970201의 날짜 컬럼은 `obsrvn_dt` (obsv_date 아님)
 > **⚠️ Internal Agent는 `targetDatasourceId` 필수** — 파이프라인 외부 호출 시 ThreadLocal 비어있어 fallback DS 잘못 참조
 
-### 6-3. API 엔드포인트
+### 8-3. API 엔드포인트
 
 #### Orchestrator (설정 관리)
 | Method | URL | 설명 |
@@ -400,7 +514,7 @@ curl -X DELETE http://localhost:8080/api/schedules/{id}
 |--------|-----|------|
 | POST | /api/cleanup/{agentCode} | 데이터 정리 실행 |
 
-### 6-4. 테스트 항목
+### 8-4. 테스트 항목
 
 #### 설정 CRUD
 - [ ] Retention 설정 조회 (초기 빈 상태)
@@ -461,27 +575,27 @@ curl -X POST http://localhost:8092/api/cleanup/internal-bojo-loader \
 
 ---
 
-## 7. 프론트엔드 UI
+## 9. 프론트엔드 UI
 
-### 7-1. Execution 목록/상세
+### 9-1. Execution 목록/상세
 - [ ] /executions — 실행 이력 목록 표시
 - [ ] /executions/{id} — 상세 (Step별 결과, Read/Write 건수)
 - [ ] triggeredBy 표시 (MANUAL / SCHEDULE / CHAIN)
 - [ ] 테이블명 옆 한글 alias 표시
 
-### 7-2. Agent 상세 → Schedule 섹션
+### 9-2. Agent 상세 → Schedule 섹션
 - [ ] 스케줄 목록 표시 (cron | 필터 | 상태 | 액션)
 - [ ] cron 한글 변환 표시 (예: "매일 오전 2시", "2분마다")
 - [ ] 스케줄 추가 (cron 입력 + 활성화 체크)
 - [ ] 스케줄 수정/토글/삭제
 
-### 7-3. Agent 상세 → Retention 섹션
+### 9-3. Agent 상세 → Retention 섹션
 - [ ] Retention 설정 표시 (테이블 | dateColumn | retentionDays)
 - [ ] 설정 편집 (테이블/컬럼 드롭다운, 보존일수 입력)
 - [ ] 설정 저장/취소
 - [ ] DB_CON_PROXY 타입 Agent에서 비활성화
 
-### 7-4. Agent 상세 → 조건실행 (Conditions)
+### 9-4. Agent 상세 → 조건실행 (Conditions)
 - [ ] "조건실행 ▾" 펼치면 WHERE 조건 입력 UI 표시
 - [ ] 조건 추가: 컬럼명 입력 + 연산자 선택 + 값 입력
 - [ ] BETWEEN 선택 시 value2 입력란 표시
@@ -491,7 +605,7 @@ curl -X POST http://localhost:8092/api/cleanup/internal-bojo-loader \
 - [ ] 실행 시 conditions가 API에 전달됨
 - [ ] 취소 시 conditions 초기화
 
-### 7-5. Source 추적
+### 9-5. Source 추적
 - [ ] Execution 상세 → Source 탭 데이터 표시
 - [ ] Trace (Forward/Backward) 동작
 

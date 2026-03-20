@@ -1,4 +1,4 @@
-package com.sync.agent.bojoint.config;
+package com.sync.agent.bojoint.config.pipeline;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -37,7 +37,8 @@ public class AgentConfigLoader {
                     AgentDefinition def = parseAgentDefinition(data);
                     if (def != null && def.getAgentCode() != null) {
                         agentDefinitions.add(def);
-                        log.info("Loaded agent config: {} (type={})", def.getAgentCode(), def.getType());
+                        log.info("Loaded agent config: {} (type={}, steps={})",
+                                def.getAgentCode(), def.getType(), def.getSteps().size());
                     }
                 } catch (Exception e) {
                     log.error("Failed to load agent config: {}", resource.getFilename(), e);
@@ -56,61 +57,13 @@ public class AgentConfigLoader {
         def.setAgentCode((String) data.get("agent-code"));
         def.setType((String) data.get("type"));
 
-        // jewon
-        Map<String, Object> jewonMap = (Map<String, Object>) data.get("jewon");
-        if (jewonMap != null) {
-            AgentDefinition.TableConfig jewon = new AgentDefinition.TableConfig();
-            jewon.setSourceTable((String) jewonMap.get("source-table"));
-            jewon.setTargetTable((String) jewonMap.get("target-table"));
-            jewon.setPrimaryKey((String) jewonMap.get("primary-key"));
-            jewon.setConflictKey((String) jewonMap.get("conflict-key"));
-            jewon.setFullCopy(Boolean.TRUE.equals(jewonMap.get("full-copy")));
-            jewon.setSkipSourceStatusUpdate(Boolean.TRUE.equals(jewonMap.get("skip-source-status-update")));
-            jewon.setDateColumn((String) jewonMap.get("date-column"));
-            jewon.setTimeColumn((String) jewonMap.get("time-column"));
-            def.setJewon(jewon);
+        // steps — YAML 배열을 그대로 보관 (각 Factory가 자기 필드를 파싱)
+        List<Map<String, Object>> stepsList = (List<Map<String, Object>>) data.get("steps");
+        if (stepsList != null) {
+            def.setSteps(stepsList);
         }
 
-        // obsvdata
-        Map<String, Object> obsvMap = (Map<String, Object>) data.get("obsvdata");
-        if (obsvMap != null) {
-            AgentDefinition.TableConfig obsv = new AgentDefinition.TableConfig();
-            obsv.setSourceTable((String) obsvMap.get("source-table"));
-            obsv.setTargetTable((String) obsvMap.get("target-table"));
-            obsv.setPrimaryKey((String) obsvMap.get("primary-key"));
-            obsv.setConflictKey((String) obsvMap.get("conflict-key"));
-            obsv.setFullCopy(Boolean.TRUE.equals(obsvMap.get("full-copy")));
-            obsv.setDateColumn((String) obsvMap.get("date-column"));
-            obsv.setTimeColumn((String) obsvMap.get("time-column"));
-            def.setObsvdata(obsv);
-        }
-
-        // if-table (Loader)
-        Map<String, Object> ifTableMap = (Map<String, Object>) data.get("if-table");
-        if (ifTableMap != null) {
-            java.util.HashMap<String, String> ifTable = new java.util.HashMap<>();
-            ifTableMap.forEach((k, v) -> ifTable.put(k, v.toString()));
-            def.setIfTable(ifTable);
-        }
-
-        // target-table (Loader)
-        Map<String, Object> targetTableMap = (Map<String, Object>) data.get("target-table");
-        if (targetTableMap != null) {
-            java.util.HashMap<String, String> targetTable = new java.util.HashMap<>();
-            targetTableMap.forEach((k, v) -> targetTable.put(k, v.toString()));
-            def.setTargetTable(targetTable);
-        }
-
-        // step (Loader)
-        Map<String, Object> stepMap = (Map<String, Object>) data.get("step");
-        if (stepMap != null) {
-            AgentDefinition.StepConfig step = new AgentDefinition.StepConfig();
-            step.setId((String) stepMap.get("id"));
-            step.setName((String) stepMap.get("name"));
-            def.setStep(step);
-        }
-
-        // select-tables (WHERE 조건 대상 테이블)
+        // select-tables
         List<String> selectTables = (List<String>) data.get("select-tables");
         if (selectTables != null) {
             def.setSelectTables(selectTables);
@@ -140,5 +93,4 @@ public class AgentConfigLoader {
                 .filter(d -> type.equals(d.getType()))
                 .toList();
     }
-
 }

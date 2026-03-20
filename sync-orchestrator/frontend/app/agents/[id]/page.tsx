@@ -98,9 +98,11 @@ export default function AgentDetailPage() {
   const handleTriggerExecution = async (withOptions: boolean = false) => {
     // 동적 WHERE 조건: 유효한 조건만 필터링
     const validConditions: ExecutionCondition[] = withOptions
-      ? conditions.filter(c => c.column.trim() && (
-          c.operator === 'IS_NULL' || c.operator === 'IS_NOT_NULL' || (c.value && c.value.trim())
-        ))
+      ? conditions
+          .map((c, idx) => ({ ...c, tableName: condTableSelections[idx] || undefined }))
+          .filter(c => c.column.trim() && (
+            c.operator === 'IS_NULL' || c.operator === 'IS_NOT_NULL' || (c.value && c.value.trim())
+          ))
       : [];
 
     const parts: string[] = [];

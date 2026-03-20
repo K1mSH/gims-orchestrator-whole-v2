@@ -23,7 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 내부망 GIMS 적재 Step
+ * Internal Loader Step (내부망 GIMS 적재)
  *
  * IF_RSV → GIMS Target 적재:
  * - 제원(tm_gd970001)은 GIMS 서비스가 자체 관리하는 마스터 데이터
@@ -34,7 +34,7 @@ import java.util.*;
  * - Link 테이블: obsv_code별 MAX(date,time) UPSERT
  */
 @Slf4j
-public class InternalLoadStep implements StepExecutor {
+public class InternalBojoLoadStep implements StepExecutor {
 
     private final String stepId;
     private final String stepName;
@@ -52,7 +52,7 @@ public class InternalLoadStep implements StepExecutor {
     private static final int IEM_GWTEMP = 163;     // 지하수온도
     private static final int IEM_EC = 52;           // 전기전도도
 
-    public InternalLoadStep(String stepId, String stepName,
+    public InternalBojoLoadStep(String stepId, String stepName,
                             String ifObsvdataTable,
                             String targetJewonTable, String targetObsvdataTable,
                             String targetLinkTable, String targetResultTable,
@@ -108,8 +108,8 @@ public class InternalLoadStep implements StepExecutor {
             ExecutionOptions options = context.getExecutionOptions();
             boolean isResyncExecution = options.hasConditions() || options.isTimeRangeExecution();
 
-            // 통합 조건 빌드
-            List<ExecutionCondition> mergedConditions = buildMergedConditions(options);
+            // 통합 조건 빌드 (tableName 필터링: obsvdata 테이블 대상만)
+            List<ExecutionCondition> mergedConditions = buildMergedConditions(options, ifObsvdataTable);
 
             if (isResyncExecution) {
                 log.info("[{}] Resync execution: {} conditions", getStepId(), mergedConditions.size());
@@ -310,14 +310,17 @@ public class InternalLoadStep implements StepExecutor {
     // ==================== 조건 빌드 ====================
 
     /**
-     * ExecutionOptions에서 통합 조건 목록 생성
+     * ExecutionOptions에서 통합 조건 목록 생성 (tableName 필터링 포함)
      */
-    private List<ExecutionCondition> buildMergedConditions(ExecutionOptions options) {
+    private List<ExecutionCondition> buildMergedConditions(ExecutionOptions options, String targetTable) {
         List<ExecutionCondition> merged = new ArrayList<>();
 
-        // 1. 사용자 동적 조건
+        // 1. 사용자 동적 조건 (tableName 필터링)
         if (options.hasConditions()) {
-            merged.addAll(options.getConditions());
+            options.getConditions().stream()
+                    .filter(c -> c.getTableName() == null || c.getTableName().isEmpty()
+                            || c.getTableName().equalsIgnoreCase(targetTable))
+                    .forEach(merged::add);
         }
 
         // 2. 시간 범위 → obsv_date 조건

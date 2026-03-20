@@ -6,7 +6,7 @@ import com.sync.agent.common.client.OrchestratorClient;
 import com.sync.agent.common.pipeline.PipelineResult;
 import com.sync.agent.common.pipeline.PipelineRunner;
 import com.sync.agent.common.step.Status;
-import com.sync.agent.bojo.config.PipelineRegistry;
+import com.sync.agent.bojo.config.pipeline.PipelineRegistry;
 import com.sync.agent.bojo.config.SyncDataSourceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

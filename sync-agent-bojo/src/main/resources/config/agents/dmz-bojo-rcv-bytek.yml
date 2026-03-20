@@ -1,29 +1,37 @@
 # ── DMZ RCV Agent: 바이텍 ──
 # 외부 원천 DB에서 제원/관측 데이터를 추출하여 IF(인터페이스) 테이블에 적재한다.
 # 파이프라인 흐름: 외부 DB(source) → IF_RSV(target)
-# 설정 상세 설명은 dmz-bojo-rcv-daejeon.yml 참고.
 agent-code: dmz-bojo-rcv-bytek
 type: RCV
 
-jewon:
-  source-table: sec_jewon_view
-  target-table: if_rsv_sec_jewon
-  primary-key: obsv_code
-  conflict-key: source_refs
-  full-copy: true
-  skip-source-status-update: true
+steps:
+  - id: jewon-extract
+    name: 제원 데이터 추출
+    factory-key: source-to-if
+    source-table: sec_jewon_view
+    target-table: if_rsv_sec_jewon
+    primary-key: obsv_code
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true
 
-obsvdata:
-  source-table: sec_obsvdata_view
-  target-table: if_rsv_sec_obsvdata
-  primary-key: id
-  conflict-key: source_refs
-  date-column: obsv_date
-  time-column: obsv_time
+  - id: obsvdata-extract
+    name: 관측데이터 추출 (Link 기반)
+    factory-key: source-to-if-link
+    source-table: sec_obsvdata_view
+    target-table: if_rsv_sec_obsvdata
+    primary-key: id
+    conflict-key: source_refs
+    date-column: obsv_date
+    time-column: obsv_time
+    link-table: link_ngwis
+    link-jewon-source: sec_jewon_view
 
-link:
-  use-link-table: true
-  table-name: link_ngwis
+  - id: link-table-update
+    name: Link 테이블 갱신
+    factory-key: link-update
+    if-table: if_rsv_sec_obsvdata
+    link-table: link_ngwis
 
 select-tables:
   - sec_jewon_view

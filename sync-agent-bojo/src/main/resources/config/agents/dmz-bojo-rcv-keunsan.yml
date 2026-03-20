@@ -1,36 +1,42 @@
 # ── DMZ RCV Agent: 큰산 ──
 # 외부 원천 DB에서 제원/관측 데이터를 추출하여 IF(인터페이스) 테이블에 적재한다.
-# 파이프라인 흐름: 외부 DB(source) → IF_RSV(target)
-# ※ 큰산은 대문자 테이블/컬럼명 사용 (Oracle 스타일). 설정 상세 설명은 dmz-bojo-rcv-daejeon.yml 참고.
+# ※ 큰산은 대문자 테이블/컬럼명 사용 (Oracle 스타일)
 agent-code: dmz-bojo-rcv-keunsan
 type: RCV
 
-jewon:
-  source-table: SEC_JEWON_VIEW
-  target-table: if_rsv_sec_jewon
-  primary-key: OBSV_CODE
-  conflict-key: source_refs
-  full-copy: true
-  skip-source-status-update: true
+steps:
+  - id: jewon-extract
+    name: 제원 데이터 추출
+    factory-key: source-to-if
+    source-table: SEC_JEWON_VIEW
+    target-table: if_rsv_sec_jewon
+    primary-key: OBSV_CODE
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true
 
-obsvdata:
-  source-table: SEC_OBSVDATA_VIEW
-  target-table: if_rsv_sec_obsvdata
-  primary-key: ID
-  conflict-key: source_refs
-  date-column: OBSV_DATE
-  time-column: OBSV_TIME
+  - id: obsvdata-extract
+    name: 관측데이터 추출 (Link 기반)
+    factory-key: source-to-if-link
+    source-table: SEC_OBSVDATA_VIEW
+    target-table: if_rsv_sec_obsvdata
+    primary-key: ID
+    conflict-key: source_refs
+    date-column: OBSV_DATE
+    time-column: OBSV_TIME
+    link-table: link_ngwis
+    link-jewon-source: SEC_JEWON_VIEW
 
-link:
-  use-link-table: true
-  table-name: link_ngwis
+  - id: link-table-update
+    name: Link 테이블 갱신
+    factory-key: link-update
+    if-table: if_rsv_sec_obsvdata
+    link-table: link_ngwis
 
-# 프론트엔드 "조건실행 > WHERE 조건"에서 사용자가 선택할 수 있는 테이블 목록.
 select-tables:
   - SEC_JEWON_VIEW
   - SEC_OBSVDATA_VIEW
 
-# 프론트엔드 모니터링/추적용 메타데이터
 table-mappings:
   - name: jewon
     source: [SEC_JEWON_VIEW]

@@ -589,7 +589,18 @@ public class SourceToIfStep implements StepExecutor {
                 sourceJdbc.getDataSource(), sourceDsId, config.getSourceTable());
 
         ExecutionOptions execOptions = context.getExecutionOptions();
-        boolean hasConditions = execOptions != null && execOptions.hasConditions();
+
+        // tableName 필터링: 이 Step의 source-table에 해당하는 조건만 추출
+        List<ExecutionCondition> execConditions = null;
+        if (execOptions != null && execOptions.getConditions() != null) {
+            String sourceTable = config.getSourceTable();
+            execConditions = execOptions.getConditions().stream()
+                    .filter(c -> c.getTableName() == null || c.getTableName().isEmpty()
+                            || c.getTableName().equalsIgnoreCase(sourceTable))
+                    .toList();
+        }
+        // 필터링 후 이 Step 대상 조건이 있는지 판단 (tableName 필터링 결과 기준)
+        boolean hasConditions = execConditions != null && !execConditions.isEmpty();
 
         // 디폴트 조건 결정
         Map<String, ExecutionCondition> defaults = new LinkedHashMap<>();
@@ -617,8 +628,7 @@ public class SourceToIfStep implements StepExecutor {
         }
 
         // conditions merge + WHERE 빌드
-        List<ExecutionCondition> execConditions = (execOptions != null) ? execOptions.getConditions() : null;
-        ConditionBuilder.WhereClause where = ConditionBuilder.buildMerged(defaults, execConditions, sourceDbType);
+        ConditionBuilder.WhereClause where = ConditionBuilder.buildMerged(defaults, hasConditions ? execConditions : null, sourceDbType);
 
         // SQL 생성
         String columnList = columns.stream()

@@ -4,36 +4,39 @@
 agent-code: dmz-bojo-rcv-daejeon
 type: RCV
 
-# 제원(관측소 기본정보) 추출 설정
-jewon:
-  source-table: sec_jewon_view       # SELECT 대상 (외부 DB 뷰)
-  target-table: if_rsv_sec_jewon     # INSERT/UPSERT 대상 (IF 테이블)
-  primary-key: obsv_code             # source 테이블의 PK (SELECT 시 사용)
-  conflict-key: source_refs          # UPSERT 충돌 판단 기준 (ON CONFLICT 키)
-  full-copy: true                    # true: 매 실행마다 전체 복사 (증분 아님)
-  skip-source-status-update: true    # true: 외부 DB에 처리 상태를 기록하지 않음 (읽기전용)
+steps:
+  - id: jewon-extract
+    name: 제원 데이터 추출
+    factory-key: source-to-if
+    source-table: sec_jewon_view
+    target-table: if_rsv_sec_jewon
+    primary-key: obsv_code
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true
 
-# 관측데이터 추출 설정
-obsvdata:
-  source-table: sec_obsvdata_view
-  target-table: if_rsv_sec_obsvdata
-  primary-key: id
-  conflict-key: source_refs
-  date-column: obsv_date             # 증분 추출 시 시간 비교에 사용하는 날짜 컬럼
-  time-column: obsv_time             # 증분 추출 시 시간 비교에 사용하는 시각 컬럼
+  - id: obsvdata-extract
+    name: 관측데이터 추출 (Link 기반)
+    factory-key: source-to-if-link
+    source-table: sec_obsvdata_view
+    target-table: if_rsv_sec_obsvdata
+    primary-key: id
+    conflict-key: source_refs
+    date-column: obsv_date
+    time-column: obsv_time
+    link-table: link_ngwis
+    link-jewon-source: sec_jewon_view
 
-# Link 테이블: 외부 DB와 내부 DB 간 관측소 매핑 관리
-link:
-  use-link-table: true
-  table-name: link_ngwis             # 외부 obsv_code ↔ 내부 obsv_code 매핑 테이블
+  - id: link-table-update
+    name: Link 테이블 갱신
+    factory-key: link-update
+    if-table: if_rsv_sec_obsvdata
+    link-table: link_ngwis
 
-# 프론트엔드 "조건실행 > WHERE 조건"에서 사용자가 선택할 수 있는 테이블 목록.
-# source-table/target-table 구분과 무관하게, 실제 조건 실행의 대상이 되는 테이블을 나열한다.
 select-tables:
   - sec_jewon_view
   - sec_obsvdata_view
 
-# 프론트엔드 모니터링/추적용 메타데이터. 실제 파이프라인 로직은 위의 source/target-table을 사용한다.
 table-mappings:
   - name: jewon
     source: [sec_jewon_view]

@@ -2,6 +2,7 @@ package com.sync.agent.common.controller;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,7 @@ import java.util.Set;
 @Slf4j
 @RestController
 @RequestMapping("/api/datasource")
+@ConditionalOnProperty(name = "common.controller.datasource.enabled", havingValue = "true")
 public class DatasourceController {
 
     private final DataSourceProvider dataSourceProvider;

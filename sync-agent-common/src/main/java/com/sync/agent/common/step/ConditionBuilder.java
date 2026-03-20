@@ -84,24 +84,24 @@ public class ConditionBuilder {
                     break;
                 case GT:
                     sql.append(col).append(" > ?");
-                    params.add(c.getValue());
+                    params.add(castIfDate(c.getValue()));
                     break;
                 case GTE:
                     sql.append(col).append(" >= ?");
-                    params.add(c.getValue());
+                    params.add(castIfDate(c.getValue()));
                     break;
                 case LT:
                     sql.append(col).append(" < ?");
-                    params.add(c.getValue());
+                    params.add(castIfDate(c.getValue()));
                     break;
                 case LTE:
                     sql.append(col).append(" <= ?");
-                    params.add(c.getValue());
+                    params.add(castIfDate(c.getValue()));
                     break;
                 case BETWEEN:
                     sql.append(col).append(" BETWEEN ? AND ?");
-                    params.add(c.getValue());
-                    params.add(c.getValue2());
+                    params.add(castIfDate(c.getValue()));
+                    params.add(castIfDate(c.getValue2()));
                     break;
                 case IN:
                     String[] vals = c.getValue().split(",");
@@ -137,6 +137,18 @@ public class ConditionBuilder {
             List<ExecutionCondition> executions,
             String dbType) {
         return build(merge(defaults, executions), dbType);
+    }
+
+    /**
+     * 날짜 형식(yyyy-MM-dd)이면 java.sql.Date로 변환, 아니면 원본 반환.
+     * PostgreSQL date 컬럼에 String 바인딩 시 타입 불일치 방지.
+     */
+    private static Object castIfDate(String value) {
+        if (value == null) return null;
+        if (value.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+            return java.sql.Date.valueOf(value);
+        }
+        return value;
     }
 
     /**

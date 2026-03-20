@@ -41,7 +41,7 @@ public class WebConfig implements WebMvcConfigurer {
         RestTemplate restTemplate = new RestTemplate(factory);
 
         // API Key 인터셉터 — 모든 요청에 X-API-Key 헤더 추가
-        // Proxy만 검증 필터가 있고, Agent는 필터 없으므로 무시됨
+        // Agent/Proxy 모두 common ApiKeyFilter로 검증
         if (proxyApiKey != null && !proxyApiKey.isEmpty()) {
             ClientHttpRequestInterceptor apiKeyInterceptor = (request, body, execution) -> {
                 request.getHeaders().set("X-API-Key", proxyApiKey);

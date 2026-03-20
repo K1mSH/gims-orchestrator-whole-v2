@@ -1,8 +1,8 @@
 package com.sync.agent.bojoint.controller;
 
-import com.sync.agent.bojoint.config.AgentConfigLoader;
-import com.sync.agent.bojoint.config.AgentDefinition;
-import com.sync.agent.bojoint.config.PipelineRegistry;
+import com.sync.agent.bojoint.config.pipeline.AgentConfigLoader;
+import com.sync.agent.bojoint.config.pipeline.AgentDefinition;
+import com.sync.agent.bojoint.config.pipeline.PipelineRegistry;
 import com.sync.agent.bojoint.pipeline.PipelineService;
 import com.sync.agent.common.pipeline.PipelineResult;
 import lombok.RequiredArgsConstructor;
@@ -208,20 +208,14 @@ public class PipelineController {
         for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
             if (!agentCode.equals(def.getAgentCode())) continue;
 
-            if (def.getJewon() != null) {
-                if (def.getJewon().getSourceTable() != null) {
-                    tables.add(Map.of("tableName", def.getJewon().getSourceTable(), "type", "SOURCE"));
+            for (Map<String, Object> stepConfig : def.getSteps()) {
+                String sourceTable = (String) stepConfig.get("source-table");
+                String targetTable = (String) stepConfig.get("target-table");
+                if (sourceTable != null) {
+                    tables.add(Map.of("tableName", sourceTable, "type", "SOURCE"));
                 }
-                if (def.getJewon().getTargetTable() != null) {
-                    tables.add(Map.of("tableName", def.getJewon().getTargetTable(), "type", "TARGET"));
-                }
-            }
-            if (def.getObsvdata() != null) {
-                if (def.getObsvdata().getSourceTable() != null) {
-                    tables.add(Map.of("tableName", def.getObsvdata().getSourceTable(), "type", "SOURCE"));
-                }
-                if (def.getObsvdata().getTargetTable() != null) {
-                    tables.add(Map.of("tableName", def.getObsvdata().getTargetTable(), "type", "TARGET"));
+                if (targetTable != null) {
+                    tables.add(Map.of("tableName", targetTable, "type", "TARGET"));
                 }
             }
         }

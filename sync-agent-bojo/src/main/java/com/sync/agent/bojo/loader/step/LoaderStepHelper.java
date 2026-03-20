@@ -3,6 +3,8 @@ package com.sync.agent.bojo.loader.step;
 import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.service.IfTableService;
+import com.sync.agent.common.step.StepContext;
+import com.sync.agent.common.util.SourceRefUtils;
 import com.sync.agent.bojo.entity.iftable.rsv.IfRsvSecJewon;
 import com.sync.agent.bojo.entity.iftable.rsv.IfRsvSecObsvdata;
 import com.sync.agent.bojo.entity.target.SecJewon;
@@ -40,6 +42,15 @@ public class LoaderStepHelper {
      */
     public ProcessResult processJewon(List<IfRsvSecJewon> records, String executionId,
                                        String stepId, String ifTableName) {
+        return processJewon(records, executionId, stepId, ifTableName, null);
+    }
+
+    /**
+     * 제원 데이터 변환 + batch UPSERT + IF 상태 업데이트
+     * context가 있으면 source_refs를 IF 테이블 기준으로 새로 생성 (Loader 추적용)
+     */
+    public ProcessResult processJewon(List<IfRsvSecJewon> records, String executionId,
+                                       String stepId, String ifTableName, StepContext context) {
         ProcessResult result = new ProcessResult();
 
         if (records.isEmpty()) return result;
@@ -51,6 +62,11 @@ public class LoaderStepHelper {
         for (IfRsvSecJewon ifJewon : records) {
             try {
                 SecJewon secJewon = TargetRepositoryService.convertToSecJewon(ifJewon, executionId);
+                // Loader: source_refs를 IF 테이블 기준으로 새로 생성 (역추적용)
+                if (context != null) {
+                    String sourceRef = SourceRefUtils.build(context, ifTableName, ifJewon.getId());
+                    secJewon.setSourceRefs(SourceRefUtils.toJsonSingle(sourceRef));
+                }
                 toSave.add(secJewon);
                 successIds.add(ifJewon.getId());
                 result.successCount++;
@@ -86,6 +102,15 @@ public class LoaderStepHelper {
      */
     public ProcessResult processObsvdata(List<IfRsvSecObsvdata> records, String executionId,
                                           String stepId, String ifTableName) {
+        return processObsvdata(records, executionId, stepId, ifTableName, null);
+    }
+
+    /**
+     * 관측데이터 변환 + batch UPSERT + IF 상태 업데이트
+     * context가 있으면 source_refs를 IF 테이블 기준으로 새로 생성 (Loader 추적용)
+     */
+    public ProcessResult processObsvdata(List<IfRsvSecObsvdata> records, String executionId,
+                                          String stepId, String ifTableName, StepContext context) {
         ProcessResult result = new ProcessResult();
 
         if (records.isEmpty()) return result;
@@ -97,6 +122,11 @@ public class LoaderStepHelper {
         for (IfRsvSecObsvdata ifData : records) {
             try {
                 SecObsvdata secData = TargetRepositoryService.convertToSecObsvdata(ifData, executionId);
+                // Loader: source_refs를 IF 테이블 기준으로 새로 생성 (역추적용)
+                if (context != null) {
+                    String sourceRef = SourceRefUtils.build(context, ifTableName, ifData.getId());
+                    secData.setSourceRefs(SourceRefUtils.toJsonSingle(sourceRef));
+                }
                 toSave.add(secData);
                 successIds.add(ifData.getId());
                 result.successCount++;

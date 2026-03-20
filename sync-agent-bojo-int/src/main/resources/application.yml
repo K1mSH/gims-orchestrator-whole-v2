@@ -22,6 +22,16 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+# common 컨트롤러/필터 활성화
+common:
+  controller:
+    cleanup.enabled: true
+    execution-data.enabled: true
+    datasource.enabled: true
+    execution-params.enabled: true
+  filter:
+    api-key.enabled: true
+
 # Agent 공통 설정
 agent:
   orchestrator-url: ENC(OFVnMq6khLyzmLltDmT5G/bAMDkvZsa9Vm2o8a+aLtyOS63df427nLFCxDL/JjiahkhTBHS+FOALkdpIYMpPLA==)

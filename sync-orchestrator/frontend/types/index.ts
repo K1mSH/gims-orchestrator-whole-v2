@@ -55,6 +55,7 @@ export interface DiscoverResponse {
 
 // 동적 WHERE 조건 (수동 실행 시 사용)
 export interface ExecutionCondition {
+  tableName?: string;  // 조건 대상 테이블 (select-tables 기준). 미지정 시 모든 Step에 적용
   column: string;
   operator: 'EQ' | 'NEQ' | 'GT' | 'GTE' | 'LT' | 'LTE' | 'BETWEEN' | 'IN' | 'LIKE' | 'IS_NULL' | 'IS_NOT_NULL';
   value?: string;

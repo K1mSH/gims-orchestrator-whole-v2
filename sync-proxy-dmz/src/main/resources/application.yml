@@ -22,6 +22,14 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+# common 컨트롤러/필터 활성화 (cleanup, execution-params는 Proxy 불필요 → 비활성)
+common:
+  controller:
+    execution-data.enabled: true
+    datasource.enabled: true
+  filter:
+    api-key.enabled: true
+
 # 프록시 설정
 agent:
   orchestrator-url: ENC(OFVnMq6khLyzmLltDmT5G/bAMDkvZsa9Vm2o8a+aLtyOS63df427nLFCxDL/JjiahkhTBHS+FOALkdpIYMpPLA==)

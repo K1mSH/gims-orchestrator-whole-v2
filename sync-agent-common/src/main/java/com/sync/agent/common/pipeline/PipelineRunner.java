@@ -323,7 +323,9 @@ public class PipelineRunner {
                 if (column != null && operatorStr != null) {
                     try {
                         ConditionOperator operator = ConditionOperator.valueOf(operatorStr.toUpperCase());
+                        String tableName = cm.get("tableName") != null ? String.valueOf(cm.get("tableName")) : null;
                         conditions.add(ExecutionCondition.builder()
+                                .tableName(tableName)
                                 .column(column)
                                 .operator(operator)
                                 .value(value)

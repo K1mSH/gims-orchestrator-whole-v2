@@ -23,8 +23,11 @@ dependencies {
     // Spring Web (for RestTemplate/WebClient) - Spring 5.3.x for Boot 2.7.x
     implementation 'org.springframework:spring-web:5.3.27'
 
-    // Spring Boot autoconfigure (for @ConfigurationProperties - provided by Boot apps)
+    // Spring Boot autoconfigure (for @ConfigurationProperties, @ConditionalOnProperty - provided by Boot apps)
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure:2.7.12'
+
+    // Servlet API (for ApiKeyFilter - provided by Boot apps at runtime)
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
 
     // Spring Data JPA (for execution logging entities)
     api 'org.springframework.data:spring-data-jpa:2.7.12'

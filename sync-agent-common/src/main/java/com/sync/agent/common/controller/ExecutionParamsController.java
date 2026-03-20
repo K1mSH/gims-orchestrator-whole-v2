@@ -3,6 +3,7 @@ package com.sync.agent.common.controller;
 import com.sync.agent.common.config.ExecutionParamsProperties;
 import com.sync.agent.common.step.ExecutionParamDefinition;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pipeline")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "common.controller.execution-params.enabled", havingValue = "true")
 public class ExecutionParamsController {
 
     private final ExecutionParamsProperties executionParamsProperties;

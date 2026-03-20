@@ -5,6 +5,7 @@ import com.sync.agent.common.config.RetentionConfig;
 import com.sync.agent.common.service.DataRetentionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +40,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/cleanup")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "common.controller.cleanup.enabled", havingValue = "true")
 public class DataRetentionController {
 
     private final DataRetentionService dataRetentionService;
