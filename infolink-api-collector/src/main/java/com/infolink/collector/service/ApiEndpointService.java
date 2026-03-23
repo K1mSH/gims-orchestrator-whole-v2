@@ -42,10 +42,14 @@ public class ApiEndpointService {
                 .httpMethod(request.getHttpMethod())
                 .contentType(request.getContentType())
                 .headers(request.getHeaders())
-                .authType(request.getAuthType())
+                .authType(request.getAuthType() != null ? request.getAuthType() : ApiEndpoint.AuthType.NONE)
                 .authConfig(request.getAuthConfig())
                 .description(request.getDescription())
-                .zone(request.getZone())
+                .zone(request.getZone() != null ? request.getZone() : ApiEndpoint.Zone.DMZ)
+                .dataRootPath(request.getDataRootPath())
+                .targetDatasourceId(request.getTargetDatasourceId())
+                .targetTableName(request.getTargetTableName())
+                .upsertEnabled(request.getUpsertEnabled() != null ? request.getUpsertEnabled() : false)
                 .build();
 
         return DetailResponse.from(endpointRepository.save(endpoint));
@@ -129,10 +133,19 @@ public class ApiEndpointService {
                     .apiEndpoint(endpoint)
                     .sourceFieldPath(req.getSourceFieldPath())
                     .targetColumnName(req.getTargetColumnName())
-                    .isPk(req.getIsPk() != null ? req.getIsPk() : false)
+                    .isConflictKey(req.getIsConflictKey() != null ? req.getIsConflictKey() : false)
                     .transformType(req.getTransformType() != null ? req.getTransformType() : ApiFieldMapping.TransformType.NONE)
                     .transformConfig(req.getTransformConfig())
                     .displayOrder(req.getDisplayOrder() != null ? req.getDisplayOrder() : i)
+                    .isDerived(req.getIsDerived() != null ? req.getIsDerived() : false)
+                    .extractPattern(req.getExtractPattern())
+                    .extractGroup(req.getExtractGroup())
+                    .lookupParam(req.getLookupParam())
+                    .lookupKeyField(req.getLookupKeyField())
+                    .lookupValueField(req.getLookupValueField())
+                    .lookupDataRootPath(req.getLookupDataRootPath())
+                    .lookupMatchType(req.getLookupMatchType() != null ? req.getLookupMatchType() : "EXACT")
+                    .defaultValue(req.getDefaultValue())
                     .build();
             endpoint.getFieldMappings().add(mapping);
         }

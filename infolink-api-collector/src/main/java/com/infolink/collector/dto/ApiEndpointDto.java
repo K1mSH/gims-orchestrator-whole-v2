@@ -20,10 +20,15 @@ public class ApiEndpointDto {
         @NotBlank private String httpMethod;
         private String contentType;
         private String headers;
-        @NotNull private ApiEndpoint.AuthType authType;
+        private ApiEndpoint.AuthType authType;
         private String authConfig;
         private String description;
-        @NotNull private ApiEndpoint.Zone zone;
+        private ApiEndpoint.Zone zone;
+        // 등록 시 한번에 설정
+        private String dataRootPath;
+        private String targetDatasourceId;
+        private String targetTableName;
+        private Boolean upsertEnabled;
     }
 
     @Getter @Setter
@@ -183,10 +188,21 @@ public class ApiEndpointDto {
     public static class FieldMappingRequest {
         @NotBlank private String sourceFieldPath;
         @NotBlank private String targetColumnName;
-        private Boolean isPk;
+        private Boolean isConflictKey;
         private ApiFieldMapping.TransformType transformType;
         private String transformConfig;
         private Integer displayOrder;
+        // 파생 컬럼
+        private Boolean isDerived;
+        // LOOKUP 전용
+        private String extractPattern;
+        private Integer extractGroup;
+        private String lookupParam;
+        private String lookupKeyField;
+        private String lookupValueField;
+        private String lookupDataRootPath;
+        private String lookupMatchType;
+        private String defaultValue;
     }
 
     @Getter @Setter
@@ -196,20 +212,40 @@ public class ApiEndpointDto {
         private Long id;
         private String sourceFieldPath;
         private String targetColumnName;
-        private Boolean isPk;
+        private Boolean isConflictKey;
         private ApiFieldMapping.TransformType transformType;
         private String transformConfig;
         private Integer displayOrder;
+        // 파생 컬럼
+        private Boolean isDerived;
+        // LOOKUP 전용
+        private String extractPattern;
+        private Integer extractGroup;
+        private String lookupParam;
+        private String lookupKeyField;
+        private String lookupValueField;
+        private String lookupDataRootPath;
+        private String lookupMatchType;
+        private String defaultValue;
 
         public static FieldMappingResponse from(ApiFieldMapping m) {
             return FieldMappingResponse.builder()
                     .id(m.getId())
                     .sourceFieldPath(m.getSourceFieldPath())
                     .targetColumnName(m.getTargetColumnName())
-                    .isPk(m.getIsPk())
+                    .isConflictKey(m.getIsConflictKey())
                     .transformType(m.getTransformType())
                     .transformConfig(m.getTransformConfig())
                     .displayOrder(m.getDisplayOrder())
+                    .isDerived(m.getIsDerived())
+                    .extractPattern(m.getExtractPattern())
+                    .extractGroup(m.getExtractGroup())
+                    .lookupParam(m.getLookupParam())
+                    .lookupKeyField(m.getLookupKeyField())
+                    .lookupValueField(m.getLookupValueField())
+                    .lookupDataRootPath(m.getLookupDataRootPath())
+                    .lookupMatchType(m.getLookupMatchType())
+                    .defaultValue(m.getDefaultValue())
                     .build();
         }
     }

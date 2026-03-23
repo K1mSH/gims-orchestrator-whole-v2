@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +36,7 @@ public class ApiExecutionService {
     private final ApiCallService callService;
     private final ResponseParser responseParser;
     private final DataTransformer dataTransformer;
+    private final LookupService lookupService;
     private final DataSource dataSource;  // 자체 DB (fallback)
     private final DynamicDataSourceService dynamicDataSourceService;
 
@@ -88,29 +90,55 @@ public class ApiExecutionService {
                 return ApiExecutionHistoryDto.Response.from(history);
             }
 
-            // 3. 매핑 적용 + DB 적재
-            List<ApiFieldMapping> mappings = endpoint.getFieldMappings();
+            // 3. 매핑 분리: 일반(1:1) + 파생(LOOKUP)
+            List<ApiFieldMapping> allMappings = endpoint.getFieldMappings();
+            List<ApiFieldMapping> normalMappings = allMappings.stream()
+                    .filter(m -> !Boolean.TRUE.equals(m.getIsDerived()))
+                    .collect(Collectors.toList());
+            List<ApiFieldMapping> derivedMappings = allMappings.stream()
+                    .filter(m -> Boolean.TRUE.equals(m.getIsDerived()))
+                    .collect(Collectors.toList());
+
+            // 4. LOOKUP Map 사전 로딩
+            lookupService.clearCache();
+            Map<ApiFieldMapping, Map<String, String>> lookupMaps = new HashMap<>();
+            for (ApiFieldMapping dm : derivedMappings) {
+                if (dm.getTransformType() == ApiFieldMapping.TransformType.LOOKUP
+                        && dm.getLookupParam() != null) {
+                    log.info("LOOKUP 로딩: param={}, root={}, key={}, value={}",
+                            dm.getLookupParam(), dm.getLookupDataRootPath(),
+                            dm.getLookupKeyField(), dm.getLookupValueField());
+                    Map<String, String> lookupMap = lookupService.loadLookupMap(
+                            dm.getLookupParam(),
+                            dm.getLookupDataRootPath(),
+                            dm.getLookupKeyField(), dm.getLookupValueField());
+                    log.info("LOOKUP Map 결과: {}건", lookupMap.size());
+                    lookupMaps.put(dm, lookupMap);
+                }
+            }
+            log.info("파생 매핑 {}건, LOOKUP Map {}건", derivedMappings.size(), lookupMaps.size());
+
+            // 5. 전체 컬럼 목록 (일반 + 파생)
+            List<ApiFieldMapping> effectiveMappings = new ArrayList<>(normalMappings);
+            effectiveMappings.addAll(derivedMappings);
+
             int insertCount = 0;
             int skipCount = 0;
 
-            // 컬럼 목록
-            List<String> columns = mappings.stream()
+            List<String> columns = effectiveMappings.stream()
                     .map(ApiFieldMapping::getTargetColumnName)
                     .collect(Collectors.toList());
 
-            // PK 컬럼
-            List<String> pkColumns = mappings.stream()
-                    .filter(m -> Boolean.TRUE.equals(m.getIsPk()))
+            List<String> pkColumns = effectiveMappings.stream()
+                    .filter(m -> Boolean.TRUE.equals(m.getIsConflictKey()))
                     .map(ApiFieldMapping::getTargetColumnName)
                     .collect(Collectors.toList());
 
-            // SQL 생성
             String sql = buildSql(endpoint.getTargetTableName(), columns, pkColumns,
                     Boolean.TRUE.equals(endpoint.getUpsertEnabled()));
 
             log.info("실행 SQL: {}", sql);
 
-            // Target DataSource 결정: targetDatasourceId 있으면 외부 DB, 없으면 자체 DB
             DataSource targetDs = resolveTargetDataSource(endpoint);
 
             // 행 단위 INSERT — PG 트랜잭션 aborted 방지를 위해 savepoint 사용
@@ -120,12 +148,30 @@ public class ApiExecutionService {
                     for (Map<String, Object> record : records) {
                         java.sql.Savepoint sp = conn.setSavepoint();
                         try {
-                            for (int i = 0; i < mappings.size(); i++) {
-                                ApiFieldMapping mapping = mappings.get(i);
+                            int paramIndex = 1;
+
+                            // 일반 매핑
+                            for (ApiFieldMapping mapping : normalMappings) {
                                 Object rawValue = getNestedValue(record, mapping.getSourceFieldPath());
                                 Object transformed = dataTransformer.transform(rawValue, mapping.getTransformType(), mapping.getTransformConfig());
-                                ps.setObject(i + 1, transformed);
+                                ps.setObject(paramIndex++, transformed);
                             }
+
+                            // 파생 매핑 (LOOKUP)
+                            for (ApiFieldMapping dm : derivedMappings) {
+                                Object rawValue = getNestedValue(record, dm.getSourceFieldPath());
+                                if (dm.getTransformType() == ApiFieldMapping.TransformType.LOOKUP) {
+                                    Map<String, String> lookupMap = lookupMaps.getOrDefault(dm, Collections.emptyMap());
+                                    Object result = lookupService.lookup(rawValue,
+                                            dm.getExtractPattern(), dm.getExtractGroup(),
+                                            lookupMap, dm.getDefaultValue());
+                                    ps.setObject(paramIndex++, result);
+                                } else {
+                                    Object transformed = dataTransformer.transform(rawValue, dm.getTransformType(), dm.getTransformConfig());
+                                    ps.setObject(paramIndex++, transformed);
+                                }
+                            }
+
                             ps.executeUpdate();
                             conn.releaseSavepoint(sp);
                             insertCount++;

@@ -31,6 +31,10 @@ jasypt:
 orchestrator:
   url: ENC(xnxfkstDgp9riQKlSListH6OelTJ2wApZe1KoKpTflTGSVjEfbji9sEwXDzStFew8wJgPEhKP+yawGahOCubqw==)
 
+# LOOKUP 공통코드 API (GIMS 내부)
+lookup:
+  common-code-url: http://localhost:8084/mock/common/select/{groupCode}
+
 logging:
   level:
     com.infolink.collector: DEBUG
