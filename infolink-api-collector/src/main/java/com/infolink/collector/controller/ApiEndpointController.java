@@ -8,9 +8,12 @@ import com.infolink.collector.service.ApiEndpointService;
 import com.infolink.collector.service.ApiExecutionService;
 import com.infolink.collector.service.ApiTestService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -19,11 +22,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/endpoints")
 @RequiredArgsConstructor
+@Slf4j
 public class ApiEndpointController {
 
     private final ApiEndpointService endpointService;
     private final ApiTestService testService;
     private final ApiExecutionService executionService;
+    private final RestTemplate restTemplate;
+
+    @Value("${lookup.api-key-url:}")
+    private String apiKeyUrl;
 
     @GetMapping
     public List<ListResponse> getList() {
@@ -89,5 +97,21 @@ public class ApiEndpointController {
     @PutMapping("/{id}/mappings")
     public List<FieldMappingResponse> saveMappings(@PathVariable Long id, @RequestBody List<FieldMappingRequest> requests) {
         return endpointService.saveMappings(id, requests);
+    }
+
+    // --- API 키 목록 (GIMS 본체 프록시) ---
+
+    @GetMapping("/api-keys")
+    public ResponseEntity<String> getApiKeys() {
+        if (apiKeyUrl == null || apiKeyUrl.isBlank()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("{\"error\":\"api-key-url 미설정\"}");
+        }
+        try {
+            String body = restTemplate.getForObject(apiKeyUrl, String.class);
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            log.error("API 키 목록 조회 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body("{\"error\":\"" + e.getMessage() + "\"}");
+        }
     }
 }

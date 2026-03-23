@@ -161,4 +161,47 @@ public class MockApiController {
         response.put("data", data);
         return response;
     }
+
+    /**
+     * Mock API 키 목록 — GIMS 내부 API 시뮬레이션
+     */
+    @GetMapping("/api-keys")
+    public Map<String, Object> getApiKeys() {
+
+        log.info("Mock API 키 목록 호출");
+
+        List<Map<String, Object>> keyList = new ArrayList<>();
+        Object[][] keyData = {
+                {1, "네이버 검색 Client-ID", "6ZMOvG6WUSN5P7l2D65H", "Y", "2026-12-31", "정상", 283},
+                {2, "네이버 검색 Client-Secret", "cK2B2OMt5E", "Y", "2026-12-31", "정상", 283},
+                {3, "공공데이터포털 인증키", "test-data-go-kr-service-key", "Y", "2026-12-31", "정상", 283},
+        };
+
+        for (Object[] row : keyData) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", row[0]);
+            item.put("serviceName", row[1]);
+            item.put("apiKey", row[2]);
+            item.put("useAt", row[3]);
+            item.put("expiryDate", row[4]);
+            item.put("expiryType", row[5]);
+            item.put("author", "manager");
+            item.put("createdAt", "2026-01-20 12:58:57");
+            item.put("updatedAt", null);
+            item.put("dday", row[6]);
+            keyList.add(item);
+        }
+
+        Map<String, Object> apis = new LinkedHashMap<>();
+        apis.put("content", keyList);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("apis", apis);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", "success");
+        response.put("message", "요청이 성공적으로 처리되었습니다.");
+        response.put("data", data);
+        return response;
+    }
 }

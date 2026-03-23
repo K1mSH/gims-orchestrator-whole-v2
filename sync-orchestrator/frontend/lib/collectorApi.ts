@@ -108,6 +108,25 @@ export const mappingApi = {
     collectorApi.put<ApiFieldMapping[]>(`/endpoints/${endpointId}/mappings`, mappings).then(r => r.data),
 };
 
+// --- API Keys (GIMS 본체 프록시) ---
+
+export interface ApiKeyItem {
+  id: number;
+  serviceName: string;
+  apiKey: string;
+  useAt: string;
+  expiryDate: string;
+  expiryType: string;
+  dday: number;
+}
+
+export const apiKeyApi = {
+  getAll: async (): Promise<ApiKeyItem[]> => {
+    const res = await collectorApi.get<any>('/endpoints/api-keys');
+    return res.data?.data?.apis?.content || [];
+  },
+};
+
 // --- Schedules ---
 
 export const scheduleApi = {

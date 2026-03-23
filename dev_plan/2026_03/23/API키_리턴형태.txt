@@ -1,0 +1,19 @@
+{
+    "status": "success",
+    "message": "요청이 성공적으로 처리되었습니다.",
+    "data": {
+        "apis": {
+            "content": [
+                {
+                    "id": 1,
+                    "serviceName": "브이월드",
+                    "apiKey": "532E2418-9FBF-3AA0-8CDD-F2D4E0DC2FBD",
+                    "useAt": "Y",
+                    "expiryDate": "2026-04-22",
+                    "expiryType": "정상",
+                    "author": "manager",
+                    "createdAt": "2026-01-20 12:58:57",
+                    "updatedAt": null,
+                    "dday": 30
+                }
+            ],

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { endpointApi, testApi, paramApi, mappingApi, TestCallResponse, TreeNode, InlineTestRequest } from '@/lib/collectorApi';
+import { endpointApi, testApi, paramApi, mappingApi, apiKeyApi, ApiKeyItem, TestCallResponse, TreeNode, InlineTestRequest } from '@/lib/collectorApi';
 import { datasourceApi } from '@/lib/api';
 import {
   ApiEndpointListItem,
@@ -61,11 +61,14 @@ export default function ApiCollectPage() {
     zone: 'DMZ',
   });
 
-  // 헤더 key-value
-  const [headerRows, setHeaderRows] = useState<{ key: string; value: string }[]>([]);
+  // 헤더 (레거시 — headerRows 제거, params에 paramType=HEADER로 통합)
 
   // 파라미터
   const [params, setParams] = useState<ApiParamRequest[]>([]);
+
+  // API 키 목록 (GIMS 본체)
+  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
+  const [apiKeysLoaded, setApiKeysLoaded] = useState(false);
 
   // 테스트 호출
   const [testing, setTesting] = useState(false);
@@ -107,6 +110,16 @@ export default function ApiCollectPage() {
 
   useEffect(() => { fetchEndpoints(); }, [fetchEndpoints]);
 
+  // API 키 목록 로드
+  const loadApiKeys = useCallback(async () => {
+    if (apiKeysLoaded) return;
+    try {
+      const keys = await apiKeyApi.getAll();
+      setApiKeys(keys);
+      setApiKeysLoaded(true);
+    } catch { /* 실패해도 무시 — 수동 입력 가능 */ }
+  }, [apiKeysLoaded]);
+
   // Datasource 목록 로드
   const refreshDatasources = useCallback(() => {
     datasourceApi.getSimple().then(setDatasources).catch(() => {});
@@ -134,7 +147,6 @@ export default function ApiCollectPage() {
 
   const resetForm = () => {
     setForm({ apiName: '', url: '', httpMethod: 'GET', authType: 'NONE', zone: 'DMZ' });
-    setHeaderRows([]);
     setParams([]);
     setTestResult(null);
     setSelectedDataRoot('');
@@ -148,11 +160,6 @@ export default function ApiCollectPage() {
     setShowCreateForm(false);
   };
 
-  const headersToJson = (rows: { key: string; value: string }[]): string => {
-    const obj: Record<string, string> = {};
-    rows.filter(r => r.key.trim()).forEach(r => { obj[r.key.trim()] = r.value; });
-    return Object.keys(obj).length > 0 ? JSON.stringify(obj) : '';
-  };
 
   // 테스트 호출 (인라인)
   const handleTestCall = async () => {
@@ -165,7 +172,6 @@ export default function ApiCollectPage() {
         url: form.url,
         httpMethod: form.httpMethod,
         contentType: form.contentType,
-        headers: headersToJson(headerRows),
         authType: form.authType,
         authConfig: form.authConfig,
         params: params.filter(p => p.paramName).map(p => ({
@@ -239,7 +245,6 @@ export default function ApiCollectPage() {
       // Step 1: endpoint 생성 (기본정보 + 적재설정 한번에)
       const submitForm = {
         ...form,
-        headers: headersToJson(headerRows),
         dataRootPath: selectedDataRoot,
         targetDatasourceId: selectedDatasourceId,
         targetTableName: targetTable,
@@ -385,32 +390,6 @@ export default function ApiCollectPage() {
             </div>
           </div>
 
-          {/* 헤더 */}
-          <div style={sectionStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <div style={sectionLabel}>헤더</div>
-              <button className="btn btn-sm btn-primary" onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])}
-                style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
-            </div>
-            {headerRows.length === 0 ? (
-              <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>커스텀 헤더 없음 (필요 시 추가)</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                {headerRows.map((h, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input className="form-input" value={h.key} style={{ fontSize: '0.85rem', flex: 1 }}
-                      onChange={e => { const u = [...headerRows]; u[i] = { ...u[i], key: e.target.value }; setHeaderRows(u); }}
-                      placeholder="Header Name" />
-                    <input className="form-input" value={h.value} style={{ fontSize: '0.85rem', flex: 2 }}
-                      onChange={e => { const u = [...headerRows]; u[i] = { ...u[i], value: e.target.value }; setHeaderRows(u); }}
-                      placeholder="Value" />
-                    <button className="btn btn-danger btn-sm" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))}
-                      style={{ fontSize: '0.75rem' }}>X</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* 인증 */}
           <div style={sectionStyle}>
@@ -465,16 +444,103 @@ export default function ApiCollectPage() {
             </div>
           </div>
 
-          {/* 파라미터 */}
+          {/* 헤더 (paramType=HEADER) */}
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={sectionLabel}>헤더</div>
+              <button className="btn btn-sm btn-primary" onClick={() => {
+                setParams([...params, { paramName: '', paramType: 'HEADER', valueType: 'STATIC', staticValue: '', displayOrder: params.length }]);
+              }} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
+            </div>
+            {(() => {
+              const headerParams = params.map((p, i) => ({ ...p, _idx: i })).filter(p => p.paramType === 'HEADER');
+              return headerParams.length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>커스텀 헤더 없음 (필요 시 추가)</div>
+              ) : (
+                <table style={{ width: '100%', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>헤더명</th>
+                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>값 유형</th>
+                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>값 설정</th>
+                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>설명</th>
+                      <th style={{ width: '40px' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {headerParams.map(hp => {
+                      const i = hp._idx;
+                      const p = params[i];
+                      return (
+                        <tr key={i}>
+                          <td style={{ padding: '0.25rem' }}>
+                            <input className="form-input" value={p.paramName} style={{ fontSize: '0.85rem' }}
+                              onChange={e => updateParam(i, 'paramName', e.target.value)} placeholder="Header Name" />
+                          </td>
+                          <td style={{ padding: '0.25rem' }}>
+                            <select className="form-select" value={p.description?.startsWith('🔑') ? 'APIKEY' : 'STATIC'} style={{ fontSize: '0.85rem' }}
+                              onChange={e => {
+                                if (e.target.value === 'APIKEY') {
+                                  loadApiKeys();
+                                  const u = [...params]; u[i] = { ...u[i], description: '🔑', staticValue: '' }; setParams(u);
+                                } else {
+                                  const u = [...params]; u[i] = { ...u[i], description: p.description?.startsWith('🔑') ? '' : p.description }; setParams(u);
+                                }
+                              }}>
+                              <option value="STATIC">직접입력</option>
+                              <option value="APIKEY">🔑 API키</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '0.25rem' }}>
+                            {p.description?.startsWith('🔑') ? (
+                              <select className="form-select" style={{ fontSize: '0.85rem' }}
+                                value={p.staticValue || ''} onFocus={() => loadApiKeys()}
+                                onChange={e => {
+                                  const key = apiKeys.find(k => String(k.id) === e.target.value);
+                                  const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '🔑' }; setParams(u);
+                                }}>
+                                <option value="">-- API 키 선택 --</option>
+                                {apiKeys.filter(k => k.useAt === 'Y').map(k => (
+                                  <option key={k.id} value={String(k.id)}>{k.serviceName} (D-{k.dday})</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input className="form-input" value={p.staticValue || ''} style={{ fontSize: '0.85rem' }}
+                                onChange={e => updateParam(i, 'staticValue', e.target.value)} placeholder="값 입력" />
+                            )}
+                          </td>
+                          <td style={{ padding: '0.25rem' }}>
+                            {p.description?.startsWith('🔑') ? (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{p.description}</span>
+                            ) : (
+                              <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                                onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
+                            )}
+                          </td>
+                          <td style={{ padding: '0.25rem' }}>
+                            <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)} style={{ fontSize: '0.75rem' }}>X</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              );
+            })()}
+          </div>
+
+          {/* 파라미터 (QUERY/BODY/PATH) */}
           <div style={sectionStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <div style={sectionLabel}>호출 파라미터</div>
               <button className="btn btn-sm btn-primary" onClick={addParam}
                 style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
             </div>
-            {params.length === 0 ? (
-              <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>파라미터 없음 (필요 시 추가)</div>
-            ) : (
+            {(() => {
+              const queryParams = params.map((p, i) => ({ ...p, _idx: i })).filter(p => p.paramType !== 'HEADER');
+              return queryParams.length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>파라미터 없음 (필요 시 추가)</div>
+              ) : (
               <table style={{ width: '100%', fontSize: '0.85rem' }}>
                 <thead>
                   <tr>
@@ -487,7 +553,10 @@ export default function ApiCollectPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {params.map((p, i) => (
+                  {queryParams.map(qp => {
+                    const i = qp._idx;
+                    const p = params[i];
+                    return (
                     <tr key={i}>
                       <td style={{ padding: '0.25rem' }}>
                         <input className="form-input" value={p.paramName} style={{ fontSize: '0.85rem' }}
@@ -499,18 +568,47 @@ export default function ApiCollectPage() {
                           <option value="QUERY">QUERY</option>
                           <option value="BODY">BODY</option>
                           <option value="PATH">PATH</option>
-                          <option value="HEADER">HEADER</option>
                         </select>
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        <select className="form-select" value={p.valueType} style={{ fontSize: '0.85rem' }}
-                          onChange={e => updateParam(i, 'valueType', e.target.value)}>
-                          <option value="STATIC">고정값</option>
+                        <select className="form-select" value={p.description?.startsWith('🔑') ? 'APIKEY' : p.valueType} style={{ fontSize: '0.85rem' }}
+                          onChange={e => {
+                            const v = e.target.value;
+                            if (v === 'APIKEY') {
+                              loadApiKeys();
+                              const u = [...params];
+                              u[i] = { ...u[i], valueType: 'STATIC', description: '🔑', staticValue: '' };
+                              setParams(u);
+                            } else {
+                              const u = [...params];
+                              u[i] = { ...u[i], valueType: v as any, description: p.description?.startsWith('🔑') ? '' : p.description };
+                              setParams(u);
+                            }
+                          }}>
+                          <option value="STATIC">직접입력</option>
+                          <option value="APIKEY">🔑 API키</option>
                           <option value="DYNAMIC">동적</option>
                         </select>
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        {p.valueType === 'STATIC' ? (
+                        {p.description?.startsWith('🔑') ? (
+                          <select className="form-select" style={{ fontSize: '0.85rem' }}
+                            value={p.staticValue || ''}
+                            onFocus={() => loadApiKeys()}
+                            onChange={e => {
+                              const key = apiKeys.find(k => String(k.id) === e.target.value);
+                              const u = [...params];
+                              u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '🔑' };
+                              setParams(u);
+                            }}>
+                            <option value="">-- API 키 선택 --</option>
+                            {apiKeys.filter(k => k.useAt === 'Y').map(k => (
+                              <option key={k.id} value={k.apiKey}>
+                                {k.serviceName} (D-{k.dday})
+                              </option>
+                            ))}
+                          </select>
+                        ) : p.valueType === 'STATIC' ? (
                           <input className="form-input" value={p.staticValue || ''} style={{ fontSize: '0.85rem' }}
                             onChange={e => updateParam(i, 'staticValue', e.target.value)} placeholder="고정값 입력" />
                         ) : (
@@ -528,17 +626,21 @@ export default function ApiCollectPage() {
                         )}
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
-                          onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
+                        {p.description?.startsWith('🔑') ? (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{p.description}</span>
+                        ) : (
+                          <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                            onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
+                        )}
                       </td>
                       <td style={{ padding: '0.25rem' }}>
                         <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)} style={{ fontSize: '0.75rem' }}>X</button>
                       </td>
                     </tr>
-                  ))}
+                  ); })}
                 </tbody>
               </table>
-            )}
+              ); })()}
           </div>
 
           {/* 테스트 호출 버튼 */}

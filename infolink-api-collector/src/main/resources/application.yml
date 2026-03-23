@@ -34,6 +34,7 @@ orchestrator:
 # LOOKUP 공통코드 API (GIMS 내부)
 lookup:
   common-code-url: http://localhost:8084/mock/common/select/{groupCode}
+  api-key-url: http://localhost:8084/mock/api-keys
 
 logging:
   level:

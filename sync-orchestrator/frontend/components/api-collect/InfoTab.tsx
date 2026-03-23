@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { endpointApi, paramApi } from '@/lib/collectorApi';
+import { useCallback, useState } from 'react';
+import { endpointApi, paramApi, apiKeyApi, ApiKeyItem } from '@/lib/collectorApi';
 import {
   ApiEndpointDetail,
   ApiEndpointUpdateRequest,
@@ -17,23 +17,6 @@ interface InfoTabProps {
   onUpdate: () => void;
 }
 
-// JSON string → key-value 배열
-function parseHeaders(json: string | null): { key: string; value: string }[] {
-  if (!json) return [];
-  try {
-    const obj = JSON.parse(json);
-    return Object.entries(obj).map(([key, value]) => ({ key, value: String(value) }));
-  } catch {
-    return json ? [{ key: json, value: '' }] : [];
-  }
-}
-
-// key-value 배열 → JSON string
-function headersToJson(rows: { key: string; value: string }[]): string {
-  const obj: Record<string, string> = {};
-  rows.filter(r => r.key.trim()).forEach(r => { obj[r.key.trim()] = r.value; });
-  return Object.keys(obj).length > 0 ? JSON.stringify(obj) : '';
-}
 
 export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   // --- 기본정보 ---
@@ -47,9 +30,6 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
     description: endpoint.description || '',
     isActive: endpoint.isActive,
   });
-  const [headerRows, setHeaderRows] = useState<{ key: string; value: string }[]>(
-    parseHeaders(endpoint.headers)
-  );
   const [saving, setSaving] = useState(false);
 
   // --- 파라미터 ---
@@ -68,10 +48,28 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   );
   const [paramsSaving, setParamsSaving] = useState(false);
 
+  // API 키 목록
+  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
+  const [apiKeysLoaded, setApiKeysLoaded] = useState(false);
+  const loadApiKeys = useCallback(async () => {
+    if (apiKeysLoaded) return;
+    try {
+      const keys = await apiKeyApi.getAll();
+      setApiKeys(keys);
+      setApiKeysLoaded(true);
+    } catch { /* 무시 */ }
+  }, [apiKeysLoaded]);
+
   const handleSaveInfo = async () => {
     try {
       setSaving(true);
-      await endpointApi.update(endpoint.id, { ...form, headers: headersToJson(headerRows) });
+      await endpointApi.update(endpoint.id, {
+        ...form,
+        dataRootPath: endpoint.dataRootPath || undefined,
+        targetDatasourceId: endpoint.targetDatasourceId || undefined,
+        targetTableName: endpoint.targetTableName || undefined,
+        upsertEnabled: endpoint.upsertEnabled,
+      });
       alert('저장되었습니다.');
       onUpdate();
     } catch (e: any) {
@@ -186,37 +184,6 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
           </div>
         </div>
 
-        {/* 헤더 설정 */}
-        <div style={sectionStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <div style={sectionLabel}>헤더</div>
-            <button className="btn btn-sm btn-primary"
-              onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])}
-              style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
-          </div>
-          {headerRows.length === 0 ? (
-            <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>
-              커스텀 헤더 없음 (필요 시 추가)
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              {headerRows.map((h, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input className="form-input" value={h.key}
-                    style={{ fontSize: '0.85rem', flex: 1 }}
-                    onChange={e => { const u = [...headerRows]; u[i] = { ...u[i], key: e.target.value }; setHeaderRows(u); }}
-                    placeholder="Header Name" />
-                  <input className="form-input" value={h.value}
-                    style={{ fontSize: '0.85rem', flex: 2 }}
-                    onChange={e => { const u = [...headerRows]; u[i] = { ...u[i], value: e.target.value }; setHeaderRows(u); }}
-                    placeholder="Value" />
-                  <button className="btn btn-danger btn-sm" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))}
-                    style={{ fontSize: '0.75rem' }}>X</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* 인증 설정 */}
         <div style={sectionStyle}>
@@ -266,18 +233,106 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         </div>
       </div>
 
-      {/* 파라미터 섹션 */}
+      {/* 헤더 섹션 (paramType=HEADER) */}
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 className="card-title">헤더</h3>
+          <button className="btn btn-sm btn-primary" onClick={() => {
+            setParams([...params, { paramName: '', paramType: 'HEADER', valueType: 'STATIC', staticValue: '', displayOrder: params.length }]);
+          }}>+ 추가</button>
+        </div>
+        <div style={{ padding: '1rem' }}>
+          {(() => {
+            const headerParams = params.map((p, i) => ({ ...p, _idx: i })).filter(p => p.paramType === 'HEADER');
+            return headerParams.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '0.5rem' }}>헤더 없음</div>
+            ) : (
+              <table style={{ width: '100%', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>헤더명</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>값 유형</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>값 설정</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>설명</th>
+                    <th style={{ width: '50px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {headerParams.map(hp => {
+                    const i = hp._idx;
+                    const p = params[i];
+                    return (
+                      <tr key={i}>
+                        <td style={{ padding: '0.25rem' }}>
+                          <input className="form-input" value={p.paramName} style={{ fontSize: '0.85rem' }}
+                            onChange={e => updateParam(i, 'paramName', e.target.value)} placeholder="Header Name" />
+                        </td>
+                        <td style={{ padding: '0.25rem' }}>
+                          <select className="form-select" value={p.description?.startsWith('🔑') ? 'APIKEY' : 'STATIC'} style={{ fontSize: '0.85rem' }}
+                            onChange={e => {
+                              if (e.target.value === 'APIKEY') {
+                                loadApiKeys();
+                                const u = [...params]; u[i] = { ...u[i], description: '🔑', staticValue: '' }; setParams(u);
+                              } else {
+                                const u = [...params]; u[i] = { ...u[i], description: p.description?.startsWith('🔑') ? '' : p.description }; setParams(u);
+                              }
+                            }}>
+                            <option value="STATIC">직접입력</option>
+                            <option value="APIKEY">🔑 API키</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: '0.25rem' }}>
+                          {p.description?.startsWith('🔑') ? (
+                            <select className="form-select" style={{ fontSize: '0.85rem' }}
+                              value={p.staticValue || ''} onFocus={() => loadApiKeys()}
+                              onChange={e => {
+                                const key = apiKeys.find(k => String(k.id) === e.target.value);
+                                const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '🔑' }; setParams(u);
+                              }}>
+                              <option value="">-- API 키 선택 --</option>
+                              {apiKeys.filter(k => k.useAt === 'Y').map(k => (
+                                <option key={k.id} value={String(k.id)}>{k.serviceName} (D-{k.dday})</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input className="form-input" value={p.staticValue || ''} style={{ fontSize: '0.85rem' }}
+                              onChange={e => updateParam(i, 'staticValue', e.target.value)} placeholder="값 입력" />
+                          )}
+                        </td>
+                        <td style={{ padding: '0.25rem' }}>
+                          {p.description?.startsWith('🔑') ? (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{p.description}</span>
+                          ) : (
+                            <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                              onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
+                          )}
+                        </td>
+                        <td style={{ padding: '0.25rem' }}>
+                          <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)}
+                            style={{ fontSize: '0.75rem' }}>X</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* 파라미터 섹션 (QUERY/BODY/PATH) */}
       <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title">호출 파라미터</h3>
           <button className="btn btn-sm btn-primary" onClick={addParam}>+ 추가</button>
         </div>
         <div style={{ padding: '1rem' }}>
-          {params.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1rem' }}>
-              파라미터가 없습니다.
-            </div>
-          ) : (
+          {(() => {
+            const queryParams = params.map((p, i) => ({ ...p, _idx: i })).filter(p => p.paramType !== 'HEADER');
+            return queryParams.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1rem' }}>파라미터가 없습니다.</div>
+            ) : (
             <table style={{ width: '100%', fontSize: '0.85rem' }}>
               <thead>
                 <tr>
@@ -290,7 +345,10 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
                 </tr>
               </thead>
               <tbody>
-                {params.map((p, i) => (
+                {queryParams.map(qp => {
+                  const i = qp._idx;
+                  const p = params[i];
+                  return (
                   <tr key={i}>
                     <td style={{ padding: '0.25rem' }}>
                       <input className="form-input" value={p.paramName} style={{ fontSize: '0.85rem' }}
@@ -302,18 +360,38 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
                         <option value="QUERY">QUERY</option>
                         <option value="BODY">BODY</option>
                         <option value="PATH">PATH</option>
-                        <option value="HEADER">HEADER</option>
                       </select>
                     </td>
                     <td style={{ padding: '0.25rem' }}>
-                      <select className="form-select" value={p.valueType} style={{ fontSize: '0.85rem' }}
-                        onChange={e => updateParam(i, 'valueType', e.target.value)}>
-                        <option value="STATIC">고정값</option>
+                      <select className="form-select" value={p.description?.startsWith('🔑') ? 'APIKEY' : p.valueType} style={{ fontSize: '0.85rem' }}
+                        onChange={e => {
+                          const v = e.target.value;
+                          if (v === 'APIKEY') {
+                            loadApiKeys();
+                            const u = [...params]; u[i] = { ...u[i], valueType: 'STATIC', description: '🔑', staticValue: '' }; setParams(u);
+                          } else {
+                            const u = [...params]; u[i] = { ...u[i], valueType: v as any, description: p.description?.startsWith('🔑') ? '' : p.description }; setParams(u);
+                          }
+                        }}>
+                        <option value="STATIC">직접입력</option>
+                        <option value="APIKEY">🔑 API키</option>
                         <option value="DYNAMIC">동적</option>
                       </select>
                     </td>
                     <td style={{ padding: '0.25rem' }}>
-                      {p.valueType === 'STATIC' ? (
+                      {p.description?.startsWith('🔑') ? (
+                        <select className="form-select" style={{ fontSize: '0.85rem' }}
+                          value={p.staticValue || ''} onFocus={() => loadApiKeys()}
+                          onChange={e => {
+                            const key = apiKeys.find(k => String(k.id) === e.target.value);
+                            const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '🔑' }; setParams(u);
+                          }}>
+                          <option value="">-- API 키 선택 --</option>
+                          {apiKeys.filter(k => k.useAt === 'Y').map(k => (
+                            <option key={k.id} value={String(k.id)}>{k.serviceName} (D-{k.dday})</option>
+                          ))}
+                        </select>
+                      ) : p.valueType === 'STATIC' ? (
                         <input className="form-input" value={p.staticValue || ''} style={{ fontSize: '0.85rem' }}
                           onChange={e => updateParam(i, 'staticValue', e.target.value)}
                           placeholder="고정값 입력" />
@@ -337,19 +415,25 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
                       )}
                     </td>
                     <td style={{ padding: '0.25rem' }}>
-                      <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
-                        onChange={e => updateParam(i, 'description', e.target.value)}
-                        placeholder="설명 (선택)" />
+                      {p.description?.startsWith('🔑') ? (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{p.description}</span>
+                      ) : (
+                        <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                          onChange={e => updateParam(i, 'description', e.target.value)}
+                          placeholder="설명 (선택)" />
+                      )}
                     </td>
                     <td style={{ padding: '0.25rem' }}>
                       <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)}
                         style={{ fontSize: '0.75rem' }}>X</button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
-          )}
+            );
+          })()}
           <div style={{ textAlign: 'right', marginTop: '1rem' }}>
             <button className="btn btn-primary" onClick={handleSaveParams} disabled={paramsSaving}>
               {paramsSaving ? '저장 중...' : '파라미터 저장'}
