@@ -3,6 +3,7 @@
 
 - [feedback_run_without_jar.md](feedback_run_without_jar.md) - JAR 대신 gradlew bootRun으로 실행
 - [feedback_module_specific_stays.md](feedback_module_specific_stays.md) - 모듈 전용 로직은 common으로 올리지 않기
+- [feedback_memory_git_sync.md](feedback_memory_git_sync.md) - 메모리 업데이트 시 docs/claude-memory/에 동기화 + 커밋
 
 ## 작업 규칙
 
