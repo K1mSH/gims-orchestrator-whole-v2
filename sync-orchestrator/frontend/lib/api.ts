@@ -9,8 +9,6 @@ import type {
   ScheduleUpdateRequest,
   ExecutionDetail,
   TriggerResponse,
-  AgentChain,
-  AgentChainCreateRequest,
   TableStats,
   SyncLog,
   Datasource,
@@ -227,25 +225,6 @@ export const executionApi = {
     api.get<TraceResult>(`/executions/${encodeURIComponent(executionId)}/trace-source`, {
       params: { sourceRefs, sourceTable }
     }).then((res) => res.data),
-};
-
-// Agent Chain API
-export const chainApi = {
-  getAll: () => api.get<AgentChain[]>('/chains').then((res) => res.data),
-
-  getById: (id: number) =>
-    api.get<AgentChain>(`/chains/${id}`).then((res) => res.data),
-
-  create: (data: AgentChainCreateRequest) =>
-    api.post<AgentChain>('/chains', data).then((res) => res.data),
-
-  update: (id: number, data: Partial<AgentChainCreateRequest>) =>
-    api.put<AgentChain>(`/chains/${id}`, data).then((res) => res.data),
-
-  delete: (id: number) => api.delete(`/chains/${id}`),
-
-  execute: (id: number) =>
-    api.post<TriggerResponse[]>(`/chains/${id}/execute`).then((res) => res.data),
 };
 
 // Execution Step History API

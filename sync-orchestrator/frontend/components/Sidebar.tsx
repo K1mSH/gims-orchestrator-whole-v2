@@ -5,10 +5,8 @@ import { usePathname } from 'next/navigation';
 
 const navItems = [
   { href: '/', label: '대시보드', icon: '📊' },
-  { href: '/executions', label: '실행 이력', icon: '📋' },
   { href: '/datasources', label: 'DB 관리', icon: '🗄️' },
   { href: '/agents', label: 'Agent 관리', icon: '🖥️' },
-  { href: '/chains', label: 'Agent 체인', icon: '🔗' },
   { href: '/api-collect', label: 'API 수집 관리', icon: '🌐' },
 ];
 

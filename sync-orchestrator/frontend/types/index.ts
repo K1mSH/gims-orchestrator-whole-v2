@@ -161,36 +161,6 @@ export interface SyncLog {
   createdAt: string;
 }
 
-// Agent Chain 관련 타입
-export interface AgentChain {
-  id: number;
-  chainId: string;
-  chainName: string;
-  description: string | null;
-  triggerType: 'INDIVIDUAL' | 'SEQUENTIAL';
-  isActive: boolean;
-  members: AgentChainMember[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AgentChainMember {
-  id: number;
-  agentId: number;
-  agentCode: string;
-  agentName: string;
-  zone: string;
-  seqOrder: number;
-}
-
-export interface AgentChainCreateRequest {
-  chainId: string;
-  chainName: string;
-  description?: string;
-  triggerType: 'INDIVIDUAL' | 'SEQUENTIAL';
-  members: { agentId: number; seqOrder: number }[];
-}
-
 // API Response 타입
 export interface ApiResponse<T> {
   data: T;

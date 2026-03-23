@@ -1,6 +1,5 @@
 package com.sync.orchestrator.domain.agent;
 
-import com.sync.orchestrator.domain.chain.AgentChainMember;
 import com.sync.orchestrator.domain.schedule.Schedule;
 
 import javax.persistence.*;
@@ -93,10 +92,6 @@ public class Agent {
     @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Schedule> schedules = new ArrayList<>();
-
-    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<AgentChainMember> chainMembers = new ArrayList<>();
 
     // Agent가 사용할 테이블 목록
     @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, orphanRemoval = true)
