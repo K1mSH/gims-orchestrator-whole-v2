@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { endpointApi } from '@/lib/collectorApi';
 import { ApiEndpointDetail } from '@/types/api-collect';
+import axios from 'axios';
 import TabButton from '@/components/api-collect/TabButton';
 import InfoTab from '@/components/api-collect/InfoTab';
 import MappingTab from '@/components/api-collect/MappingTab';
@@ -20,6 +21,7 @@ export default function ApiCollectDetailPage() {
   const [endpoint, setEndpoint] = useState<ApiEndpointDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [running, setRunning] = useState(false);
 
   const fetchEndpoint = useCallback(async () => {
     try {
@@ -43,10 +45,26 @@ export default function ApiCollectDetailPage() {
     return <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>;
   }
 
+  const handleRun = async () => {
+    if (!confirm('수동 실행하시겠습니까?')) return;
+    try {
+      setRunning(true);
+      const result = await axios.post(`/collector-api/endpoints/${endpoint.id}/run`);
+      const h = result.data;
+      alert(`실행 완료: ${h.status}\n적재: ${h.insertCount}건, 스킵: ${h.skipCount}건${h.errorMessage ? '\n에러: ' + h.errorMessage : ''}`);
+      fetchEndpoint();
+    } catch (e: any) {
+      alert('실행 실패: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setRunning(false);
+    }
+  };
+
   // Step Lock 판별
   const hasParams = endpoint.params.length > 0;
   const hasDataRoot = !!endpoint.dataRootPath;
   const hasMappings = endpoint.fieldMappings.length > 0;
+  const canRun = hasMappings && hasDataRoot && !!endpoint.targetTableName;
 
   return (
     <div>
@@ -63,8 +81,8 @@ export default function ApiCollectDetailPage() {
         }} />
       </div>
 
-      {/* 상태 배지 */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem' }}>
+      {/* 상태 배지 + 수동 실행 */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', alignItems: 'center' }}>
         <span style={{
           padding: '2px 8px', borderRadius: '4px',
           background: hasParams ? '#dcfce7' : '#fef3c7',
@@ -93,6 +111,12 @@ export default function ApiCollectDetailPage() {
             적재: {endpoint.targetTableName}
           </span>
         )}
+        <div style={{ marginLeft: 'auto' }}>
+          <button className="btn btn-sm" onClick={handleRun} disabled={running || !canRun}
+            style={{ background: 'var(--success)', color: 'white', padding: '4px 16px', fontSize: '0.85rem' }}>
+            {running ? '실행 중...' : '수동 실행'}
+          </button>
+        </div>
       </div>
 
       {/* 탭 */}

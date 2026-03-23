@@ -5,7 +5,7 @@ export type CollectorZone = 'DMZ' | 'INTERNAL';
 export type ParamType = 'QUERY' | 'BODY' | 'PATH' | 'HEADER';
 export type ValueType = 'STATIC' | 'DYNAMIC';
 export type DynamicType = 'TODAY' | 'NOW' | 'CUSTOM';
-export type TransformType = 'NONE' | 'DATE_FORMAT' | 'NUMBER' | 'SUBSTRING';
+export type TransformType = 'NONE' | 'DATE_FORMAT' | 'NUMBER' | 'SUBSTRING' | 'TRIM' | 'REPLACE' | 'DEFAULT_VALUE' | 'LOOKUP';
 export type ExecutionStatus = 'RUNNING' | 'SUCCESS' | 'FAILED';
 export type TriggeredBy = 'MANUAL' | 'SCHEDULE';
 
@@ -49,7 +49,6 @@ export interface ApiEndpointDetail {
 
 export interface ApiEndpointCreateRequest {
   apiName: string;
-
   url: string;
   httpMethod: string;
   contentType?: string;
@@ -58,6 +57,10 @@ export interface ApiEndpointCreateRequest {
   authConfig?: string;
   description?: string;
   zone: CollectorZone;
+  dataRootPath?: string;
+  targetDatasourceId?: string;
+  targetTableName?: string;
+  upsertEnabled?: boolean;
 }
 
 export interface ApiEndpointUpdateRequest {
@@ -105,19 +108,41 @@ export interface ApiFieldMapping {
   id: number;
   sourceFieldPath: string;
   targetColumnName: string;
-  isPk: boolean;
+  isConflictKey: boolean;
   transformType: TransformType;
   transformConfig: string | null;
   displayOrder: number;
+  // 파생 컬럼
+  isDerived: boolean;
+  // LOOKUP 전용
+  extractPattern: string | null;
+  extractGroup: number | null;
+  lookupParam: string | null;
+  lookupKeyField: string | null;
+  lookupValueField: string | null;
+  lookupDataRootPath: string | null;
+  lookupMatchType: string | null;
+  defaultValue: string | null;
 }
 
 export interface ApiFieldMappingRequest {
   sourceFieldPath: string;
   targetColumnName: string;
-  isPk?: boolean;
+  isConflictKey?: boolean;
   transformType?: TransformType;
   transformConfig?: string;
   displayOrder?: number;
+  // 파생 컬럼
+  isDerived?: boolean;
+  // LOOKUP 전용
+  extractPattern?: string;
+  extractGroup?: number;
+  lookupParam?: string;
+  lookupKeyField?: string;
+  lookupValueField?: string;
+  lookupDataRootPath?: string;
+  lookupMatchType?: string;
+  defaultValue?: string;
 }
 
 export interface ApiScheduleItem {

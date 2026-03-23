@@ -1,42 +1,76 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { testApi, endpointApi, mappingApi, TreeNode, TestCallResponse } from '@/lib/collectorApi';
 import { datasourceApi } from '@/lib/api';
 import { ApiEndpointDetail, ApiFieldMappingRequest, TransformType } from '@/types/api-collect';
 import { DatasourceSimple, ColumnSearchResult } from '@/types';
-import axios from 'axios';
 
 interface MappingTabProps {
   endpoint: ApiEndpointDetail;
   onUpdate: () => void;
 }
 
+// --- 정규식 프리셋 ---
+const EXTRACT_PRESETS = [
+  { label: '도메인', pattern: 'https?://(?:www\\.)?([^/]+)', group: 1 },
+  { label: '숫자만', pattern: '(\\d+)', group: 1 },
+  { label: '괄호 안', pattern: '\\(([^)]+)\\)', group: 1 },
+];
+
 export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestCallResponse | null>(null);
   const [selectedRoot, setSelectedRoot] = useState<string>(endpoint.dataRootPath || '');
 
-  // datasource 선택
   const [datasources, setDatasources] = useState<DatasourceSimple[]>([]);
   const [selectedDatasourceId, setSelectedDatasourceId] = useState<string>(endpoint.targetDatasourceId || '');
 
-  // target 테이블/컬럼
   const [tables, setTables] = useState<{ tableName: string; tableType: string }[]>([]);
   const [targetTable, setTargetTable] = useState<string>(endpoint.targetTableName || '');
   const [targetColumns, setTargetColumns] = useState<ColumnSearchResult[]>([]);
 
-  // 매핑 행
+  // 1:1 매핑 행
   const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [running, setRunning] = useState(false);
+  // 파생 컬럼 행
+  const [derivedRows, setDerivedRows] = useState<DerivedRow[]>([]);
+  // LOOKUP 설정 펼침 상태
+  const [expandedDerived, setExpandedDerived] = useState<Set<number>>(new Set());
 
-  // Orchestrator datasource 목록 로드
+  const [saving, setSaving] = useState(false);
+
+  // 소스 필드 목록 (파생 컬럼 소스 선택용)
+  const sourceFields = useMemo(() =>
+    mappingRows.filter(r => !r.excluded).map(r => r.sourceFieldPath),
+    [mappingRows]
+  );
+
+  // 테스트 호출 응답에서 소스 필드별 샘플값 추출
+  const sampleValues = useMemo(() => {
+    if (!testResult?.responseTree || !selectedRoot) return {};
+    const node = navigateTree(testResult.responseTree, selectedRoot);
+    if (!node?.children) return {};
+
+    // 첫 번째 배열 요소의 children에서 leaf 값 수집
+    const samples: Record<string, string[]> = {};
+    // responseTree에서 배열 노드 찾기
+    const arrayNode = node;
+    if (arrayNode.children) {
+      // 배열 요소들에서 샘플 수집 (최대 5건)
+      for (let ci = 0; ci < Math.min(arrayNode.children.length, 5); ci++) {
+        const child = arrayNode.children[ci];
+        if (child.children) {
+          collectSampleValues(child.children, '', samples);
+        }
+      }
+    }
+    return samples;
+  }, [testResult, selectedRoot]);
+
   useEffect(() => {
     datasourceApi.getSimple().then(setDatasources).catch(() => {});
   }, []);
 
-  // datasource 선택 시 테이블 목록 로드
   useEffect(() => {
     if (selectedDatasourceId) {
       datasourceApi.searchTables(selectedDatasourceId).then(setTables).catch(() => setTables([]));
@@ -45,7 +79,6 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     }
   }, [selectedDatasourceId]);
 
-  // target 테이블 변경 시 컬럼 로드
   const loadColumns = useCallback(async (tableName: string) => {
     if (!tableName || !selectedDatasourceId) { setTargetColumns([]); return; }
     try {
@@ -58,16 +91,34 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     if (targetTable) loadColumns(targetTable);
   }, [targetTable, loadColumns]);
 
-  // 기존 매핑 로드
+  // 기존 매핑 로드 (1:1 + 파생 분리)
   useEffect(() => {
     if (endpoint.fieldMappings.length > 0) {
-      setMappingRows(endpoint.fieldMappings.map(m => ({
+      const normal = endpoint.fieldMappings.filter(m => !m.isDerived);
+      const derived = endpoint.fieldMappings.filter(m => m.isDerived);
+
+      setMappingRows(normal.map(m => ({
         sourceFieldPath: m.sourceFieldPath,
         targetColumnName: m.targetColumnName,
-        isPk: m.isPk,
+        isConflictKey: m.isConflictKey,
         transformType: m.transformType,
         transformConfig: m.transformConfig || '',
         excluded: false,
+      })));
+
+      setDerivedRows(derived.map(m => ({
+        sourceFieldPath: m.sourceFieldPath,
+        targetColumnName: m.targetColumnName,
+        isConflictKey: m.isConflictKey,
+        transformType: m.transformType,
+        extractPattern: m.extractPattern || '',
+        extractGroup: m.extractGroup ?? 1,
+        lookupParam: m.lookupParam || '',
+        lookupKeyField: m.lookupKeyField || '',
+        lookupValueField: m.lookupValueField || '',
+        lookupDataRootPath: m.lookupDataRootPath || '',
+        lookupMatchType: m.lookupMatchType || 'EXACT',
+        defaultValue: m.defaultValue || '',
       })));
     }
   }, [endpoint.fieldMappings]);
@@ -93,17 +144,17 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
         httpMethod: endpoint.httpMethod, authType: endpoint.authType,
         dataRootPath: path,
       });
-      // 필드 추출 → 매핑 행 초기화
       if (testResult?.responseTree) {
         const fields = findFieldsFromTree(testResult.responseTree, path);
         setMappingRows(fields.map(f => ({
           sourceFieldPath: f.path,
           targetColumnName: '',
-          isPk: false,
+          isConflictKey: false,
           transformType: 'NONE' as TransformType,
           transformConfig: '',
           excluded: false,
         })));
+        setDerivedRows([]);
       }
       onUpdate();
     } catch (e: any) {
@@ -144,19 +195,43 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   };
 
   const handleSaveMappings = async () => {
-    const activeRows = mappingRows.filter(r => !r.excluded && r.targetColumnName);
-    if (activeRows.length === 0) { alert('매핑된 필드가 없습니다.'); return; }
+    const activeNormal = mappingRows.filter(r => !r.excluded && r.targetColumnName);
+    const activeDerived = derivedRows.filter(r => r.targetColumnName);
+    if (activeNormal.length === 0 && activeDerived.length === 0) {
+      alert('매핑된 필드가 없습니다.'); return;
+    }
 
     try {
       setSaving(true);
-      const requests: ApiFieldMappingRequest[] = activeRows.map((r, i) => ({
-        sourceFieldPath: r.sourceFieldPath,
-        targetColumnName: r.targetColumnName,
-        isPk: r.isPk,
-        transformType: r.transformType,
-        transformConfig: r.transformConfig || undefined,
-        displayOrder: i,
-      }));
+      const requests: ApiFieldMappingRequest[] = [
+        // 1:1 매핑
+        ...activeNormal.map((r, i) => ({
+          sourceFieldPath: r.sourceFieldPath,
+          targetColumnName: r.targetColumnName,
+          isConflictKey: r.isConflictKey,
+          transformType: r.transformType,
+          transformConfig: r.transformConfig || undefined,
+          displayOrder: i,
+          isDerived: false,
+        })),
+        // 파생 컬럼
+        ...activeDerived.map((r, i) => ({
+          sourceFieldPath: r.sourceFieldPath,
+          targetColumnName: r.targetColumnName,
+          isConflictKey: r.isConflictKey,
+          transformType: r.transformType as TransformType,
+          displayOrder: activeNormal.length + i,
+          isDerived: true,
+          extractPattern: r.extractPattern || undefined,
+          extractGroup: r.extractGroup,
+          lookupParam: r.lookupParam || undefined,
+          lookupKeyField: r.lookupKeyField || undefined,
+          lookupValueField: r.lookupValueField || undefined,
+          lookupDataRootPath: r.lookupDataRootPath || undefined,
+          lookupMatchType: r.lookupMatchType || 'EXACT',
+          defaultValue: r.defaultValue || undefined,
+        })),
+      ];
       await mappingApi.save(endpoint.id, requests);
       alert('매핑이 저장되었습니다.');
       onUpdate();
@@ -167,30 +242,70 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     }
   };
 
-  const handleRun = async () => {
-    if (!confirm('수동 실행하시겠습니까?')) return;
-    try {
-      setRunning(true);
-      const result = await axios.post(`/collector-api/endpoints/${endpoint.id}/run`);
-      const h = result.data;
-      alert(`실행 완료: ${h.status}\n적재: ${h.insertCount}건, 스킵: ${h.skipCount}건${h.errorMessage ? '\n에러: ' + h.errorMessage : ''}`);
-      onUpdate();
-    } catch (e: any) {
-      alert('실행 실패: ' + (e.response?.data?.message || e.message));
-    } finally {
-      setRunning(false);
-    }
-  };
-
   const updateRow = (index: number, field: string, value: any) => {
     const updated = [...mappingRows];
     updated[index] = { ...updated[index], [field]: value };
     setMappingRows(updated);
   };
 
+  const updateDerivedRow = (index: number, field: string, value: any) => {
+    const updated = [...derivedRows];
+    updated[index] = { ...updated[index], [field]: value };
+    setDerivedRows(updated);
+  };
+
+  const addDerivedRow = () => {
+    setDerivedRows([...derivedRows, {
+      sourceFieldPath: sourceFields[0] || '',
+      targetColumnName: '',
+      isConflictKey: false,
+      transformType: 'LOOKUP',
+      extractPattern: '',
+      extractGroup: 1,
+      lookupParam: '',
+      lookupKeyField: '',
+      lookupValueField: '',
+      lookupDataRootPath: '',
+      lookupMatchType: 'EXACT',
+      defaultValue: '',
+    }]);
+    setExpandedDerived(prev => new Set(prev).add(derivedRows.length));
+  };
+
+  const removeDerivedRow = (index: number) => {
+    setDerivedRows(derivedRows.filter((_, i) => i !== index));
+    setExpandedDerived(prev => {
+      const next = new Set<number>();
+      prev.forEach(v => { if (v < index) next.add(v); else if (v > index) next.add(v - 1); });
+      return next;
+    });
+  };
+
+  const toggleDerivedExpand = (index: number) => {
+    setExpandedDerived(prev => {
+      const next = new Set(prev);
+      next.has(index) ? next.delete(index) : next.add(index);
+      return next;
+    });
+  };
+
+  // 정규식 미리보기 계산
+  const getExtractPreview = (sourceField: string, pattern: string, group: number): { original: string; extracted: string }[] => {
+    if (!pattern || !sourceField) return [];
+    const values = sampleValues[sourceField] || [];
+    try {
+      const regex = new RegExp(pattern);
+      return values.slice(0, 5).map(v => {
+        const match = v.match(regex);
+        return { original: v, extracted: match ? (match[group] || v) : v };
+      });
+    } catch {
+      return values.slice(0, 3).map(v => ({ original: v, extracted: '(정규식 오류)' }));
+    }
+  };
+
   // --- 렌더링 ---
 
-  // 테스트 호출 전 + data_root 미설정
   if (!testResult && !endpoint.dataRootPath) {
     return (
       <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
@@ -258,7 +373,6 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="card-header"><h3 className="card-title">적재 설정</h3></div>
           <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {/* Datasource 선택 */}
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <label className="form-label" style={{ minWidth: '100px', margin: 0 }}>Target DB</label>
               <select className="form-select" value={selectedDatasourceId} style={{ maxWidth: '400px' }}
@@ -271,7 +385,6 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                 ))}
               </select>
             </div>
-            {/* 테이블 선택 */}
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <label className="form-label" style={{ minWidth: '100px', margin: 0 }}>Target 테이블</label>
               <select className="form-select" value={targetTable} style={{ maxWidth: '300px' }}
@@ -300,18 +413,17 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
         </div>
       )}
 
-      {/* 필드 매핑 */}
-      {selectedRoot && mappingRows.length > 0 && (
+      {/* 필드 매핑 (1:1 + 파생) */}
+      {selectedRoot && (mappingRows.length > 0 || derivedRows.length > 0) && (
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 className="card-title">필드 매핑 ({mappingRows.filter(r => !r.excluded && r.targetColumnName).length}/{mappingRows.length})</h3>
+            <h3 className="card-title">
+              필드 매핑 ({mappingRows.filter(r => !r.excluded && r.targetColumnName).length + derivedRows.filter(r => r.targetColumnName).length}
+              /{mappingRows.length + derivedRows.length})
+            </h3>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button className="btn btn-primary btn-sm" onClick={handleSaveMappings} disabled={saving}>
                 {saving ? '저장 중...' : '매핑 저장'}
-              </button>
-              <button className="btn btn-sm" onClick={handleRun} disabled={running || !endpoint.targetTableName}
-                style={{ background: 'var(--success)', color: 'white' }}>
-                {running ? '실행 중...' : '수동 실행'}
               </button>
             </div>
           </div>
@@ -323,14 +435,15 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                   <th style={{ padding: '0.5rem', textAlign: 'left', width: '80px' }}>타입</th>
                   <th style={{ padding: '0.5rem', textAlign: 'center', width: '16px' }}></th>
                   <th style={{ padding: '0.5rem', textAlign: 'left' }}>Target 컬럼</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', width: '40px' }}>PK</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '100px' }}>변환</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'center', width: '60px' }}>중복키</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left', width: '120px' }}>변환</th>
                   <th style={{ padding: '0.5rem', textAlign: 'center', width: '50px' }}>제외</th>
                 </tr>
               </thead>
               <tbody>
+                {/* 1:1 매핑 행 */}
                 {mappingRows.map((row, i) => (
-                  <tr key={i} style={{ opacity: row.excluded ? 0.4 : 1, borderBottom: '1px solid var(--gray-100)' }}>
+                  <tr key={`n-${i}`} style={{ opacity: row.excluded ? 0.4 : 1, borderBottom: '1px solid var(--gray-100)' }}>
                     <td style={{ padding: '0.35rem 0.5rem' }}>
                       <code style={{ fontSize: '0.8rem' }}>{row.sourceFieldPath}</code>
                     </td>
@@ -346,7 +459,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                           <option value="">-- 선택 --</option>
                           {targetColumns.map(c => (
                             <option key={c.columnName} value={c.columnName}>
-                              {c.columnName} ({c.dataType}){c.isPrimaryKey ? ' [PK]' : ''}
+                              {c.columnName} ({c.dataType}){c.isPrimaryKey ? ' [PK]' : ''}{c.remarks ? ` - ${c.remarks}` : ''}
                             </option>
                           ))}
                         </select>
@@ -358,8 +471,8 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                       )}
                     </td>
                     <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                      <input type="checkbox" checked={row.isPk} disabled={row.excluded}
-                        onChange={e => updateRow(i, 'isPk', e.target.checked)} />
+                      <input type="checkbox" checked={row.isConflictKey} disabled={row.excluded}
+                        onChange={e => updateRow(i, 'isConflictKey', e.target.checked)} />
                     </td>
                     <td style={{ padding: '0.35rem 0.5rem' }}>
                       <select className="form-select" value={row.transformType} disabled={row.excluded}
@@ -368,6 +481,10 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                         <option value="NONE">없음</option>
                         <option value="DATE_FORMAT">날짜변환</option>
                         <option value="NUMBER">숫자</option>
+                        <option value="SUBSTRING">자르기</option>
+                        <option value="TRIM">공백제거</option>
+                        <option value="REPLACE">치환</option>
+                        <option value="DEFAULT_VALUE">기본값</option>
                       </select>
                     </td>
                     <td style={{ padding: '0.35rem', textAlign: 'center' }}>
@@ -376,8 +493,179 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                     </td>
                   </tr>
                 ))}
+
+                {/* 구분선 */}
+                {derivedRows.length > 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '0.25rem 0.5rem', background: 'var(--gray-100)', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>
+                      파생 컬럼 (LOOKUP)
+                    </td>
+                  </tr>
+                )}
+
+                {/* 파생 컬럼 행 */}
+                {derivedRows.map((row, i) => {
+                  const isExpanded = expandedDerived.has(i);
+                  const preview = isExpanded ? getExtractPreview(row.sourceFieldPath, row.extractPattern, row.extractGroup) : [];
+
+                  return (
+                    <React.Fragment key={`d-${i}`}>
+                      <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--gray-100)', background: '#fefce8' }}>
+                        <td style={{ padding: '0.35rem 0.5rem' }}>
+                          <select className="form-select" value={row.sourceFieldPath}
+                            style={{ fontSize: '0.8rem' }}
+                            onChange={e => updateDerivedRow(i, 'sourceFieldPath', e.target.value)}>
+                            <option value="">-- 소스 필드 --</option>
+                            {sourceFields.map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: '0.35rem 0.5rem', color: 'var(--gray-500)', fontSize: '0.75rem' }}>
+                          파생
+                        </td>
+                        <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
+                        <td style={{ padding: '0.35rem 0.5rem' }}>
+                          {targetColumns.length > 0 ? (
+                            <select className="form-select" value={row.targetColumnName}
+                              style={{ fontSize: '0.8rem' }}
+                              onChange={e => updateDerivedRow(i, 'targetColumnName', e.target.value)}>
+                              <option value="">-- 선택 --</option>
+                              {targetColumns.map(c => (
+                                <option key={c.columnName} value={c.columnName}>
+                                  {c.columnName} ({c.dataType}){c.isPrimaryKey ? ' [PK]' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input className="form-input" value={row.targetColumnName}
+                              style={{ fontSize: '0.8rem' }}
+                              onChange={e => updateDerivedRow(i, 'targetColumnName', e.target.value)}
+                              placeholder="컬럼명 입력" />
+                          )}
+                        </td>
+                        <td style={{ padding: '0.35rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={row.isConflictKey}
+                            onChange={e => updateDerivedRow(i, 'isConflictKey', e.target.checked)} />
+                        </td>
+                        <td style={{ padding: '0.35rem 0.5rem' }}>
+                          <button className="btn btn-sm" onClick={() => toggleDerivedExpand(i)}
+                            style={{ fontSize: '0.7rem', padding: '1px 6px', background: isExpanded ? 'var(--primary)' : 'var(--gray-200)', color: isExpanded ? 'white' : 'var(--gray-700)' }}>
+                            {isExpanded ? '설정 ▴' : '설정 ▾'}
+                          </button>
+                        </td>
+                        <td style={{ padding: '0.35rem', textAlign: 'center' }}>
+                          <button onClick={() => removeDerivedRow(i)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '1rem', padding: '0 4px' }}>
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* LOOKUP 설정 패널 (인라인 확장) */}
+                      {isExpanded && (
+                        <tr style={{ background: '#fefce8' }}>
+                          <td colSpan={7} style={{ padding: '0.5rem 1rem 1rem 2rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
+                              {/* 추출 정규식 */}
+                              <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>추출 정규식</label>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                                  <input className="form-input" value={row.extractPattern}
+                                    style={{ flex: 1, fontSize: '0.8rem', fontFamily: 'monospace' }}
+                                    onChange={e => updateDerivedRow(i, 'extractPattern', e.target.value)}
+                                    placeholder="정규식 입력 (예: https?://(?:www\.)?([^/]+))" />
+                                  <label style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>그룹:</label>
+                                  <input className="form-input" type="number" min={0} value={row.extractGroup}
+                                    style={{ width: '50px', fontSize: '0.8rem' }}
+                                    onChange={e => updateDerivedRow(i, 'extractGroup', parseInt(e.target.value) || 1)} />
+                                </div>
+                                <div style={{ marginTop: '0.25rem', display: 'flex', gap: '0.25rem' }}>
+                                  {EXTRACT_PRESETS.map(p => (
+                                    <button key={p.label} className="btn btn-sm"
+                                      style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--gray-100)' }}
+                                      onClick={() => {
+                                        const u = [...derivedRows];
+                                        u[i] = { ...u[i], extractPattern: p.pattern, extractGroup: p.group };
+                                        setDerivedRows(u);
+                                      }}>
+                                      {p.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* 미리보기 */}
+                              {preview.length > 0 && (
+                                <div style={{ gridColumn: '1 / -1', background: 'white', borderRadius: '4px', padding: '0.5rem', border: '1px solid var(--gray-200)' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 600 }}>추출 미리보기</div>
+                                  <table style={{ width: '100%', fontSize: '0.75rem' }}>
+                                    <tbody>
+                                      {preview.map((p, pi) => (
+                                        <tr key={pi}>
+                                          <td style={{ padding: '1px 4px', color: 'var(--gray-500)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {p.original.length > 50 ? p.original.substring(0, 50) + '...' : p.original}
+                                          </td>
+                                          <td style={{ padding: '1px 4px', color: 'var(--gray-400)' }}>→</td>
+                                          <td style={{ padding: '1px 4px', fontWeight: 600 }}>{p.extracted}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+
+                              {/* LOOKUP 설정 */}
+                              <div>
+                                <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>코드 파라미터</label>
+                                <input className="form-input" value={row.lookupParam}
+                                  style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  onChange={e => updateDerivedRow(i, 'lookupParam', e.target.value)}
+                                  placeholder="NGW_0118" />
+                              </div>
+                              <div>
+                                <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>데이터 루트</label>
+                                <input className="form-input" value={row.lookupDataRootPath}
+                                  style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  onChange={e => updateDerivedRow(i, 'lookupDataRootPath', e.target.value)}
+                                  placeholder="data.common" />
+                              </div>
+                              <div>
+                                <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>기본값 (매칭 실패 시)</label>
+                                <input className="form-input" value={row.defaultValue}
+                                  style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  onChange={e => updateDerivedRow(i, 'defaultValue', e.target.value)}
+                                  placeholder="기타" />
+                              </div>
+                              <div>
+                                <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>키 필드</label>
+                                <input className="form-input" value={row.lookupKeyField}
+                                  style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  onChange={e => updateDerivedRow(i, 'lookupKeyField', e.target.value)}
+                                  placeholder="detailCode" />
+                              </div>
+                              <div>
+                                <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>값 필드</label>
+                                <input className="form-input" value={row.lookupValueField}
+                                  style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  onChange={e => updateDerivedRow(i, 'lookupValueField', e.target.value)}
+                                  placeholder="detailCodeName" />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
+
+            {/* 파생 컬럼 추가 버튼 */}
+            <div style={{ padding: '0.5rem', borderTop: '1px solid var(--gray-100)' }}>
+              <button className="btn btn-sm" onClick={addDerivedRow}
+                style={{ fontSize: '0.8rem', background: 'var(--gray-50)', border: '1px dashed var(--gray-300)', width: '100%', padding: '0.4rem' }}>
+                + 파생 컬럼 추가
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -390,13 +678,30 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
 interface MappingRow {
   sourceFieldPath: string;
   targetColumnName: string;
-  isPk: boolean;
+  isConflictKey: boolean;
   transformType: TransformType;
   transformConfig: string;
   excluded: boolean;
 }
 
+interface DerivedRow {
+  sourceFieldPath: string;
+  targetColumnName: string;
+  isConflictKey: boolean;
+  transformType: string;
+  extractPattern: string;
+  extractGroup: number;
+  lookupParam: string;
+  lookupKeyField: string;
+  lookupValueField: string;
+  lookupDataRootPath: string;
+  lookupMatchType: string;
+  defaultValue: string;
+}
+
 // --- JSON 트리 뷰 ---
+
+import React from 'react';
 
 function JsonTreeView({ node, path, selectedRoot, onSelectRoot, depth = 0 }: {
   node: TreeNode; path: string; selectedRoot: string; onSelectRoot: (path: string) => void; depth?: number;
@@ -469,6 +774,20 @@ function collectLeafFields(children: TreeNode[], prefix: string, fields: { path:
       collectLeafFields(child.children, path, fields);
     } else if (child.type !== 'array') {
       fields.push({ path, type: child.type, sample: child.sampleValue });
+    }
+  }
+}
+
+function collectSampleValues(children: TreeNode[], prefix: string, samples: Record<string, string[]>) {
+  for (const child of children) {
+    const path = prefix ? `${prefix}.${child.name}` : child.name;
+    if (child.type === 'object' && child.children) {
+      collectSampleValues(child.children, path, samples);
+    } else if (child.sampleValue != null) {
+      if (!samples[path]) samples[path] = [];
+      if (!samples[path].includes(child.sampleValue)) {
+        samples[path].push(child.sampleValue);
+      }
     }
   }
 }
