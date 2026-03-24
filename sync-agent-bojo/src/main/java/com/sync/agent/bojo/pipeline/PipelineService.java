@@ -65,7 +65,7 @@ public class PipelineService {
         }
 
         if (agentCode == null) {
-            log.error("agentCode not found in params or executionId: {}", finalExecutionId);
+            log.error("[Bojo] params 또는 executionId에서 agentCode를 찾을 수 없습니다: {}", finalExecutionId);
             return;
         }
 
@@ -73,7 +73,7 @@ public class PipelineService {
 
         runningAgentCodes.add(finalAgentCode);
         try {
-            log.info("[Bojo] Starting pipeline: executionId={}, agentCode={}", finalExecutionId, finalAgentCode);
+            log.info("[Bojo] 파이프라인 시작: executionId={}, agentCode={}", finalExecutionId, finalAgentCode);
 
             PipelineRunner baseRunner = pipelineRegistry.getRunner(finalAgentCode);
 
@@ -84,10 +84,10 @@ public class PipelineService {
 
             executeWithRunner(runner, orchestratorClient, finalExecutionId, finalAgentCode, params);
         } catch (Exception e) {
-            log.error("[Bojo] Pipeline failed before runner: {} - {}", finalExecutionId, e.getMessage(), e);
+            log.error("[Bojo] Runner 실행 전 파이프라인 실패: {} - {}", finalExecutionId, e.getMessage(), e);
             notifyFailure(finalAgentCode, finalExecutionId, e.getMessage());
         } catch (Error err) {
-            log.error("[Bojo] CRITICAL ERROR: {} - {}", finalExecutionId, err.getMessage(), err);
+            log.error("[Bojo] 치명적 오류: {} - {}", finalExecutionId, err.getMessage(), err);
             notifyFailure(finalAgentCode, finalExecutionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
         } finally {
             runningAgentCodes.remove(finalAgentCode);
@@ -119,7 +119,7 @@ public class PipelineService {
             }
 
             syncDataSourceService.setCurrentDatasources(sourceInfo, targetInfo);
-            log.info("[Bojo] Pipeline datasource configured - source: {} ({}:{}), target: {} ({}:{})",
+            log.info("[Bojo] 파이프라인 데이터소스 설정 완료 - source: {} ({}:{}), target: {} ({}:{})",
                     sourceInfo.getDatasourceId(), sourceInfo.getHost(), sourceInfo.getPort(),
                     targetInfo.getDatasourceId(), targetInfo.getHost(), targetInfo.getPort());
 
@@ -149,21 +149,21 @@ public class PipelineService {
             executionResults.put(executionId, result);
             executionService.recordExecutionFinish(executionId, result);
 
-            log.info("[Bojo] Pipeline completed: {} with status {}", executionId, result.getStatus());
+            log.info("[Bojo] 파이프라인 완료: {} 상태={}", executionId, result.getStatus());
         } catch (Exception e) {
-            log.error("[Bojo] Pipeline failed: {} - {}", executionId, e.getMessage(), e);
+            log.error("[Bojo] 파이프라인 실패: {} - {}", executionId, e.getMessage(), e);
             result = buildFailedResult(executionId, e.getMessage());
             executionResults.put(executionId, result);
             try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } catch (Error err) {
-            log.error("[Bojo] CRITICAL ERROR: {} - {}", executionId, err.getMessage(), err);
+            log.error("[Bojo] 치명적 오류: {} - {}", executionId, err.getMessage(), err);
             result = buildFailedResult(executionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
             executionResults.put(executionId, result);
             try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } finally {
             if (result != null) {
                 try { orchestratorClient.notifyFinished(result); } catch (Exception e) {
-                    log.error("[Bojo] Failed to notify orchestrator: {}", e.getMessage());
+                    log.error("[Bojo] Orchestrator 알림 실패: {}", e.getMessage());
                 }
             }
             syncDataSourceService.clearCurrentDatasources();
@@ -183,7 +183,7 @@ public class PipelineService {
         } else if (portObj != null) {
             port = Integer.parseInt(portObj.toString());
         } else {
-            log.error("[Bojo] {} port is null! Available params: {}", prefix, params.keySet());
+            log.error("[Bojo] {} 포트가 null입니다! 사용 가능한 params: {}", prefix, params.keySet());
             port = null;
         }
         String databaseName = (String) params.get(prefix + "DatabaseName");
@@ -191,7 +191,7 @@ public class PipelineService {
         String password = (String) params.get(prefix + "Password");
 
         if (datasourceId == null || host == null || port == null) {
-            throw new IllegalArgumentException(prefix + " datasource info is incomplete. " +
+            throw new IllegalArgumentException(prefix + " 데이터소스 정보가 불완전합니다. " +
                     "datasourceId=" + datasourceId + ", host=" + host + ", port=" + port);
         }
 
@@ -221,7 +221,7 @@ public class PipelineService {
             OrchestratorClient client = new OrchestratorClient(orchestratorUrl, agentCode);
             client.notifyFinished(buildFailedResult(executionId, errorMessage));
         } catch (Exception e) {
-            log.error("[Bojo] Failed to notify orchestrator about failure: {}", e.getMessage());
+            log.error("[Bojo] Orchestrator 실패 알림 전송 실패: {}", e.getMessage());
         }
     }
 

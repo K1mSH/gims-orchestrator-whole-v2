@@ -112,28 +112,28 @@ public class InternalBojoLoadStep implements StepExecutor {
             List<ExecutionCondition> mergedConditions = buildMergedConditions(options, ifObsvdataTable);
 
             if (isResyncExecution) {
-                log.info("[{}] Resync execution: {} conditions", getStepId(), mergedConditions.size());
+                log.info("[{}] 재동기화 실행: {} 조건", getStepId(), mergedConditions.size());
                 for (ExecutionCondition c : mergedConditions) {
-                    log.info("[{}]   condition: {} {} {}", getStepId(), c.getColumn(), c.getOperator(), c.getValue());
+                    log.info("[{}]   조건: {} {} {}", getStepId(), c.getColumn(), c.getOperator(), c.getValue());
                 }
             }
 
             // ===== 1. 사전 매핑 로드 (Target DB에서 READ) =====
-            log.info("[{}] Phase 1: Loading spot_id / result_id mappings from Target DB", getStepId());
+            log.info("[{}] 1단계: Target DB에서 spot_id / result_id 매핑 로드", getStepId());
 
             Map<String, Long> spotIdMap = targetRepo.loadSpotIdMap(targetJewonTable);
             Map<String, Long> resultIdMap = targetRepo.loadResultIdMap(targetResultTable);
 
-            log.info("[{}] Loaded {} spot_id, {} result_id mappings",
+            log.info("[{}] spot_id {} 건, result_id {} 건 매핑 로드 완료",
                     getStepId(), spotIdMap.size(), resultIdMap.size());
 
             if (spotIdMap.isEmpty()) {
-                log.warn("[{}] No spot_id mappings found in {} - target jewon may not be populated yet",
+                log.warn("[{}] {}에서 spot_id 매핑을 찾을 수 없음 - target 제원이 아직 등록되지 않았을 수 있음",
                         getStepId(), targetJewonTable);
             }
 
             // ===== 2. 관측데이터 처리 (EAV 1→3 확장) =====
-            log.info("[{}] Phase 2: Loading obsvdata (EAV expansion)", getStepId());
+            log.info("[{}] 2단계: 관측데이터 로드 (EAV 확장)", getStepId());
 
             List<Map<String, Object>> pendingObsv;
             String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
@@ -150,8 +150,8 @@ public class InternalBojoLoadStep implements StepExecutor {
 
             obsvReadCount = pendingObsv.size();
             readCount += obsvReadCount;
-            log.info("[{}] Read {} {} obsvdata records from IF_RSV", getStepId(), obsvReadCount,
-                    isResyncExecution ? "resync (conditions)" : "pending");
+            log.info("[{}] IF_RSV에서 {} 건의 {} 관측데이터 조회", getStepId(), obsvReadCount,
+                    isResyncExecution ? "재동기화 (조건)" : "대기중");
 
             if (!pendingObsv.isEmpty()) {
                 List<Object[]> expandedRows = new ArrayList<>();
@@ -169,11 +169,11 @@ public class InternalBojoLoadStep implements StepExecutor {
                     try {
                         Long spotId = spotIdMap.get(obsvCode);
                         if (spotId == null) {
-                            log.warn("[{}] No spot_id for obsv_code={}, skipping", getStepId(), obsvCode);
+                            log.warn("[{}] obsv_code={}에 대한 spot_id 없음, 건너뜀", getStepId(), obsvCode);
                             obsvFailed++;
                             obsvFailedIds.add(row.get("id"));
                             obsvFailedKeys.add(obsvCode);
-                            if (obsvFirstError == null) obsvFirstError = "No spot_id for obsv_code=" + obsvCode;
+                            if (obsvFirstError == null) obsvFirstError = "obsv_code=" + obsvCode + "에 대한 spot_id 없음";
                             skipCount++;
                             continue;
                         }
@@ -215,7 +215,7 @@ public class InternalBojoLoadStep implements StepExecutor {
                         updateMaxDateTime(maxDateTimePerCode, obsvCode, dateStr, timeStr);
 
                     } catch (Exception e) {
-                        log.error("Failed to process obsvdata: obsv_code={}", obsvCode, e);
+                        log.error("[{}] 관측데이터 처리 실패: obsv_code={}", getStepId(), obsvCode, e);
                         obsvFailed++;
                         obsvFailedIds.add(row.get("id"));
                         obsvFailedKeys.add(obsvCode);
@@ -228,7 +228,7 @@ public class InternalBojoLoadStep implements StepExecutor {
                 if (!expandedRows.isEmpty()) {
                     int inserted = targetRepo.batchInsertObsvdata(targetObsvdataTable, expandedRows);
                     writeCount = obsvSuccess;  // 논리적 레코드 수 기준 (EAV 확장 행 수가 아닌 IF 처리 건수)
-                    log.info("[{}] Inserted {} EAV obsvdata rows (from {} IF records)",
+                    log.info("[{}] EAV 관측데이터 {} 행 INSERT 완료 (IF 레코드 {} 건 기준)",
                             getStepId(), inserted, obsvSuccess);
                 }
 
@@ -243,9 +243,9 @@ public class InternalBojoLoadStep implements StepExecutor {
                 // ===== 3. Link 테이블 갱신 (batch UPSERT) =====
                 // Resync 실행 시 Link 갱신 스킵 (과거 데이터로 덮어쓰기 방지)
                 if (isResyncExecution) {
-                    log.info("[{}] Phase 3: Link table update SKIPPED (resync execution)", getStepId());
+                    log.info("[{}] 3단계: Link 테이블 갱신 건너뜀 (재동기화 실행)", getStepId());
                 } else {
-                    log.info("[{}] Phase 3: Batch upserting link table ({} codes)", getStepId(), maxDateTimePerCode.size());
+                    log.info("[{}] 3단계: Link 테이블 배치 UPSERT ({} 건)", getStepId(), maxDateTimePerCode.size());
 
                     Timestamp now = Timestamp.valueOf(LocalDateTime.now());
                     List<Object[]> linkRows = new ArrayList<>();
@@ -263,12 +263,12 @@ public class InternalBojoLoadStep implements StepExecutor {
                         });
                     }
                     linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
-                    log.info("[{}] Upserted {} link records", getStepId(), linkUpdated);
+                    log.info("[{}] Link {} 건 UPSERT 완료", getStepId(), linkUpdated);
                 }
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
-            log.info("[{}] Completed: read={}, write={}, skip={}, duration={}ms",
+            log.info("[{}] 완료: read={}, write={}, skip={}, duration={}ms",
                     getStepId(), readCount, writeCount, skipCount, durationMs);
 
             // ===== 4. SyncLog 요약 저장 (매핑 단위, link 제외) =====
@@ -289,7 +289,7 @@ public class InternalBojoLoadStep implements StepExecutor {
                     .build();
 
         } catch (Exception e) {
-            log.error("Step execution failed", e);
+            log.error("[{}] Step 실행 실패", getStepId(), e);
 
             String errorMessage = e.getMessage();
             if (errorMessage != null && errorMessage.length() > 500) {
@@ -359,7 +359,7 @@ public class InternalBojoLoadStep implements StepExecutor {
         } else if (dateObj instanceof String) {
             date = LocalDate.parse((String) dateObj);
         } else {
-            throw new IllegalArgumentException("Unsupported date type: " + (dateObj != null ? dateObj.getClass() : "null"));
+            throw new IllegalArgumentException("지원하지 않는 날짜 타입: " + (dateObj != null ? dateObj.getClass() : "null"));
         }
 
         LocalTime time = LocalTime.MIDNIGHT;
@@ -449,7 +449,7 @@ public class InternalBojoLoadStep implements StepExecutor {
                     .build();
             syncLogRepository.save(logEntry);
         } catch (Exception e) {
-            log.warn("Failed to save SyncLog for mapping {}: {}", mappingName, e.getMessage());
+            log.warn("[{}] SyncLog 저장 실패 (매핑: {}): {}", getStepId(), mappingName, e.getMessage());
         }
     }
 }

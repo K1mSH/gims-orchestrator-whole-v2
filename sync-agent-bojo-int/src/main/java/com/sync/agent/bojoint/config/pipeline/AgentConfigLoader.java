@@ -37,17 +37,17 @@ public class AgentConfigLoader {
                     AgentDefinition def = parseAgentDefinition(data);
                     if (def != null && def.getAgentCode() != null) {
                         agentDefinitions.add(def);
-                        log.info("Loaded agent config: {} (type={}, steps={})",
+                        log.info("[BojoInt] Agent 설정 로드: {} (type={}, steps={})",
                                 def.getAgentCode(), def.getType(), def.getSteps().size());
                     }
                 } catch (Exception e) {
-                    log.error("Failed to load agent config: {}", resource.getFilename(), e);
+                    log.error("[BojoInt] Agent 설정 로드 실패: {}", resource.getFilename(), e);
                 }
             }
 
-            log.info("Total {} agent configs loaded", agentDefinitions.size());
+            log.info("[BojoInt] 총 {} 개 Agent 설정 로드 완료", agentDefinitions.size());
         } catch (Exception e) {
-            log.error("Failed to scan agent config files", e);
+            log.error("[BojoInt] Agent 설정 파일 스캔 실패", e);
         }
     }
 

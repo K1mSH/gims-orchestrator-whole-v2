@@ -8,8 +8,10 @@ import java.util.Map;
 
 public class TestCallDto {
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class Request {
         /** 동적 파라미터 오버라이드 (paramName → 테스트용 값) */
@@ -17,8 +19,10 @@ public class TestCallDto {
     }
 
     /** 저장 없이 인라인 테스트 요청 */
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class InlineRequest {
         private String url;
@@ -30,21 +34,27 @@ public class TestCallDto {
         private List<InlineParam> params;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class InlineParam {
         private String paramName;
         private String paramType;
         private String valueType;
         private String staticValue;
+        private Boolean isApiKeyRef;
+        private String description;
         private String dynamicType;
         private String dynamicFormat;
         private Integer dynamicOffset;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class Response {
         private int httpStatusCode;

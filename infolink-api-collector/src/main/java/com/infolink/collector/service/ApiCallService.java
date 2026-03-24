@@ -48,8 +48,8 @@ public class ApiCallService {
 
             for (ApiParam param : params) {
                 String value;
-                // 🔑 API키 참조인 경우: staticValue에 키 ID 저장 → 본체 API에서 실제 값 조회
-                if (param.getDescription() != null && param.getDescription().startsWith("🔑")) {
+                // API키 참조인 경우: staticValue에 키 ID 저장 → 본체 API에서 실제 값 조회
+                if (Boolean.TRUE.equals(param.getIsApiKeyRef())) {
                     value = resolveApiKey(param.getStaticValue());
                 } else {
                     value = paramResolver.resolve(param,

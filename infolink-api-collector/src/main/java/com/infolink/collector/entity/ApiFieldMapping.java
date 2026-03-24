@@ -8,8 +8,10 @@ import javax.persistence.*;
 @Entity
 @Table(name = "api_field_mapping")
 @org.hibernate.annotations.Table(appliesTo = "api_field_mapping", comment = "API 응답 필드 → DB 컬럼 매핑")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ApiFieldMapping {
 

@@ -85,6 +85,7 @@ export interface ApiParam {
   paramType: ParamType;
   valueType: ValueType;
   staticValue: string | null;
+  isApiKeyRef: boolean;
   dynamicType: DynamicType | null;
   dynamicFormat: string | null;
   dynamicOffset: number | null;
@@ -97,6 +98,7 @@ export interface ApiParamRequest {
   paramType: ParamType;
   valueType: ValueType;
   staticValue?: string;
+  isApiKeyRef?: boolean;
   dynamicType?: DynamicType;
   dynamicFormat?: string;
   dynamicOffset?: number;

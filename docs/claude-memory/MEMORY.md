@@ -1,5 +1,5 @@
 # GIMS Orchestrator v2 - 작업 메모리
-<!-- 최종 동기화: 2026-03-23 -->
+<!-- 최종 동기화: 2026-03-24 -->
 
 - [feedback_run_without_jar.md](feedback_run_without_jar.md) - JAR 대신 gradlew bootRun으로 실행
 - [feedback_module_specific_stays.md](feedback_module_specific_stays.md) - 모듈 전용 로직은 common으로 올리지 않기
@@ -153,6 +153,8 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - **플로우**: 기본정보 등록 → 테스트 호출 → JSON 트리에서 데이터 루트 선택 → 타겟 테이블/매핑 설정 → 수동/스케줄 실행
 - **엔티티**: ApiEndpoint, ApiParam, ApiFieldMapping, ApiSchedule, ApiExecutionHistory
 - **핵심 서비스**: ApiCallService(HTTP), ResponseParser(JSON→Tree/Records), ApiExecutionService(범용 엔진), ApiScheduleExecutor(cron)
+- **API키 참조** (3/24): `isApiKeyRef` boolean 플래그로 판별 (이전 `description` 이모지 방식 폐기)
+  - `ApiParam.isApiKeyRef=true` → `staticValue`에 API키 ID → `resolveApiKey()`로 실제 값 조회
 - **LOOKUP 파생 컬럼** (3/23): ApiFieldMapping에 통합, isDerived 플래그로 구분
   - 소스필드 → 정규식 키 추출 → 공통코드 API(설정 기반 URL + 그룹코드) → 매칭 → 치환
   - LookupService: 내부 API 호출 + Map 캐싱 + 정규식 추출
@@ -163,5 +165,11 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - **프론트**: `/api-collect` 경로, Next.js proxy `/collector-api/*` → `localhost:8084/api/*`
 - **DB**: api_collector (PG 29001), 기존 소스에 영향 없음
 
-## 미완료 작업 (다음 세션)
-- Loader 지역별 모드 구현체: **잠정 중단** (사용자가 먼저 언급하기 전까지 진행 안함)
+## 모듈 간 일관성 규칙 (3/24 확정)
+- **로그 언어**: 전체 한글 통일 (프리픽스 `[Bojo]`/`[BojoInt]`는 유지)
+- **Exception 메시지**: 한글 통일
+- **Lombok 스타일**: 줄당 1개 (@Getter 줄바꿈 @Setter 줄바꿈 ...)
+- **ScheduleExecutor 패턴**: `@EventListener(ContextRefreshedEvent)` 초기화, `registerSchedule`/`unregisterSchedule`/`getActiveScheduleCount`
+- **PipelineController 응답**: `PipelineDto` (common) 사용, 요청은 `Map<String, Object>` 유지 (동적 파라미터)
+- **Agent 상태 추적**: `runningAgentCodes` Set + finally 블록 (bojo, bojo-int 양쪽)
+

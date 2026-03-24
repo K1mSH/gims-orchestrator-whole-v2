@@ -76,7 +76,7 @@ public class SyncDataSourceService implements DataSourceProvider {
                 .filter(id -> id.toLowerCase().contains("source"))
                 .findFirst()
                 .or(() -> cachedDataSourceInfos.keySet().stream().findFirst())
-                .orElseThrow(() -> new IllegalStateException("No SOURCE datasource configured"));
+                .orElseThrow(() -> new IllegalStateException("SOURCE 데이터소스가 설정되지 않았습니다"));
     }
 
     @Override
@@ -88,7 +88,7 @@ public class SyncDataSourceService implements DataSourceProvider {
                 .filter(id -> id.toLowerCase().contains("target"))
                 .findFirst()
                 .or(() -> cachedDataSourceInfos.keySet().stream().findFirst())
-                .orElseThrow(() -> new IllegalStateException("No TARGET datasource configured"));
+                .orElseThrow(() -> new IllegalStateException("TARGET 데이터소스가 설정되지 않았습니다"));
     }
 
     @Override
@@ -111,7 +111,7 @@ public class SyncDataSourceService implements DataSourceProvider {
         }
 
         // 2. Spring 기본 DataSource fallback (Agent 로컬 DB = IF/Target DB)
-        log.debug("[Bojo] DataSource '{}' not resolved, using default JdbcTemplate (local DB)", datasourceId);
+        log.debug("[Bojo] 데이터소스 '{}' 해석 불가, 기본 JdbcTemplate 사용 (로컬 DB)", datasourceId);
         return defaultJdbcTemplate;
     }
 
@@ -121,11 +121,11 @@ public class SyncDataSourceService implements DataSourceProvider {
     }
 
     private HikariDataSource createDataSource(String datasourceId) {
-        log.info("[Bojo] Creating DataSource: {}", datasourceId);
+        log.info("[Bojo] 데이터소스 생성: {}", datasourceId);
 
         DataSourceInfo info = findDataSourceInfo(datasourceId);
         if (info == null) {
-            throw new IllegalArgumentException("DataSource info not found: " + datasourceId);
+            throw new IllegalArgumentException("데이터소스 정보를 찾을 수 없습니다: " + datasourceId);
         }
 
         HikariConfig hikariConfig = new HikariConfig();
@@ -143,7 +143,7 @@ public class SyncDataSourceService implements DataSourceProvider {
         hikariConfig.setLeakDetectionThreshold(60_000);
 
         HikariDataSource ds = new HikariDataSource(hikariConfig);
-        log.info("[Bojo] DataSource created: {} -> {} (maxPool=10, timeout=10s, leak=60s)", datasourceId, info.getJdbcUrl());
+        log.info("[Bojo] 데이터소스 생성 완료: {} -> {} (maxPool=10, timeout=10s, leak=60s)", datasourceId, info.getJdbcUrl());
         return ds;
     }
 
@@ -159,7 +159,7 @@ public class SyncDataSourceService implements DataSourceProvider {
         // 1. 캐시에서 조회
         DataSourceInfo cached = cachedDataSourceInfos.get(datasourceId);
         if (cached != null) {
-            log.debug("[Bojo] DataSource resolved from cache: {}", datasourceId);
+            log.debug("[Bojo] 캐시에서 데이터소스 해석: {}", datasourceId);
             return cached;
         }
 
@@ -180,7 +180,7 @@ public class SyncDataSourceService implements DataSourceProvider {
     private DataSourceInfo fetchConnectionInfoFromProxy(String datasourceId) {
         try {
             String url = proxyUrl + "/api/datasources/" + datasourceId + "/connection-info";
-            log.info("[Bojo] Fetching datasource info from Proxy: {}", datasourceId);
+            log.info("[Bojo] Proxy에서 데이터소스 정보 조회: {}", datasourceId);
 
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -192,7 +192,7 @@ public class SyncDataSourceService implements DataSourceProvider {
             Map<String, Object> response = responseEntity.getBody();
 
             if (response == null || response.isEmpty()) {
-                log.warn("[Bojo] Empty response from Proxy for datasource: {}", datasourceId);
+                log.warn("[Bojo] Proxy 응답이 비어있습니다 (datasource: {})", datasourceId);
                 return null;
             }
 
@@ -207,11 +207,11 @@ public class SyncDataSourceService implements DataSourceProvider {
                     .password(passwordEncryptor.decrypt((String) response.get("password")))
                     .build();
 
-            log.info("[Bojo] Fetched datasource from Proxy: {} ({}:{})",
+            log.info("[Bojo] Proxy에서 데이터소스 조회 완료: {} ({}:{})",
                     datasourceId, info.getHost(), info.getPort());
             return info;
         } catch (Exception e) {
-            log.warn("[Bojo] Failed to fetch datasource from Proxy: {} - {}", datasourceId, e.getMessage());
+            log.warn("[Bojo] Proxy에서 데이터소스 조회 실패: {} - {}", datasourceId, e.getMessage());
             return null;
         }
     }
@@ -243,7 +243,7 @@ public class SyncDataSourceService implements DataSourceProvider {
         int max = ds.getMaximumPoolSize();
         int total = pool.getTotalConnections();
 
-        log.info("[Bojo] Pool health check '{}': active={}/{}, waiting={}, total={}",
+        log.info("[Bojo] 풀 상태 검사 '{}': active={}/{}, waiting={}, total={}",
                 datasourceId, active, max, waiting, total);
 
         if (waiting > 0) {
@@ -267,13 +267,13 @@ public class SyncDataSourceService implements DataSourceProvider {
         if (sourceDatasource != null) {
             currentSourceDatasource.set(sourceDatasource);
             cachedDataSourceInfos.put(sourceDatasource.getDatasourceId(), sourceDatasource);
-            log.info("Set current source datasource: {} ({}:{})",
+            log.info("[Bojo] 현재 source 데이터소스 설정: {} ({}:{})",
                     sourceDatasource.getDatasourceId(), sourceDatasource.getHost(), sourceDatasource.getPort());
         }
         if (targetDatasource != null) {
             currentTargetDatasource.set(targetDatasource);
             cachedDataSourceInfos.put(targetDatasource.getDatasourceId(), targetDatasource);
-            log.info("Set current target datasource: {} ({}:{})",
+            log.info("[Bojo] 현재 target 데이터소스 설정: {} ({}:{})",
                     targetDatasource.getDatasourceId(), targetDatasource.getHost(), targetDatasource.getPort());
         }
     }
@@ -281,7 +281,7 @@ public class SyncDataSourceService implements DataSourceProvider {
     public void clearCurrentDatasources() {
         currentSourceDatasource.remove();
         currentTargetDatasource.remove();
-        log.debug("Cleared current datasource info");
+        log.debug("[Bojo] 현재 데이터소스 정보 초기화");
     }
 
     // ==================== DataSourceInfo 조회 (DynamicEntityManagerService용) ====================
@@ -327,7 +327,7 @@ public class SyncDataSourceService implements DataSourceProvider {
         dataSources.forEach((id, ds) -> {
             if (!ds.isClosed()) {
                 ds.close();
-                log.info("[Bojo] DataSource closed: {}", id);
+                log.info("[Bojo] 데이터소스 종료: {}", id);
             }
         });
         dataSources.clear();

@@ -58,17 +58,17 @@ public class ExecutionService {
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> findByAgentIdFromAgent(Long id) {
         Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + id));
 
         try {
             String proxyUrl = getProxyUrlForAgent(agent);
             String url = proxyUrl + "/api/execution-data";
-            log.info("Fetching executions from proxy: {}", url);
+            log.info("프록시에서 실행 이력 조회 중: {}", url);
 
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody() != null ? response.getBody() : List.of();
         } catch (Exception e) {
-            log.error("Failed to fetch executions from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 실행 이력 조회 실패: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -110,12 +110,12 @@ public class ExecutionService {
         try {
             String proxyUrl = getProxyUrlForAgent(agent);
             String url = proxyUrl + "/api/execution-data/" + executionId;
-            log.info("Fetching execution detail from proxy: {}", url);
+            log.info("프록시에서 실행 상세 조회 중: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch execution detail from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 실행 상세 조회 실패: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
         }
     }
@@ -136,7 +136,7 @@ public class ExecutionService {
                 case "target-if" -> endpoint.append("/target-if");
                 case "target" -> endpoint.append("/target");
                 case "failed" -> endpoint.append("/failed");
-                default -> throw new IllegalArgumentException("Unknown data type: " + dataType);
+                default -> throw new IllegalArgumentException("알 수 없는 데이터 타입: " + dataType);
             }
 
             // 페이징/검색 파라미터 추가 (source, target-if, target만 해당)
@@ -146,12 +146,12 @@ public class ExecutionService {
 
             String proxyUrl = getProxyUrlForAgent(agent);
             String url = proxyUrl + endpoint;
-            log.info("Fetching execution data from proxy: {}", url);
+            log.info("프록시에서 실행 데이터 조회 중: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch execution data from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 실행 데이터 조회 실패: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
         }
     }
@@ -166,12 +166,12 @@ public class ExecutionService {
         try {
             String proxyUrl = getProxyUrlForAgent(agent);
             String url = proxyUrl + "/api/execution-data/" + executionId + "/tables";
-            log.info("Fetching table stats from proxy: {}", url);
+            log.info("프록시에서 테이블 통계 조회 중: {}", url);
 
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch table stats from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 테이블 통계 조회 실패: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -186,12 +186,12 @@ public class ExecutionService {
         try {
             String proxyUrl = getProxyUrlForAgent(agent);
             String url = proxyUrl + "/api/execution-data/" + executionId + "/tables/" + tableName;
-            log.info("Fetching table records from proxy: {}", url);
+            log.info("프록시에서 테이블 레코드 조회 중: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch table records from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 테이블 레코드 조회 실패: {}", agent.getAgentCode(), e);
             return Map.of();
         }
     }
@@ -206,12 +206,12 @@ public class ExecutionService {
         try {
             String proxyUrl = getProxyUrlForAgent(agent);
             String url = proxyUrl + "/api/execution-data/" + executionId + "/tables/" + tableName + "/failed";
-            log.info("Fetching table failed records from proxy: {}", url);
+            log.info("프록시에서 테이블 실패 레코드 조회 중: {}", url);
 
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to fetch table failed records from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 테이블 실패 레코드 조회 실패: {}", agent.getAgentCode(), e);
             return List.of();
         }
     }
@@ -260,12 +260,12 @@ public class ExecutionService {
             }
 
             String url = builder.buildAndExpand(executionId).toUriString();
-            log.info("Tracing data from agent: {}", url);
+            log.info("Agent에서 데이터 추적 중: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to trace data from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} 데이터 추적 실패: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
         }
     }
@@ -289,12 +289,12 @@ public class ExecutionService {
             }
 
             String url = builder.buildAndExpand(executionId).toUriString();
-            log.info("Tracing source from agent: {}", url);
+            log.info("Agent에서 Source 역추적 중: {}", url);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to trace source from agent: {}", agent.getAgentCode(), e);
+            log.error("Agent {} Source 역추적 실패: {}", agent.getAgentCode(), e);
             return Map.of("error", e.getMessage());
         }
     }
@@ -372,16 +372,16 @@ public class ExecutionService {
                                                                   List<Map<String, Object>> conditions,
                                                                   String triggeredBy) {
         Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + id));
 
         String agentCode = agent.getAgentCode();
 
         if (agent.getStatus() == AgentStatus.OFFLINE) {
-            throw new IllegalStateException("Agent is offline: " + agentCode);
+            throw new IllegalStateException("Agent가 오프라인 상태입니다: " + agentCode);
         }
 
         if (agent.getStatus() == AgentStatus.RUNNING) {
-            throw new IllegalStateException("Agent is already running: " + agentCode);
+            throw new IllegalStateException("Agent가 이미 실행 중입니다: " + agentCode);
         }
 
         // executionId 형식: {agentCode}_{uuid}
@@ -415,7 +415,7 @@ public class ExecutionService {
             // Source Datasource 연결 정보
             if (agent.getSourceDatasourceId() != null) {
                 Datasource sourceDatasource = datasourceRepository.findById(agent.getSourceDatasourceId())
-                        .orElseThrow(() -> new IllegalArgumentException("Source datasource not found: " + agent.getSourceDatasourceId()));
+                        .orElseThrow(() -> new IllegalArgumentException("Source 데이터소스를 찾을 수 없습니다: " + agent.getSourceDatasourceId()));
                 request.put("sourceDatasourceId", sourceDatasource.getDatasourceId());
                 request.put("sourceDbType", sourceDatasource.getDbType().name());
                 // credentials는 Agent가 Proxy에서 자체 해석 (보안상 평문 전달 제거)
@@ -444,7 +444,7 @@ public class ExecutionService {
 
                 // sourceTableIds가 비었을 때 Agent에서 자동 발견 & 등록
                 if (sourceTableIds.isEmpty()) {
-                    log.info("Auto-discovering source tables for agent: {}", agentCode);
+                    log.info("Agent {} Source 테이블 자동 탐색 중", agentCode);
                     try {
                         String tablesUrl = agent.getEndpointUrl() + "/api/pipeline/" + agentCode + "/tables";
                         @SuppressWarnings("unchecked")
@@ -483,11 +483,11 @@ public class ExecutionService {
                             }
                             if (!sourceTableIds.isEmpty()) {
                                 agentRepository.save(agent);
-                                log.info("Auto-registered {} source tables for agent: {}", sourceTableIds.size(), agentCode);
+                                log.info("Agent {} Source 테이블 {}개 자동 등록 완료", agentCode, sourceTableIds.size());
                             }
                         }
                     } catch (Exception e) {
-                        log.warn("Failed to auto-discover tables for agent {}: {}", agentCode, e.getMessage());
+                        log.warn("Agent {} 테이블 자동 탐색 실패: {}", agentCode, e.getMessage());
                     }
                 }
 
@@ -497,7 +497,7 @@ public class ExecutionService {
             // Target Datasource 연결 정보
             if (agent.getTargetDatasourceId() != null) {
                 Datasource targetDatasource = datasourceRepository.findById(agent.getTargetDatasourceId())
-                        .orElseThrow(() -> new IllegalArgumentException("Target datasource not found: " + agent.getTargetDatasourceId()));
+                        .orElseThrow(() -> new IllegalArgumentException("Target 데이터소스를 찾을 수 없습니다: " + agent.getTargetDatasourceId()));
                 request.put("targetDatasourceId", targetDatasource.getDatasourceId());
                 request.put("targetDbType", targetDatasource.getDbType().name());
                 // credentials는 Agent가 Proxy에서 자체 해석 (보안상 평문 전달 제거)
@@ -506,28 +506,28 @@ public class ExecutionService {
             // 실행 필터 전달
             if (filters != null && !filters.isEmpty()) {
                 request.put("filters", filters);
-                log.info("Triggering execution with {} filters", filters.size());
+                log.info("{}개의 필터를 포함하여 실행 요청", filters.size());
             }
 
             // 선택적 Step 실행
             if (selectedStepIds != null && !selectedStepIds.isEmpty()) {
                 request.put("selectedStepIds", selectedStepIds);
-                log.info("Triggering execution with selectedStepIds: {}", selectedStepIds);
+                log.info("선택된 Step으로 실행 요청: {}", selectedStepIds);
             }
 
             // 동적 WHERE 조건
             if (conditions != null && !conditions.isEmpty()) {
                 request.put("conditions", conditions);
-                log.info("Triggering execution with {} conditions", conditions.size());
+                log.info("{}개의 조건을 포함하여 실행 요청", conditions.size());
             }
 
-            log.info("Triggering execution on agent: {} with executionId: {}, source: {} (zone={}), target: {}, timeRange: {} ~ {}",
+            log.info("Agent {} 실행 요청 - executionId: {}, source: {} (zone={}), target: {}, 시간범위: {} ~ {}",
                     agentCode, executionId, agent.getSourceDatasourceId(), request.get("sourceZone"), agent.getTargetDatasourceId(),
                     startTime != null ? startTime : "default", endTime != null ? endTime : "now");
             ResponseEntity<Void> response = restTemplate.postForEntity(url, request, Void.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Execution triggered successfully: {}", executionId);
+                log.info("실행 요청 성공: {}", executionId);
             }
 
             return ExecutionDto.TriggerResponse.builder()
@@ -540,14 +540,14 @@ public class ExecutionService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Failed to trigger execution on agent: {}", agentCode, e);
+            log.error("Agent {} 실행 요청 실패", agentCode, e);
 
             // Agent 상태 복구
             agent.setStatus(AgentStatus.ONLINE);
             agent.setLastExecutionStatus("FAILED");
             agentRepository.save(agent);
 
-            throw new RuntimeException("Failed to trigger execution: " + e.getMessage(), e);
+            throw new RuntimeException("실행 요청 실패: " + e.getMessage(), e);
         }
     }
 
@@ -558,7 +558,7 @@ public class ExecutionService {
     public String extractAgentCodeFromExecutionId(String executionId) {
         int lastUnderscoreIndex = executionId.lastIndexOf('_');
         if (lastUnderscoreIndex == -1) {
-            throw new IllegalArgumentException("Invalid executionId format: " + executionId);
+            throw new IllegalArgumentException("잘못된 executionId 형식: " + executionId);
         }
         return executionId.substring(0, lastUnderscoreIndex);
     }
@@ -569,7 +569,7 @@ public class ExecutionService {
     private Agent findAgentByExecutionId(String executionId) {
         String agentCode = extractAgentCodeFromExecutionId(executionId);
         return agentRepository.findByAgentCode(agentCode)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + agentCode));
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + agentCode));
     }
 
     /**
@@ -580,7 +580,7 @@ public class ExecutionService {
         return zoneConfigRepository.findByZoneAndIsActiveTrue(agent.getZone())
                 .map(ZoneConfig::getProxyAgentUrl)
                 .orElseThrow(() -> new IllegalStateException(
-                        "No proxy agent URL configured for zone: " + agent.getZone()));
+                        "해당 Zone에 프록시 Agent URL이 설정되지 않았습니다: " + agent.getZone()));
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================
@@ -624,7 +624,7 @@ public class ExecutionService {
      */
     public List<ExecutionDto.HistoryResponse> getHistoryByAgent(Long id) {
         Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + id));
         return getHistoryByAgentCode(agent.getAgentCode());
     }
 
@@ -687,7 +687,7 @@ public class ExecutionService {
      */
     public Page<ExecutionDto.HistoryResponse> getHistoryByAgentPaged(Long id, Pageable pageable) {
         Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + id));
         return executionHistoryRepository.findByAgentCodeOrderByStartedAtDesc(agent.getAgentCode(), pageable)
                 .map(ExecutionDto.HistoryResponse::from);
     }

@@ -1,6 +1,7 @@
 package com.sync.agent.bojoint.controller;
 
 import com.sync.agent.bojoint.config.pipeline.PipelineRegistry;
+import com.sync.agent.bojoint.pipeline.PipelineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,7 @@ import java.util.Set;
  * 내부망 Agent 상태 확인 컨트롤러.
  *
  * <ul>
- *   <li>{@code GET /health} - Agent 기동 상태, 등록된 Agent 목록(RCV/Loader) 반환</li>
+ *   <li>{@code GET /health} - Agent 기동 상태, 등록된 Agent 목록(RCV/Loader), 실행 중 Agent 반환</li>
  * </ul>
  *
  * <p>Orchestrator 및 운영 모니터링에서 내부망 Agent 생존 확인 용도로 호출된다.</p>
@@ -28,6 +29,7 @@ public class HealthController {
     private String zone;
 
     private final PipelineRegistry pipelineRegistry;
+    private final PipelineService pipelineService;
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
@@ -38,12 +40,11 @@ public class HealthController {
         result.put("registeredAgents", pipelineRegistry.size());
 
         Set<String> rcvAgents = pipelineRegistry.getAgentCodesByType("RCV");
-        result.put("rcvAgents", rcvAgents);
-
         Set<String> loaderAgents = pipelineRegistry.getAgentCodesByType("LOADER");
-        if (!loaderAgents.isEmpty()) {
-            result.put("loaderAgents", loaderAgents);
-        }
+
+        result.put("rcvAgents", rcvAgents);
+        result.put("loaderAgents", loaderAgents);
+        result.put("runningAgents", pipelineService.getRunningAgentCodes());
 
         return ResponseEntity.ok(result);
     }

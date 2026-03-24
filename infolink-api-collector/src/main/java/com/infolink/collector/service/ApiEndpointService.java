@@ -105,6 +105,7 @@ public class ApiEndpointService {
                     .paramType(req.getParamType())
                     .valueType(req.getValueType())
                     .staticValue(req.getStaticValue())
+                    .isApiKeyRef(Boolean.TRUE.equals(req.getIsApiKeyRef()))
                     .dynamicType(req.getDynamicType())
                     .dynamicFormat(req.getDynamicFormat())
                     .dynamicOffset(req.getDynamicOffset())

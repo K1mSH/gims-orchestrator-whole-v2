@@ -13,8 +13,10 @@ import java.util.List;
 @Entity
 @Table(name = "api_endpoint")
 @org.hibernate.annotations.Table(appliesTo = "api_endpoint", comment = "외부 API 엔드포인트 정의")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ApiEndpoint {
 

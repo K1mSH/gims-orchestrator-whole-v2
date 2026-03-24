@@ -6,11 +6,17 @@ import lombok.Getter;
 import java.util.List;
 
 /**
- * Source → IF 테이블 추출 Step 설정
+ * Source → IF 테이블 추출 Step 설정 — SourceToIfStep 전용
  *
- * SourceToIfStep에 주입되는 설정 객체.
- * YAML(config/agents/*.yml)의 jewon/obsvdata 섹션 값이 PipelineConfig에서 이 객체로 변환된다.
+ * 이 클래스는 SourceToIfStep에서만 사용하는 설정 객체다.
+ * 다른 StepExecutor 구현체(DmzBojoLoadStep, InternalBojoLoadStep, LinkTableUpdateStep)에서는 사용하지 않는다.
+ *
+ * StepFactory가 YAML 설정을 읽어 이 객체를 만들고, SourceToIfStep 생성자에 주입한다.
  * 동일한 SourceToIfStep 클래스를 config만 바꿔서 RCV/SND/Internal RCV에서 재사용.
+ *
+ * 사용하는 Factory:
+ * - SourceToIfStepFactory (common) — SIMPLE_COPY 모드
+ * - LinkSourceToIfStepFactory (bojo) — CUSTOM_STAGING 모드 + LinkTableObsvDataFetcher
  *
  * IF 테이블 메타 컬럼:
  * - source_refs: 출처 정보 JSON 배열 ["zone:dsId:tbId:pk", ...]

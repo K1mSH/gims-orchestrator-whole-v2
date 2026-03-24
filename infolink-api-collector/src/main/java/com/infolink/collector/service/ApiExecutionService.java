@@ -141,12 +141,21 @@ public class ApiExecutionService {
 
             DataSource targetDs = resolveTargetDataSource(endpoint);
 
-            // 행 단위 INSERT — PG 트랜잭션 aborted 방지를 위해 savepoint 사용
+            // 행 단위 INSERT — java.sql.Savepoint(JDBC 표준)를 사용한 개별 에러 격리
+            //
+            // Savepoint는 우리가 구현한 것이 아니라 SQL 표준(SQL:1999)이며,
+            // JDBC(java.sql.Connection)가 API로 제공한다.
+            // 트랜잭션 안에 중간 저장점을 설정하여, 실패 시 트랜잭션 전체가 아닌
+            // 해당 저장점까지만 롤백할 수 있다.
+            //
+            // PostgreSQL 특성상 트랜잭션 내 에러 발생 시 전체가 aborted 상태가 되어
+            // 이후 모든 쿼리가 거부되므로, Savepoint 없이는 한 건 실패 = 전체 실패.
+            // Savepoint를 쓰면 실패한 행만 롤백하고 나머지 행은 계속 처리 가능.
             try (Connection conn = targetDs.getConnection()) {
                 conn.setAutoCommit(false);
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     for (Map<String, Object> record : records) {
-                        java.sql.Savepoint sp = conn.setSavepoint();
+                        java.sql.Savepoint sp = conn.setSavepoint();  // 행 처리 전 저장점 설정
                         try {
                             int paramIndex = 1;
 
@@ -173,10 +182,10 @@ public class ApiExecutionService {
                             }
 
                             ps.executeUpdate();
-                            conn.releaseSavepoint(sp);
+                            conn.releaseSavepoint(sp);  // 성공 → 저장점 해제 (자원 반환)
                             insertCount++;
                         } catch (Exception e) {
-                            conn.rollback(sp);
+                            conn.rollback(sp);  // 실패 → 이 행만 롤백, 트랜잭션은 유지
                             log.warn("행 적재 실패: {}", e.getMessage());
                             skipCount++;
                         }

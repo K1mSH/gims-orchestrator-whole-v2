@@ -81,6 +81,7 @@ export interface InlineTestRequest {
     paramType: string;
     valueType: string;
     staticValue?: string;
+    isApiKeyRef?: boolean;
     dynamicType?: string;
     dynamicFormat?: string;
     dynamicOffset?: number;
@@ -149,11 +150,13 @@ export const scheduleApi = {
 // --- History ---
 
 export const historyApi = {
-  get: (endpointId: number, page: number = 0, size: number = 20) =>
+  get: (endpointId: number, page: number = 0, size: number = 15, startDate?: string, endDate?: string) =>
     collectorApi.get<{
       content: ApiExecutionHistoryItem[];
       totalElements: number;
       totalPages: number;
       number: number;
-    }>(`/endpoints/${endpointId}/history`, { params: { page, size } }).then(r => r.data),
+    }>(`/endpoints/${endpointId}/history`, {
+      params: { page, size, ...(startDate && endDate ? { startDate, endDate } : {}) },
+    }).then(r => r.data),
 };

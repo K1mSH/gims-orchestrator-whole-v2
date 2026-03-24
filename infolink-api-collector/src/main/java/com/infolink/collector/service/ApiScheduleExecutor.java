@@ -34,21 +34,19 @@ public class ApiScheduleExecutor {
 
     @EventListener(ContextRefreshedEvent.class)
     public void onApplicationStart() {
-        List<ApiSchedule> enabledSchedules = scheduleRepository.findAll().stream()
-                .filter(s -> Boolean.TRUE.equals(s.getIsEnabled()))
-                .toList();
-
+        List<ApiSchedule> enabledSchedules = scheduleRepository.findByIsEnabledTrue();
         log.info("스케줄 {} 건 등록 시작", enabledSchedules.size());
+
         for (ApiSchedule schedule : enabledSchedules) {
-            register(schedule);
+            registerSchedule(schedule);
         }
     }
 
     /**
      * 스케줄 등록 (생성/활성화 시 호출)
      */
-    public void register(ApiSchedule schedule) {
-        unregister(schedule.getId()); // 기존 것 제거 후 등록
+    public void registerSchedule(ApiSchedule schedule) {
+        unregisterSchedule(schedule.getId());
 
         if (!Boolean.TRUE.equals(schedule.getIsEnabled())) {
             return;
@@ -73,7 +71,7 @@ public class ApiScheduleExecutor {
     /**
      * 스케줄 해제 (삭제/비활성화 시 호출)
      */
-    public void unregister(Long scheduleId) {
+    public void unregisterSchedule(Long scheduleId) {
         ScheduledFuture<?> future = scheduledTasks.remove(scheduleId);
         if (future != null) {
             future.cancel(false);
@@ -88,6 +86,7 @@ public class ApiScheduleExecutor {
         log.info("스케줄 실행: scheduleId={}, endpointId={}", scheduleId, endpointId);
         try {
             executionService.run(endpointId, ApiExecutionHistory.TriggeredBy.SCHEDULE);
+            log.info("스케줄 실행 시작: endpointId={}", endpointId);
         } catch (Exception e) {
             log.error("스케줄 실행 실패: scheduleId={}, error={}", scheduleId, e.getMessage(), e);
         }
@@ -96,7 +95,7 @@ public class ApiScheduleExecutor {
     /**
      * 현재 등록된 스케줄 수
      */
-    public int getActiveCount() {
+    public int getActiveScheduleCount() {
         return scheduledTasks.size();
     }
 }

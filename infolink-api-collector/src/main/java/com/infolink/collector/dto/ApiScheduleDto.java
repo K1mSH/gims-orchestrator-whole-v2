@@ -8,22 +8,28 @@ import java.time.LocalDateTime;
 
 public class ApiScheduleDto {
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class CreateRequest {
         @NotBlank private String cronExpression;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class UpdateRequest {
         @NotBlank private String cronExpression;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class Response {
         private Long id;

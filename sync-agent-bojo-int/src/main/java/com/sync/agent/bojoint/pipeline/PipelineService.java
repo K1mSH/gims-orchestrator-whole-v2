@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,6 +40,7 @@ public class PipelineService {
     private String agentZone;
 
     private final Map<String, PipelineResult> executionResults = new ConcurrentHashMap<>();
+    private final Set<String> runningAgentCodes = ConcurrentHashMap.newKeySet();
 
     @Async("pipelineExecutor")
     public void executeAsync(String executionId, Map<String, Object> params) {
@@ -54,14 +56,15 @@ public class PipelineService {
         }
 
         if (agentCode == null) {
-            log.error("agentCode not found in params or executionId: {}", finalExecutionId);
+            log.error("[BojoInt] params 또는 executionId에서 agentCode를 찾을 수 없습니다: {}", finalExecutionId);
             return;
         }
 
         final String finalAgentCode = agentCode;
 
+        runningAgentCodes.add(finalAgentCode);
         try {
-            log.info("[BojoInt] Starting pipeline: executionId={}, agentCode={}", finalExecutionId, finalAgentCode);
+            log.info("[BojoInt] 파이프라인 시작: executionId={}, agentCode={}", finalExecutionId, finalAgentCode);
 
             PipelineRunner baseRunner = pipelineRegistry.getRunner(finalAgentCode);
 
@@ -71,11 +74,13 @@ public class PipelineService {
 
             executeWithRunner(runner, orchestratorClient, finalExecutionId, finalAgentCode, params);
         } catch (Exception e) {
-            log.error("[BojoInt] Pipeline failed before runner: {} - {}", finalExecutionId, e.getMessage(), e);
+            log.error("[BojoInt] Runner 실행 전 파이프라인 실패: {} - {}", finalExecutionId, e.getMessage(), e);
             notifyFailure(finalAgentCode, finalExecutionId, e.getMessage());
         } catch (Error err) {
-            log.error("[BojoInt] CRITICAL ERROR: {} - {}", finalExecutionId, err.getMessage(), err);
-            notifyFailure(finalAgentCode, finalExecutionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
+            log.error("[BojoInt] 치명적 오류: {} - {}", finalExecutionId, err.getMessage(), err);
+            notifyFailure(finalAgentCode, finalExecutionId, "[치명적 오류] " + err.getClass().getSimpleName() + ": " + err.getMessage());
+        } finally {
+            runningAgentCodes.remove(finalAgentCode);
         }
     }
 
@@ -103,7 +108,7 @@ public class PipelineService {
             }
 
             syncDataSourceService.setCurrentDatasources(sourceInfo, targetInfo);
-            log.info("[BojoInt] Pipeline datasource configured - source: {} ({}:{}), target: {} ({}:{})",
+            log.info("[BojoInt] 파이프라인 데이터소스 설정 완료 - source: {} ({}:{}), target: {} ({}:{})",
                     sourceInfo.getDatasourceId(), sourceInfo.getHost(), sourceInfo.getPort(),
                     targetInfo.getDatasourceId(), targetInfo.getHost(), targetInfo.getPort());
 
@@ -129,21 +134,21 @@ public class PipelineService {
             executionResults.put(executionId, result);
             executionService.recordExecutionFinish(executionId, result);
 
-            log.info("[BojoInt] Pipeline completed: {} with status {}", executionId, result.getStatus());
+            log.info("[BojoInt] 파이프라인 완료: {} 상태={}", executionId, result.getStatus());
         } catch (Exception e) {
-            log.error("[BojoInt] Pipeline failed: {} - {}", executionId, e.getMessage(), e);
+            log.error("[BojoInt] 파이프라인 실패: {} - {}", executionId, e.getMessage(), e);
             result = buildFailedResult(executionId, e.getMessage());
             executionResults.put(executionId, result);
             try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } catch (Error err) {
-            log.error("[BojoInt] CRITICAL ERROR: {} - {}", executionId, err.getMessage(), err);
-            result = buildFailedResult(executionId, "[CRITICAL] " + err.getClass().getSimpleName() + ": " + err.getMessage());
+            log.error("[BojoInt] 치명적 오류: {} - {}", executionId, err.getMessage(), err);
+            result = buildFailedResult(executionId, "[치명적 오류] " + err.getClass().getSimpleName() + ": " + err.getMessage());
             executionResults.put(executionId, result);
             try { executionService.recordExecutionFinish(executionId, result); } catch (Exception ex) { /* ignore */ }
         } finally {
             if (result != null) {
                 try { orchestratorClient.notifyFinished(result); } catch (Exception e) {
-                    log.error("[BojoInt] Failed to notify orchestrator: {}", e.getMessage());
+                    log.error("[BojoInt] Orchestrator 알림 실패: {}", e.getMessage());
                 }
             }
             syncDataSourceService.clearCurrentDatasources();
@@ -163,7 +168,7 @@ public class PipelineService {
         } else if (portObj != null) {
             port = Integer.parseInt(portObj.toString());
         } else {
-            log.error("[BojoInt] {} port is null! Available params: {}", prefix, params.keySet());
+            log.error("[BojoInt] {} 포트가 null입니다! 사용 가능한 params: {}", prefix, params.keySet());
             port = null;
         }
         String databaseName = (String) params.get(prefix + "DatabaseName");
@@ -171,7 +176,7 @@ public class PipelineService {
         String password = (String) params.get(prefix + "Password");
 
         if (datasourceId == null || host == null || port == null) {
-            throw new IllegalArgumentException(prefix + " datasource info is incomplete. " +
+            throw new IllegalArgumentException(prefix + " 데이터소스 정보가 불완전합니다. " +
                     "datasourceId=" + datasourceId + ", host=" + host + ", port=" + port);
         }
 
@@ -201,11 +206,15 @@ public class PipelineService {
             OrchestratorClient client = new OrchestratorClient(orchestratorUrl, agentCode);
             client.notifyFinished(buildFailedResult(executionId, errorMessage));
         } catch (Exception e) {
-            log.error("[BojoInt] Failed to notify orchestrator about failure: {}", e.getMessage());
+            log.error("[BojoInt] Orchestrator 실패 알림 전송 실패: {}", e.getMessage());
         }
     }
 
     public PipelineResult getExecutionResult(String executionId) {
         return executionResults.get(executionId);
+    }
+
+    public Set<String> getRunningAgentCodes() {
+        return Collections.unmodifiableSet(runningAgentCodes);
     }
 }

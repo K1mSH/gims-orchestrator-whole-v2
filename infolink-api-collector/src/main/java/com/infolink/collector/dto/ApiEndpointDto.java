@@ -11,8 +11,10 @@ import java.util.stream.Collectors;
 
 public class ApiEndpointDto {
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class CreateRequest {
         @NotBlank private String apiName;
@@ -31,8 +33,10 @@ public class ApiEndpointDto {
         private Boolean upsertEnabled;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class UpdateRequest {
         @NotBlank private String apiName;
@@ -50,8 +54,10 @@ public class ApiEndpointDto {
         private Boolean isActive;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class ListResponse {
         private Long id;
@@ -83,8 +89,10 @@ public class ApiEndpointDto {
         }
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class DetailResponse {
         private Long id;
@@ -134,14 +142,17 @@ public class ApiEndpointDto {
 
     // --- Param ---
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class ParamRequest {
         @NotBlank private String paramName;
         @NotNull private ApiParam.ParamType paramType;
         @NotNull private ApiParam.ValueType valueType;
         private String staticValue;
+        private Boolean isApiKeyRef;
         private ApiParam.DynamicType dynamicType;
         private String dynamicFormat;
         private Integer dynamicOffset;
@@ -149,8 +160,10 @@ public class ApiEndpointDto {
         private Integer displayOrder;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class ParamResponse {
         private Long id;
@@ -158,6 +171,7 @@ public class ApiEndpointDto {
         private ApiParam.ParamType paramType;
         private ApiParam.ValueType valueType;
         private String staticValue;
+        private Boolean isApiKeyRef;
         private ApiParam.DynamicType dynamicType;
         private String dynamicFormat;
         private Integer dynamicOffset;
@@ -171,6 +185,7 @@ public class ApiEndpointDto {
                     .paramType(p.getParamType())
                     .valueType(p.getValueType())
                     .staticValue(p.getStaticValue())
+                    .isApiKeyRef(p.getIsApiKeyRef())
                     .dynamicType(p.getDynamicType())
                     .dynamicFormat(p.getDynamicFormat())
                     .dynamicOffset(p.getDynamicOffset())
@@ -182,8 +197,10 @@ public class ApiEndpointDto {
 
     // --- FieldMapping ---
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class FieldMappingRequest {
         @NotBlank private String sourceFieldPath;
@@ -205,8 +222,10 @@ public class ApiEndpointDto {
         private String defaultValue;
     }
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class FieldMappingResponse {
         private Long id;

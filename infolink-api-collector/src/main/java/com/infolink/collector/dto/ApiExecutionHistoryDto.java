@@ -7,8 +7,10 @@ import java.time.LocalDateTime;
 
 public class ApiExecutionHistoryDto {
 
-    @Getter @Setter
-    @NoArgsConstructor @AllArgsConstructor
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class Response {
         private Long id;

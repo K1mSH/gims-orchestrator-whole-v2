@@ -1,14 +1,14 @@
 package com.sync.orchestrator.domain.schedule;
 
 import com.sync.orchestrator.domain.execution.ExecutionService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,32 +21,22 @@ import java.util.concurrent.ScheduledFuture;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class ScheduleExecutor {
 
     private final TaskScheduler taskScheduler;
     private final ScheduleRepository scheduleRepository;
     private final ExecutionService executionService;
 
-    // 스케줄 ID -> ScheduledFuture 매핑 (취소용)
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
-
-    public ScheduleExecutor(
-            TaskScheduler taskScheduler,
-            ScheduleRepository scheduleRepository,
-            @Lazy ExecutionService executionService) {
-        this.taskScheduler = taskScheduler;
-        this.scheduleRepository = scheduleRepository;
-        this.executionService = executionService;
-    }
 
     /**
      * 애플리케이션 시작 시 활성화된 스케줄 로드
      */
-    @PostConstruct
-    public void init() {
-        log.info("Initializing schedule executor...");
+    @EventListener(ContextRefreshedEvent.class)
+    public void onApplicationStart() {
         List<Schedule> enabledSchedules = scheduleRepository.findEnabledSchedulesWithAgent();
-        log.info("Found {} enabled schedules", enabledSchedules.size());
+        log.info("스케줄 {} 건 등록 시작", enabledSchedules.size());
 
         for (Schedule schedule : enabledSchedules) {
             registerSchedule(schedule);
@@ -54,29 +44,12 @@ public class ScheduleExecutor {
     }
 
     /**
-     * 애플리케이션 종료 시 모든 스케줄 취소
-     */
-    @PreDestroy
-    public void destroy() {
-        log.info("Shutting down schedule executor...");
-        scheduledTasks.values().forEach(future -> future.cancel(false));
-        scheduledTasks.clear();
-    }
-
-    /**
      * 스케줄 등록
      */
     public void registerSchedule(Schedule schedule) {
-        if (schedule.getScheduleId() == null) {
-            log.warn("Cannot register schedule without ID");
-            return;
-        }
-
-        // 기존 스케줄이 있으면 먼저 취소
-        cancelSchedule(schedule.getScheduleId());
+        unregisterSchedule(schedule.getScheduleId());
 
         if (!Boolean.TRUE.equals(schedule.getIsEnabled())) {
-            log.info("Schedule {} is disabled, not registering", schedule.getScheduleId());
             return;
         }
 
@@ -85,47 +58,34 @@ public class ScheduleExecutor {
             String agentCode = schedule.getAgent().getAgentCode();
             String cronExpression = schedule.getCronExpression();
 
-            log.info("Registering schedule: id={}, agent={}, cron={}",
-                    schedule.getScheduleId(), agentCode, cronExpression);
-
             Runnable task = () -> executeAgent(schedule.getScheduleId(), agentId, agentCode);
-            CronTrigger trigger = new CronTrigger(cronExpression);
-
-            ScheduledFuture<?> future = taskScheduler.schedule(task, trigger);
+            ScheduledFuture<?> future = taskScheduler.schedule(task, new CronTrigger(cronExpression));
             scheduledTasks.put(schedule.getScheduleId(), future);
 
-            log.info("Schedule {} registered successfully", schedule.getScheduleId());
+            log.info("스케줄 등록: id={}, agent={}, cron={}", schedule.getScheduleId(), agentCode, cronExpression);
         } catch (Exception e) {
-            log.error("Failed to register schedule {}: {}", schedule.getScheduleId(), e.getMessage(), e);
+            log.error("스케줄 등록 실패: id={}, error={}", schedule.getScheduleId(), e.getMessage(), e);
         }
     }
 
     /**
-     * 스케줄 취소
+     * 스케줄 해제
      */
-    public void cancelSchedule(Long scheduleId) {
+    public void unregisterSchedule(Long scheduleId) {
         ScheduledFuture<?> future = scheduledTasks.remove(scheduleId);
         if (future != null) {
             future.cancel(false);
-            log.info("Schedule {} cancelled", scheduleId);
+            log.info("스케줄 해제: id={}", scheduleId);
         }
-    }
-
-    /**
-     * 스케줄 갱신 (취소 후 재등록)
-     */
-    public void refreshSchedule(Long scheduleId) {
-        scheduleRepository.findById(scheduleId).ifPresent(this::registerSchedule);
     }
 
     /**
      * Agent 실행
-     * Schedule에 executionOptions가 있으면 필터를 포함하여 실행
-     * 필터 JSON 형식: {"filters":[{"paramId":"obsv-code","value":"GPM-123"}]}
+     * executionOptions가 있으면 필터 포함 실행
      */
     @SuppressWarnings("unchecked")
     private void executeAgent(Long scheduleId, Long agentId, String agentCode) {
-        log.info("Scheduled execution triggered: scheduleId={}, agent={}", scheduleId, agentCode);
+        log.info("스케줄 실행: scheduleId={}, agent={}", scheduleId, agentCode);
 
         try {
             Schedule schedule = scheduleRepository.findById(scheduleId).orElse(null);
@@ -139,23 +99,23 @@ public class ScheduleExecutor {
                     if (filtersObj instanceof java.util.List) {
                         executionService.triggerExecution(agentId, null, null,
                                 (java.util.List<java.util.Map<String, Object>>) filtersObj, "SCHEDULE");
-                        log.info("Scheduled execution started with filters: agent={}", agentCode);
+                        log.info("스케줄 실행 시작 (필터 포함): agent={}", agentCode);
                         return;
                     }
                 } catch (Exception e) {
-                    log.warn("Failed to parse schedule execution options: {}", e.getMessage());
+                    log.warn("스케줄 실행 옵션 파싱 실패: {}", e.getMessage());
                 }
             }
 
             executionService.triggerExecution(agentId, "SCHEDULE");
-            log.info("Scheduled execution started successfully: agent={}", agentCode);
+            log.info("스케줄 실행 시작: agent={}", agentCode);
         } catch (Exception e) {
-            log.error("Scheduled execution failed: agent={}, error={}", agentCode, e.getMessage(), e);
+            log.error("스케줄 실행 실패: agent={}, error={}", agentCode, e.getMessage(), e);
         }
     }
 
     /**
-     * 현재 등록된 스케줄 수 조회
+     * 현재 등록된 스케줄 수
      */
     public int getActiveScheduleCount() {
         return scheduledTasks.size();

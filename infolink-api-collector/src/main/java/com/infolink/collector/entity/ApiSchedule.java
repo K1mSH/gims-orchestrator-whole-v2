@@ -10,8 +10,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "api_schedule")
 @org.hibernate.annotations.Table(appliesTo = "api_schedule", comment = "API 수집 스케줄")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ApiSchedule {
 

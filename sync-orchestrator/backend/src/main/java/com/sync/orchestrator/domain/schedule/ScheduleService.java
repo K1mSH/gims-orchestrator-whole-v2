@@ -28,7 +28,7 @@ public class ScheduleService {
 
     public ScheduleDto.Response findById(Long scheduleId) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + scheduleId));
+                .orElseThrow(() -> new IllegalArgumentException("스케줄을 찾을 수 없습니다: " + scheduleId));
         return ScheduleDto.Response.from(schedule);
     }
 
@@ -41,7 +41,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleDto.Response create(ScheduleDto.CreateRequest request) {
         Agent agent = agentRepository.findById(request.getAgentId())
-                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + request.getAgentId()));
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + request.getAgentId()));
 
         Schedule schedule = Schedule.builder()
                 .agent(agent)
@@ -52,9 +52,6 @@ public class ScheduleService {
 
         Schedule saved = scheduleRepository.save(schedule);
 
-        // 스케줄 등록
-        log.info("Registering new schedule: id={}, agent={}, cron={}",
-                saved.getScheduleId(), agent.getAgentCode(), saved.getCronExpression());
         scheduleExecutor.registerSchedule(saved);
 
         return ScheduleDto.Response.from(saved);
@@ -63,7 +60,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleDto.Response update(Long scheduleId, ScheduleDto.UpdateRequest request) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + scheduleId));
+                .orElseThrow(() -> new IllegalArgumentException("스케줄을 찾을 수 없습니다: " + scheduleId));
 
         if (request.getCronExpression() != null) {
             schedule.setCronExpression(request.getCronExpression());
@@ -75,9 +72,6 @@ public class ScheduleService {
             schedule.setExecutionOptions(request.getExecutionOptions());
         }
 
-        // 스케줄 갱신
-        log.info("Updating schedule: id={}, cron={}, enabled={}",
-                scheduleId, schedule.getCronExpression(), schedule.getIsEnabled());
         scheduleExecutor.registerSchedule(schedule);
 
         return ScheduleDto.Response.from(schedule);
@@ -86,12 +80,10 @@ public class ScheduleService {
     @Transactional
     public ScheduleDto.Response toggle(Long scheduleId) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + scheduleId));
+                .orElseThrow(() -> new IllegalArgumentException("스케줄을 찾을 수 없습니다: " + scheduleId));
 
         schedule.setIsEnabled(!schedule.getIsEnabled());
 
-        // 스케줄 갱신 (활성화/비활성화)
-        log.info("Toggling schedule: id={}, enabled={}", scheduleId, schedule.getIsEnabled());
         scheduleExecutor.registerSchedule(schedule);
 
         return ScheduleDto.Response.from(schedule);
@@ -100,12 +92,10 @@ public class ScheduleService {
     @Transactional
     public void delete(Long scheduleId) {
         if (!scheduleRepository.existsById(scheduleId)) {
-            throw new IllegalArgumentException("Schedule not found: " + scheduleId);
+            throw new IllegalArgumentException("스케줄을 찾을 수 없습니다: " + scheduleId);
         }
 
-        // 스케줄 취소
-        log.info("Deleting schedule: id={}", scheduleId);
-        scheduleExecutor.cancelSchedule(scheduleId);
+        scheduleExecutor.unregisterSchedule(scheduleId);
 
         scheduleRepository.deleteById(scheduleId);
     }

@@ -8,8 +8,10 @@ import javax.persistence.*;
 @Entity
 @Table(name = "api_param")
 @org.hibernate.annotations.Table(appliesTo = "api_param", comment = "API 호출 파라미터")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ApiParam {
 
@@ -52,6 +54,11 @@ public class ApiParam {
     @Column(name = "dynamic_offset")
     @Comment("오프셋 (예: -1 = 어제)")
     private Integer dynamicOffset;
+
+    @Column(name = "is_api_key_ref", nullable = false)
+    @Comment("API키 참조 여부 (true면 staticValue가 API키 ID)")
+    @Builder.Default
+    private Boolean isApiKeyRef = false;
 
     @Column(name = "description", length = 200)
     @Comment("설명")

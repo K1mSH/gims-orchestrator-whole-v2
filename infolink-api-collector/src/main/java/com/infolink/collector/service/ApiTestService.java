@@ -104,6 +104,8 @@ public class ApiTestService {
                         .paramType(ApiParam.ParamType.valueOf(ip.getParamType() != null ? ip.getParamType() : "QUERY"))
                         .valueType(ApiParam.ValueType.valueOf(ip.getValueType() != null ? ip.getValueType() : "STATIC"))
                         .staticValue(ip.getStaticValue())
+                        .isApiKeyRef(Boolean.TRUE.equals(ip.getIsApiKeyRef()))
+                        .description(ip.getDescription())
                         .dynamicType(ip.getDynamicType() != null ? ApiParam.DynamicType.valueOf(ip.getDynamicType()) : null)
                         .dynamicFormat(ip.getDynamicFormat())
                         .dynamicOffset(ip.getDynamicOffset())

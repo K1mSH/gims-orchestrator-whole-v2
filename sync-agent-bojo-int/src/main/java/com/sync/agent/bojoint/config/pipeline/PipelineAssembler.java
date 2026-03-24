@@ -31,7 +31,7 @@ public class PipelineAssembler {
     @PostConstruct
     public void assembleAll() {
         List<AgentDefinition> definitions = agentConfigLoader.getAgentDefinitions();
-        log.info("Assembling {} pipelines", definitions.size());
+        log.info("[BojoInt] {} 개 파이프라인 조립 시작", definitions.size());
 
         for (AgentDefinition def : definitions) {
             try {
@@ -53,11 +53,11 @@ public class PipelineAssembler {
 
                 PipelineRunner runner = new PipelineRunner(def.getAgentCode(), steps);
                 pipelineRegistry.register(def.getAgentCode(), def.getType(), runner, stepDefs);
-                log.info("Assembled pipeline: {} (type={}, steps={})",
+                log.info("[BojoInt] 파이프라인 조립 완료: {} (type={}, steps={})",
                         def.getAgentCode(), def.getType(), steps.size());
 
             } catch (Exception e) {
-                log.error("Failed to assemble pipeline: {}", def.getAgentCode(), e);
+                log.error("[BojoInt] 파이프라인 조립 실패: {}", def.getAgentCode(), e);
             }
         }
     }

@@ -179,6 +179,7 @@ export default function ApiCollectPage() {
           paramType: p.paramType || 'QUERY',
           valueType: p.valueType || 'STATIC',
           staticValue: p.staticValue,
+          isApiKeyRef: p.isApiKeyRef || false,
           dynamicType: p.dynamicType,
           dynamicFormat: p.dynamicFormat,
           dynamicOffset: p.dynamicOffset,
@@ -306,7 +307,7 @@ export default function ApiCollectPage() {
 
   // 파라미터 관리
   const addParam = () => {
-    setParams([...params, { paramName: '', paramType: 'QUERY', valueType: 'STATIC', staticValue: '', displayOrder: params.length }]);
+    setParams([...params, { paramName: '', paramType: 'QUERY', valueType: 'STATIC', staticValue: '', isApiKeyRef: false, displayOrder: params.length }]);
   };
   const removeParam = (index: number) => { setParams(params.filter((_, i) => i !== index)); };
   const updateParam = (index: number, field: string, value: any) => {
@@ -449,7 +450,7 @@ export default function ApiCollectPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <div style={sectionLabel}>헤더</div>
               <button className="btn btn-sm btn-primary" onClick={() => {
-                setParams([...params, { paramName: '', paramType: 'HEADER', valueType: 'STATIC', staticValue: '', displayOrder: params.length }]);
+                setParams([...params, { paramName: '', paramType: 'HEADER', valueType: 'STATIC', staticValue: '', isApiKeyRef: false, displayOrder: params.length }]);
               }} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
             </div>
             {(() => {
@@ -478,13 +479,13 @@ export default function ApiCollectPage() {
                               onChange={e => updateParam(i, 'paramName', e.target.value)} placeholder="Header Name" />
                           </td>
                           <td style={{ padding: '0.25rem' }}>
-                            <select className="form-select" value={p.description?.startsWith('🔑') ? 'APIKEY' : 'STATIC'} style={{ fontSize: '0.85rem' }}
+                            <select className="form-select" value={p.isApiKeyRef ? 'APIKEY' : 'STATIC'} style={{ fontSize: '0.85rem' }}
                               onChange={e => {
                                 if (e.target.value === 'APIKEY') {
                                   loadApiKeys();
-                                  const u = [...params]; u[i] = { ...u[i], description: '🔑', staticValue: '' }; setParams(u);
+                                  const u = [...params]; u[i] = { ...u[i], isApiKeyRef: true, staticValue: '' }; setParams(u);
                                 } else {
-                                  const u = [...params]; u[i] = { ...u[i], description: p.description?.startsWith('🔑') ? '' : p.description }; setParams(u);
+                                  const u = [...params]; u[i] = { ...u[i], isApiKeyRef: false }; setParams(u);
                                 }
                               }}>
                               <option value="STATIC">직접입력</option>
@@ -492,12 +493,12 @@ export default function ApiCollectPage() {
                             </select>
                           </td>
                           <td style={{ padding: '0.25rem' }}>
-                            {p.description?.startsWith('🔑') ? (
+                            {p.isApiKeyRef ? (
                               <select className="form-select" style={{ fontSize: '0.85rem' }}
                                 value={p.staticValue || ''} onFocus={() => loadApiKeys()}
                                 onChange={e => {
                                   const key = apiKeys.find(k => String(k.id) === e.target.value);
-                                  const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '🔑' }; setParams(u);
+                                  const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '' }; setParams(u);
                                 }}>
                                 <option value="">-- API 키 선택 --</option>
                                 {apiKeys.filter(k => k.useAt === 'Y').map(k => (
@@ -510,12 +511,8 @@ export default function ApiCollectPage() {
                             )}
                           </td>
                           <td style={{ padding: '0.25rem' }}>
-                            {p.description?.startsWith('🔑') ? (
-                              <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{p.description}</span>
-                            ) : (
-                              <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
-                                onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
-                            )}
+                            <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                              onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
                           </td>
                           <td style={{ padding: '0.25rem' }}>
                             <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)} style={{ fontSize: '0.75rem' }}>X</button>
@@ -571,17 +568,17 @@ export default function ApiCollectPage() {
                         </select>
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        <select className="form-select" value={p.description?.startsWith('🔑') ? 'APIKEY' : p.valueType} style={{ fontSize: '0.85rem' }}
+                        <select className="form-select" value={p.isApiKeyRef ? 'APIKEY' : p.valueType} style={{ fontSize: '0.85rem' }}
                           onChange={e => {
                             const v = e.target.value;
                             if (v === 'APIKEY') {
                               loadApiKeys();
                               const u = [...params];
-                              u[i] = { ...u[i], valueType: 'STATIC', description: '🔑', staticValue: '' };
+                              u[i] = { ...u[i], valueType: 'STATIC', isApiKeyRef: true, staticValue: '' };
                               setParams(u);
                             } else {
                               const u = [...params];
-                              u[i] = { ...u[i], valueType: v as any, description: p.description?.startsWith('🔑') ? '' : p.description };
+                              u[i] = { ...u[i], valueType: v as any, isApiKeyRef: false };
                               setParams(u);
                             }
                           }}>
@@ -591,14 +588,14 @@ export default function ApiCollectPage() {
                         </select>
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        {p.description?.startsWith('🔑') ? (
+                        {p.isApiKeyRef ? (
                           <select className="form-select" style={{ fontSize: '0.85rem' }}
                             value={p.staticValue || ''}
                             onFocus={() => loadApiKeys()}
                             onChange={e => {
                               const key = apiKeys.find(k => String(k.id) === e.target.value);
                               const u = [...params];
-                              u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '🔑' };
+                              u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '' };
                               setParams(u);
                             }}>
                             <option value="">-- API 키 선택 --</option>
@@ -626,12 +623,8 @@ export default function ApiCollectPage() {
                         )}
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        {p.description?.startsWith('🔑') ? (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{p.description}</span>
-                        ) : (
-                          <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
-                            onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
-                        )}
+                        <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                          onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
                       </td>
                       <td style={{ padding: '0.25rem' }}>
                         <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)} style={{ fontSize: '0.75rem' }}>X</button>

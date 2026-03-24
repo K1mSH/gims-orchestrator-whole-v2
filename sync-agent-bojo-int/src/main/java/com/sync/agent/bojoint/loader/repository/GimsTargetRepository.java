@@ -43,7 +43,7 @@ public class GimsTargetRepository {
             map.put(rs.getString("obsrvt_id"), rs.getLong("spot_id"));
         });
 
-        log.info("[GimsTarget] Loaded {} spot_id mappings from {}", map.size(), tableName);
+        log.info("[GimsTarget] {}에서 spot_id 매핑 {} 건 로드", tableName, map.size());
         return map;
     }
 
@@ -63,7 +63,7 @@ public class GimsTargetRepository {
             map.put(key, rs.getLong("result_id"));
         });
 
-        log.info("[GimsTarget] Loaded {} result_id mappings from {}", map.size(), tableName);
+        log.info("[GimsTarget] {}에서 result_id 매핑 {} 건 로드", tableName, map.size());
         return map;
     }
 
@@ -98,7 +98,7 @@ public class GimsTargetRepository {
         }
 
         resultIdMap.put(key, resultId);
-        log.debug("[GimsTarget] Ensured result_id={} for spot_id={}, iem_id={}", resultId, spotId, iemId);
+        log.debug("[GimsTarget] result_id={} 확보 완료 (spot_id={}, iem_id={})", resultId, spotId, iemId);
         return resultId;
     }
 
@@ -124,7 +124,7 @@ public class GimsTargetRepository {
             totalInserted += Arrays.stream(results).sum();
         }
 
-        log.info("[GimsTarget] Batch INSERT {} obsvdata rows into {}", totalInserted, tableName);
+        log.info("[GimsTarget] {}에 관측데이터 {} 행 배치 INSERT", tableName, totalInserted);
         return totalInserted;
     }
 
@@ -167,7 +167,7 @@ public class GimsTargetRepository {
             totalUpserted += results.length;
         }
 
-        log.info("[GimsTarget] Batch UPSERT {} link rows into {}", totalUpserted, tableName);
+        log.info("[GimsTarget] {}에 Link {} 행 배치 UPSERT", tableName, totalUpserted);
         return totalUpserted;
     }
 }

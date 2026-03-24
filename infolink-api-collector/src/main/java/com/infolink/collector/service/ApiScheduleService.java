@@ -36,7 +36,7 @@ public class ApiScheduleService {
                 .build();
 
         schedule = scheduleRepository.save(schedule);
-        scheduleExecutor.register(schedule);
+        scheduleExecutor.registerSchedule(schedule);
         return Response.from(schedule);
     }
 
@@ -47,7 +47,7 @@ public class ApiScheduleService {
 
         schedule.setCronExpression(request.getCronExpression());
         schedule = scheduleRepository.save(schedule);
-        scheduleExecutor.register(schedule);
+        scheduleExecutor.registerSchedule(schedule);
         return Response.from(schedule);
     }
 
@@ -58,7 +58,7 @@ public class ApiScheduleService {
 
         schedule.setIsEnabled(!schedule.getIsEnabled());
         schedule = scheduleRepository.save(schedule);
-        scheduleExecutor.register(schedule); // 내부에서 enabled 여부 판단
+        scheduleExecutor.registerSchedule(schedule); // 내부에서 enabled 여부 판단
         return Response.from(schedule);
     }
 
@@ -68,6 +68,6 @@ public class ApiScheduleService {
             throw new IllegalArgumentException("ApiSchedule not found: " + scheduleId);
         }
         scheduleRepository.deleteById(scheduleId);
-        scheduleExecutor.unregister(scheduleId);
+        scheduleExecutor.unregisterSchedule(scheduleId);
     }
 }

@@ -26,7 +26,7 @@ public class CompositeStepCallback implements StepProgressCallback {
             try {
                 orchestratorCallback.onStepStarted(executionId, stepId, stepName, stepOrder, totalSteps);
             } catch (Exception e) {
-                log.warn("Failed to notify orchestrator step started: {}", e.getMessage());
+                log.warn("[BojoInt] Orchestrator Step 시작 알림 실패: {}", e.getMessage());
             }
         }
     }
@@ -37,7 +37,7 @@ public class CompositeStepCallback implements StepProgressCallback {
             try {
                 orchestratorCallback.onStepFinished(executionId, result, stepOrder, totalSteps);
             } catch (Exception e) {
-                log.warn("Failed to notify orchestrator step finished: {}", e.getMessage());
+                log.warn("[BojoInt] Orchestrator Step 완료 알림 실패: {}", e.getMessage());
             }
         }
     }

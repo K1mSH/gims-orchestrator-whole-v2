@@ -9,8 +9,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "api_execution_history")
 @org.hibernate.annotations.Table(appliesTo = "api_execution_history", comment = "API 수집 실행 이력")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ApiExecutionHistory {
 

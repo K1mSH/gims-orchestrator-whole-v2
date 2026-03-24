@@ -57,7 +57,7 @@ public class PipelineRegistry implements StepDefinitionProvider {
         if (stepDefinitions != null && !stepDefinitions.isEmpty()) {
             stepDefs.put(agentCode, stepDefinitions);
         }
-        log.info("Registered pipeline: agentCode={}, type={}, modeId={}, steps={}",
+        log.info("[BojoInt] 파이프라인 등록: agentCode={}, type={}, modeId={}, steps={}",
                 agentCode, agentType, modeId,
                 stepDefinitions != null ? stepDefinitions.size() : 0);
     }
@@ -68,19 +68,19 @@ public class PipelineRegistry implements StepDefinitionProvider {
     public PipelineRunner getRunner(String agentCode, String modeId) {
         Map<String, PipelineRunner> modeRunners = runners.get(agentCode);
         if (modeRunners == null) {
-            throw new IllegalArgumentException("Unknown agentCode: " + agentCode + ". Registered: " + runners.keySet());
+            throw new IllegalArgumentException("알 수 없는 agentCode: " + agentCode + ". 등록됨: " + runners.keySet());
         }
 
         PipelineRunner runner = modeRunners.get(modeId);
         if (runner == null) {
             runner = modeRunners.get(DEFAULT_MODE);
             if (runner != null) {
-                log.info("ModeId '{}' not found for agentCode={}, falling back to default", modeId, agentCode);
+                log.info("[BojoInt] agentCode={}에서 modeId '{}' 미발견, default로 대체", agentCode, modeId);
             }
         }
         if (runner == null) {
-            throw new IllegalArgumentException("No pipeline found for agentCode=" + agentCode
-                    + ", modeId=" + modeId + ". Available modes: " + modeRunners.keySet());
+            throw new IllegalArgumentException("파이프라인을 찾을 수 없습니다. agentCode=" + agentCode
+                    + ", modeId=" + modeId + ". 사용 가능한 모드: " + modeRunners.keySet());
         }
         return runner;
     }
@@ -95,7 +95,7 @@ public class PipelineRegistry implements StepDefinitionProvider {
     public String getAgentType(String agentCode) {
         String type = agentTypes.get(agentCode);
         if (type == null) {
-            throw new IllegalArgumentException("Unknown agentCode: " + agentCode);
+            throw new IllegalArgumentException("알 수 없는 agentCode: " + agentCode);
         }
         return type;
     }
