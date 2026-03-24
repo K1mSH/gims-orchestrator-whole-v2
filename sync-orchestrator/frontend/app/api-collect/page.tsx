@@ -166,8 +166,6 @@ export default function ApiCollectPage() {
     if (!form.url) { alert('URL을 입력하세요.'); return; }
     try {
       setTesting(true);
-      setSelectedDataRoot('');
-      setMappingRows([]);
       const inlineReq: InlineTestRequest = {
         url: form.url,
         httpMethod: form.httpMethod,
@@ -234,7 +232,7 @@ export default function ApiCollectPage() {
     if (!selectedDatasourceId) { alert('Target Datasource를 선택하세요.'); return; }
     if (!targetTable.trim()) { alert('Target 테이블을 선택하세요.'); return; }
     // 5. 매핑
-    const activeRows = mappingRows.filter(r => !r.excluded && r.targetColumnName);
+    const activeRows = mappingRows.filter(r => r.targetColumnName);
     const activeDerived = derivedRows.filter(r => r.targetColumnName);
     if (activeRows.length === 0 && activeDerived.length === 0) { alert('필드 매핑을 1개 이상 설정하세요.'); return; }
     const hasConflictKey = [...activeRows, ...activeDerived].some(r => r.isConflictKey);
@@ -578,7 +576,7 @@ export default function ApiCollectPage() {
                               setParams(u);
                             } else {
                               const u = [...params];
-                              u[i] = { ...u[i], valueType: v as any, isApiKeyRef: false };
+                              u[i] = { ...u[i], valueType: v as any, isApiKeyRef: false, ...(v === 'DYNAMIC' ? { dynamicType: 'TODAY' } : {}) };
                               setParams(u);
                             }
                           }}>
@@ -600,7 +598,7 @@ export default function ApiCollectPage() {
                             }}>
                             <option value="">-- API 키 선택 --</option>
                             {apiKeys.filter(k => k.useAt === 'Y').map(k => (
-                              <option key={k.id} value={k.apiKey}>
+                              <option key={k.id} value={String(k.id)}>
                                 {k.serviceName} (D-{k.dday})
                               </option>
                             ))}
@@ -714,7 +712,7 @@ export default function ApiCollectPage() {
           {/* 필드 매핑 */}
           {selectedDataRoot && mappingRows.length > 0 && (
             <div style={sectionStyle}>
-              <div style={sectionLabel}>필드 매핑 ({mappingRows.filter(r => !r.excluded && r.targetColumnName).length}/{mappingRows.length})</div>
+              <div style={sectionLabel}>필드 매핑 ({mappingRows.filter(r => r.targetColumnName).length}/{mappingRows.length})</div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', fontSize: '0.8rem' }}>
                   <thead>
@@ -724,17 +722,16 @@ export default function ApiCollectPage() {
                       <th style={{ padding: '0.5rem', textAlign: 'left' }}>Target 컬럼</th>
                       <th style={{ padding: '0.5rem', textAlign: 'center', width: '60px' }}>중복키</th>
                       <th style={{ padding: '0.5rem', textAlign: 'left', width: '100px' }}>변환</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', width: '50px' }}>제외</th>
                     </tr>
                   </thead>
                   <tbody>
                     {mappingRows.map((row, i) => (
-                      <tr key={i} style={{ opacity: row.excluded ? 0.4 : 1, borderBottom: '1px solid var(--gray-100)' }}>
+                      <tr key={i} style={{ opacity: row.targetColumnName ? 1 : 0.4, borderBottom: '1px solid var(--gray-100)' }}>
                         <td style={{ padding: '0.35rem 0.5rem' }}><code>{row.sourceFieldPath}</code></td>
                         <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
                         <td style={{ padding: '0.35rem 0.5rem' }}>
                           {targetColumns.length > 0 ? (
-                            <select className="form-select" value={row.targetColumnName} disabled={row.excluded}
+                            <select className="form-select" value={row.targetColumnName}
                               style={{ fontSize: '0.8rem' }}
                               onChange={e => updateMappingRow(i, 'targetColumnName', e.target.value)}>
                               <option value="">-- 선택 --</option>
@@ -745,18 +742,18 @@ export default function ApiCollectPage() {
                               ))}
                             </select>
                           ) : (
-                            <input className="form-input" value={row.targetColumnName} disabled={row.excluded}
+                            <input className="form-input" value={row.targetColumnName}
                               style={{ fontSize: '0.8rem' }}
                               onChange={e => updateMappingRow(i, 'targetColumnName', e.target.value)}
                               placeholder="컬럼명 입력" />
                           )}
                         </td>
                         <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                          <input type="checkbox" checked={row.isConflictKey} disabled={row.excluded}
+                          <input type="checkbox" checked={row.isConflictKey} disabled={!row.targetColumnName}
                             onChange={e => updateMappingRow(i, 'isConflictKey', e.target.checked)} />
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem' }}>
-                          <select className="form-select" value={row.transformType} disabled={row.excluded}
+                          <select className="form-select" value={row.transformType} disabled={!row.targetColumnName}
                             style={{ fontSize: '0.75rem' }}
                             onChange={e => updateMappingRow(i, 'transformType', e.target.value)}>
                             <option value="NONE">없음</option>
@@ -768,18 +765,14 @@ export default function ApiCollectPage() {
                             <option value="DEFAULT_VALUE">기본값</option>
                           </select>
                         </td>
-                        <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                          <input type="checkbox" checked={row.excluded}
-                            onChange={e => updateMappingRow(i, 'excluded', e.target.checked)} />
-                        </td>
                       </tr>
                     ))}
 
                     {/* 파생 컬럼 구분선 */}
                     {derivedRows.length > 0 && (
                       <tr>
-                        <td colSpan={6} style={{ padding: '0.25rem 0.5rem', background: 'var(--gray-100)', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>
-                          파생 컬럼 (LOOKUP)
+                        <td colSpan={5} style={{ padding: '0.25rem 0.5rem', background: 'var(--gray-100)', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>
+                          파생 컬럼 (LOOKUP / 고정값)
                         </td>
                       </tr>
                     )}
@@ -787,16 +780,21 @@ export default function ApiCollectPage() {
                     {/* 파생 컬럼 행 */}
                     {derivedRows.map((row, i) => {
                       const isExpanded = expandedDerived.has(i);
-                      const sourceFields = mappingRows.filter(r => !r.excluded).map(r => r.sourceFieldPath);
+                      const isFixed = row.transformType === 'DEFAULT_VALUE';
+                      const sourceFields = mappingRows.filter(r => r.targetColumnName).map(r => r.sourceFieldPath);
                       return (
                         <React.Fragment key={`d-${i}`}>
-                          <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--gray-100)', background: '#fefce8' }}>
+                          <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--gray-100)', background: isFixed ? '#f0fdf4' : '#fefce8' }}>
                             <td style={{ padding: '0.35rem 0.5rem' }}>
-                              <select className="form-select" value={row.sourceFieldPath} style={{ fontSize: '0.8rem' }}
-                                onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], sourceFieldPath: e.target.value }; setDerivedRows(u); }}>
-                                <option value="">-- 소스 필드 --</option>
-                                {sourceFields.map(f => <option key={f} value={f}>{f}</option>)}
-                              </select>
+                              {isFixed ? (
+                                <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>고정값</span>
+                              ) : (
+                                <select className="form-select" value={row.sourceFieldPath} style={{ fontSize: '0.8rem' }}
+                                  onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], sourceFieldPath: e.target.value }; setDerivedRows(u); }}>
+                                  <option value="">-- 소스 필드 --</option>
+                                  {sourceFields.map(f => <option key={f} value={f}>{f}</option>)}
+                                </select>
+                              )}
                             </td>
                             <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
                             <td style={{ padding: '0.35rem 0.5rem' }}>
@@ -818,14 +816,18 @@ export default function ApiCollectPage() {
                               <input type="checkbox" checked={row.isConflictKey}
                                 onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], isConflictKey: e.target.checked }; setDerivedRows(u); }} />
                             </td>
-                            <td style={{ padding: '0.35rem 0.5rem' }}>
-                              <button className="btn btn-sm" onClick={() => {
-                                setExpandedDerived(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
-                              }} style={{ fontSize: '0.7rem', padding: '1px 6px', background: isExpanded ? 'var(--primary)' : 'var(--gray-200)', color: isExpanded ? 'white' : 'var(--gray-700)' }}>
-                                {isExpanded ? '설정 ▴' : '설정 ▾'}
-                              </button>
-                            </td>
-                            <td style={{ padding: '0.35rem', textAlign: 'center' }}>
+                            <td style={{ padding: '0.35rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              {isFixed ? (
+                                <input className="form-input" value={row.defaultValue || ''} style={{ fontSize: '0.8rem' }}
+                                  onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], defaultValue: e.target.value }; setDerivedRows(u); }}
+                                  placeholder="고정값 입력" />
+                              ) : (
+                                <button className="btn btn-sm" onClick={() => {
+                                  setExpandedDerived(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+                                }} style={{ fontSize: '0.7rem', padding: '1px 6px', background: isExpanded ? 'var(--primary)' : 'var(--gray-200)', color: isExpanded ? 'white' : 'var(--gray-700)' }}>
+                                  {isExpanded ? '설정 ▴' : '설정 ▾'}
+                                </button>
+                              )}
                               <button onClick={() => {
                                 setDerivedRows(derivedRows.filter((_, idx) => idx !== i));
                                 setExpandedDerived(prev => { const n = new Set<number>(); prev.forEach(v => { if (v < i) n.add(v); else if (v > i) n.add(v - 1); }); return n; });
@@ -899,7 +901,7 @@ export default function ApiCollectPage() {
                 {/* 파생 컬럼 추가 버튼 */}
                 <div style={{ padding: '0.5rem', borderTop: '1px solid var(--gray-100)' }}>
                   <button className="btn btn-sm" onClick={() => {
-                    const sourceFields = mappingRows.filter(r => !r.excluded).map(r => r.sourceFieldPath);
+                    const sourceFields = mappingRows.filter(r => r.targetColumnName).map(r => r.sourceFieldPath);
                     setDerivedRows([...derivedRows, {
                       sourceFieldPath: sourceFields[0] || '',
                       targetColumnName: '',
@@ -915,8 +917,26 @@ export default function ApiCollectPage() {
                       defaultValue: '',
                     }]);
                     setExpandedDerived(prev => new Set(prev).add(derivedRows.length));
-                  }} style={{ fontSize: '0.8rem', background: 'var(--gray-50)', border: '1px dashed var(--gray-300)', width: '100%', padding: '0.4rem' }}>
+                  }} style={{ fontSize: '0.8rem', background: 'var(--gray-50)', border: '1px dashed var(--gray-300)', width: '49%', padding: '0.4rem' }}>
                     + 파생 컬럼 추가
+                  </button>
+                  <button className="btn btn-sm" onClick={() => {
+                    setDerivedRows([...derivedRows, {
+                      sourceFieldPath: '',
+                      targetColumnName: '',
+                      isConflictKey: false,
+                      transformType: 'DEFAULT_VALUE',
+                      extractPattern: '',
+                      extractGroup: 1,
+                      lookupParam: '',
+                      lookupKeyField: '',
+                      lookupValueField: '',
+                      lookupDataRootPath: '',
+                      lookupMatchType: 'EXACT',
+                      defaultValue: '',
+                    }]);
+                  }} style={{ fontSize: '0.8rem', background: '#f0fdf4', border: '1px dashed var(--gray-300)', width: '49%', padding: '0.4rem' }}>
+                    + 고정값 컬럼 추가
                   </button>
                 </div>
               </div>

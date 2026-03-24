@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -76,7 +77,7 @@ public class ApiCallService {
             if (!queryParams.isEmpty()) {
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
                 queryParams.forEach(builder::queryParam);
-                url = builder.build().toUriString();
+                url = builder.build(true).toUriString();
             }
 
             // 3. Headers
@@ -109,7 +110,8 @@ public class ApiCallService {
             }
 
             log.info("API 호출: {} {}", method, url);
-            ResponseEntity<String> response = restTemplate.exchange(url, method, entity, String.class);
+            URI uri = URI.create(url);
+            ResponseEntity<String> response = restTemplate.exchange(uri, method, entity, String.class);
 
             return new CallResult(response.getStatusCodeValue(), response.getBody(), null);
 

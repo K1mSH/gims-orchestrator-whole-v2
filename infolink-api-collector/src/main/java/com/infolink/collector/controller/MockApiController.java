@@ -163,6 +163,77 @@ public class MockApiController {
     }
 
     /**
+     * Mock 나라장터 입찰공고 API — data.go.kr 표준 응답 포맷
+     * 실제: http://apis.data.go.kr/1230000/ad/BidPublicInfoService/{operation}
+     */
+    @GetMapping("/nara-market/{operation}")
+    public Map<String, Object> getNaraMarketBid(
+            @PathVariable String operation,
+            @RequestParam(defaultValue = "10") int numOfRows,
+            @RequestParam(defaultValue = "1") int pageNo,
+            @RequestParam(required = false) String ServiceKey,
+            @RequestParam(required = false) String inqryDiv,
+            @RequestParam(required = false) String inqryBgnDt,
+            @RequestParam(required = false) String inqryEndDt) {
+
+        log.info("Mock 나라장터 API 호출: operation={}, page={}, rows={}", operation, pageNo, numOfRows);
+
+        // 오퍼레이션 → type 매핑
+        String type;
+        switch (operation) {
+            case "getBidPblancListInfoCnstwk": type = "공사"; break;
+            case "getBidPblancListInfoServc": type = "용역"; break;
+            case "getBidPblancListInfoThng": type = "물품"; break;
+            case "getBidPblancListInfoFrgcpt": type = "외자"; break;
+            default: type = "기타"; break;
+        }
+
+        // Mock 데이터 생성
+        List<Map<String, Object>> items = new ArrayList<>();
+        String[][] bidData = {
+                {"20250700001-00", type + " 지하수 관측장비 교체 공고", "한국수자원공사", "2025-08-15 17:00", "https://www.g2b.go.kr/bid/20250700001"},
+                {"20250700002-00", type + " 관측소 유지보수 용역 입찰", "환경부", "2025-08-20 17:00", "https://www.g2b.go.kr/bid/20250700002"},
+                {"20250700003-01", type + " 수질 분석 장비 구매", "국립환경과학원", "2025-08-25 17:00", "https://www.g2b.go.kr/bid/20250700003"},
+                {"20250700004-00", type + " 지하수 오염 모니터링 시스템 구축", "대전광역시", "2025-09-01 17:00", "https://www.g2b.go.kr/bid/20250700004"},
+                {"20250700005-00", type + " 관정 정비 및 복구 공사", "충청남도", "2025-09-05 17:00", "https://www.g2b.go.kr/bid/20250700005"},
+        };
+
+        for (String[] row : bidData) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("bidNtceNo", row[0]);
+            item.put("bidNtceNm", row[1]);
+            item.put("dminsttNm", row[2]);
+            item.put("bidClseDt", row[3]);
+            item.put("bidNtceDtlUrl", row[4]);
+            item.put("ntceInsttNm", row[2]);
+            item.put("ntceKindNm", "일반경쟁");
+            item.put("cntrctMthdNm", "총액");
+            item.put("presmptPrce", String.valueOf(50000000 + new Random().nextInt(450000000)));
+            item.put("rgstDt", "2025/07/01 09:00:00");
+            items.add(item);
+        }
+
+        // data.go.kr 표준 응답 구조
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("items", items);
+        body.put("numOfRows", numOfRows);
+        body.put("pageNo", pageNo);
+        body.put("totalCount", items.size());
+
+        Map<String, Object> header = new LinkedHashMap<>();
+        header.put("resultCode", "00");
+        header.put("resultMsg", "NORMAL SERVICE.");
+
+        Map<String, Object> responseBody = new LinkedHashMap<>();
+        responseBody.put("header", header);
+        responseBody.put("body", body);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("response", responseBody);
+        return response;
+    }
+
+    /**
      * Mock API 키 목록 — GIMS 내부 API 시뮬레이션
      */
     @GetMapping("/api-keys")
@@ -174,7 +245,7 @@ public class MockApiController {
         Object[][] keyData = {
                 {1, "네이버 검색 Client-ID", "6ZMOvG6WUSN5P7l2D65H", "Y", "2026-12-31", "정상", 283},
                 {2, "네이버 검색 Client-Secret", "cK2B2OMt5E", "Y", "2026-12-31", "정상", 283},
-                {3, "공공데이터포털 인증키", "test-data-go-kr-service-key", "Y", "2026-12-31", "정상", 283},
+                {3, "공공데이터포털 인증키", "qaj%2F1MknxOAoegbjhf6jCDH8pSH4Pt8Je88U572wPHObU85DnuxJ%2FvmoBeNlry6ELaUkjgmXHz%2BEPWst7gZcOw%3D%3D", "Y", "2026-12-31", "정상", 283},
         };
 
         for (Object[] row : keyData) {

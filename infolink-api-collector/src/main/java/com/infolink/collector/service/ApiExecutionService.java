@@ -166,8 +166,13 @@ public class ApiExecutionService {
                                 ps.setObject(paramIndex++, transformed);
                             }
 
-                            // 파생 매핑 (LOOKUP)
+                            // 파생 매핑 (LOOKUP / DEFAULT_VALUE)
                             for (ApiFieldMapping dm : derivedMappings) {
+                                // 고정값: 소스필드 불필요, defaultValue 그대로 삽입
+                                if (dm.getTransformType() == ApiFieldMapping.TransformType.DEFAULT_VALUE) {
+                                    ps.setObject(paramIndex++, dm.getDefaultValue());
+                                    continue;
+                                }
                                 Object rawValue = getNestedValue(record, dm.getSourceFieldPath());
                                 if (dm.getTransformType() == ApiFieldMapping.TransformType.LOOKUP) {
                                     Map<String, String> lookupMap = lookupMaps.getOrDefault(dm, Collections.emptyMap());

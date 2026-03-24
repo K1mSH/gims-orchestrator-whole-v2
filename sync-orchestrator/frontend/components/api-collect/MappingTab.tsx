@@ -41,7 +41,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
 
   // 소스 필드 목록 (파생 컬럼 소스 선택용)
   const sourceFields = useMemo(() =>
-    mappingRows.filter(r => !r.excluded).map(r => r.sourceFieldPath),
+    mappingRows.filter(r => r.targetColumnName).map(r => r.sourceFieldPath),
     [mappingRows]
   );
 
@@ -195,7 +195,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   };
 
   const handleSaveMappings = async () => {
-    const activeNormal = mappingRows.filter(r => !r.excluded && r.targetColumnName);
+    const activeNormal = mappingRows.filter(r => r.targetColumnName);
     const activeDerived = derivedRows.filter(r => r.targetColumnName);
     if (activeNormal.length === 0 && activeDerived.length === 0) {
       alert('매핑된 필드가 없습니다.'); return;
@@ -418,7 +418,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 className="card-title">
-              필드 매핑 ({mappingRows.filter(r => !r.excluded && r.targetColumnName).length + derivedRows.filter(r => r.targetColumnName).length}
+              필드 매핑 ({mappingRows.filter(r => r.targetColumnName).length + derivedRows.filter(r => r.targetColumnName).length}
               /{mappingRows.length + derivedRows.length})
             </h3>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -437,13 +437,12 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                   <th style={{ padding: '0.5rem', textAlign: 'left' }}>Target 컬럼</th>
                   <th style={{ padding: '0.5rem', textAlign: 'center', width: '60px' }}>중복키</th>
                   <th style={{ padding: '0.5rem', textAlign: 'left', width: '120px' }}>변환</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center', width: '50px' }}>제외</th>
                 </tr>
               </thead>
               <tbody>
                 {/* 1:1 매핑 행 */}
                 {mappingRows.map((row, i) => (
-                  <tr key={`n-${i}`} style={{ opacity: row.excluded ? 0.4 : 1, borderBottom: '1px solid var(--gray-100)' }}>
+                  <tr key={`n-${i}`} style={{ opacity: row.targetColumnName ? 1 : 0.4, borderBottom: '1px solid var(--gray-100)' }}>
                     <td style={{ padding: '0.35rem 0.5rem' }}>
                       <code style={{ fontSize: '0.8rem' }}>{row.sourceFieldPath}</code>
                     </td>
@@ -453,7 +452,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                     <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
                     <td style={{ padding: '0.35rem 0.5rem' }}>
                       {targetColumns.length > 0 ? (
-                        <select className="form-select" value={row.targetColumnName} disabled={row.excluded}
+                        <select className="form-select" value={row.targetColumnName}
                           style={{ fontSize: '0.8rem' }}
                           onChange={e => updateRow(i, 'targetColumnName', e.target.value)}>
                           <option value="">-- 선택 --</option>
@@ -464,18 +463,18 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                           ))}
                         </select>
                       ) : (
-                        <input className="form-input" value={row.targetColumnName} disabled={row.excluded}
+                        <input className="form-input" value={row.targetColumnName}
                           style={{ fontSize: '0.8rem' }}
                           onChange={e => updateRow(i, 'targetColumnName', e.target.value)}
                           placeholder="컬럼명 입력" />
                       )}
                     </td>
                     <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                      <input type="checkbox" checked={row.isConflictKey} disabled={row.excluded}
+                      <input type="checkbox" checked={row.isConflictKey} disabled={!row.targetColumnName}
                         onChange={e => updateRow(i, 'isConflictKey', e.target.checked)} />
                     </td>
                     <td style={{ padding: '0.35rem 0.5rem' }}>
-                      <select className="form-select" value={row.transformType} disabled={row.excluded}
+                      <select className="form-select" value={row.transformType} disabled={!row.targetColumnName}
                         style={{ fontSize: '0.75rem' }}
                         onChange={e => updateRow(i, 'transformType', e.target.value)}>
                         <option value="NONE">없음</option>
@@ -487,18 +486,14 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                         <option value="DEFAULT_VALUE">기본값</option>
                       </select>
                     </td>
-                    <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                      <input type="checkbox" checked={row.excluded}
-                        onChange={e => updateRow(i, 'excluded', e.target.checked)} />
-                    </td>
                   </tr>
                 ))}
 
                 {/* 구분선 */}
                 {derivedRows.length > 0 && (
                   <tr>
-                    <td colSpan={7} style={{ padding: '0.25rem 0.5rem', background: 'var(--gray-100)', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>
-                      파생 컬럼 (LOOKUP)
+                    <td colSpan={6} style={{ padding: '0.25rem 0.5rem', background: 'var(--gray-100)', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>
+                      파생 컬럼 (LOOKUP / 고정값)
                     </td>
                   </tr>
                 )}
@@ -506,21 +501,26 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                 {/* 파생 컬럼 행 */}
                 {derivedRows.map((row, i) => {
                   const isExpanded = expandedDerived.has(i);
+                  const isFixed = row.transformType === 'DEFAULT_VALUE';
                   const preview = isExpanded ? getExtractPreview(row.sourceFieldPath, row.extractPattern, row.extractGroup) : [];
 
                   return (
                     <React.Fragment key={`d-${i}`}>
-                      <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--gray-100)', background: '#fefce8' }}>
+                      <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--gray-100)', background: isFixed ? '#f0fdf4' : '#fefce8' }}>
                         <td style={{ padding: '0.35rem 0.5rem' }}>
-                          <select className="form-select" value={row.sourceFieldPath}
-                            style={{ fontSize: '0.8rem' }}
-                            onChange={e => updateDerivedRow(i, 'sourceFieldPath', e.target.value)}>
-                            <option value="">-- 소스 필드 --</option>
-                            {sourceFields.map(f => <option key={f} value={f}>{f}</option>)}
-                          </select>
+                          {isFixed ? (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>고정값</span>
+                          ) : (
+                            <select className="form-select" value={row.sourceFieldPath}
+                              style={{ fontSize: '0.8rem' }}
+                              onChange={e => updateDerivedRow(i, 'sourceFieldPath', e.target.value)}>
+                              <option value="">-- 소스 필드 --</option>
+                              {sourceFields.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                          )}
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', color: 'var(--gray-500)', fontSize: '0.75rem' }}>
-                          파생
+                          {isFixed ? '고정' : '파생'}
                         </td>
                         <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
                         <td style={{ padding: '0.35rem 0.5rem' }}>
@@ -546,13 +546,17 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                           <input type="checkbox" checked={row.isConflictKey}
                             onChange={e => updateDerivedRow(i, 'isConflictKey', e.target.checked)} />
                         </td>
-                        <td style={{ padding: '0.35rem 0.5rem' }}>
-                          <button className="btn btn-sm" onClick={() => toggleDerivedExpand(i)}
-                            style={{ fontSize: '0.7rem', padding: '1px 6px', background: isExpanded ? 'var(--primary)' : 'var(--gray-200)', color: isExpanded ? 'white' : 'var(--gray-700)' }}>
-                            {isExpanded ? '설정 ▴' : '설정 ▾'}
-                          </button>
-                        </td>
-                        <td style={{ padding: '0.35rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.35rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          {isFixed ? (
+                            <input className="form-input" value={row.defaultValue || ''} style={{ fontSize: '0.8rem' }}
+                              onChange={e => updateDerivedRow(i, 'defaultValue', e.target.value)}
+                              placeholder="고정값 입력" />
+                          ) : (
+                            <button className="btn btn-sm" onClick={() => toggleDerivedExpand(i)}
+                              style={{ fontSize: '0.7rem', padding: '1px 6px', background: isExpanded ? 'var(--primary)' : 'var(--gray-200)', color: isExpanded ? 'white' : 'var(--gray-700)' }}>
+                              {isExpanded ? '설정 ▴' : '설정 ▾'}
+                            </button>
+                          )}
                           <button onClick={() => removeDerivedRow(i)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '1rem', padding: '0 4px' }}>
                             ✕
@@ -662,8 +666,26 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
             {/* 파생 컬럼 추가 버튼 */}
             <div style={{ padding: '0.5rem', borderTop: '1px solid var(--gray-100)' }}>
               <button className="btn btn-sm" onClick={addDerivedRow}
-                style={{ fontSize: '0.8rem', background: 'var(--gray-50)', border: '1px dashed var(--gray-300)', width: '100%', padding: '0.4rem' }}>
+                style={{ fontSize: '0.8rem', background: 'var(--gray-50)', border: '1px dashed var(--gray-300)', width: '49%', padding: '0.4rem' }}>
                 + 파생 컬럼 추가
+              </button>
+              <button className="btn btn-sm" onClick={() => {
+                setDerivedRows([...derivedRows, {
+                  sourceFieldPath: '',
+                  targetColumnName: '',
+                  isConflictKey: false,
+                  transformType: 'DEFAULT_VALUE',
+                  extractPattern: '',
+                  extractGroup: 1,
+                  lookupParam: '',
+                  lookupKeyField: '',
+                  lookupValueField: '',
+                  lookupDataRootPath: '',
+                  lookupMatchType: 'EXACT',
+                  defaultValue: '',
+                }]);
+              }} style={{ fontSize: '0.8rem', background: '#f0fdf4', border: '1px dashed var(--gray-300)', width: '49%', padding: '0.4rem' }}>
+                + 고정값 컬럼 추가
               </button>
             </div>
           </div>

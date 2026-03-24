@@ -1,0 +1,40 @@
+1. 페이징 처리
+[Impl.java 내부 예시]
+
+public Page<UnregUgwtrFcltEntity>
+...
+int start = (int) pageable.getOffset();
+int end = Math.min((start + pageable.getPageSize()), list.size());
+return new PageImpl<>(list.subList(start, end), pageable, list.size());
+
+>> 별도의 count 쿼리를 쓰지 않는 장점이 있으나 전체 풀이 커지면 성능 이슈가 있음 두가지 방식 코드 예시를 써줘
+
+2. return detph, object name
+- data.content.content
+
+return type detph 얘기임
+
+
+3. native query 지양
+- 영속성
+- 개발상 오류 발견성
+>> 추가 이유 비교 ,예시 코드 써줘
+
+4. JPARepository 내장 메서드 활용 권장 + 필요시 customRepository 추가 
+>> 이것도 예시 써줘, JPARepository가 내장된 메서드를 활용할수 있는 방식도
+
+5. entity pk 생성 유형
+pk가 단일 컬럼이 아닌경우
+
+5-1 별도의 sn(@id) 컬럼 추가
+5-2 기존의 복합 pk 사용
+
+이 상황에서 save(), upsert, merge비교
+
+6. BooleanBuilder
+queryDsl에서 where 조건 동적 생성
+
+
+
+
+
