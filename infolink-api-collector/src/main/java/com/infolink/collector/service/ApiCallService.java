@@ -13,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -73,10 +74,11 @@ public class ApiCallService {
                 }
             }
 
-            // 2. Query string 조립
+            // 2. Query string 조립 — URLEncoder로 직접 인코딩 + build(true)로 재인코딩 방지
             if (!queryParams.isEmpty()) {
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
-                queryParams.forEach(builder::queryParam);
+                queryParams.forEach((k, v) ->
+                        builder.queryParam(k, URLEncoder.encode(v, StandardCharsets.UTF_8)));
                 url = builder.build(true).toUriString();
             }
 

@@ -2,6 +2,9 @@ package com.infolink.collector.service;
 
 import com.infolink.collector.config.DynamicDataSourceService;
 import com.infolink.collector.entity.*;
+import com.infolink.collector.executor.CustomExecutionResult;
+import com.infolink.collector.executor.CustomExecutor;
+import com.infolink.collector.executor.CustomExecutorRegistry;
 import com.infolink.collector.repository.*;
 import com.infolink.collector.dto.ApiExecutionHistoryDto;
 import lombok.RequiredArgsConstructor;
@@ -39,13 +42,19 @@ public class ApiExecutionService {
     private final LookupService lookupService;
     private final DataSource dataSource;  // 자체 DB (fallback)
     private final DynamicDataSourceService dynamicDataSourceService;
+    private final CustomExecutorRegistry customExecutorRegistry;
 
     @Transactional
     public ApiExecutionHistoryDto.Response run(Long endpointId, ApiExecutionHistory.TriggeredBy triggeredBy) {
         ApiEndpoint endpoint = endpointRepository.findById(endpointId)
                 .orElseThrow(() -> new IllegalArgumentException("ApiEndpoint not found: " + endpointId));
 
-        // 사전 검증
+        // 커스텀 실행기 분기
+        if (endpoint.getExecutorType() != null && !endpoint.getExecutorType().isBlank()) {
+            return runCustom(endpoint, triggeredBy);
+        }
+
+        // 범용 매핑 사전 검증
         if (endpoint.getDataRootPath() == null || endpoint.getDataRootPath().isBlank()) {
             throw new IllegalStateException("data_root_path가 설정되지 않았습니다. 테스트 호출 후 데이터 루트를 선택하세요.");
         }
@@ -275,5 +284,51 @@ public class ApiExecutionService {
         }
         // 단순 키 매칭
         return record.get(path);
+    }
+
+    /**
+     * 커스텀 실행기로 실행 — 이력 기록은 동일
+     */
+    private ApiExecutionHistoryDto.Response runCustom(ApiEndpoint endpoint, ApiExecutionHistory.TriggeredBy triggeredBy) {
+        CustomExecutor executor = customExecutorRegistry.get(endpoint.getExecutorType())
+                .orElseThrow(() -> new IllegalStateException("커스텀 실행기를 찾을 수 없습니다: " + endpoint.getExecutorType()));
+
+        String executionId = UUID.randomUUID().toString();
+        LocalDateTime startedAt = LocalDateTime.now();
+
+        ApiExecutionHistory history = ApiExecutionHistory.builder()
+                .apiEndpoint(endpoint)
+                .executionId(executionId)
+                .status(ApiExecutionHistory.Status.RUNNING)
+                .startedAt(startedAt)
+                .triggeredBy(triggeredBy)
+                .build();
+        historyRepository.save(history);
+
+        try {
+            CustomExecutionResult result = executor.execute(endpoint, endpoint.getParams(), null, triggeredBy.name());
+
+            history.setHttpStatusCode(result.httpStatusCode());
+            history.setResponseCount(result.responseCount());
+            history.setInsertCount(result.insertCount());
+            history.setSkipCount(result.skipCount());
+
+            if (result.isSuccess()) {
+                history.setStatus(ApiExecutionHistory.Status.SUCCESS);
+            } else {
+                history.setStatus(ApiExecutionHistory.Status.FAILED);
+                history.setErrorMessage(result.errorMessage());
+            }
+        } catch (Exception e) {
+            log.error("커스텀 실행기 오류: {}", e.getMessage(), e);
+            history.setStatus(ApiExecutionHistory.Status.FAILED);
+            history.setErrorMessage(e.getMessage());
+        } finally {
+            history.setFinishedAt(LocalDateTime.now());
+            history.setDurationMs(java.time.Duration.between(startedAt, history.getFinishedAt()).toMillis());
+            historyRepository.save(history);
+        }
+
+        return ApiExecutionHistoryDto.Response.from(history);
     }
 }

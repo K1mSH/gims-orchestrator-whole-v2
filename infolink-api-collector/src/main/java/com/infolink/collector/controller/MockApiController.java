@@ -6,54 +6,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 /**
- * 테스트용 Mock API 컨트롤러
- * - 외부 뉴스 API 시뮬레이션
- * - GIMS 내부 공통코드 API 시뮬레이션
- * dev 프로파일에서만 활성화
+ * Mock API 컨트롤러 — GIMS 내부 시스템 시뮬레이션
+ * - 공통코드 API (LOOKUP용)
+ * - API 키 목록 (인증키 조회용)
  */
 @RestController
 @RequestMapping("/mock")
 @Slf4j
 public class MockApiController {
-
-    /**
-     * Mock 뉴스 API — 외부 API 시뮬레이션
-     */
-    @GetMapping("/news")
-    public Map<String, Object> getNews(
-            @RequestParam(defaultValue = "20260323") String date,
-            @RequestParam(defaultValue = "1") int page) {
-
-        log.info("Mock 뉴스 API 호출: date={}, page={}", date, page);
-
-        List<Map<String, Object>> items = new ArrayList<>();
-        String[][] newsData = {
-                {"지하수 관측소 신규 설치 계획 발표", "https://www.chosun.com/article/101", "2026-03-23"},
-                {"충청권 지하수 수위 하락 경고", "https://www.daejonilbo.com/news/202", "2026-03-23"},
-                {"전국 지하수 관측망 확대 추진", "https://news.kbs.co.kr/news/view/303", "2026-03-22"},
-                {"지하수 오염 방지 대책 마련", "https://www.hani.co.kr/arti/society/404", "2026-03-22"},
-                {"가뭄 대비 지하수 비상 급수 체계 구축", "https://www.donga.com/news/Society/505", "2026-03-21"},
-                {"지역 상수도 지하수 의존도 조사 결과", "https://www.khan.co.kr/national/606", "2026-03-21"},
-                {"지하수법 개정안 국회 통과", "https://www.seoul.co.kr/news/707", "2026-03-20"},
-                {"관측소 장비 현대화 사업 착수", "https://news.sbs.co.kr/news/808", "2026-03-20"},
-                {"농업용 지하수 이용 효율화 방안", "https://www.mk.co.kr/economy/909", "2026-03-19"},
-                {"지하수 자원 보전 국제 심포지엄 개최", "https://www.yna.co.kr/view/1010", "2026-03-19"},
-        };
-
-        for (String[] row : newsData) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("title", row[0]);
-            item.put("orignl_url", row[1]);
-            item.put("reg_date", row[2]);
-            items.add(item);
-        }
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("resultCode", "00");
-        response.put("totalCount", items.size());
-        response.put("items", items);
-        return response;
-    }
 
     /**
      * Mock 공통코드 API — GIMS 내부 API 시뮬레이션
@@ -162,76 +122,70 @@ public class MockApiController {
         return response;
     }
 
+    // ===================== 안양시 이용량 Mock =====================
+
     /**
-     * Mock 나라장터 입찰공고 API — data.go.kr 표준 응답 포맷
-     * 실제: http://apis.data.go.kr/1230000/ad/BidPublicInfoService/{operation}
+     * Mock 안양시 시설정보 API
      */
-    @GetMapping("/nara-market/{operation}")
-    public Map<String, Object> getNaraMarketBid(
-            @PathVariable String operation,
-            @RequestParam(defaultValue = "10") int numOfRows,
-            @RequestParam(defaultValue = "1") int pageNo,
-            @RequestParam(required = false) String ServiceKey,
-            @RequestParam(required = false) String inqryDiv,
-            @RequestParam(required = false) String inqryBgnDt,
-            @RequestParam(required = false) String inqryEndDt) {
+    @GetMapping("/anyang/fac")
+    public Map<String, Object> getAnyangFac() {
+        log.info("Mock 안양 시설정보 API 호출");
 
-        log.info("Mock 나라장터 API 호출: operation={}, page={}, rows={}", operation, pageNo, numOfRows);
-
-        // 오퍼레이션 → type 매핑
-        String type;
-        switch (operation) {
-            case "getBidPblancListInfoCnstwk": type = "공사"; break;
-            case "getBidPblancListInfoServc": type = "용역"; break;
-            case "getBidPblancListInfoThng": type = "물품"; break;
-            case "getBidPblancListInfoFrgcpt": type = "외자"; break;
-            default: type = "기타"; break;
-        }
-
-        // Mock 데이터 생성
         List<Map<String, Object>> items = new ArrayList<>();
-        String[][] bidData = {
-                {"20250700001-00", type + " 지하수 관측장비 교체 공고", "한국수자원공사", "2025-08-15 17:00", "https://www.g2b.go.kr/bid/20250700001"},
-                {"20250700002-00", type + " 관측소 유지보수 용역 입찰", "환경부", "2025-08-20 17:00", "https://www.g2b.go.kr/bid/20250700002"},
-                {"20250700003-01", type + " 수질 분석 장비 구매", "국립환경과학원", "2025-08-25 17:00", "https://www.g2b.go.kr/bid/20250700003"},
-                {"20250700004-00", type + " 지하수 오염 모니터링 시스템 구축", "대전광역시", "2025-09-01 17:00", "https://www.g2b.go.kr/bid/20250700004"},
-                {"20250700005-00", type + " 관정 정비 및 복구 공사", "충청남도", "2025-09-05 17:00", "https://www.g2b.go.kr/bid/20250700005"},
+        Object[][] facData = {
+                {"1", "하이텍", "1041-001-040-0800-90-2", "삼원프라자호텔", "2", "2026-03-20 10:00:00", "0", "NL1122800284", "37.398216", "126.922561", "22-330073", "32", "0", null, "2026-03-24 08:00:00", "안양 1동 장내로 139번길 7", "450-06-1239072110", "86-470004-845212-2"},
+                {"1", "하이텍", "1041-001-040-0800-91-3", "안양시청", "2", "2026-03-18 09:30:00", "0", "NL1122800301", "37.394015", "126.956764", "22-330088", "50", "0", null, "2026-03-24 07:55:00", "안양 만안구 안양로 345", "450-06-1239072222", "86-470004-845213-3"},
+                {"1", "하이텍", "1041-001-040-0800-92-4", "범계역 지하상가", "2", "2026-03-15 11:00:00", "0", "NL1122800315", "37.389765", "126.951234", "22-330092", "40", "0", null, "2026-03-24 08:10:00", "동안구 시민대로 180", "450-06-1239072333", "86-470004-845214-4"},
+                {"1", "하이텍", "1041-001-040-0800-93-5", "평촌학원가 빌딩", "2", "2026-03-10 14:00:00", "0", "NL1122800322", "37.392100", "126.958800", "22-330101", "25", "0", null, "2026-03-24 08:05:00", "동안구 평촌대로 223번길 12", "450-06-1239072444", "86-470004-845215-5"},
+                {"1", "하이텍", "1041-001-040-0800-94-6", "안양역 환승주차장", "2", "2026-03-05 08:00:00", "0", "NL1122800330", "37.401234", "126.923456", "22-330115", "32", "0", null, "2026-03-24 07:50:00", "만안구 안양역로 15", "450-06-1239072555", "86-470004-845216-6"},
         };
 
-        for (String[] row : bidData) {
+        String[] keys = {"company_cd", "company_nm", "account_no", "account_nm", "status_device", "connect_dtm", "state_display", "device_sn", "gps_latitude", "gps_longitude", "meter_sn", "caliber_cd", "mt_down", "mt_down_dtm", "mt_last_dtm", "full_addr", "cdma_no", "nwk"};
+        for (Object[] row : facData) {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("bidNtceNo", row[0]);
-            item.put("bidNtceNm", row[1]);
-            item.put("dminsttNm", row[2]);
-            item.put("bidClseDt", row[3]);
-            item.put("bidNtceDtlUrl", row[4]);
-            item.put("ntceInsttNm", row[2]);
-            item.put("ntceKindNm", "일반경쟁");
-            item.put("cntrctMthdNm", "총액");
-            item.put("presmptPrce", String.valueOf(50000000 + new Random().nextInt(450000000)));
-            item.put("rgstDt", "2025/07/01 09:00:00");
+            for (int j = 0; j < keys.length; j++) {
+                item.put(keys[j], row[j]);
+            }
             items.add(item);
         }
 
-        // data.go.kr 표준 응답 구조
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("items", items);
-        body.put("numOfRows", numOfRows);
-        body.put("pageNo", pageNo);
-        body.put("totalCount", items.size());
-
-        Map<String, Object> header = new LinkedHashMap<>();
-        header.put("resultCode", "00");
-        header.put("resultMsg", "NORMAL SERVICE.");
-
-        Map<String, Object> responseBody = new LinkedHashMap<>();
-        responseBody.put("header", header);
-        responseBody.put("body", body);
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("response", responseBody);
-        return response;
+        return Map.of("data", items);
     }
+
+    /**
+     * Mock 안양시 이용량 API
+     */
+    @GetMapping("/anyang/data")
+    public Map<String, Object> getAnyangData() {
+        log.info("Mock 안양 이용량 API 호출");
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        Object[][] dataRows = {
+                {"1041-001-040-0800-90-2", "2026-03-24 08:00:00", 4869, 0, "0", 35, "0", "0", "0", "0", "0", "2026-03-24 08:05:00", 141707364, 4869, 2},
+                {"1041-001-040-0800-90-2", "2026-03-23 08:00:00", 4867, 0, "0", 36, "0", "0", "0", "0", "0", "2026-03-23 08:04:00", 141707200, 4867, 3},
+                {"1041-001-040-0800-91-3", "2026-03-24 07:55:00", 12050, 0, "0", 40, "0", "0", "0", "0", "0", "2026-03-24 08:00:00", 141707365, 12050, 15},
+                {"1041-001-040-0800-91-3", "2026-03-23 08:00:00", 12035, 0, "0", 41, "0", "0", "0", "0", "0", "2026-03-23 08:03:00", 141707201, 12035, 12},
+                {"1041-001-040-0800-92-4", "2026-03-24 08:10:00", 8320, 0, "0", 32, "0", "0", "0", "0", "0", "2026-03-24 08:15:00", 141707366, 8320, 5},
+                {"1041-001-040-0800-93-5", "2026-03-24 08:05:00", 2100, 0, "0", 45, "0", "0", "0", "0", "0", "2026-03-24 08:10:00", 141707367, 2100, 1},
+                {"1041-001-040-0800-94-6", "2026-03-24 07:50:00", 6540, 0, "0", 28, "0", "0", "0", "0", "0", "2026-03-24 07:55:00", 141707368, 6540, 8},
+                {"1041-001-040-0800-92-4", "2026-03-23 08:00:00", 8315, 0, "0", 33, "0", "0", "0", "0", "0", "2026-03-23 08:05:00", 141707202, 8315, 4},
+                {"1041-001-040-0800-93-5", "2026-03-23 08:00:00", 2099, 0, "0", 46, "0", "0", "0", "0", "0", "2026-03-23 08:04:00", 141707203, 2099, 1},
+                {"1041-001-040-0800-94-6", "2026-03-23 08:00:00", 6532, 0, "0", 29, "0", "0", "0", "0", "0", "2026-03-23 08:03:00", 141707204, 6532, 7},
+        };
+
+        String[] keys = {"account_no", "meter_dtm", "value", "digits", "leak_state", "term_batt", "m_low_batt", "m_leak", "m_over_load", "m_reverse", "m_not_use", "db_in_dtm", "db_in_seq", "last_meter_value", "useqty"};
+        for (Object[] row : dataRows) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            for (int j = 0; j < keys.length; j++) {
+                item.put(keys[j], row[j]);
+            }
+            items.add(item);
+        }
+
+        return Map.of("data", items);
+    }
+
+    // ===================== GIMS 내부 시스템 Mock =====================
 
     /**
      * Mock API 키 목록 — GIMS 내부 API 시뮬레이션
@@ -245,7 +199,7 @@ public class MockApiController {
         Object[][] keyData = {
                 {1, "네이버 검색 Client-ID", "6ZMOvG6WUSN5P7l2D65H", "Y", "2026-12-31", "정상", 283},
                 {2, "네이버 검색 Client-Secret", "cK2B2OMt5E", "Y", "2026-12-31", "정상", 283},
-                {3, "공공데이터포털 인증키", "qaj%2F1MknxOAoegbjhf6jCDH8pSH4Pt8Je88U572wPHObU85DnuxJ%2FvmoBeNlry6ELaUkjgmXHz%2BEPWst7gZcOw%3D%3D", "Y", "2026-12-31", "정상", 283},
+                {3, "공공데이터포털 인증키", "qaj/1MknxOAoegbjhf6jCDH8pSH4Pt8Je88U572wPHObU85DnuxJ/vmoBeNlry6ELaUkjgmXHz+EPWst7gZcOw==", "Y", "2026-12-31", "정상", 283},
         };
 
         for (Object[] row : keyData) {

@@ -26,7 +26,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   const [datasources, setDatasources] = useState<DatasourceSimple[]>([]);
   const [selectedDatasourceId, setSelectedDatasourceId] = useState<string>(endpoint.targetDatasourceId || '');
 
-  const [tables, setTables] = useState<{ tableName: string; tableType: string }[]>([]);
+  const [tables, setTables] = useState<{ tableName: string; tableType: string; remarks?: string | null }[]>([]);
   const [targetTable, setTargetTable] = useState<string>(endpoint.targetTableName || '');
   const [targetColumns, setTargetColumns] = useState<ColumnSearchResult[]>([]);
 
@@ -129,6 +129,26 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
       const result = await testApi.call(endpoint.id);
       setTestResult(result);
       if (result.dataRootPath) setSelectedRoot(result.dataRootPath);
+
+      // 응답 필드와 기존 매핑 머지 — 매핑 안 된 필드도 행으로 추가
+      if (result.responseTree && (result.dataRootPath || selectedRoot)) {
+        const root = result.dataRootPath || selectedRoot;
+        const allFields = findFieldsFromTree(result.responseTree, root);
+        const existingPaths = new Set(mappingRows.map(r => r.sourceFieldPath));
+        const newRows = allFields
+          .filter(f => !existingPaths.has(f.path))
+          .map(f => ({
+            sourceFieldPath: f.path,
+            targetColumnName: '',
+            isConflictKey: false,
+            transformType: 'NONE' as TransformType,
+            transformConfig: '',
+            excluded: false,
+          }));
+        if (newRows.length > 0) {
+          setMappingRows(prev => [...prev, ...newRows]);
+        }
+      }
     } catch (e: any) {
       alert('테스트 호출 실패: ' + (e.response?.data?.message || e.message));
     } finally {
@@ -136,12 +156,22 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     }
   };
 
+  // endpoint 기존값 베이스 (부분 업데이트 시 다른 필드가 null로 덮어씌워지는 것 방지)
+  const baseUpdateFields = () => ({
+    apiName: endpoint.apiName, url: endpoint.url,
+    httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+    dataRootPath: endpoint.dataRootPath || undefined,
+    targetDatasourceId: endpoint.targetDatasourceId || undefined,
+    targetTableName: endpoint.targetTableName || undefined,
+    upsertEnabled: endpoint.upsertEnabled,
+    description: endpoint.description || '',
+  });
+
   const handleSelectRoot = async (path: string) => {
     setSelectedRoot(path);
     try {
       await endpointApi.update(endpoint.id, {
-        apiName: endpoint.apiName, url: endpoint.url,
-        httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+        ...baseUpdateFields(),
         dataRootPath: path,
       });
       if (testResult?.responseTree) {
@@ -168,8 +198,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     setTargetColumns([]);
     try {
       await endpointApi.update(endpoint.id, {
-        apiName: endpoint.apiName, url: endpoint.url,
-        httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+        ...baseUpdateFields(),
         targetDatasourceId: dsId || undefined,
         targetTableName: '',
       });
@@ -183,8 +212,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     setTargetTable(tableName);
     try {
       await endpointApi.update(endpoint.id, {
-        apiName: endpoint.apiName, url: endpoint.url,
-        httpMethod: endpoint.httpMethod, authType: endpoint.authType,
+        ...baseUpdateFields(),
         targetDatasourceId: selectedDatasourceId || undefined,
         targetTableName: tableName,
       });
@@ -391,11 +419,8 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                 onChange={e => handleTargetTableChange(e.target.value)}
                 disabled={!selectedDatasourceId}>
                 <option value="">-- 테이블 선택 --</option>
-                {tables.map(t => <option key={t.tableName} value={t.tableName}>{t.tableName}</option>)}
+                {tables.map(t => <option key={t.tableName} value={t.tableName}>{t.tableName}{t.remarks ? ` (${t.remarks})` : ''}</option>)}
               </select>
-              <input className="form-input" value={targetTable} style={{ maxWidth: '200px' }}
-                onChange={e => setTargetTable(e.target.value)}
-                placeholder="또는 직접 입력" />
               <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <input type="checkbox" checked={endpoint.upsertEnabled}
                   onChange={async (e) => {

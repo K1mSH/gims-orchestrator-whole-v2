@@ -18,8 +18,8 @@ public class ApiEndpointDto {
     @Builder
     public static class CreateRequest {
         @NotBlank private String apiName;
-        @NotBlank private String url;
-        @NotBlank private String httpMethod;
+        private String url;
+        private String httpMethod;
         private String contentType;
         private String headers;
         private ApiEndpoint.AuthType authType;
@@ -31,6 +31,7 @@ public class ApiEndpointDto {
         private String targetDatasourceId;
         private String targetTableName;
         private Boolean upsertEnabled;
+        private String executorType;
     }
 
     @Getter
@@ -52,6 +53,7 @@ public class ApiEndpointDto {
         private Boolean upsertEnabled;
         private String description;
         private Boolean isActive;
+        private String executorType;
     }
 
     @Getter
@@ -68,6 +70,7 @@ public class ApiEndpointDto {
         private String targetTableName;
         private Boolean isActive;
         private ApiEndpoint.Zone zone;
+        private String executorType;
         private boolean hasMappings;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -82,6 +85,7 @@ public class ApiEndpointDto {
                     .targetTableName(e.getTargetTableName())
                     .isActive(e.getIsActive())
                     .zone(e.getZone())
+                    .executorType(e.getExecutorType())
                     .hasMappings(e.getFieldMappings() != null && !e.getFieldMappings().isEmpty())
                     .createdAt(e.getCreatedAt())
                     .updatedAt(e.getUpdatedAt())
@@ -110,6 +114,7 @@ public class ApiEndpointDto {
         private String description;
         private Boolean isActive;
         private ApiEndpoint.Zone zone;
+        private String executorType;
         private List<ParamResponse> params;
         private List<FieldMappingResponse> fieldMappings;
         private LocalDateTime createdAt;
@@ -132,6 +137,7 @@ public class ApiEndpointDto {
                     .description(e.getDescription())
                     .isActive(e.getIsActive())
                     .zone(e.getZone())
+                    .executorType(e.getExecutorType())
                     .params(e.getParams().stream().map(ParamResponse::from).collect(Collectors.toList()))
                     .fieldMappings(e.getFieldMappings().stream().map(FieldMappingResponse::from).collect(Collectors.toList()))
                     .createdAt(e.getCreatedAt())

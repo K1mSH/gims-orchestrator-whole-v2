@@ -4,6 +4,7 @@ import com.infolink.collector.entity.ApiExecutionHistory;
 import com.infolink.collector.dto.ApiEndpointDto.*;
 import com.infolink.collector.dto.ApiExecutionHistoryDto;
 import com.infolink.collector.dto.TestCallDto;
+import com.infolink.collector.executor.CustomExecutorRegistry;
 import com.infolink.collector.service.ApiEndpointService;
 import com.infolink.collector.service.ApiExecutionService;
 import com.infolink.collector.service.ApiTestService;
@@ -28,6 +29,7 @@ public class ApiEndpointController {
     private final ApiEndpointService endpointService;
     private final ApiTestService testService;
     private final ApiExecutionService executionService;
+    private final CustomExecutorRegistry customExecutorRegistry;
     private final RestTemplate restTemplate;
 
     @Value("${lookup.api-key-url:}")
@@ -113,5 +115,12 @@ public class ApiEndpointController {
             log.error("API 키 목록 조회 실패: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body("{\"error\":\"" + e.getMessage() + "\"}");
         }
+    }
+
+    // --- 커스텀 실행기 목록 ---
+
+    @GetMapping("/custom-executors")
+    public List<Map<String, String>> getCustomExecutors() {
+        return customExecutorRegistry.getAll();
     }
 }

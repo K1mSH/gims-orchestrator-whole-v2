@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { endpointApi, testApi, paramApi, mappingApi, apiKeyApi, ApiKeyItem, TestCallResponse, TreeNode, InlineTestRequest } from '@/lib/collectorApi';
+import { endpointApi, testApi, paramApi, mappingApi, apiKeyApi, customExecutorApi, ApiKeyItem, CustomExecutorItem, TestCallResponse, TreeNode, InlineTestRequest } from '@/lib/collectorApi';
 import { datasourceApi } from '@/lib/api';
 import {
   ApiEndpointListItem,
@@ -66,6 +66,10 @@ export default function ApiCollectPage() {
   // 파라미터
   const [params, setParams] = useState<ApiParamRequest[]>([]);
 
+  // 실행 방식
+  const [executorType, setExecutorType] = useState<string>('');  // '' = 범용
+  const [customExecutors, setCustomExecutors] = useState<CustomExecutorItem[]>([]);
+
   // API 키 목록 (GIMS 본체)
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
   const [apiKeysLoaded, setApiKeysLoaded] = useState(false);
@@ -120,11 +124,12 @@ export default function ApiCollectPage() {
     } catch { /* 실패해도 무시 — 수동 입력 가능 */ }
   }, [apiKeysLoaded]);
 
-  // Datasource 목록 로드
+  // Datasource 목록 + 커스텀 실행기 로드
   const refreshDatasources = useCallback(() => {
     datasourceApi.getSimple().then(setDatasources).catch(() => {});
   }, []);
   useEffect(() => { refreshDatasources(); }, [refreshDatasources]);
+  useEffect(() => { customExecutorApi.getAll().then(setCustomExecutors).catch(() => {}); }, []);
 
   // Datasource 선택 시 테이블 목록 로드
   const refreshTables = useCallback(() => {
@@ -147,6 +152,7 @@ export default function ApiCollectPage() {
 
   const resetForm = () => {
     setForm({ apiName: '', url: '', httpMethod: 'GET', authType: 'NONE', zone: 'DMZ' });
+    setExecutorType('');
     setParams([]);
     setTestResult(null);
     setSelectedDataRoot('');
@@ -220,23 +226,29 @@ export default function ApiCollectPage() {
   };
 
   // 등록 (validation + 일괄 저장)
+  const isCustom = !!executorType;
+
   const handleCreate = async () => {
     // 1. 기본정보
     if (!form.apiName.trim()) { alert('API명을 입력하세요.'); return; }
-    if (!form.url.trim()) { alert('URL을 입력하세요.'); return; }
-    // 2. 테스트 호출 성공
-    if (!testResult?.success) { alert('테스트 호출을 먼저 실행하세요.'); return; }
-    // 3. 데이터 루트
-    if (!selectedDataRoot) { alert('데이터 루트를 선택하세요.'); return; }
-    // 4. 타겟 설정
-    if (!selectedDatasourceId) { alert('Target Datasource를 선택하세요.'); return; }
-    if (!targetTable.trim()) { alert('Target 테이블을 선택하세요.'); return; }
-    // 5. 매핑
-    const activeRows = mappingRows.filter(r => r.targetColumnName);
-    const activeDerived = derivedRows.filter(r => r.targetColumnName);
-    if (activeRows.length === 0 && activeDerived.length === 0) { alert('필드 매핑을 1개 이상 설정하세요.'); return; }
-    const hasConflictKey = [...activeRows, ...activeDerived].some(r => r.isConflictKey);
-    if (upsertEnabled && !hasConflictKey) { alert('UPSERT 사용 시 중복키를 1개 이상 지정하세요.'); return; }
+
+    if (!isCustom) {
+      // 범용: URL + 테스트/매핑 검증
+      if (!form.url.trim()) { alert('URL을 입력하세요.'); return; }
+      // 2. 테스트 호출 성공
+      if (!testResult?.success) { alert('테스트 호출을 먼저 실행하세요.'); return; }
+      // 3. 데이터 루트
+      if (!selectedDataRoot) { alert('데이터 루트를 선택하세요.'); return; }
+      // 4. 타겟 설정
+      if (!selectedDatasourceId) { alert('Target Datasource를 선택하세요.'); return; }
+      if (!targetTable.trim()) { alert('Target 테이블을 선택하세요.'); return; }
+      // 5. 매핑
+      const activeRows = mappingRows.filter(r => r.targetColumnName);
+      const activeDerived = derivedRows.filter(r => r.targetColumnName);
+      if (activeRows.length === 0 && activeDerived.length === 0) { alert('필드 매핑을 1개 이상 설정하세요.'); return; }
+      const hasConflictKey = [...activeRows, ...activeDerived].some(r => r.isConflictKey);
+      if (upsertEnabled && !hasConflictKey) { alert('UPSERT 사용 시 중복키를 1개 이상 지정하세요.'); return; }
+    }
 
     try {
       setSaving(true);
@@ -244,10 +256,11 @@ export default function ApiCollectPage() {
       // Step 1: endpoint 생성 (기본정보 + 적재설정 한번에)
       const submitForm = {
         ...form,
-        dataRootPath: selectedDataRoot,
-        targetDatasourceId: selectedDatasourceId,
-        targetTableName: targetTable,
-        upsertEnabled,
+        executorType: executorType || undefined,
+        dataRootPath: isCustom ? undefined : selectedDataRoot,
+        targetDatasourceId: isCustom ? (selectedDatasourceId || undefined) : selectedDatasourceId,
+        targetTableName: isCustom ? undefined : targetTable,
+        upsertEnabled: isCustom ? undefined : upsertEnabled,
       };
       const created = await endpointApi.create(submitForm);
       const endpointId = created.id;
@@ -258,35 +271,39 @@ export default function ApiCollectPage() {
           await paramApi.save(endpointId, params.filter(p => p.paramName));
         }
 
-        // Step 3: mappings 저장 (1:1 + 파생)
-        const mappingRequests: ApiFieldMappingRequest[] = [
-          ...activeRows.map((r, i) => ({
-            sourceFieldPath: r.sourceFieldPath,
-            targetColumnName: r.targetColumnName,
-            isConflictKey: r.isConflictKey,
-            transformType: r.transformType,
-            transformConfig: r.transformConfig || undefined,
-            displayOrder: i,
-            isDerived: false,
-          })),
-          ...activeDerived.map((r, i) => ({
-            sourceFieldPath: r.sourceFieldPath,
-            targetColumnName: r.targetColumnName,
-            isConflictKey: r.isConflictKey,
-            transformType: r.transformType as TransformType,
-            displayOrder: activeRows.length + i,
-            isDerived: true,
-            extractPattern: r.extractPattern || undefined,
-            extractGroup: r.extractGroup,
-            lookupParam: r.lookupParam || undefined,
-            lookupKeyField: r.lookupKeyField || undefined,
-            lookupValueField: r.lookupValueField || undefined,
-            lookupDataRootPath: r.lookupDataRootPath || undefined,
-            lookupMatchType: r.lookupMatchType || 'EXACT',
-            defaultValue: r.defaultValue || undefined,
-          })),
-        ];
-        await mappingApi.save(endpointId, mappingRequests);
+        // Step 3: mappings 저장 (범용만)
+        if (!isCustom) {
+          const activeRows = mappingRows.filter(r => r.targetColumnName);
+          const activeDerived = derivedRows.filter(r => r.targetColumnName);
+          const mappingRequests: ApiFieldMappingRequest[] = [
+            ...activeRows.map((r, i) => ({
+              sourceFieldPath: r.sourceFieldPath,
+              targetColumnName: r.targetColumnName,
+              isConflictKey: r.isConflictKey,
+              transformType: r.transformType,
+              transformConfig: r.transformConfig || undefined,
+              displayOrder: i,
+              isDerived: false,
+            })),
+            ...activeDerived.map((r, i) => ({
+              sourceFieldPath: r.sourceFieldPath,
+              targetColumnName: r.targetColumnName,
+              isConflictKey: r.isConflictKey,
+              transformType: r.transformType as TransformType,
+              displayOrder: activeRows.length + i,
+              isDerived: true,
+              extractPattern: r.extractPattern || undefined,
+              extractGroup: r.extractGroup,
+              lookupParam: r.lookupParam || undefined,
+              lookupKeyField: r.lookupKeyField || undefined,
+              lookupValueField: r.lookupValueField || undefined,
+              lookupDataRootPath: r.lookupDataRootPath || undefined,
+              lookupMatchType: r.lookupMatchType || 'EXACT',
+              defaultValue: r.defaultValue || undefined,
+            })),
+          ];
+          await mappingApi.save(endpointId, mappingRequests);
+        }
 
         alert('등록 완료');
         resetForm();
@@ -352,6 +369,66 @@ export default function ApiCollectPage() {
       {showCreateForm && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="card-header"><h3 className="card-title">새 API 등록</h3></div>
+
+          {/* 등록 유형 선택 */}
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gray-600)' }}>등록 유형</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                <input type="radio" checked={!isCustom} onChange={() => setExecutorType('')} /> 일반 (범용 매핑)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                <input type="radio" checked={isCustom} onChange={() => setExecutorType(customExecutors[0]?.id || '')} /> 프리셋 (커스텀 실행기)
+              </label>
+            </div>
+          </div>
+
+          {/* 프리셋 선택 시 간소화된 폼 */}
+          {isCustom ? (
+            <div>
+              <div style={sectionStyle}>
+                <div style={sectionLabel}>프리셋 설정</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <div style={fieldLabel}>실행기</div>
+                    <select className="form-select" value={executorType}
+                      onChange={e => setExecutorType(e.target.value)}>
+                      {customExecutors.map(ce => (
+                        <option key={ce.id} value={ce.id}>{ce.displayName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={fieldLabel}>API명</div>
+                    <input className="form-input" value={form.apiName}
+                      onChange={e => setForm({ ...form, apiName: e.target.value })}
+                      placeholder="예: 안양시 이용량" />
+                  </div>
+                  <div>
+                    <div style={fieldLabel}>Target Datasource</div>
+                    <select className="form-select" value={selectedDatasourceId}
+                      onChange={e => setSelectedDatasourceId(e.target.value)}>
+                      <option value="">-- 선택 --</option>
+                      {datasources.map(ds => (
+                        <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName || ds.datasourceId}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div style={{ ...sectionStyle, background: '#fffbeb', borderLeft: '3px solid #f59e0b' }}>
+                <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
+                  API 호출, 매핑, 적재 로직은 실행기 내부에서 처리됩니다.
+                </div>
+              </div>
+              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn" onClick={handleCreate} disabled={saving}
+                  style={{ background: 'var(--success)', color: 'white', padding: '0.5rem 1.5rem' }}>
+                  {saving ? '등록 중...' : '등록'}
+                </button>
+              </div>
+            </div>
+          ) : (<>
 
           {/* 요청 설정 */}
           <div style={sectionStyle}>
@@ -943,13 +1020,14 @@ export default function ApiCollectPage() {
             </div>
           )}
 
-          {/* 등록 버튼 */}
+          {/* 등록 버튼 (일반) */}
           <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button className="btn" onClick={handleCreate} disabled={saving}
               style={{ background: 'var(--success)', color: 'white', padding: '0.5rem 1.5rem' }}>
               {saving ? '등록 중...' : '등록'}
             </button>
           </div>
+          </>)}
         </div>
       )}
 

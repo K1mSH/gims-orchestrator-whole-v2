@@ -85,6 +85,10 @@ public class ApiEndpoint {
     @Comment("배포 존 (DMZ/INTERNAL)")
     private Zone zone;
 
+    @Column(name = "executor_type", length = 50)
+    @Comment("커스텀 실행기 ID (null=범용 매핑)")
+    private String executorType;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @Comment("생성 시각")

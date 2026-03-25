@@ -38,8 +38,8 @@ public class ApiEndpointService {
     public DetailResponse create(CreateRequest request) {
         ApiEndpoint endpoint = ApiEndpoint.builder()
                 .apiName(request.getApiName())
-                .url(request.getUrl())
-                .httpMethod(request.getHttpMethod())
+                .url(request.getUrl() != null ? request.getUrl() : "")
+                .httpMethod(request.getHttpMethod() != null ? request.getHttpMethod() : "GET")
                 .contentType(request.getContentType())
                 .headers(request.getHeaders())
                 .authType(request.getAuthType() != null ? request.getAuthType() : ApiEndpoint.AuthType.NONE)
@@ -50,6 +50,7 @@ public class ApiEndpointService {
                 .targetDatasourceId(request.getTargetDatasourceId())
                 .targetTableName(request.getTargetTableName())
                 .upsertEnabled(request.getUpsertEnabled() != null ? request.getUpsertEnabled() : false)
+                .executorType(request.getExecutorType())
                 .build();
 
         return DetailResponse.from(endpointRepository.save(endpoint));
@@ -73,6 +74,7 @@ public class ApiEndpointService {
         if (request.getUpsertEnabled() != null) endpoint.setUpsertEnabled(request.getUpsertEnabled());
         endpoint.setDescription(request.getDescription());
         if (request.getIsActive() != null) endpoint.setIsActive(request.getIsActive());
+        if (request.getExecutorType() != null) endpoint.setExecutorType(request.getExecutorType());
 
         return DetailResponse.from(endpointRepository.save(endpoint));
     }

@@ -4,6 +4,10 @@
 - [feedback_run_without_jar.md](feedback_run_without_jar.md) - JAR 대신 gradlew bootRun으로 실행
 - [feedback_module_specific_stays.md](feedback_module_specific_stays.md) - 모듈 전용 로직은 common으로 올리지 않기
 - [feedback_memory_git_sync.md](feedback_memory_git_sync.md) - 메모리 업데이트 시 docs/claude-memory/에 동기화 + 커밋
+- [feedback_commit_docs.md](feedback_commit_docs.md) - 문서 작업 후 커밋 여부 능동적으로 제안하기
+- [feedback_proxy_service.md](feedback_proxy_service.md) - 서비스 기동 시 프록시도 함께 올리기
+- [feedback_devlog_format.md](feedback_devlog_format.md) - dev_logs: 오전/오후/내일할일/파트별 진행도 포함
+- [project_oracle_target.md](project_oracle_target.md) - Internal Agent target DB를 Oracle(도커)로 전환 필요
 
 ## 작업 규칙
 

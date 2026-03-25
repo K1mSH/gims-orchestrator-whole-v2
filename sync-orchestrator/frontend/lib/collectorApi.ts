@@ -128,6 +128,18 @@ export const apiKeyApi = {
   },
 };
 
+// --- Custom Executors ---
+
+export interface CustomExecutorItem {
+  id: string;
+  displayName: string;
+}
+
+export const customExecutorApi = {
+  getAll: () =>
+    collectorApi.get<CustomExecutorItem[]>('/endpoints/custom-executors').then(r => r.data),
+};
+
 // --- Schedules ---
 
 export const scheduleApi = {

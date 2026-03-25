@@ -98,7 +98,7 @@ public class ScheduleExecutor {
                     Object filtersObj = options.get("filters");
                     if (filtersObj instanceof java.util.List) {
                         executionService.triggerExecution(agentId, null, null,
-                                (java.util.List<java.util.Map<String, Object>>) filtersObj, "SCHEDULE");
+                                 (java.util.List<java.util.Map<String, Object>>) filtersObj, "SCHEDULE");
                         log.info("스케줄 실행 시작 (필터 포함): agent={}", agentCode);
                         return;
                     }

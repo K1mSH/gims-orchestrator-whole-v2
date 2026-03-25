@@ -46,6 +46,14 @@ export default function ApiCollectDetailPage() {
   }
 
   const handleRun = async () => {
+    if (!canRun) {
+      const missing = [];
+      if (!hasDataRoot) missing.push('데이터 루트');
+      if (!endpoint.targetTableName) missing.push('적재 테이블');
+      if (!hasMappings) missing.push('필드 매핑');
+      alert(`실행할 수 없습니다.\n미설정 항목: ${missing.join(', ')}`);
+      return;
+    }
     if (!confirm('수동 실행하시겠습니까?')) return;
     try {
       setRunning(true);
@@ -61,10 +69,11 @@ export default function ApiCollectDetailPage() {
   };
 
   // Step Lock 판별
+  const isCustom = !!endpoint.executorType;
   const hasParams = endpoint.params.length > 0;
   const hasDataRoot = !!endpoint.dataRootPath;
   const hasMappings = endpoint.fieldMappings.length > 0;
-  const canRun = hasMappings && hasDataRoot && !!endpoint.targetTableName;
+  const canRun = isCustom || (hasMappings && hasDataRoot && !!endpoint.targetTableName);
 
   return (
     <div>
@@ -82,7 +91,14 @@ export default function ApiCollectDetailPage() {
       </div>
 
       {/* 상태 배지 + 수동 실행 */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {isCustom && (
+          <span style={{
+            padding: '2px 8px', borderRadius: '4px', background: '#fef3c7', color: '#92400e',
+          }}>
+            커스텀: {endpoint.executorType}
+          </span>
+        )}
         <span style={{
           padding: '2px 8px', borderRadius: '4px',
           background: hasParams ? '#dcfce7' : '#fef3c7',
@@ -90,6 +106,7 @@ export default function ApiCollectDetailPage() {
         }}>
           파라미터: {hasParams ? `${endpoint.params.length}개` : '미설정'}
         </span>
+        {!isCustom && (<>
         <span style={{
           padding: '2px 8px', borderRadius: '4px',
           background: hasDataRoot ? '#dcfce7' : '#fee2e2',
@@ -104,6 +121,7 @@ export default function ApiCollectDetailPage() {
         }}>
           매핑: {hasMappings ? `${endpoint.fieldMappings.length}개` : '미설정'}
         </span>
+        </>)}
         {endpoint.targetTableName && (
           <span style={{
             padding: '2px 8px', borderRadius: '4px', background: '#dbeafe', color: '#1d4ed8',
@@ -112,8 +130,13 @@ export default function ApiCollectDetailPage() {
           </span>
         )}
         <div style={{ marginLeft: 'auto' }}>
-          <button className="btn btn-sm" onClick={handleRun} disabled={running || !canRun}
-            style={{ background: 'var(--success)', color: 'white', padding: '4px 16px', fontSize: '0.85rem' }}>
+          <button className="btn btn-sm" onClick={handleRun} disabled={running}
+            style={{
+              background: canRun ? 'var(--success)' : 'var(--gray-300)',
+              color: canRun ? 'white' : 'var(--gray-500)',
+              padding: '4px 16px', fontSize: '0.85rem',
+              cursor: running ? 'wait' : 'pointer',
+            }}>
             {running ? '실행 중...' : '수동 실행'}
           </button>
         </div>
@@ -123,9 +146,9 @@ export default function ApiCollectDetailPage() {
       <div style={{ borderBottom: '1px solid var(--gray-200)', marginBottom: '1rem', display: 'flex', gap: '0.25rem' }}>
         <TabButton label="기본정보" active={activeTab === 'info'} onClick={() => setActiveTab('info')} />
         <TabButton label="매핑" active={activeTab === 'mapping'} onClick={() => setActiveTab('mapping')}
-          disabled={false} />
+          disabled={isCustom} disabledReason="커스텀 실행기는 매핑 불필요" />
         <TabButton label="스케줄" active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')}
-          disabled={!hasMappings} disabledReason="매핑 설정 후 이용 가능" />
+          disabled={!isCustom && !hasMappings} disabledReason="매핑 설정 후 이용 가능" />
         <TabButton label="실행 이력" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
       </div>
 

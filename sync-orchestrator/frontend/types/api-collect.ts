@@ -19,6 +19,7 @@ export interface ApiEndpointListItem {
   targetTableName: string | null;
   isActive: boolean;
   zone: CollectorZone;
+  executorType: string | null;
   hasMappings: boolean;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +42,7 @@ export interface ApiEndpointDetail {
   description: string | null;
   isActive: boolean;
   zone: CollectorZone;
+  executorType: string | null;
   params: ApiParam[];
   fieldMappings: ApiFieldMapping[];
   createdAt: string;
@@ -61,6 +63,7 @@ export interface ApiEndpointCreateRequest {
   targetDatasourceId?: string;
   targetTableName?: string;
   upsertEnabled?: boolean;
+  executorType?: string;
 }
 
 export interface ApiEndpointUpdateRequest {
@@ -77,6 +80,7 @@ export interface ApiEndpointUpdateRequest {
   upsertEnabled?: boolean;
   description?: string;
   isActive?: boolean;
+  executorType?: string;
 }
 
 export interface ApiParam {
