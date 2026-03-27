@@ -120,8 +120,45 @@ public class SourceToIfStep implements StepExecutor {
         return "MYSQL".equalsIgnoreCase(dbType) || "MARIADB".equalsIgnoreCase(dbType);
     }
 
+    private static boolean isOracle(String dbType) {
+        return "ORACLE".equalsIgnoreCase(dbType) || "TIBERO".equalsIgnoreCase(dbType);
+    }
+
+    /**
+     * source DB에서 읽은 값을 target DB 타입에 맞게 변환
+     * - java.sql.Time → String (target이 VARCHAR일 때 epoch 변환 방지)
+     * - java.sql.Clob → String
+     */
+    private static Object convertParamForTarget(Object value, String targetDbType) {
+        if (value == null) return null;
+
+        // Time → "HH:mm:ss" 문자열 (모든 target DB 공통 — VARCHAR 호환)
+        if (value instanceof java.sql.Time) {
+            return value.toString(); // java.sql.Time.toString() = "HH:mm:ss"
+        }
+
+        // Clob → String
+        if (value instanceof java.sql.Clob) {
+            try {
+                java.sql.Clob clob = (java.sql.Clob) value;
+                return clob.getSubString(1, (int) clob.length());
+            } catch (Exception e) {
+                return value.toString();
+            }
+        }
+
+        return value;
+    }
+
+    private static String castToText(String column, boolean isMysqlDb, boolean isOracleDb) {
+        if (isMysqlDb) return "CAST(" + column + " AS CHAR)";
+        if (isOracleDb) return "TO_CHAR(" + column + ")";
+        return column + "::text";
+    }
+
     private static String qi(String name, String dbType) {
         if (isMysql(dbType)) return "`" + name + "`";
+        if (isOracle(dbType)) return name;  // Oracle: 인용 없이 (자동 대문자)
         return "\"" + name + "\"";
     }
 
@@ -264,7 +301,7 @@ public class SourceToIfStep implements StepExecutor {
             for (Map<String, Object> record : records) {
                 List<Object> params = new ArrayList<>();
                 for (String column : columns) {
-                    params.add(record.get(column));
+                    params.add(convertParamForTarget(record.get(column), targetDbType));
                 }
 
                 // source_refs 생성: "zone:dsId:tbId:pk" 형식 JSON 배열
@@ -467,13 +504,9 @@ public class SourceToIfStep implements StepExecutor {
      *                  false: 메타 경량 UPDATE (증분 동기화) - updated_at, execution_id만 갱신
      */
     private String buildUpsertSql(String actualTableName, List<String> columns, String dbType, boolean useUpsert) {
-        StringBuilder sb = new StringBuilder();
-
         List<String> ifColumns = columns.stream()
                 .map(String::toLowerCase)
                 .toList();
-
-        String columnList = String.join(", ", ifColumns);
 
         // 충돌 기준: conflictKey 설정 시 해당 컬럼 사용, 없으면 primaryKey 사용
         List<String> pkCols = config.getPrimaryKeyColumnList();
@@ -481,12 +514,23 @@ public class SourceToIfStep implements StepExecutor {
                 ? List.of(config.getConflictKey())
                 : pkCols;
 
+        // 전체 컬럼 (데이터 + 메타)
+        List<String> allColumns = new java.util.ArrayList<>(ifColumns);
+        allColumns.addAll(List.of("source_refs", "link_status", "extracted_at", "updated_at", "execution_id"));
+
+        if (isOracle(dbType) && !conflictCols.isEmpty()) {
+            return buildOracleMergeSql(actualTableName, ifColumns, allColumns, conflictCols, useUpsert);
+        }
+
+        // PG / MySQL: INSERT 기반
+        StringBuilder sb = new StringBuilder();
+        String columnList = String.join(", ", allColumns);
+
         sb.append("INSERT INTO ").append(actualTableName.toLowerCase());
+        sb.append(" (").append(columnList).append(")");
 
-        sb.append(" (").append(columnList).append(", source_refs, link_status, extracted_at, updated_at, execution_id)");
-
-        String placeholders = columns.stream().map(c -> "?").reduce((a, b) -> a + ", " + b).orElse("");
-        sb.append(" VALUES (").append(placeholders).append(", ?, ?, ?, ?, ?)");
+        String placeholders = allColumns.stream().map(c -> "?").reduce((a, b) -> a + ", " + b).orElse("");
+        sb.append(" VALUES (").append(placeholders).append(")");
 
         if (!conflictCols.isEmpty()) {
             String conflictColList = conflictCols.stream()
@@ -498,7 +542,6 @@ public class SourceToIfStep implements StepExecutor {
                 sb.append(" ON DUPLICATE KEY UPDATE ");
 
                 if (useUpsert) {
-                    // MySQL full UPSERT: 모든 데이터 컬럼 갱신
                     List<String> updateCols = ifColumns.stream()
                             .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
@@ -507,7 +550,6 @@ public class SourceToIfStep implements StepExecutor {
                     for (String col : updateCols) {
                         updateParts.add(col + " = VALUES(" + col + ")");
                     }
-                    // conflictKey가 source_refs가 아닌 경우에만 source_refs 갱신
                     if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
                         updateParts.add("source_refs = VALUES(source_refs)");
                     }
@@ -517,7 +559,6 @@ public class SourceToIfStep implements StepExecutor {
 
                     sb.append(String.join(", ", updateParts));
                 } else {
-                    // MySQL 증분: 메타 컬럼만 경량 UPDATE (데이터 보존)
                     sb.append("updated_at = VALUES(updated_at), execution_id = VALUES(execution_id)");
                 }
             } else {
@@ -525,7 +566,6 @@ public class SourceToIfStep implements StepExecutor {
                 sb.append(" ON CONFLICT (").append(conflictColList).append(") DO UPDATE SET ");
 
                 if (useUpsert) {
-                    // PostgreSQL full UPSERT: 모든 데이터 컬럼 갱신
                     List<String> updateCols = ifColumns.stream()
                             .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
@@ -534,7 +574,6 @@ public class SourceToIfStep implements StepExecutor {
                     for (String col : updateCols) {
                         updateParts.add(col + " = EXCLUDED." + col);
                     }
-                    // conflictKey가 source_refs가 아닌 경우에만 source_refs 갱신
                     if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
                         updateParts.add("source_refs = EXCLUDED.source_refs");
                     }
@@ -544,11 +583,79 @@ public class SourceToIfStep implements StepExecutor {
 
                     sb.append(String.join(", ", updateParts));
                 } else {
-                    // PostgreSQL 증분: 메타 컬럼만 경량 UPDATE (데이터 보존)
                     sb.append("updated_at = EXCLUDED.updated_at, execution_id = EXCLUDED.execution_id");
                 }
             }
         }
+
+        return sb.toString();
+    }
+
+    /**
+     * Oracle MERGE INTO SQL 생성
+     *
+     * MERGE INTO table t
+     * USING (SELECT ? AS col1, ? AS col2, ... FROM DUAL) s
+     * ON (t.conflict_col = s.conflict_col)
+     * WHEN MATCHED THEN UPDATE SET t.col = s.col, ...
+     * WHEN NOT MATCHED THEN INSERT (col1, ...) VALUES (s.col1, ...)
+     *
+     * 파라미터 바인딩은 USING SELECT에서 한 번만 → INSERT/UPDATE 양쪽에서 별칭(s.col)으로 참조
+     */
+    private String buildOracleMergeSql(String tableName, List<String> ifColumns,
+                                        List<String> allColumns, List<String> conflictCols, boolean useUpsert) {
+        StringBuilder sb = new StringBuilder();
+
+        // MERGE INTO table t
+        sb.append("MERGE INTO ").append(tableName).append(" t ");
+
+        // USING (SELECT ? AS col1, ? AS col2, ... FROM DUAL) s
+        sb.append("USING (SELECT ");
+        sb.append(allColumns.stream()
+                .map(c -> "? AS " + c)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse(""));
+        sb.append(" FROM DUAL) s ");
+
+        // ON (t.conflict_col = s.conflict_col AND ...)
+        sb.append("ON (");
+        sb.append(conflictCols.stream()
+                .map(c -> "t." + c.toLowerCase() + " = s." + c.toLowerCase())
+                .reduce((a, b) -> a + " AND " + b)
+                .orElse(""));
+        sb.append(") ");
+
+        // WHEN MATCHED THEN UPDATE SET
+        sb.append("WHEN MATCHED THEN UPDATE SET ");
+        if (useUpsert) {
+            // full UPSERT: 모든 데이터 컬럼 + 메타 컬럼 갱신
+            List<String> updateParts = new java.util.ArrayList<>();
+            for (String col : ifColumns) {
+                if (conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col))) {
+                    updateParts.add("t." + col + " = s." + col);
+                }
+            }
+            if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
+                updateParts.add("t.source_refs = s.source_refs");
+            }
+            updateParts.add("t.link_status = s.link_status");
+            updateParts.add("t.updated_at = s.updated_at");
+            updateParts.add("t.execution_id = s.execution_id");
+            sb.append(String.join(", ", updateParts));
+        } else {
+            // 증분: 메타 컬럼만 경량 UPDATE
+            sb.append("t.updated_at = s.updated_at, t.execution_id = s.execution_id");
+        }
+
+        // WHEN NOT MATCHED THEN INSERT
+        sb.append(" WHEN NOT MATCHED THEN INSERT (");
+        sb.append(String.join(", ", allColumns));
+        sb.append(") VALUES (");
+        sb.append(allColumns.stream()
+                .map(c -> "s." + c)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse(""));
+        sb.append(")");
 
         return sb.toString();
     }
@@ -721,6 +828,11 @@ public class SourceToIfStep implements StepExecutor {
             String actualTimeCol = resolveActualColumnName(columns, config.getTimeColumn());
             if (isMysql(dbType)) {
                 return "TIMESTAMP(" + qi(actualDateCol, dbType) + ", " + qi(actualTimeCol, dbType) + ")";
+            }
+            if (isOracle(dbType)) {
+                // Oracle: DATE + VARCHAR2(HHmmss) → TIMESTAMP 조합
+                return "TO_TIMESTAMP(TO_CHAR(" + qi(actualDateCol, dbType) + ", 'YYYYMMDD') || ' ' || "
+                        + qi(actualTimeCol, dbType) + ", 'YYYYMMDD HH24MISS')";
             }
             return "(" + qi(actualDateCol, dbType) + " + " + qi(actualTimeCol, dbType) + ")";
         }
@@ -898,7 +1010,8 @@ public class SourceToIfStep implements StepExecutor {
         if (pkValues.isEmpty()) return 0;
 
         // PK 값이 String인데 컬럼이 숫자/날짜 타입일 수 있으므로, 컬럼을 text로 캐스팅하여 비교
-        boolean isMysql = "mysql".equalsIgnoreCase(dbType);
+        boolean isMysqlDb = isMysql(dbType);
+        boolean isOracleDb = isOracle(dbType);
 
         List<String> pkCols = List.of(pkColumn.split(","));
         boolean isCompositePk = pkCols.size() > 1;
@@ -908,9 +1021,7 @@ public class SourceToIfStep implements StepExecutor {
 
         if (!isCompositePk) {
             // 단일 PK: IN 절 사용 (컬럼을 text 캐스팅)
-            String colExpr = isMysql
-                    ? "CAST(" + pkColumn.trim().toLowerCase() + " AS CHAR)"
-                    : pkColumn.trim().toLowerCase() + "::text";
+            String colExpr = castToText(pkColumn.trim().toLowerCase(), isMysqlDb, isOracleDb);
 
             for (int i = 0; i < pkValues.size(); i += updateBatchSize) {
                 List<Object> batch = pkValues.subList(i, Math.min(i + updateBatchSize, pkValues.size()));
@@ -935,9 +1046,7 @@ public class SourceToIfStep implements StepExecutor {
             // 복합 PK: ROW값 비교 (col1::text, col2::text) IN ((?,?), (?,?))
             List<String> trimmedCols = pkCols.stream().map(String::trim).toList();
             String colList = trimmedCols.stream()
-                    .map(c -> isMysql
-                            ? "CAST(" + c.toLowerCase() + " AS CHAR)"
-                            : c.toLowerCase() + "::text")
+                    .map(c -> castToText(c.toLowerCase(), isMysqlDb, isOracleDb))
                     .reduce((a, b) -> a + ", " + b).orElse("");
             String singleTuple = "(" + trimmedCols.stream().map(c -> "?").reduce((a, b) -> a + ", " + b).orElse("") + ")";
 

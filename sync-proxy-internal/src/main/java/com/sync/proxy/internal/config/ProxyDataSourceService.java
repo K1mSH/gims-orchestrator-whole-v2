@@ -118,7 +118,13 @@ public class ProxyDataSourceService implements DataSourceProvider {
         hikariConfig.setConnectionTimeout(10_000);
         hikariConfig.setMaxLifetime(600_000);
         hikariConfig.setKeepaliveTime(120_000);
-        hikariConfig.setConnectionTestQuery("SELECT 1");
+        // Oracle/Tibero는 SELECT 1 FROM DUAL, PG/MySQL은 SELECT 1
+        String dbType = info.getDbType();
+        if ("ORACLE".equalsIgnoreCase(dbType) || "TIBERO".equalsIgnoreCase(dbType)) {
+            hikariConfig.setConnectionTestQuery("SELECT 1 FROM DUAL");
+        } else {
+            hikariConfig.setConnectionTestQuery("SELECT 1");
+        }
         hikariConfig.setLeakDetectionThreshold(60_000);
 
         HikariDataSource ds = new HikariDataSource(hikariConfig);

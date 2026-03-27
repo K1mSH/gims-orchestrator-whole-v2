@@ -31,8 +31,9 @@ dependencies {
     // YAML parsing (for agent config loading) - managed by Spring Boot
     implementation 'org.yaml:snakeyaml'
 
-    // Database Drivers (내부망은 PostgreSQL only)
-    runtimeOnly 'org.postgresql:postgresql'
+    // Database Drivers
+    runtimeOnly 'org.postgresql:postgresql'       // Agent 자체 DB (SyncLog 등)
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11' // 내부망 IF + Target (Oracle/Tibero)
     runtimeOnly 'com.h2database:h2'
 
     // Lombok

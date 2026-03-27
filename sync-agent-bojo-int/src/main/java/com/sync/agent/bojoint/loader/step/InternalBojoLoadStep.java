@@ -100,7 +100,8 @@ public class InternalBojoLoadStep implements StepExecutor {
 
             JdbcTemplate sourceJdbc = dataSourceProvider.getJdbcTemplate(sourceDsId);
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
-            GimsTargetRepository targetRepo = new GimsTargetRepository(targetJdbc);
+            String targetDbType = dataSourceProvider.getDbType(targetDsId);
+            GimsTargetRepository targetRepo = new GimsTargetRepository(targetJdbc, targetDbType);
 
             String executionId = context.getExecutionId();
 
@@ -279,6 +280,21 @@ public class InternalBojoLoadStep implements StepExecutor {
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     obsvFirstError);
 
+            // read>0인데 write=0이면 실패 처리 (제원 매칭 실패 등)
+            if (readCount > 0 && writeCount == 0) {
+                String failMessage = String.format("적재 실패: read=%d건 중 write=0건 (제원 매칭 실패 등)", readCount);
+                log.error("[{}] {}", getStepId(), failMessage);
+                return StepResult.builder()
+                        .stepId(getStepId())
+                        .status(Status.FAILED)
+                        .readCount(readCount)
+                        .writeCount(writeCount)
+                        .skipCount(skipCount)
+                        .durationMs(durationMs)
+                        .errorMessage(failMessage)
+                        .build();
+            }
+
             return StepResult.builder()
                     .stepId(getStepId())
                     .status(Status.SUCCESS)
@@ -352,7 +368,9 @@ public class InternalBojoLoadStep implements StepExecutor {
 
     private Timestamp buildObsrvnDt(Object dateObj, Object timeObj) {
         LocalDate date;
-        if (dateObj instanceof java.sql.Date) {
+        if (dateObj instanceof java.sql.Timestamp) {
+            date = ((java.sql.Timestamp) dateObj).toLocalDateTime().toLocalDate();
+        } else if (dateObj instanceof java.sql.Date) {
             date = ((java.sql.Date) dateObj).toLocalDate();
         } else if (dateObj instanceof LocalDate) {
             date = (LocalDate) dateObj;

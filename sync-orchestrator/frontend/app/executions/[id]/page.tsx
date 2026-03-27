@@ -190,7 +190,7 @@ export default function ExecutionDetailPage() {
         result = await executionApi.traceBySourcePk(executionId, pkValue, pkColumn, sourceTable);
       } else {
         // TARGET_IF/TARGET 행 클릭 → Source 데이터 조회 (역추적)
-        const sourceRefs = row.sourceRefs as string || row.source_refs as string;
+        const sourceRefs = row.sourceRefs as string || row.source_refs as string || row.SOURCE_REFS as string;
         if (!sourceRefs) {
           setTraceResult({ error: 'sourceRefs가 없습니다.' });
           return;

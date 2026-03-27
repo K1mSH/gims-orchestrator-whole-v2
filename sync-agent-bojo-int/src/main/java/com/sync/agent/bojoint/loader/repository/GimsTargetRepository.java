@@ -15,6 +15,8 @@ import java.util.*;
  * - pm_gd970201: 관측자료 (EAV) — INSERT
  * - tm_gd980002: Link (증분 추적) — UPSERT
  * - tm_gd970101: 결과 매핑 (참조) — READ / 자동 INSERT
+ *
+ * Oracle/Tibero와 PostgreSQL 모두 지원 (dbType 분기)
  */
 @Slf4j
 public class GimsTargetRepository {
@@ -22,9 +24,11 @@ public class GimsTargetRepository {
     private static final int BATCH_SIZE = 1000;
 
     private final JdbcTemplate targetJdbc;
+    private final boolean isOracle;
 
-    public GimsTargetRepository(JdbcTemplate targetJdbc) {
+    public GimsTargetRepository(JdbcTemplate targetJdbc, String dbType) {
         this.targetJdbc = targetJdbc;
+        this.isOracle = "ORACLE".equalsIgnoreCase(dbType) || "TIBERO".equalsIgnoreCase(dbType);
     }
 
     // ==================== 제원 (tm_gd970001) — READ ONLY ====================
@@ -70,6 +74,9 @@ public class GimsTargetRepository {
     /**
      * result_id가 없으면 자동 INSERT하고 매핑에 추가
      * time_unit_id = 3 (현행 GIMS 기준값)
+     *
+     * PG: INSERT ... ON CONFLICT DO NOTHING RETURNING result_id
+     * Oracle: SELECT 먼저 → 없으면 INSERT → SELECT
      */
     public long ensureResultId(String resultTable, Map<String, Long> resultIdMap,
                                 long spotId, int iemId) {
@@ -77,24 +84,45 @@ public class GimsTargetRepository {
         Long existing = resultIdMap.get(key);
         if (existing != null) return existing;
 
-        // INSERT and get generated key
-        String sql = String.format(
-                "INSERT INTO %s (time_unit_id, obsrvn_iem_id, spot_id) VALUES (3, ?, ?) " +
-                "ON CONFLICT (time_unit_id, obsrvn_iem_id, spot_id) DO NOTHING " +
-                "RETURNING result_id",
-                resultTable);
-
-        List<Long> ids = targetJdbc.query(sql, (rs, rowNum) -> rs.getLong("result_id"), iemId, spotId);
-
         long resultId;
-        if (!ids.isEmpty()) {
-            resultId = ids.get(0);
-        } else {
-            // ON CONFLICT DO NOTHING → SELECT
+
+        if (isOracle) {
+            // Oracle: SELECT → INSERT → SELECT 패턴
             String selectSql = String.format(
                     "SELECT result_id FROM %s WHERE time_unit_id = 3 AND obsrvn_iem_id = ? AND spot_id = ?",
                     resultTable);
-            resultId = targetJdbc.queryForObject(selectSql, Long.class, iemId, spotId);
+
+            List<Long> ids = targetJdbc.query(selectSql, (rs, rowNum) -> rs.getLong("result_id"), iemId, spotId);
+            if (!ids.isEmpty()) {
+                resultId = ids.get(0);
+            } else {
+                String insertSql = String.format(
+                        "INSERT INTO %s (time_unit_id, obsrvn_iem_id, spot_id) VALUES (3, ?, ?)",
+                        resultTable);
+                targetJdbc.update(insertSql, iemId, spotId);
+
+                // INSERT 후 생성된 IDENTITY 조회
+                resultId = targetJdbc.queryForObject(selectSql, Long.class, iemId, spotId);
+            }
+        } else {
+            // PostgreSQL: INSERT ... ON CONFLICT DO NOTHING RETURNING result_id
+            String sql = String.format(
+                    "INSERT INTO %s (time_unit_id, obsrvn_iem_id, spot_id) VALUES (3, ?, ?) " +
+                    "ON CONFLICT (time_unit_id, obsrvn_iem_id, spot_id) DO NOTHING " +
+                    "RETURNING result_id",
+                    resultTable);
+
+            List<Long> ids = targetJdbc.query(sql, (rs, rowNum) -> rs.getLong("result_id"), iemId, spotId);
+
+            if (!ids.isEmpty()) {
+                resultId = ids.get(0);
+            } else {
+                // ON CONFLICT DO NOTHING → SELECT
+                String selectSql = String.format(
+                        "SELECT result_id FROM %s WHERE time_unit_id = 3 AND obsrvn_iem_id = ? AND spot_id = ?",
+                        resultTable);
+                resultId = targetJdbc.queryForObject(selectSql, Long.class, iemId, spotId);
+            }
         }
 
         resultIdMap.put(key, resultId);
@@ -133,32 +161,49 @@ public class GimsTargetRepository {
     /**
      * Link 테이블 배치 UPSERT
      *
-     * 현행(레거시)과의 차이:
-     *   현행: 관측소별 개별 SELECT(getLinkData) + INSERT/UPDATE 분기 = 2N회 DB 호출
-     *   개선: COALESCE로 frst_date/frst_time 보존 로직을 SQL에 위임 → SELECT 제거,
-     *         batch UPSERT로 N회 → ceil(N/1000)회로 축소
+     * PG: INSERT ... ON CONFLICT (obsrvt_id) DO UPDATE SET ...
+     * Oracle: MERGE INTO ... USING (SELECT ... FROM DUAL) ON (...) WHEN MATCHED/NOT MATCHED
      *
      * COALESCE(기존값, 신규값) 동작:
      *   - 기존 Link 존재(UPDATE): frst_date/frst_time = 기존값 유지
      *   - 신규 INSERT: frst_date/frst_time = VALUES의 값 사용
-     *   → Java에서 기존 Link를 SELECT할 필요 없음
      *
      * @param rows 각 행: [obsrvt_id, spot_id, last_obsrvn_de, last_obsrvn_time, change_dt, frst_date, frst_time]
      */
     public int batchUpsertLink(String tableName, List<Object[]> rows) {
         if (rows.isEmpty()) return 0;
 
-        String sql = String.format(
-                "INSERT INTO %s (obsrvt_id, spot_id, last_obsrvn_de, last_obsrvn_time, " +
-                "change_dt, frst_date, frst_time) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) " +
-                "ON CONFLICT (obsrvt_id) DO UPDATE SET " +
-                "last_obsrvn_de = EXCLUDED.last_obsrvn_de, " +
-                "last_obsrvn_time = EXCLUDED.last_obsrvn_time, " +
-                "change_dt = EXCLUDED.change_dt, " +
-                "frst_date = COALESCE(%s.frst_date, EXCLUDED.frst_date), " +
-                "frst_time = COALESCE(%s.frst_time, EXCLUDED.frst_time)",
-                tableName, tableName, tableName);
+        String sql;
+        if (isOracle) {
+            sql = String.format(
+                    "MERGE INTO %s t " +
+                    "USING (SELECT ? AS obsrvt_id, ? AS spot_id, ? AS last_obsrvn_de, " +
+                    "? AS last_obsrvn_time, ? AS change_dt, ? AS frst_date, ? AS frst_time FROM DUAL) s " +
+                    "ON (t.obsrvt_id = s.obsrvt_id) " +
+                    "WHEN MATCHED THEN UPDATE SET " +
+                    "t.last_obsrvn_de = s.last_obsrvn_de, " +
+                    "t.last_obsrvn_time = s.last_obsrvn_time, " +
+                    "t.change_dt = s.change_dt, " +
+                    "t.frst_date = COALESCE(t.frst_date, s.frst_date), " +
+                    "t.frst_time = COALESCE(t.frst_time, s.frst_time) " +
+                    "WHEN NOT MATCHED THEN INSERT " +
+                    "(obsrvt_id, spot_id, last_obsrvn_de, last_obsrvn_time, change_dt, frst_date, frst_time) " +
+                    "VALUES (s.obsrvt_id, s.spot_id, s.last_obsrvn_de, s.last_obsrvn_time, " +
+                    "s.change_dt, s.frst_date, s.frst_time)",
+                    tableName);
+        } else {
+            sql = String.format(
+                    "INSERT INTO %s (obsrvt_id, spot_id, last_obsrvn_de, last_obsrvn_time, " +
+                    "change_dt, frst_date, frst_time) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                    "ON CONFLICT (obsrvt_id) DO UPDATE SET " +
+                    "last_obsrvn_de = EXCLUDED.last_obsrvn_de, " +
+                    "last_obsrvn_time = EXCLUDED.last_obsrvn_time, " +
+                    "change_dt = EXCLUDED.change_dt, " +
+                    "frst_date = COALESCE(%s.frst_date, EXCLUDED.frst_date), " +
+                    "frst_time = COALESCE(%s.frst_time, EXCLUDED.frst_time)",
+                    tableName, tableName, tableName);
+        }
 
         int totalUpserted = 0;
         for (int i = 0; i < rows.size(); i += BATCH_SIZE) {

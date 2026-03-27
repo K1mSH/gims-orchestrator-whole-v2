@@ -32,6 +32,7 @@ dependencies {
 
     // Database
     runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11' // 내부망 Oracle datasource 연결 테스트용
     runtimeOnly 'com.h2database:h2'
 
     // Lombok

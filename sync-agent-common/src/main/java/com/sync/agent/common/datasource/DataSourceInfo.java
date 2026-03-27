@@ -32,7 +32,7 @@ public class DataSourceInfo {
     public String getJdbcUrl() {
         return switch (dbType.toUpperCase()) {
             case "POSTGRESQL" -> String.format("jdbc:postgresql://%s:%d/%s", host, port, databaseName);
-            case "ORACLE" -> String.format("jdbc:oracle:thin:@%s:%d:%s", host, port, databaseName);
+            case "ORACLE", "TIBERO" -> String.format("jdbc:oracle:thin:@//%s:%d/%s", host, port, databaseName);
             case "MYSQL" -> String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8", host, port, databaseName);
             case "MARIADB" -> String.format("jdbc:mariadb://%s:%d/%s", host, port, databaseName);
             case "MSSQL" -> String.format("jdbc:sqlserver://%s:%d;databaseName=%s", host, port, databaseName);
@@ -43,7 +43,7 @@ public class DataSourceInfo {
     public String getDriverClassName() {
         return switch (dbType.toUpperCase()) {
             case "POSTGRESQL" -> "org.postgresql.Driver";
-            case "ORACLE" -> "oracle.jdbc.OracleDriver";
+            case "ORACLE", "TIBERO" -> "oracle.jdbc.OracleDriver";
             case "MYSQL" -> "com.mysql.cj.jdbc.Driver";
             case "MARIADB" -> "org.mariadb.jdbc.Driver";
             case "MSSQL" -> "com.microsoft.sqlserver.jdbc.SQLServerDriver";

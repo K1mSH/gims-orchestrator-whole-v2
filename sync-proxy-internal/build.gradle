@@ -31,6 +31,7 @@ dependencies {
     // Database Drivers
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11'  // 내부망 Oracle/Tibero datasource 추적 조회용
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

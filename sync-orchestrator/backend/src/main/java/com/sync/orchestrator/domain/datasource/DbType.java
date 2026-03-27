@@ -13,7 +13,8 @@ public enum DbType {
     ORACLE("oracle.jdbc.OracleDriver") {
         @Override
         public String buildJdbcUrl(String host, int port, String databaseName) {
-            return String.format("jdbc:oracle:thin:@%s:%d:%s", host, port, databaseName);
+            // 서비스명 형식: jdbc:oracle:thin:@//host:port/serviceName (PDB 지원)
+            return String.format("jdbc:oracle:thin:@//%s:%d/%s", host, port, databaseName);
         }
     },
     MYSQL("com.mysql.cj.jdbc.Driver") {

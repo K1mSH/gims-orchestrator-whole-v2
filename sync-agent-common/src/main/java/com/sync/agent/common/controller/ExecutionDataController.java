@@ -207,7 +207,12 @@ public class ExecutionDataController {
             StringBuilder whereClause = new StringBuilder("1=1");
             List<Object> params = new ArrayList<>();
 
-            if (sourceFilter != null && !sourceFilter.isEmpty()) {
+            if (sourceFilter != null && "pk_batch".equals(sourceFilter.mode)) {
+                // 대량 PK — 배치 분할 실행
+                return executeBatchSourceQuery(sourceJdbc, actualTableName, quotedTableName,
+                        srcDbType, sourceFilter.pkColumn, sourceFilter.allPks,
+                        page, size, search, searchColumn, sortColumn, sortDirection);
+            } else if (sourceFilter != null && !sourceFilter.isEmpty()) {
                 whereClause.append(" AND ").append(sourceFilter.whereFragment);
                 params.addAll(sourceFilter.params);
                 log.debug("Source 필터: {}건 (executionId={}, mode={})", sourceFilter.params.size(), executionId, sourceFilter.mode);
@@ -231,9 +236,8 @@ public class ExecutionDataController {
             String orderBy = buildOrderByClause(sourceJdbc, actualTableName, sortColumn, sortDirection);
 
             // 페이징된 데이터 조회
-            String dataSql = String.format(
-                    "SELECT * FROM %s WHERE %s %s LIMIT %d OFFSET %d",
-                    quotedTableName, whereClause, orderBy, size, page * size);
+            String baseSql = String.format("SELECT * FROM %s WHERE %s %s", quotedTableName, whereClause, orderBy);
+            String dataSql = pagingSql(baseSql, srcDbType, size, page * size);
             List<Map<String, Object>> data = sourceJdbc.queryForList(dataSql, params.toArray());
 
             List<String> columns = data.isEmpty() ? getTableColumns(sourceJdbc, actualTableName) : new ArrayList<>(data.get(0).keySet());
@@ -252,16 +256,25 @@ public class ExecutionDataController {
     private static class SourceFilterResult {
         final String whereFragment;
         final List<Object> params;
-        final String mode; // "source_refs" 또는 "pk"
+        final String mode; // "source_refs", "subquery", "pk", "pk_batch", "empty"
+        final String pkColumn;       // pk_batch 모드용
+        final List<Object> allPks;   // pk_batch 모드용 — 전체 PK 리스트
 
         SourceFilterResult(String whereFragment, List<Object> params, String mode) {
+            this(whereFragment, params, mode, null, null);
+        }
+
+        SourceFilterResult(String whereFragment, List<Object> params, String mode,
+                           String pkColumn, List<Object> allPks) {
             this.whereFragment = whereFragment;
             this.params = params;
             this.mode = mode;
+            this.pkColumn = pkColumn;
+            this.allPks = allPks;
         }
 
         boolean isEmpty() {
-            return params.isEmpty();
+            return params.isEmpty() && (allPks == null || allPks.isEmpty());
         }
     }
 
@@ -341,7 +354,7 @@ public class ExecutionDataController {
                 String sampleRef = sourceRefsSet.iterator().next();
                 boolean sourceRefsMatch = false;
                 try {
-                    String checkSql = String.format("SELECT COUNT(*) FROM %s WHERE %s = ? LIMIT 1",
+                    String checkSql = String.format("SELECT COUNT(*) FROM %s WHERE %s = ?",
                             qi(actualSourceTable, srcDbType), qi("source_refs", srcDbType));
                     Integer matchCount = sourceJdbc.queryForObject(checkSql, Integer.class, sampleRef);
                     sourceRefsMatch = (matchCount != null && matchCount > 0);
@@ -363,15 +376,7 @@ public class ExecutionDataController {
                 log.debug("source_refs 값 불일치, PK 파싱으로 전환 (source={}, sampleRef={})", sourceTableName, sampleRef);
             }
             {
-                // PK 파싱 매칭 (외부 DB source — source_refs 컬럼 없음)
-                Set<String> pkSet = new LinkedHashSet<>();
-                for (String refs : sourceRefsSet) {
-                    pkSet.addAll(parseSourceRefsPks(refs));
-                }
-
-                if (pkSet.isEmpty()) {
-                    return new SourceFilterResult("", List.of(), "empty");
-                }
+                // PK 파싱 매칭 (source_refs 불일치 또는 source에 source_refs 없음)
 
                 // PK 컬럼 감지
                 String actualPkCol = findActualColumnName(sourceJdbc, actualSourceTable, "id");
@@ -387,20 +392,65 @@ public class ExecutionDataController {
                 }
                 String pkColumn = qi(actualPkCol != null ? actualPkCol : "id", srcDbType);
 
-                List<Object> params = new ArrayList<>();
+                // 같은 DB + 소량이면 서브쿼리, 그 외(대량 또는 cross-DB)는 배치 분할
+                Execution exec = executionService.getExecution(executionId).orElse(null);
+                String execSourceDsId = (exec != null) ? exec.getSourceDatasourceId() : null;
+                String execTargetDsId = (exec != null) ? exec.getTargetDatasourceId() : targetDatasourceId;
+                boolean sameDb = execSourceDsId != null && execSourceDsId.equals(execTargetDsId);
+
+                if (sameDb && !targetTableNames.isEmpty() && sourceRefsSet.size() <= 5000) {
+                    // 소량 + 같은 DB: 서브쿼리
+                    String targetTable = targetTableNames.get(0);
+                    String tgtDbType = dataSourceProvider.getDbType(execTargetDsId);
+                    String subquery;
+                    if (isOracle(tgtDbType)) {
+                        String cleaned = "REPLACE(REPLACE(REPLACE(source_refs, '[', ''), ']', ''), '\"', '')";
+                        subquery = String.format(
+                            "SELECT CAST(SUBSTR(%s, INSTR(%s, ':', 1, 3) + 1) AS NUMBER) " +
+                            "FROM %s WHERE execution_id = ?", cleaned, cleaned, targetTable);
+                    } else {
+                        String cleaned = "TRIM(BOTH '\"' FROM TRIM(BOTH '[]' FROM source_refs))";
+                        subquery = String.format(
+                            "SELECT CAST(SPLIT_PART(%s, ':', 4) AS BIGINT) " +
+                            "FROM %s WHERE execution_id = ?", cleaned, targetTable);
+                    }
+                    String fragment = pkColumn + " IN (" + subquery + ")";
+                    log.info("Source 필터(서브쿼리): {} → {} ({}건, executionId={})",
+                            sourceTableName, targetTableNames, sourceRefsSet.size(), executionId);
+                    return new SourceFilterResult(fragment, List.of(executionId), "subquery");
+                }
+
+                // 대량 또는 cross-DB: PK 파싱 후 배치 분할
+                Set<String> pkSet = new LinkedHashSet<>();
+                for (String refs : sourceRefsSet) {
+                    pkSet.addAll(parseSourceRefsPks(refs));
+                }
+
+                if (pkSet.isEmpty()) {
+                    return new SourceFilterResult("", List.of(), "empty");
+                }
+
+                List<Object> allPks = new ArrayList<>();
                 for (String pk : pkSet) {
                     try {
-                        params.add(Long.parseLong(pk));
+                        allPks.add(Long.parseLong(pk));
                     } catch (NumberFormatException e) {
-                        params.add(pk);
+                        allPks.add(pk);
                     }
                 }
-                String placeholders = String.join(",", pkSet.stream().map(pk -> "?").toList());
-                String fragment = pkColumn + " IN (" + placeholders + ")";
 
-                log.info("Source 필터(PK): {} → {} ({}건, executionId={})",
-                        sourceTableName, targetTableNames, pkSet.size(), executionId);
-                return new SourceFilterResult(fragment, params, "pk");
+                // 소량(<=1000)이면 단일 IN절, 대량이면 배치 모드
+                if (allPks.size() <= 1000) {
+                    String placeholders = String.join(",", allPks.stream().map(pk -> "?").toList());
+                    String fragment = pkColumn + " IN (" + placeholders + ")";
+                    log.info("Source 필터(PK): {} → {} ({}건, executionId={})",
+                            sourceTableName, targetTableNames, allPks.size(), executionId);
+                    return new SourceFilterResult(fragment, allPks, "pk");
+                }
+
+                log.info("Source 필터(PK배치): {} → {} ({}건, executionId={})",
+                        sourceTableName, targetTableNames, allPks.size(), executionId);
+                return new SourceFilterResult("", List.of(), "pk_batch", pkColumn, allPks);
             }
         } catch (Exception e) {
             log.warn("Source 필터 생성 실패 (fallback to 전체): {}", e.getMessage());
@@ -503,9 +553,9 @@ public class ExecutionDataController {
             String orderBy = buildOrderByClause(targetJdbc, tableName, sortColumn, sortDirection);
 
             // 페이징된 데이터 조회
-            String dataSql = String.format(
-                    "SELECT * FROM %s WHERE %s %s LIMIT %d OFFSET %d",
-                    tableName, whereClause, orderBy, size, page * size);
+            String tgtDbType = detectDbType(targetJdbc);
+            String baseSql = String.format("SELECT * FROM %s WHERE %s %s", tableName, whereClause, orderBy);
+            String dataSql = pagingSql(baseSql, tgtDbType, size, page * size);
             List<Map<String, Object>> data = targetJdbc.queryForList(dataSql, params.toArray());
 
             List<String> columns = data.isEmpty() ? getTableColumns(targetJdbc, tableName) : new ArrayList<>(data.get(0).keySet());
@@ -602,9 +652,9 @@ public class ExecutionDataController {
             String orderBy = buildOrderByClause(targetJdbc, tableName, sortColumn, sortDirection);
 
             // 페이징된 데이터 조회
-            String dataSql = String.format(
-                    "SELECT * FROM %s WHERE %s %s LIMIT %d OFFSET %d",
-                    tableName, whereClause, orderBy, size, page * size);
+            String tgtDbType2 = detectDbType(targetJdbc);
+            String baseSql2 = String.format("SELECT * FROM %s WHERE %s %s", tableName, whereClause, orderBy);
+            String dataSql = pagingSql(baseSql2, tgtDbType2, size, page * size);
             List<Map<String, Object>> data = targetJdbc.queryForList(dataSql, params.toArray());
 
             List<String> columns = data.isEmpty() ? getTableColumns(targetJdbc, tableName) : new ArrayList<>(data.get(0).keySet());
@@ -1325,7 +1375,7 @@ public class ExecutionDataController {
         // fallback: 첫 번째 컬럼 사용
         if (pkColumns.isEmpty()) {
             try {
-                String sql = String.format("SELECT * FROM %s LIMIT 1", qi(tableName, dbType));
+                String sql = limit1Sql(String.format("SELECT * FROM %s", qi(tableName, dbType)), dbType);
                 List<Map<String, Object>> sample = jdbcTemplate.queryForList(sql);
                 if (!sample.isEmpty()) {
                     pkColumns.add(sample.get(0).keySet().iterator().next());
@@ -1413,9 +1463,30 @@ public class ExecutionDataController {
         return "MYSQL".equalsIgnoreCase(dbType) || "MARIADB".equalsIgnoreCase(dbType);
     }
 
+    private static boolean isOracle(String dbType) {
+        return "ORACLE".equalsIgnoreCase(dbType) || "TIBERO".equalsIgnoreCase(dbType);
+    }
+
+    /** Oracle 호환 페이징: PG/MySQL=LIMIT+OFFSET, Oracle=OFFSET+FETCH */
+    private static String pagingSql(String baseSql, String dbType, int limit, int offset) {
+        if (isOracle(dbType)) {
+            return baseSql + " OFFSET " + offset + " ROWS FETCH FIRST " + limit + " ROWS ONLY";
+        }
+        return baseSql + " LIMIT " + limit + " OFFSET " + offset;
+    }
+
+    /** Oracle 호환 LIMIT 1: PG/MySQL=LIMIT 1, Oracle=FETCH FIRST 1 ROWS ONLY */
+    private static String limit1Sql(String baseSql, String dbType) {
+        if (isOracle(dbType)) {
+            return baseSql + " FETCH FIRST 1 ROWS ONLY";
+        }
+        return baseSql + " LIMIT 1";
+    }
+
     /** Quoted Identifier: MySQL → backtick, others → double-quote */
     private static String qi(String name, String dbType) {
         if (isMysql(dbType)) return "`" + name + "`";
+        if (isOracle(dbType)) return name;  // Oracle: 인용 없이 (자동 대문자)
         return "\"" + name + "\"";
     }
 
@@ -1465,6 +1536,69 @@ public class ExecutionDataController {
         return value;
     }
 
+    /**
+     * 대량 PK 배치 분할 실행 — COUNT와 데이터를 1000건씩 나눠서 실행 후 합산
+     */
+    private ResponseEntity<Map<String, Object>> executeBatchSourceQuery(
+            JdbcTemplate sourceJdbc, String actualTableName, String quotedTableName,
+            String dbType, String pkColumn, List<Object> allPks,
+            int page, int size, String search, String searchColumn,
+            String sortColumn, String sortDirection) {
+
+        int batchSize = 1000;
+        int totalCount = 0;
+
+        // 1. 배치 COUNT 합산
+        for (int i = 0; i < allPks.size(); i += batchSize) {
+            List<Object> batch = allPks.subList(i, Math.min(i + batchSize, allPks.size()));
+            String placeholders = String.join(",", batch.stream().map(pk -> "?").toList());
+            String countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s IN (%s)",
+                    quotedTableName, pkColumn, placeholders);
+            Integer cnt = sourceJdbc.queryForObject(countSql, Integer.class, batch.toArray());
+            if (cnt != null) totalCount += cnt;
+        }
+
+        // 2. 페이징된 데이터 조회 — 정렬 후 skip/take
+        String orderBy = buildOrderByClause(sourceJdbc, actualTableName, sortColumn, sortDirection);
+        int offset = page * size;
+        int remaining = size;
+        int skipped = 0;
+        List<Map<String, Object>> pageData = new ArrayList<>();
+
+        for (int i = 0; i < allPks.size() && remaining > 0; i += batchSize) {
+            List<Object> batch = allPks.subList(i, Math.min(i + batchSize, allPks.size()));
+            String placeholders = String.join(",", batch.stream().map(pk -> "?").toList());
+
+            // 이 배치의 건수 확인 (skip 최적화)
+            String batchCountSql = String.format("SELECT COUNT(*) FROM %s WHERE %s IN (%s)",
+                    quotedTableName, pkColumn, placeholders);
+            Integer batchCount = sourceJdbc.queryForObject(batchCountSql, Integer.class, batch.toArray());
+            if (batchCount == null) batchCount = 0;
+
+            if (skipped + batchCount <= offset) {
+                // 이 배치는 전부 skip
+                skipped += batchCount;
+                continue;
+            }
+
+            // 이 배치에서 데이터 가져오기
+            int batchOffset = Math.max(0, offset - skipped);
+            String baseSql = String.format("SELECT * FROM %s WHERE %s IN (%s) %s",
+                    quotedTableName, pkColumn, placeholders, orderBy);
+            String dataSql = pagingSql(baseSql, dbType, remaining, batchOffset);
+            List<Map<String, Object>> batchData = sourceJdbc.queryForList(dataSql, batch.toArray());
+            pageData.addAll(batchData);
+            remaining -= batchData.size();
+            skipped += batchCount;
+        }
+
+        List<String> columns = pageData.isEmpty()
+                ? getTableColumns(sourceJdbc, actualTableName)
+                : new ArrayList<>(pageData.get(0).keySet());
+
+        return ResponseEntity.ok(buildPageResult(actualTableName, columns, pageData, totalCount, page, size));
+    }
+
     private Map<String, Object> buildPageResult(String tableName, List<String> columns,
                                                  List<Map<String, Object>> data,
                                                  int totalCount, int page, int size) {
@@ -1498,7 +1632,7 @@ public class ExecutionDataController {
     private List<String> getTableColumns(JdbcTemplate jdbcTemplate, String tableName) {
         try {
             String dbType = detectDbType(jdbcTemplate);
-            String sql = String.format("SELECT * FROM %s LIMIT 1", qi(tableName, dbType));
+            String sql = limit1Sql(String.format("SELECT * FROM %s", qi(tableName, dbType)), dbType);
             List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
             if (!result.isEmpty()) {
                 return new ArrayList<>(result.get(0).keySet());
@@ -1600,7 +1734,7 @@ public class ExecutionDataController {
     private String findActualColumnName(JdbcTemplate jdbcTemplate, String tableName, String columnName) {
         try {
             String dbType = detectDbType(jdbcTemplate);
-            String sql = String.format("SELECT * FROM %s LIMIT 1", qi(tableName, dbType));
+            String sql = limit1Sql(String.format("SELECT * FROM %s", qi(tableName, dbType)), dbType);
             List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
             if (!result.isEmpty()) {
                 // 대소문자 무시 비교로 실제 컬럼명 찾기
@@ -1629,12 +1763,17 @@ public class ExecutionDataController {
     private String findActualTableName(JdbcTemplate jdbcTemplate, String tableName) {
         String dbType = detectDbType(jdbcTemplate);
         try {
-            // information_schema에서 대소문자 무시하고 테이블 찾기
-            String schemaFilter = isMysql(dbType)
-                    ? "TABLE_SCHEMA = DATABASE()"
-                    : "table_schema = 'public'";
-            String sql = "SELECT table_name FROM information_schema.tables " +
+            // 테이블 카탈로그에서 대소문자 무시하고 테이블 찾기
+            String sql;
+            if (isOracle(dbType)) {
+                sql = "SELECT table_name FROM user_tables WHERE LOWER(table_name) = LOWER(?)";
+            } else {
+                String schemaFilter = isMysql(dbType)
+                        ? "TABLE_SCHEMA = DATABASE()"
+                        : "table_schema = 'public'";
+                sql = "SELECT table_name FROM information_schema.tables " +
                         "WHERE " + schemaFilter + " AND LOWER(table_name) = LOWER(?)";
+            }
             List<String> tables = jdbcTemplate.queryForList(sql, String.class, tableName);
             if (!tables.isEmpty()) {
                 String actualName = tables.get(0);
@@ -1647,14 +1786,14 @@ public class ExecutionDataController {
             log.warn("Failed to find table name in information_schema: {}", e.getMessage());
             // 대체: 직접 SELECT 시도
             try {
-                String sql = String.format("SELECT 1 FROM %s LIMIT 1", qi(tableName, dbType));
+                String sql = limit1Sql(String.format("SELECT 1 FROM %s", qi(tableName, dbType)), dbType);
                 jdbcTemplate.queryForList(sql);
                 return tableName;
             } catch (Exception e2) {
                 // 대문자로도 시도
                 try {
                     String upperName = tableName.toUpperCase();
-                    String sql = String.format("SELECT 1 FROM %s LIMIT 1", qi(upperName, dbType));
+                    String sql = limit1Sql(String.format("SELECT 1 FROM %s", qi(upperName, dbType)), dbType);
                     jdbcTemplate.queryForList(sql);
                     return upperName;
                 } catch (Exception e3) {

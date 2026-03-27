@@ -166,6 +166,9 @@ public class ConditionBuilder {
         if (dbType != null && dbType.toUpperCase().contains("MYSQL")) {
             return "`" + identifier + "`";
         }
+        if (dbType != null && (dbType.equalsIgnoreCase("ORACLE") || dbType.equalsIgnoreCase("TIBERO"))) {
+            return identifier;  // Oracle: 인용 없이 (자동 대문자)
+        }
         return "\"" + identifier + "\"";
     }
 
