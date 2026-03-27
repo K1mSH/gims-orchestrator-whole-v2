@@ -45,7 +45,7 @@
 - [x] ApiExecutionHistory 이력 저장
 - [x] 수동 실행 (/endpoints/{id}/run)
 - [x] 수동 실행 버튼 미설정 시 알림 표시 (disabled → 클릭+안내)
-- [ ] 나라장터 4개 오퍼레이션 등록 + E2E 검증 (공사/용역/외자/물품)
+- [x] 나라장터 4개 오퍼레이션 등록 + E2E 검증 (공사/용역/외자/물품)
 
 ## 7. 스케줄 관리
 - [x] ApiScheduleExecutor (TaskScheduler + CronTrigger)
@@ -57,6 +57,7 @@
 ## 8. 실행 이력
 - [x] ApiHistoryController (페이징 + 날짜 검색)
 - [x] HistoryTab (페이지 번호 방식, 날짜 range, 총 건수)
+- [x] UPSERT 시 신규/갱신 카운트 분리 (insertCount + updateCount)
 
 ## 9. Mock/내부 시스템 연동
 - [x] MockApiController — 공통코드 API (NGW_0118 언론사 65건)
@@ -76,8 +77,8 @@
 ## 11. 나라장터 입찰공고 연동
 - [x] 나라장터 API 등록 (#1공사)
 - [x] target 테이블 tm_gd014000 준비
-- [ ] dataRootPath/targetTableName 복원 후 E2E 수집 테스트
-- [ ] #2용역, #3외자, #4물품 오퍼레이션 등록
+- [x] dataRootPath/targetTableName 복원 후 E2E 수집 테스트
+- [x] #2용역, #3외자, #4물품 오퍼레이션 등록
 - [ ] 스케줄 설정 (매일 전일 변경분 수집)
 
 ## 12. 커스텀 실행기 (신규 추가 3/25)
@@ -96,4 +97,67 @@
 - [ ] AnyangUsageExecutor 구현 (FAC INSERT + DATA INSERT + LEGACY JOIN INSERT)
 - [ ] 엔드포인트 등록 + E2E 테스트
 
-**진행도: 42/61 = 69%**
+## 14. 제주 보조망 — DMZ 측 커스텀 실행기 (신규 추가 3/26)
+
+> **개발 순서**: 제원(마스터) → 관측데이터 (site_code 참조)
+
+### 14-1. jeju-jewon-master (관측점 마스터, 좌표변환) ← 먼저
+- [ ] Mock API — /mock/jeju/obsv (관측점 마스터 전체 목록)
+- [ ] DB 테이블 생성 (jeju_jewon)
+- [ ] JejuJewonExecutor 구현
+  - [ ] API 호출 (POST, 파라미터 없이 전체 조회)
+  - [ ] 코드 변환: wDtlSrv→ugrwtr_prpos_code (상수도=18, 농업=19, 기타=40)
+  - [ ] 코드 변환: wDrinkYn→drnk_at (비음용=0, 그 외=1)
+  - [ ] 코드 변환: wDevlocCi→legaldong_code (제주시=6510000, 서귀포시=6520000)
+  - [ ] 좌표변환: wX,wY (EPSG:5186) → siteLitd,siteLttd (EPSG:4326)
+  - [ ] UPSERT (전체 갱신)
+- [ ] 엔드포인트 등록 + E2E 테스트
+
+### 14-2. jeju-obsv-data (수위 관측 실시간 수집)
+- [ ] Mock API — /mock/jeju/obsv-data (site_code별 일일 수위 데이터)
+- [ ] DB 테이블 생성 (jeju_obsv_data)
+- [ ] JejuObsvDataExecutor 구현
+  - [ ] 제원 테이블에서 site_code 목록 조회
+  - [ ] site_code별 루프 → API 호출 → 파싱
+  - [ ] UPSERT (site_code + obsv_date + obsv_time UK)
+- [ ] 엔드포인트 등록 + E2E 테스트
+
+## 15. 제주 이용량 — DMZ 측 커스텀 실행기 (신규 추가 3/26)
+
+> **개발 순서**: 이용시설(마스터) → 수질검사 (시설 기반)
+
+### 15-1. jeju-facility (지하수이용시설, 페이징+좌표변환+코드변환) ← 먼저
+- [ ] Mock API — /mock/jeju/facility (1000건 페이징)
+- [ ] DB 테이블 생성 (jeju_facility_pmms, jeju_facility_stgms)
+- [ ] JejuFacilityExecutor 구현
+  - [ ] 1000건 페이징 반복 호출
+  - [ ] 좌표변환: EPSG:5186→4326
+  - [ ] 코드변환: 용도코드(11종), 지역코드, 허가형태, 상태코드
+  - [ ] 2테이블 동시 적재 (pmms + stgms)
+- [ ] 엔드포인트 등록 + E2E 테스트
+
+### 15-2. jeju-water-quality (수질검사, 항목명 매핑)
+- [ ] Mock API — /mock/jeju/water-quality (수질검사 결과)
+- [ ] DB 테이블 생성 (jeju_water_quality_05, jeju_water_quality_06)
+- [ ] JejuWaterQualityExecutor 구현
+  - [ ] 항목명 한→영 매핑 (탁도→Turbidity 등)
+  - [ ] 용도구분 A/D 분기
+  - [ ] 2테이블 동시 적재 (05 + 06)
+- [ ] 엔드포인트 등록 + E2E 테스트
+
+## 구현 가능/미결 현황 (3/27 기준)
+
+| 구분 | 등록 위치 | IF 테이블 | Source DB | API 접근 | 지금 가능 |
+|------|----------|:---------:|:---------:|:--------:|:---------:|
+| 제주 수위관측 | API Collector | 불필요 | 불필요 | 미확인 | **O** (Mock) |
+| 제주 관측점마스터 | API Collector | 불필요 | 불필요 | 미확인 | **O** (Mock) |
+| 제주 수질검사 | API Collector | 불필요 | 불필요 | 미확인 | **O** (Mock) |
+| 제주 이용시설 | API Collector | 불필요 | 불필요 | 미확인 | **O** (Mock) |
+| 새올 16개 | Agent bojo-int | **미결** | 확인됨 | 불필요 | **X** |
+| 제주 관측점 메타 | Agent bojo-int | **미결** | 미확인 | 불필요 | **X** |
+| 제주 관측데이터 | Agent bojo-int | **미결** | 미확인 | 불필요 | **X** |
+| 제주 수자원사용 | Agent bojo-int | **미결** | 미확인 | 불필요 | **X** |
+| 수질시설 | Agent bojo-int | **미결** | 미확인 | 불필요 | **X** |
+| 사용량 레거시 | Agent bojo-int | **미결** | 미확인 | 불필요 | **X** |
+
+**진행도: 46/82 = 56%**
