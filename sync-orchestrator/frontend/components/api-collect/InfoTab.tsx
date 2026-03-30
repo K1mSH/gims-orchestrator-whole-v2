@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { endpointApi, paramApi, apiKeyApi, ApiKeyItem } from '@/lib/collectorApi';
 import {
   ApiEndpointDetail,
@@ -19,6 +19,7 @@ interface InfoTabProps {
 
 
 export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
+  const isCustom = !!endpoint.executorType;
   // --- 기본정보 ---
   const [form, setForm] = useState<ApiEndpointUpdateRequest>({
     apiName: endpoint.apiName,
@@ -39,6 +40,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
       paramType: p.paramType,
       valueType: p.valueType,
       staticValue: p.staticValue || '',
+      isApiKeyRef: p.isApiKeyRef || false,
       dynamicType: p.dynamicType || undefined,
       dynamicFormat: p.dynamicFormat || '',
       dynamicOffset: p.dynamicOffset ?? 0,
@@ -60,6 +62,13 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
     } catch { /* 무시 */ }
   }, [apiKeysLoaded]);
 
+  // isApiKeyRef인 파라미터가 있으면 진입 시 API키 목록 미리 로드
+  useEffect(() => {
+    if (endpoint.params.some(p => p.isApiKeyRef)) {
+      loadApiKeys();
+    }
+  }, [endpoint.params, loadApiKeys]);
+
   const handleSaveInfo = async () => {
     try {
       setSaving(true);
@@ -68,7 +77,6 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         dataRootPath: endpoint.dataRootPath || undefined,
         targetDatasourceId: endpoint.targetDatasourceId || undefined,
         targetTableName: endpoint.targetTableName || undefined,
-        upsertEnabled: endpoint.upsertEnabled,
       });
       alert('저장되었습니다.');
       onUpdate();
@@ -152,41 +160,51 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
 
         {/* 요청 설정 */}
         <div style={sectionStyle}>
-          <div style={sectionLabel}>요청</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
+          <div style={sectionLabel}>{isCustom ? '프리셋 정보' : '요청'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: isCustom ? '1fr 1fr' : '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
             <div>
               <div style={labelStyle}>API명</div>
               <input className="form-input" value={form.apiName}
                 onChange={e => setForm({ ...form, apiName: e.target.value })} />
             </div>
-            <div>
-              <div style={labelStyle}>URL</div>
-              <input className="form-input" value={form.url}
-                onChange={e => setForm({ ...form, url: e.target.value })} />
-            </div>
-            <div>
-              <div style={labelStyle}>HTTP Method</div>
-              <select className="form-select" value={form.httpMethod}
-                onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-              </select>
-            </div>
-            <div>
-              <div style={labelStyle}>Content-Type</div>
-              <select className="form-select" value={form.contentType || ''}
-                onChange={e => setForm({ ...form, contentType: e.target.value })}>
-                <option value="">기본 (없음)</option>
-                <option value="application/json">application/json</option>
-                <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
-                <option value="multipart/form-data">multipart/form-data</option>
-              </select>
-            </div>
+            {isCustom ? (
+              <div>
+                <div style={labelStyle}>실행기</div>
+                <input className="form-input" value={endpoint.executorType || ''} disabled
+                  style={{ background: 'var(--gray-50)' }} />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <div style={labelStyle}>URL</div>
+                  <input className="form-input" value={form.url}
+                    onChange={e => setForm({ ...form, url: e.target.value })} />
+                </div>
+                <div>
+                  <div style={labelStyle}>HTTP Method</div>
+                  <select className="form-select" value={form.httpMethod}
+                    onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={labelStyle}>Content-Type</div>
+                  <select className="form-select" value={form.contentType || ''}
+                    onChange={e => setForm({ ...form, contentType: e.target.value })}>
+                    <option value="">기본 (없음)</option>
+                    <option value="application/json">application/json</option>
+                    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                    <option value="multipart/form-data">multipart/form-data</option>
+                  </select>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-
-        {/* 인증 설정 */}
+        {/* 인증 설정 — 커스텀은 숨김 */}
+        {!isCustom && (
         <div style={sectionStyle}>
           <div style={sectionLabel}>인증</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
@@ -217,6 +235,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
             )}
           </div>
         </div>
+        )}
 
         {/* 기타 */}
         <div style={{ ...sectionStyle, borderBottom: 'none' }}>
@@ -234,8 +253,8 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         </div>
       </div>
 
-      {/* 헤더 섹션 (paramType=HEADER) */}
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      {/* 헤더 섹션 (paramType=HEADER) — 커스텀은 숨김 */}
+      {!isCustom && <div className="card" style={{ marginBottom: '1rem' }}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title">헤더</h3>
           <button className="btn btn-sm btn-primary" onClick={() => {
@@ -316,10 +335,10 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
             );
           })()}
         </div>
-      </div>
+      </div>}
 
-      {/* 파라미터 섹션 (QUERY/BODY/PATH) */}
-      <div className="card">
+      {/* 파라미터 섹션 (QUERY/BODY/PATH) — 커스텀은 숨김 */}
+      {!isCustom && <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title">호출 파라미터</h3>
           <button className="btn btn-sm btn-primary" onClick={addParam}>+ 추가</button>
@@ -433,7 +452,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

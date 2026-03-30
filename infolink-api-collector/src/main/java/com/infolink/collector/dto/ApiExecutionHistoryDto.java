@@ -19,6 +19,7 @@ public class ApiExecutionHistoryDto {
         private Integer httpStatusCode;
         private Integer responseCount;
         private Integer insertCount;
+        private Integer updateCount;
         private Integer skipCount;
         private String errorMessage;
         private LocalDateTime startedAt;
@@ -34,6 +35,7 @@ public class ApiExecutionHistoryDto {
                     .httpStatusCode(h.getHttpStatusCode())
                     .responseCount(h.getResponseCount())
                     .insertCount(h.getInsertCount())
+                    .updateCount(h.getUpdateCount())
                     .skipCount(h.getSkipCount())
                     .errorMessage(h.getErrorMessage())
                     .startedAt(h.getStartedAt())

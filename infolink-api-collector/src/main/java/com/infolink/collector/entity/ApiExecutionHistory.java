@@ -43,11 +43,15 @@ public class ApiExecutionHistory {
     private Integer responseCount;
 
     @Column(name = "insert_count")
-    @Comment("적재 성공 수")
+    @Comment("신규 적재 수")
     private Integer insertCount;
 
+    @Column(name = "update_count")
+    @Comment("갱신 수")
+    private Integer updateCount;
+
     @Column(name = "skip_count")
-    @Comment("스킵 수")
+    @Comment("스킵(실패) 수")
     private Integer skipCount;
 
     @Column(name = "error_message", columnDefinition = "TEXT")

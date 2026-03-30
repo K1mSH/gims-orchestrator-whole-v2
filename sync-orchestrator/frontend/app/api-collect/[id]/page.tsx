@@ -23,9 +23,9 @@ export default function ApiCollectDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('info');
   const [running, setRunning] = useState(false);
 
-  const fetchEndpoint = useCallback(async () => {
+  const fetchEndpoint = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await endpointApi.getById(id);
       setEndpoint(data);
     } catch (e) {
@@ -33,7 +33,7 @@ export default function ApiCollectDetailPage() {
       alert('API 정보를 불러올 수 없습니다.');
       router.push('/api-collect');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [id, router]);
 
@@ -59,7 +59,7 @@ export default function ApiCollectDetailPage() {
       setRunning(true);
       const result = await axios.post(`/collector-api/endpoints/${endpoint.id}/run`);
       const h = result.data;
-      alert(`실행 완료: ${h.status}\n적재: ${h.insertCount}건, 스킵: ${h.skipCount}건${h.errorMessage ? '\n에러: ' + h.errorMessage : ''}`);
+      alert(`실행 완료: ${h.status}\n신규: ${h.insertCount}건, 갱신: ${h.updateCount ?? 0}건, 스킵: ${h.skipCount}건${h.errorMessage ? '\n에러: ' + h.errorMessage : ''}`);
       fetchEndpoint();
     } catch (e: any) {
       alert('실행 실패: ' + (e.response?.data?.message || e.message));
@@ -154,10 +154,10 @@ export default function ApiCollectDetailPage() {
 
       {/* 탭 콘텐츠 */}
       {activeTab === 'info' && (
-        <InfoTab endpoint={endpoint} onUpdate={fetchEndpoint} />
+        <InfoTab endpoint={endpoint} onUpdate={() => fetchEndpoint(true)} />
       )}
       {activeTab === 'mapping' && (
-        <MappingTab endpoint={endpoint} onUpdate={fetchEndpoint} />
+        <MappingTab endpoint={endpoint} onUpdate={() => fetchEndpoint(true)} />
       )}
       {activeTab === 'schedule' && (
         <ScheduleTab endpointId={endpoint.id} />

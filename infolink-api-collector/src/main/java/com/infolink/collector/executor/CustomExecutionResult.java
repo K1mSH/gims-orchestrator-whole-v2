@@ -7,6 +7,7 @@ public record CustomExecutionResult(
         int httpStatusCode,
         int responseCount,
         int insertCount,
+        int updateCount,
         int skipCount,
         String errorMessage
 ) {

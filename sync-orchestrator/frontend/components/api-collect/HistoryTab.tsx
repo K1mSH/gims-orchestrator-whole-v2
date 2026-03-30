@@ -114,7 +114,8 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
                   <th>상태</th>
                   <th>HTTP</th>
                   <th>파싱</th>
-                  <th>적재</th>
+                  <th>신규</th>
+                  <th>갱신</th>
                   <th>스킵</th>
                   <th>소요시간</th>
                   <th>트리거</th>
@@ -133,6 +134,7 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
                     <td>{h.httpStatusCode || '-'}</td>
                     <td>{h.responseCount ?? '-'}</td>
                     <td style={{ fontWeight: 600 }}>{h.insertCount ?? '-'}</td>
+                    <td>{h.updateCount ?? '-'}</td>
                     <td>{h.skipCount ?? '-'}</td>
                     <td>{h.durationMs != null ? `${h.durationMs}ms` : '-'}</td>
                     <td>

@@ -30,7 +30,7 @@ import java.util.Map;
 @RequestMapping("/api/datasources")
 public class ConnectionInfoController {
 
-    @Value("${agent.orchestrator-url:http://localhost:8080}")
+    @Value("${agent.orchestrator-url}")
     private String orchestratorUrl;
 
     @SuppressWarnings("unchecked")

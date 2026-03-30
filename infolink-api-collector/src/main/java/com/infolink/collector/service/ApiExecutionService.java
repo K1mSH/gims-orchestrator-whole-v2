@@ -17,6 +17,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -94,6 +95,7 @@ public class ApiExecutionService {
             if (records.isEmpty()) {
                 history.setStatus(ApiExecutionHistory.Status.SUCCESS);
                 history.setInsertCount(0);
+                history.setUpdateCount(0);
                 history.setSkipCount(0);
                 finishHistory(history, startedAt);
                 return ApiExecutionHistoryDto.Response.from(history);
@@ -132,6 +134,7 @@ public class ApiExecutionService {
             effectiveMappings.addAll(derivedMappings);
 
             int insertCount = 0;
+            int updateCount = 0;
             int skipCount = 0;
 
             List<String> columns = effectiveMappings.stream()
@@ -143,63 +146,85 @@ public class ApiExecutionService {
                     .map(ApiFieldMapping::getTargetColumnName)
                     .collect(Collectors.toList());
 
-            String sql = buildSql(endpoint.getTargetTableName(), columns, pkColumns,
-                    Boolean.TRUE.equals(endpoint.getUpsertEnabled()));
+            boolean useUpsert = !pkColumns.isEmpty();
+            String sql = buildSql(endpoint.getTargetTableName(), columns, pkColumns, useUpsert);
 
             log.info("실행 SQL: {}", sql);
 
             DataSource targetDs = resolveTargetDataSource(endpoint);
 
-            // 행 단위 INSERT — java.sql.Savepoint(JDBC 표준)를 사용한 개별 에러 격리
-            //
-            // Savepoint는 우리가 구현한 것이 아니라 SQL 표준(SQL:1999)이며,
-            // JDBC(java.sql.Connection)가 API로 제공한다.
-            // 트랜잭션 안에 중간 저장점을 설정하여, 실패 시 트랜잭션 전체가 아닌
-            // 해당 저장점까지만 롤백할 수 있다.
-            //
-            // PostgreSQL 특성상 트랜잭션 내 에러 발생 시 전체가 aborted 상태가 되어
-            // 이후 모든 쿼리가 거부되므로, Savepoint 없이는 한 건 실패 = 전체 실패.
-            // Savepoint를 쓰면 실패한 행만 롤백하고 나머지 행은 계속 처리 가능.
+            // conflict key가 있을 때 기존 PK Set 조회 (insert/update 구분용)
+            Set<String> existingPkSet = new HashSet<>();
+            if (useUpsert) {
+                existingPkSet = loadExistingPkSet(targetDs, endpoint.getTargetTableName(), pkColumns);
+                log.info("기존 PK {}건 조회 완료", existingPkSet.size());
+            }
+
+            // 행 단위 INSERT — Savepoint를 사용한 개별 에러 격리
+            // PG 특성상 트랜잭션 내 에러 시 전체 aborted → Savepoint로 행 단위 롤백
             try (Connection conn = targetDs.getConnection()) {
                 conn.setAutoCommit(false);
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     for (Map<String, Object> record : records) {
-                        java.sql.Savepoint sp = conn.setSavepoint();  // 행 처리 전 저장점 설정
+                        java.sql.Savepoint sp = conn.setSavepoint();
                         try {
                             int paramIndex = 1;
+
+                            // PK 값 수집 (insert/update 판별용)
+                            List<String> currentPkValues = new ArrayList<>();
 
                             // 일반 매핑
                             for (ApiFieldMapping mapping : normalMappings) {
                                 Object rawValue = getNestedValue(record, mapping.getSourceFieldPath());
                                 Object transformed = dataTransformer.transform(rawValue, mapping.getTransformType(), mapping.getTransformConfig());
                                 ps.setObject(paramIndex++, transformed);
+                                if (useUpsert && pkColumns.contains(mapping.getTargetColumnName())) {
+                                    currentPkValues.add(String.valueOf(transformed));
+                                }
                             }
 
                             // 파생 매핑 (LOOKUP / DEFAULT_VALUE)
                             for (ApiFieldMapping dm : derivedMappings) {
-                                // 고정값: 소스필드 불필요, defaultValue 그대로 삽입
                                 if (dm.getTransformType() == ApiFieldMapping.TransformType.DEFAULT_VALUE) {
                                     ps.setObject(paramIndex++, dm.getDefaultValue());
+                                    if (useUpsert && pkColumns.contains(dm.getTargetColumnName())) {
+                                        currentPkValues.add(String.valueOf(dm.getDefaultValue()));
+                                    }
                                     continue;
                                 }
                                 Object rawValue = getNestedValue(record, dm.getSourceFieldPath());
+                                Object result;
                                 if (dm.getTransformType() == ApiFieldMapping.TransformType.LOOKUP) {
                                     Map<String, String> lookupMap = lookupMaps.getOrDefault(dm, Collections.emptyMap());
-                                    Object result = lookupService.lookup(rawValue,
+                                    result = lookupService.lookup(rawValue,
                                             dm.getExtractPattern(), dm.getExtractGroup(),
                                             lookupMap, dm.getDefaultValue());
-                                    ps.setObject(paramIndex++, result);
                                 } else {
-                                    Object transformed = dataTransformer.transform(rawValue, dm.getTransformType(), dm.getTransformConfig());
-                                    ps.setObject(paramIndex++, transformed);
+                                    result = dataTransformer.transform(rawValue, dm.getTransformType(), dm.getTransformConfig());
+                                }
+                                ps.setObject(paramIndex++, result);
+                                if (useUpsert && pkColumns.contains(dm.getTargetColumnName())) {
+                                    currentPkValues.add(String.valueOf(result));
                                 }
                             }
 
                             ps.executeUpdate();
-                            conn.releaseSavepoint(sp);  // 성공 → 저장점 해제 (자원 반환)
-                            insertCount++;
+                            conn.releaseSavepoint(sp);
+
+                            // insert/update 판별
+                            if (useUpsert) {
+                                String pkKey = String.join("|", currentPkValues);
+                                if (existingPkSet.contains(pkKey)) {
+                                    updateCount++;
+                                } else {
+                                    insertCount++;
+                                    existingPkSet.add(pkKey);  // 이후 중복 행 대비
+                                }
+                            } else {
+                                insertCount++;
+                            }
                         } catch (Exception e) {
-                            conn.rollback(sp);  // 실패 → 이 행만 롤백, 트랜잭션은 유지
+                            conn.rollback(sp);
                             log.warn("행 적재 실패: {}", e.getMessage());
                             skipCount++;
                         }
@@ -210,6 +235,7 @@ public class ApiExecutionService {
 
             history.setStatus(ApiExecutionHistory.Status.SUCCESS);
             history.setInsertCount(insertCount);
+            history.setUpdateCount(updateCount);
             history.setSkipCount(skipCount);
 
         } catch (Exception e) {
@@ -275,6 +301,29 @@ public class ApiExecutionService {
     }
 
     /**
+     * 기존 PK Set 조회 — insert/update 구분용
+     */
+    private Set<String> loadExistingPkSet(DataSource ds, String tableName, List<String> pkColumns) {
+        Set<String> pkSet = new HashSet<>();
+        String pkCols = String.join(", ", pkColumns);
+        String query = "SELECT " + pkCols + " FROM " + tableName;
+        try (Connection conn = ds.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query);
+             java.sql.ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                List<String> values = new ArrayList<>();
+                for (int i = 1; i <= pkColumns.size(); i++) {
+                    values.add(String.valueOf(rs.getObject(i)));
+                }
+                pkSet.add(String.join("|", values));
+            }
+        } catch (Exception e) {
+            log.warn("기존 PK 조회 실패 (신규 테이블일 수 있음): {}", e.getMessage());
+        }
+        return pkSet;
+    }
+
+    /**
      * dot notation으로 중첩 값 추출 (예: "address.city")
      */
     private Object getNestedValue(Map<String, Object> record, String path) {
@@ -311,6 +360,7 @@ public class ApiExecutionService {
             history.setHttpStatusCode(result.httpStatusCode());
             history.setResponseCount(result.responseCount());
             history.setInsertCount(result.insertCount());
+            history.setUpdateCount(result.updateCount());
             history.setSkipCount(result.skipCount());
 
             if (result.isSuccess()) {

@@ -166,6 +166,7 @@ export interface ApiExecutionHistoryItem {
   httpStatusCode: number | null;
   responseCount: number | null;
   insertCount: number | null;
+  updateCount: number | null;
   skipCount: number | null;
   errorMessage: string | null;
   startedAt: string;

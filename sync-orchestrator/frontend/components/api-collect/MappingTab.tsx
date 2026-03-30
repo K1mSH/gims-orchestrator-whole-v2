@@ -29,6 +29,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   const [tables, setTables] = useState<{ tableName: string; tableType: string; remarks?: string | null }[]>([]);
   const [targetTable, setTargetTable] = useState<string>(endpoint.targetTableName || '');
   const [targetColumns, setTargetColumns] = useState<ColumnSearchResult[]>([]);
+  const [savingLoadSettings, setSavingLoadSettings] = useState(false);
 
   // 1:1 매핑 행
   const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
@@ -163,7 +164,6 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     dataRootPath: endpoint.dataRootPath || undefined,
     targetDatasourceId: endpoint.targetDatasourceId || undefined,
     targetTableName: endpoint.targetTableName || undefined,
-    upsertEnabled: endpoint.upsertEnabled,
     description: endpoint.description || '',
   });
 
@@ -192,33 +192,29 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     }
   };
 
-  const handleDatasourceChange = async (dsId: string) => {
+  const handleDatasourceChange = (dsId: string) => {
     setSelectedDatasourceId(dsId);
     setTargetTable('');
     setTargetColumns([]);
-    try {
-      await endpointApi.update(endpoint.id, {
-        ...baseUpdateFields(),
-        targetDatasourceId: dsId || undefined,
-        targetTableName: '',
-      });
-      onUpdate();
-    } catch (e: any) {
-      alert('Datasource 저장 실패');
-    }
   };
 
-  const handleTargetTableChange = async (tableName: string) => {
+  const handleTargetTableChange = (tableName: string) => {
     setTargetTable(tableName);
+  };
+
+  const handleSaveLoadSettings = async () => {
     try {
+      setSavingLoadSettings(true);
       await endpointApi.update(endpoint.id, {
         ...baseUpdateFields(),
         targetDatasourceId: selectedDatasourceId || undefined,
-        targetTableName: tableName,
+        targetTableName: targetTable || undefined,
       });
       onUpdate();
     } catch (e: any) {
-      alert('테이블 저장 실패');
+      alert('적재 설정 저장 실패: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setSavingLoadSettings(false);
     }
   };
 
@@ -421,18 +417,11 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                 <option value="">-- 테이블 선택 --</option>
                 {tables.map(t => <option key={t.tableName} value={t.tableName}>{t.tableName}{t.remarks ? ` (${t.remarks})` : ''}</option>)}
               </select>
-              <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <input type="checkbox" checked={endpoint.upsertEnabled}
-                  onChange={async (e) => {
-                    await endpointApi.update(endpoint.id, {
-                      apiName: endpoint.apiName, url: endpoint.url,
-                      httpMethod: endpoint.httpMethod, authType: endpoint.authType,
-                      upsertEnabled: e.target.checked,
-                    });
-                    onUpdate();
-                  }} />
-                UPSERT
-              </label>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-primary btn-sm" onClick={handleSaveLoadSettings} disabled={savingLoadSettings}>
+                {savingLoadSettings ? '저장 중...' : '적재 설정 저장'}
+              </button>
             </div>
           </div>
         </div>

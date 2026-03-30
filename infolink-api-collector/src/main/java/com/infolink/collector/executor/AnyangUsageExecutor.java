@@ -16,8 +16,7 @@ import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 안양시 이용량 커스텀 실행기
@@ -60,6 +59,7 @@ public class AnyangUsageExecutor implements CustomExecutor {
                                           Map<String, String> overrides, String triggeredBy) {
         int totalResponseCount = 0;
         int totalInsertCount = 0;
+        int totalUpdateCount = 0;
         int totalSkipCount = 0;
 
         try {
@@ -75,7 +75,7 @@ public class AnyangUsageExecutor implements CustomExecutor {
                     .build();
             ApiCallService.CallResult facResult = apiCallService.call(facEndpoint, params, overrides);
             if (!facResult.isSuccess()) {
-                return new CustomExecutionResult(facResult.statusCode(), 0, 0, 0,
+                return new CustomExecutionResult(facResult.statusCode(), 0, 0, 0, 0,
                         "FAC API 호출 실패: " + facResult.error());
             }
 
@@ -83,11 +83,16 @@ public class AnyangUsageExecutor implements CustomExecutor {
             totalResponseCount += facItems.size();
             log.info("[안양] FAC 수신: {}건", facItems.size());
 
-            int facInserted = upsertFacData(jdbc, facItems);
-            totalInsertCount += facInserted;
-            log.info("[안양] FAC UPSERT: {}건", facInserted);
+            // FAC 기존 PK 조회 (account_no)
+            Set<String> existingFacPks = new HashSet<>(
+                    jdbc.queryForList("SELECT account_no FROM anyang_api_fac", String.class));
 
-            // === STEP 2: DATA API 호출 + INSERT (usgqty 산출) ===
+            int[] facCounts = upsertFacData(jdbc, facItems, existingFacPks);
+            totalInsertCount += facCounts[0];
+            totalUpdateCount += facCounts[1];
+            log.info("[안양] FAC 신규: {}건, 갱신: {}건", facCounts[0], facCounts[1]);
+
+            // === STEP 2: DATA API 호출 + UPSERT (usgqty 산출) ===
             log.info("[안양] STEP 2: 이용량(DATA) API 호출 — {}", dataApiUrl);
             ApiEndpoint dataEndpoint = ApiEndpoint.builder()
                     .url(dataApiUrl).httpMethod("GET")
@@ -96,7 +101,7 @@ public class AnyangUsageExecutor implements CustomExecutor {
 
             ApiCallService.CallResult dataResult = apiCallService.call(dataEndpoint, params, overrides);
             if (!dataResult.isSuccess()) {
-                return new CustomExecutionResult(dataResult.statusCode(), totalResponseCount, totalInsertCount, 0,
+                return new CustomExecutionResult(dataResult.statusCode(), totalResponseCount, totalInsertCount, totalUpdateCount, 0,
                         "DATA API 호출 실패: " + dataResult.error());
             }
 
@@ -104,27 +109,43 @@ public class AnyangUsageExecutor implements CustomExecutor {
             totalResponseCount += dataItems.size();
             log.info("[안양] DATA 수신: {}건", dataItems.size());
 
-            // === STEP 3: DATA INSERT + USE_LEGACY_DATA INSERT (건별) ===
-            log.info("[안양] STEP 3: DATA INSERT + LEGACY 기록 (건별 처리)");
+            // DATA 기존 PK 조회 (account_no + meter_dtm 복합키)
+            Set<String> existingDataPks = new HashSet<>();
+            jdbc.query("SELECT account_no, meter_dtm FROM anyang_api_data", rs -> {
+                existingDataPks.add(rs.getString("account_no") + "|" + rs.getString("meter_dtm"));
+            });
+
+            // === STEP 3: DATA UPSERT + USE_LEGACY_DATA INSERT (건별) ===
+            log.info("[안양] STEP 3: DATA UPSERT + LEGACY 기록 (건별 처리)");
             for (Map<String, Object> item : dataItems) {
                 try {
+                    String accountNo = str(item, "account_no");
+                    String meterDtm = str(item, "meter_dtm");
+                    String dataKey = accountNo + "|" + meterDtm;
+
                     insertDataRecord(jdbc, item);
                     insertLegacyRecord(jdbc, item);
-                    totalInsertCount++;
+
+                    if (existingDataPks.contains(dataKey)) {
+                        totalUpdateCount++;
+                    } else {
+                        totalInsertCount++;
+                        existingDataPks.add(dataKey);
+                    }
                 } catch (Exception e) {
                     log.warn("[안양] 건별 처리 실패: account_no={}, error={}", item.get("account_no"), e.getMessage());
                     totalSkipCount++;
                 }
             }
 
-            log.info("[안양] 완료 — 총 수신: {}건, INSERT: {}건, 스킵: {}건",
-                    totalResponseCount, totalInsertCount, totalSkipCount);
+            log.info("[안양] 완료 — 총 수신: {}건, 신규: {}건, 갱신: {}건, 스킵: {}건",
+                    totalResponseCount, totalInsertCount, totalUpdateCount, totalSkipCount);
 
-            return new CustomExecutionResult(200, totalResponseCount, totalInsertCount, totalSkipCount, null);
+            return new CustomExecutionResult(200, totalResponseCount, totalInsertCount, totalUpdateCount, totalSkipCount, null);
 
         } catch (Exception e) {
             log.error("[안양] 실행 실패: {}", e.getMessage(), e);
-            return new CustomExecutionResult(0, totalResponseCount, totalInsertCount, totalSkipCount, e.getMessage());
+            return new CustomExecutionResult(0, totalResponseCount, totalInsertCount, totalUpdateCount, totalSkipCount, e.getMessage());
         }
     }
 
@@ -142,8 +163,9 @@ public class AnyangUsageExecutor implements CustomExecutor {
 
     /**
      * FAC 데이터 UPSERT (account_no 기준)
+     * @return [insertCount, updateCount]
      */
-    private int upsertFacData(JdbcTemplate jdbc, List<Map<String, Object>> items) {
+    private int[] upsertFacData(JdbcTemplate jdbc, List<Map<String, Object>> items, Set<String> existingPks) {
         String sql = """
                 INSERT INTO anyang_api_fac (account_no, company_cd, company_nm, account_nm, status_device,
                     connect_dtm, state_display, device_sn, gps_latitude, gps_longitude, meter_sn,
@@ -160,19 +182,26 @@ public class AnyangUsageExecutor implements CustomExecutor {
                     full_addr = EXCLUDED.full_addr, cdma_no = EXCLUDED.cdma_no, nwk = EXCLUDED.nwk
                 """;
 
-        int count = 0;
+        int insertCount = 0;
+        int updateCount = 0;
         for (Map<String, Object> item : items) {
+            String accountNo = str(item, "account_no");
             jdbc.update(sql,
-                    str(item, "account_no"), str(item, "company_cd"), str(item, "company_nm"),
+                    accountNo, str(item, "company_cd"), str(item, "company_nm"),
                     str(item, "account_nm"), str(item, "status_device"),
                     toTimestamp(item, "connect_dtm"), str(item, "state_display"),
                     str(item, "device_sn"), str(item, "gps_latitude"), str(item, "gps_longitude"),
                     str(item, "meter_sn"), str(item, "caliber_cd"), str(item, "mt_down"),
                     toTimestamp(item, "mt_down_dtm"), toTimestamp(item, "mt_last_dtm"),
                     str(item, "full_addr"), str(item, "cdma_no"), str(item, "nwk"));
-            count++;
+            if (existingPks.contains(accountNo)) {
+                updateCount++;
+            } else {
+                insertCount++;
+                existingPks.add(accountNo);
+            }
         }
-        return count;
+        return new int[]{insertCount, updateCount};
     }
 
     /**
