@@ -89,6 +89,10 @@
 - [ ] ApiEndpointController 커스텀 실행기 목록 API
 - [ ] 프론트: 등록/수정 시 실행 방식 선택 (범용/커스텀)
 - [ ] 프론트: 커스텀 선택 시 매핑 탭 비활성화
+- [ ] **실행 옵션(executionParams)** — `Map<String, Object>` 파라미터 슬롯 추가 (Agent의 params 패턴)
+  - CustomExecutor.execute()에 executionParams 인자 추가
+  - 용도: yearProgram 연도 지정, includePmms 분기 등 실행 시 옵션 전달
+  - 프론트: 실행 버튼에 옵션 입력 UI (나중에, 지금은 빈 맵 전달)
 
 ## 13. 안양시 이용량 연동 (신규 추가 3/25)
 - [ ] Mock API — /mock/anyang/fac (시설정보)

@@ -6,9 +6,9 @@ spring:
     name: infolink-api-collector
 
   datasource:
-    url: ENC(hg7lOp9CmODutrzy16m5LCIW2UyuN0F4lprF8kklqqMQyVASUy5KwfPxKqA7DeYUTn2JyP/TYVDnHn7OD3tLezssUgNt7PybvQ8emHR5Yxo=)
-    username: ENC(Yvbz0txrJEIoyUw56bhkWX6nYetTyRTxVwVm3gwMLTdzfdLJujRS5Ltq0tcbMQmj)
-    password: ENC(qNWBRGoyzgVAlMEkvOE2jAtKJK60ZGjBP3RHzeJVmrt63UkW5C36MqxgtO8pGOoE)
+    url: ENC(SEmKJET7sHv0FyC7ffxBbGrBe3fIfRiH3tRvEANblHcUC2xkqxtDMdoZRQYV08A9KnIqvILy+9BScibMfL7GgmqSdj8OHssCUPXmLP9PDSo=)
+    username: ENC(4WzyGx0RnV47Iqyb7g+Er3qqIII3dhjq2FzDHbDdu966pQ3FKn1XmPm1qt/xpYfe)
+    password: ENC(ddLfopc8LeNkYf1Phsfoe3cQGHCyqy2htaGgQ9Yzy2RpBXmM3qEiEtgyUg8Kj5w8)
     driver-class-name: org.postgresql.Driver
 
   jpa:

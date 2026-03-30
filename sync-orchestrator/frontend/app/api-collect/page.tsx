@@ -104,6 +104,7 @@ export default function ApiCollectPage() {
     try {
       setLoading(true);
       const data = await endpointApi.getAll();
+      data.sort((a, b) => a.apiName.localeCompare(b.apiName, 'ko'));
       setEndpoints(data);
     } catch (e) {
       console.error('목록 조회 실패:', e);
@@ -231,6 +232,7 @@ export default function ApiCollectPage() {
   const handleCreate = async () => {
     // 1. 기본정보
     if (!form.apiName.trim()) { alert('API명을 입력하세요.'); return; }
+    if (!form.url.trim()) { alert('URL을 입력하세요.'); return; }
 
     if (!isCustom) {
       // 범용: URL + 테스트/매핑 검증
@@ -388,9 +390,9 @@ export default function ApiCollectPage() {
             <div>
               <div style={sectionStyle}>
                 <div style={sectionLabel}>프리셋 설정</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <div style={fieldLabel}>실행기</div>
+                    <div style={fieldLabel}>실행기 *</div>
                     <select className="form-select" value={executorType}
                       onChange={e => setExecutorType(e.target.value)}>
                       {customExecutors.map(ce => (
@@ -399,20 +401,36 @@ export default function ApiCollectPage() {
                     </select>
                   </div>
                   <div>
-                    <div style={fieldLabel}>API명</div>
+                    <div style={fieldLabel}>API명 *</div>
                     <input className="form-input" value={form.apiName}
                       onChange={e => setForm({ ...form, apiName: e.target.value })}
                       placeholder="예: 안양시 이용량" />
                   </div>
                   <div>
-                    <div style={fieldLabel}>Target Datasource</div>
-                    <select className="form-select" value={selectedDatasourceId}
-                      onChange={e => setSelectedDatasourceId(e.target.value)}>
-                      <option value="">-- 선택 --</option>
-                      {datasources.map(ds => (
-                        <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName || ds.datasourceId}</option>
-                      ))}
-                    </select>
+                    <div style={fieldLabel}>URL *</div>
+                    <input className="form-input" value={form.url}
+                      onChange={e => setForm({ ...form, url: e.target.value })}
+                      placeholder="http://localhost:8084/mock/..." />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <div style={fieldLabel}>HTTP Method</div>
+                      <select className="form-select" value={form.httpMethod}
+                        onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={fieldLabel}>Target Datasource</div>
+                      <select className="form-select" value={selectedDatasourceId}
+                        onChange={e => setSelectedDatasourceId(e.target.value)}>
+                        <option value="">-- 기본 DB --</option>
+                        {datasources.map(ds => (
+                          <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName || ds.datasourceId}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
