@@ -229,6 +229,69 @@ public class MockApiController {
         return Map.of("data", items);
     }
 
+    /**
+     * Mock 제주 수위 관측 데이터 API
+     * 실제: POST http://water.jeju.go.kr/obsvsystem/rest/selectObsvData.json
+     * 파라미터: site_code, data_time
+     * 응답: { "data": [ { siteCode, siteName, dataTime, gl, scond, wTemp, mSn }, ... ] }
+     */
+    @PostMapping("/jeju/obsv-data")
+    public Map<String, Object> getJejuObsvData(@RequestParam(required = false) String site_code,
+                                                @RequestParam(required = false) String data_time) {
+        log.info("Mock 제주 수위 관측 API 호출: site_code={}, data_time={}", site_code, data_time);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+
+        // site_code별 Mock 데이터 (센서 S11=수위전용, S21/S22=다심도)
+        Map<String, Object[][]> mockData = new LinkedHashMap<>();
+        mockData.put("SC001", new Object[][]{
+                {"SC001", "한림관측소", "20260330010000", "3.52", "248", "15.1", "S11"},
+                {"SC001", "한림관측소", "20260330020000", "3.48", "250", "15.0", "S11"},
+                {"SC001", "한림관측소", "20260330010000", "4.10", "260", "14.8", "S21"},
+        });
+        mockData.put("SC002", new Object[][]{
+                {"SC002", "서귀포관측소", "20260330010000", "5.20", "310", "16.3", "S11"},
+                {"SC002", "서귀포관측소", "20260330020000", "5.18", "312", "16.2", "S11"},
+        });
+        mockData.put("SC003", new Object[][]{
+                {"SC003", "조천관측소", "20260330010000", "2.15", "180", "14.5", "S11"},
+                {"SC003", "조천관측소", "20260330020000", "2.12", "182", "14.4", "S11"},
+                {"SC003", "조천관측소", "20260330010000", "3.80", "200", "14.0", "S21"},
+                {"SC003", "조천관측소", "20260330010000", "5.50", "220", "13.5", "S22"},
+        });
+        mockData.put("SC004", new Object[][]{
+                {"SC004", "남원관측소", "20260330010000", "8.30", "420", "17.1", "S11"},
+        });
+        mockData.put("SC005", new Object[][]{
+                {"SC005", "애월관측소", "20260330010000", "4.05", "230", "15.5", "S11"},
+                {"SC005", "애월관측소", "20260330020000", "4.02", "232", "15.4", "S11"},
+        });
+
+        String[] keys = {"siteCode", "siteName", "dataTime", "gl", "scond", "wTemp", "mSn"};
+
+        // site_code가 있으면 해당 것만, 없으면 전체
+        if (site_code != null && !site_code.isEmpty()) {
+            Object[][] rows = mockData.get(site_code);
+            if (rows != null) {
+                for (Object[] row : rows) {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    for (int j = 0; j < keys.length; j++) item.put(keys[j], row[j]);
+                    items.add(item);
+                }
+            }
+        } else {
+            for (Object[][] rows : mockData.values()) {
+                for (Object[] row : rows) {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    for (int j = 0; j < keys.length; j++) item.put(keys[j], row[j]);
+                    items.add(item);
+                }
+            }
+        }
+
+        return Map.of("data", items);
+    }
+
     // ===================== GIMS 내부 시스템 Mock =====================
 
     /**

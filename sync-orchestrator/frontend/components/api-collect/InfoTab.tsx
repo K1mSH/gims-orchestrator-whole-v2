@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { endpointApi, paramApi, apiKeyApi, ApiKeyItem } from '@/lib/collectorApi';
+import { endpointApi, paramApi, apiKeyApi, testApi, ApiKeyItem, TestCallResponse } from '@/lib/collectorApi';
 import {
   ApiEndpointDetail,
   ApiEndpointUpdateRequest,
@@ -49,6 +49,10 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
     }))
   );
   const [paramsSaving, setParamsSaving] = useState(false);
+
+  // --- 테스트 호출 (커스텀용) ---
+  const [customTesting, setCustomTesting] = useState(false);
+  const [customTestResult, setCustomTestResult] = useState<TestCallResponse | null>(null);
 
   // API 키 목록
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
@@ -161,44 +165,43 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         {/* 요청 설정 */}
         <div style={sectionStyle}>
           <div style={sectionLabel}>{isCustom ? '프리셋 정보' : '요청'}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: isCustom ? '1fr 1fr' : '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
             <div>
               <div style={labelStyle}>API명</div>
               <input className="form-input" value={form.apiName}
                 onChange={e => setForm({ ...form, apiName: e.target.value })} />
             </div>
-            {isCustom ? (
+            {isCustom && (
               <div>
                 <div style={labelStyle}>실행기</div>
                 <input className="form-input" value={endpoint.executorType || ''} disabled
                   style={{ background: 'var(--gray-50)' }} />
               </div>
-            ) : (
-              <>
-                <div>
-                  <div style={labelStyle}>URL</div>
-                  <input className="form-input" value={form.url}
-                    onChange={e => setForm({ ...form, url: e.target.value })} />
-                </div>
-                <div>
-                  <div style={labelStyle}>HTTP Method</div>
-                  <select className="form-select" value={form.httpMethod}
-                    onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                  </select>
-                </div>
-                <div>
-                  <div style={labelStyle}>Content-Type</div>
-                  <select className="form-select" value={form.contentType || ''}
-                    onChange={e => setForm({ ...form, contentType: e.target.value })}>
-                    <option value="">기본 (없음)</option>
-                    <option value="application/json">application/json</option>
-                    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
-                    <option value="multipart/form-data">multipart/form-data</option>
-                  </select>
-                </div>
-              </>
+            )}
+            <div>
+              <div style={labelStyle}>URL</div>
+              <input className="form-input" value={form.url}
+                onChange={e => setForm({ ...form, url: e.target.value })} />
+            </div>
+            <div>
+              <div style={labelStyle}>HTTP Method</div>
+              <select className="form-select" value={form.httpMethod}
+                onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+              </select>
+            </div>
+            {!isCustom && (
+              <div>
+                <div style={labelStyle}>Content-Type</div>
+                <select className="form-select" value={form.contentType || ''}
+                  onChange={e => setForm({ ...form, contentType: e.target.value })}>
+                  <option value="">기본 (없음)</option>
+                  <option value="application/json">application/json</option>
+                  <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                  <option value="multipart/form-data">multipart/form-data</option>
+                </select>
+              </div>
             )}
           </div>
         </div>
@@ -253,8 +256,47 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         </div>
       </div>
 
-      {/* 헤더 섹션 (paramType=HEADER) — 커스텀은 숨김 */}
-      {!isCustom && <div className="card" style={{ marginBottom: '1rem' }}>
+      {/* 테스트 호출 (커스텀) */}
+      {isCustom && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 className="card-title">API 연결 테스트</h3>
+            <button className="btn btn-primary" onClick={async () => {
+              try {
+                setCustomTesting(true);
+                setCustomTestResult(null);
+                const result = await testApi.call(endpoint.id);
+                setCustomTestResult(result);
+              } catch (e: any) {
+                setCustomTestResult({ success: false, httpStatusCode: 0, errorMessage: e.message, responseTree: null, dataRootPath: null, fields: null, resolvedParams: {} });
+              } finally {
+                setCustomTesting(false);
+              }
+            }} disabled={customTesting}>
+              {customTesting ? '호출 중...' : '테스트 호출'}
+            </button>
+          </div>
+          {customTestResult && (
+            <div style={{ padding: '0.75rem 1rem' }}>
+              <div style={{
+                padding: '0.5rem 0.75rem',
+                borderRadius: '4px',
+                fontSize: '0.85rem',
+                background: customTestResult.success ? '#f0fdf4' : '#fef2f2',
+                color: customTestResult.success ? '#166534' : '#991b1b',
+                border: `1px solid ${customTestResult.success ? '#bbf7d0' : '#fecaca'}`,
+              }}>
+                {customTestResult.success
+                  ? `HTTP ${customTestResult.httpStatusCode} — 응답 수신 성공`
+                  : `실패: ${customTestResult.errorMessage || 'HTTP ' + customTestResult.httpStatusCode}`}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 헤더 섹션 (paramType=HEADER) */}
+      <div className="card" style={{ marginBottom: '1rem' }}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title">헤더</h3>
           <button className="btn btn-sm btn-primary" onClick={() => {
@@ -335,10 +377,10 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
             );
           })()}
         </div>
-      </div>}
+      </div>
 
-      {/* 파라미터 섹션 (QUERY/BODY/PATH) — 커스텀은 숨김 */}
-      {!isCustom && <div className="card">
+      {/* 파라미터 섹션 (QUERY/BODY/PATH) */}
+      <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title">호출 파라미터</h3>
           <button className="btn btn-sm btn-primary" onClick={addParam}>+ 추가</button>
@@ -452,7 +494,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
             </button>
           </div>
         </div>
-      </div>}
+      </div>
     </div>
   );
 }

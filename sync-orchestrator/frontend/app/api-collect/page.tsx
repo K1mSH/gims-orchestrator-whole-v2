@@ -78,6 +78,10 @@ export default function ApiCollectPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestCallResponse | null>(null);
 
+  // 커스텀 인라인 테스트
+  const [customTesting, setCustomTesting] = useState(false);
+  const [customTestResult, setCustomTestResult] = useState<TestCallResponse | null>(null);
+
   // 데이터 루트
   const [selectedDataRoot, setSelectedDataRoot] = useState('');
 
@@ -153,6 +157,7 @@ export default function ApiCollectPage() {
 
   const resetForm = () => {
     setForm({ apiName: '', url: '', httpMethod: 'GET', authType: 'NONE', zone: 'DMZ' });
+    setCustomTestResult(null);
     setExecutorType('');
     setParams([]);
     setTestResult(null);
@@ -233,6 +238,11 @@ export default function ApiCollectPage() {
     // 1. 기본정보
     if (!form.apiName.trim()) { alert('API명을 입력하세요.'); return; }
     if (!form.url.trim()) { alert('URL을 입력하세요.'); return; }
+
+    if (isCustom) {
+      // 커스텀: 테스트 호출 통과 필수
+      if (!testResult?.success) { alert('API 연결 테스트를 먼저 실행하세요.'); return; }
+    }
 
     if (!isCustom) {
       // 범용: URL + 테스트/매핑 검증
@@ -385,70 +395,35 @@ export default function ApiCollectPage() {
             </div>
           </div>
 
-          {/* 프리셋 선택 시 간소화된 폼 */}
-          {isCustom ? (
-            <div>
-              <div style={sectionStyle}>
-                <div style={sectionLabel}>프리셋 설정</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div>
-                    <div style={fieldLabel}>실행기 *</div>
-                    <select className="form-select" value={executorType}
-                      onChange={e => setExecutorType(e.target.value)}>
-                      {customExecutors.map(ce => (
-                        <option key={ce.id} value={ce.id}>{ce.displayName}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <div style={fieldLabel}>API명 *</div>
-                    <input className="form-input" value={form.apiName}
-                      onChange={e => setForm({ ...form, apiName: e.target.value })}
-                      placeholder="예: 안양시 이용량" />
-                  </div>
-                  <div>
-                    <div style={fieldLabel}>URL *</div>
-                    <input className="form-input" value={form.url}
-                      onChange={e => setForm({ ...form, url: e.target.value })}
-                      placeholder="http://localhost:8084/mock/..." />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                    <div>
-                      <div style={fieldLabel}>HTTP Method</div>
-                      <select className="form-select" value={form.httpMethod}
-                        onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                      </select>
-                    </div>
-                    <div>
-                      <div style={fieldLabel}>Target Datasource</div>
-                      <select className="form-select" value={selectedDatasourceId}
-                        onChange={e => setSelectedDatasourceId(e.target.value)}>
-                        <option value="">-- 기본 DB --</option>
-                        {datasources.map(ds => (
-                          <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName || ds.datasourceId}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+          {/* 커스텀일 때 실행기 선택 */}
+          {isCustom && (
+            <div style={sectionStyle}>
+              <div style={sectionLabel}>실행기</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <div style={fieldLabel}>실행기 *</div>
+                  <select className="form-select" value={executorType}
+                    onChange={e => setExecutorType(e.target.value)}>
+                    {customExecutors.map(ce => (
+                      <option key={ce.id} value={ce.id}>{ce.displayName}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <div style={{ ...sectionStyle, background: '#fffbeb', borderLeft: '3px solid #f59e0b' }}>
-                <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
-                  API 호출, 매핑, 적재 로직은 실행기 내부에서 처리됩니다.
+                <div>
+                  <div style={fieldLabel}>Target Datasource</div>
+                  <select className="form-select" value={selectedDatasourceId}
+                    onChange={e => setSelectedDatasourceId(e.target.value)}>
+                    <option value="">-- 기본 DB --</option>
+                    {datasources.map(ds => (
+                      <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName || ds.datasourceId}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="btn" onClick={handleCreate} disabled={saving}
-                  style={{ background: 'var(--success)', color: 'white', padding: '0.5rem 1.5rem' }}>
-                  {saving ? '등록 중...' : '등록'}
-                </button>
               </div>
             </div>
-          ) : (<>
+          )}
 
-          {/* 요청 설정 */}
+          {/* 요청 설정 (공통) */}
           <div style={sectionStyle}>
             <div style={sectionLabel}>요청</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
@@ -751,6 +726,27 @@ export default function ApiCollectPage() {
             )}
           </div>
 
+          {/* 커스텀: 테스트 성공 시 안내 + 등록 버튼 */}
+          {isCustom && (
+            <>
+              {testResult?.success && (
+                <div style={{ ...sectionStyle, background: '#fffbeb', borderLeft: '3px solid #f59e0b' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
+                    API 연결 확인 완료. 매핑/적재 로직은 실행기 내부에서 처리됩니다.
+                  </div>
+                </div>
+              )}
+              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn" onClick={handleCreate} disabled={saving || !testResult?.success}
+                  style={{ background: testResult?.success ? 'var(--success)' : 'var(--gray-300)', color: 'white', padding: '0.5rem 1.5rem' }}>
+                  {saving ? '등록 중...' : '등록'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* 이하 범용 전용: 응답 트리 + 데이터 루트 + 매핑 + 적재 + 등록 */}
+          {!isCustom && <>
           {/* 응답 트리 + 데이터 루트 선택 */}
           {testResult?.success && testResult.responseTree && (
             <div style={sectionStyle}>
@@ -1038,14 +1034,14 @@ export default function ApiCollectPage() {
             </div>
           )}
 
-          {/* 등록 버튼 (일반) */}
+          {/* 등록 버튼 (범용) */}
           <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button className="btn" onClick={handleCreate} disabled={saving}
               style={{ background: 'var(--success)', color: 'white', padding: '0.5rem 1.5rem' }}>
               {saving ? '등록 중...' : '등록'}
             </button>
           </div>
-          </>)}
+          </>}
         </div>
       )}
 
