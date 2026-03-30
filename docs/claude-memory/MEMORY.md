@@ -8,6 +8,8 @@
 - [feedback_proxy_service.md](feedback_proxy_service.md) - 서비스 기동 시 프록시도 함께 올리기
 - [feedback_devlog_format.md](feedback_devlog_format.md) - dev_logs: 오전/오후/내일할일/파트별 진행도 포함
 - [project_oracle_target.md](project_oracle_target.md) - Internal Agent target DB를 Oracle(도커)로 전환 필요
+- [feedback_trace_definition.md](feedback_trace_definition.md) - 추적 검증 = 건수 + 단건 역추적(/trace-source)까지 포함
+- [feedback_memory_pattern_first.md](feedback_memory_pattern_first.md) - 계획 시 MEMORY 패턴 먼저 확인하고 적용
 
 ## 작업 규칙
 
@@ -69,15 +71,14 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 |------|------|------|------|------|
 | Orchestrator | PostgreSQL | 29001 | orchestrator | 중앙 관리 |
 | Agent IF | PostgreSQL | 29001 | dev | IF 테이블, link_ngwis |
+| API Collector | PostgreSQL | 29001 | api_collector | 독립 DB |
 | 외부 PG | PostgreSQL | 29000 | daejeon,bytek,chungnam,keunsan | 4개 |
 | 외부 MySQL | MySQL | 29010 | infoworld_*,hydronet_* | 6개 (Docker) |
+| Internal Oracle | Oracle XE | 29004 | XEPDB1 | 내부망 GIMS 대체 |
+| **새올 Oracle** | Oracle XE | **29005** | XEPDB1 | 새올 DB 대체 (실서버=Tibero) |
 - 전체 계정: `k1m` / `1111` (테스트용)
 - keunsan만 대문자 테이블/컬럼, 나머지 소문자
-
-## DB 환경 (추가)
-| 용도 | 타입 | 포트 | DB명 | 비고 |
-|------|------|------|------|------|
-| API Collector | PostgreSQL | 29001 | api_collector | 독립 DB |
+- 새올 컨테이너: `gims_dmz_saeol_oracle`
 
 ## 서버 포트
 | 서비스 | 포트 |
