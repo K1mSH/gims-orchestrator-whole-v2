@@ -42,6 +42,9 @@ public class DynamicParamResolver {
         } else if (param.getDynamicType() == ApiParam.DynamicType.NOW) {
             LocalDateTime dateTime = LocalDateTime.now().plusHours(offset);
             return dateTime.format(DateTimeFormatter.ofPattern(format));
+        } else if (param.getDynamicType() == ApiParam.DynamicType.YEAR) {
+            LocalDate date = LocalDate.now().plusYears(offset);
+            return date.format(DateTimeFormatter.ofPattern(format));
         }
 
         // CUSTOM 등 미구현 타입

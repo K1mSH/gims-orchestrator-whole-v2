@@ -76,12 +76,18 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   const handleSaveInfo = async () => {
     try {
       setSaving(true);
-      await endpointApi.update(endpoint.id, {
+      const trimmed = {
         ...form,
-        dataRootPath: endpoint.dataRootPath || undefined,
-        targetDatasourceId: endpoint.targetDatasourceId || undefined,
-        targetTableName: endpoint.targetTableName || undefined,
-      });
+        apiName: form.apiName?.trim(),
+        url: form.url?.trim(),
+        contentType: form.contentType?.trim(),
+        authConfig: form.authConfig?.trim(),
+        description: form.description?.trim(),
+        dataRootPath: endpoint.dataRootPath?.trim() || undefined,
+        targetDatasourceId: endpoint.targetDatasourceId?.trim() || undefined,
+        targetTableName: endpoint.targetTableName?.trim() || undefined,
+      };
+      await endpointApi.update(endpoint.id, trimmed);
       alert('저장되었습니다.');
       onUpdate();
     } catch (e: any) {
@@ -94,7 +100,14 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   const handleSaveParams = async () => {
     try {
       setParamsSaving(true);
-      await paramApi.save(endpoint.id, params);
+      const trimmedParams = params.map(p => ({
+        ...p,
+        paramName: p.paramName?.trim(),
+        staticValue: p.staticValue?.trim(),
+        dynamicFormat: p.dynamicFormat?.trim(),
+        description: p.description?.trim(),
+      }));
+      await paramApi.save(endpoint.id, trimmedParams);
       alert('파라미터가 저장되었습니다.');
       onUpdate();
     } catch (e: any) {
@@ -460,6 +473,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
                             onChange={e => updateParam(i, 'dynamicType', e.target.value)}>
                             <option value="TODAY">날짜</option>
                             <option value="NOW">시간</option>
+                            <option value="YEAR">연도</option>
                           </select>
                           <input className="form-input" value={p.dynamicFormat || ''}
                             style={{ fontSize: '0.85rem', width: '100px' }}

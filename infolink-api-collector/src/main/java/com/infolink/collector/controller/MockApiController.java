@@ -292,6 +292,85 @@ public class MockApiController {
         return Map.of("data", items);
     }
 
+    // ===================== 제주 이용시설 Mock =====================
+
+    /**
+     * Mock 제주 이용시설 API — selectJejuUse.json 시뮬레이션
+     * 레거시: RgetstgmsProgram / yearProgram
+     * 페이징: totalCount + data 배열, 1000건 단위
+     */
+    @PostMapping("/jeju/facility")
+    public Map<String, Object> jejuFacility(
+            @RequestParam(value = "reg_year", defaultValue = "2025") String regYear,
+            @RequestParam(value = "page", required = false) Integer page) {
+
+        log.info("Mock 제주 이용시설 API 호출: reg_year={}, page={}", regYear, page);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+
+        // 다양한 코드값 커버 (wellSrvCode, wellDtlsrv_code, wellType, wellPublic, wellStatusCode, wellDrinkYn)
+        Object[][] rows = {
+                {"5001-001", "A1", "14", "permit", "pub", "01", "A0", "제주시", "한림읍", "", "123", "4", "2020-05-15", "", 150.5, 12.0, 100.0, 50.0, 200.0, 10.0, 3.5, 1.2, 5.0, 25.0, regYear, "1"},
+                {"5001-002", "A2", "24", "report", "pri", "03", "A1", "서귀포시", "표선면", "산", "456-7", "2", "2019-03-20", "2025-08-10", 200.0, 15.0, 120.0, 60.0, 180.0, 8.0, 4.2, 1.5, 6.0, 30.0, regYear, "1"},
+                {"5001-003", "A3", "25", "permit", "pub", "06", "A0", "제주시", "조천읍", "", "789", "1", "2018-11-01", "2024-12-20", 180.0, 10.0, 80.0, 40.0, 150.0, 12.0, 2.8, 0.8, 4.0, 20.0, regYear, "1"},
+                {"5001-004", "A3", "26", "report", "pri", "01", "", "서귀포시", "남원읍", "", "321", "3", "2021-07-25", "", 160.0, 8.0, 90.0, 45.0, 170.0, 9.0, 3.0, 1.0, 5.5, 22.0, regYear, "1"},
+                {"5001-005", "A1", "17", "permit", "pub", "01", "A1", "제주시", "애월읍", "산", "654-3", "5", "2017-01-10", "", 220.0, 20.0, 150.0, 70.0, 250.0, 15.0, 5.0, 2.0, 7.0, 35.0, regYear, "1"},
+                {"5001-006", "A1", "18", "report", "pri", "01", "A0", "서귀포시", "대정읍", "", "987", "2", "2022-09-05", "", 130.0, 11.0, 110.0, 55.0, 190.0, 7.0, 3.8, 1.3, 4.5, 28.0, regYear, "1"},
+                {"5001-007", "A1", "2", "permit", "pub", "01", "A1", "제주시", "구좌읍", "", "111", "1", "2016-04-20", "", 170.0, 13.0, 95.0, 48.0, 160.0, 11.0, 4.0, 1.1, 5.2, 24.0, regYear, "1"},
+                {"5001-008", "A3", "27", "report", "pri", "01", "A0", "제주시", "한경면", "", "222", "3", "2023-02-28", "", 140.0, 9.0, 85.0, 42.0, 140.0, 6.0, 2.5, 0.9, 3.8, 18.0, regYear, "1"},
+                {"5001-009", "A3", "28", "permit", "pub", "03", "A1", "서귀포시", "안덕면", "산", "333-1", "4", "2015-06-15", "2026-01-05", 190.0, 16.0, 130.0, 65.0, 220.0, 13.0, 4.5, 1.7, 6.5, 32.0, regYear, "1"},
+                {"5001-010", "A4", "29", "permit", "pub", "01", "A0", "제주시", "우도면", "", "444", "2", "2020-12-01", "", 110.0, 7.0, 70.0, 35.0, 120.0, 5.0, 2.0, 0.6, 3.0, 15.0, regYear, "1"},
+                {"5001-011", "A4", "40", "report", "pri", "06", "", "서귀포시", "성산읍", "", "555", "1", "2019-08-20", "2025-03-15", 145.0, 12.0, 100.0, 50.0, 180.0, 10.0, 3.2, 1.0, 4.8, 26.0, regYear, "1"},
+                {"5001-012", "A1", "12", "permit", "pub", "01", "A1", "제주시", "이도동", "", "666", "5", "2024-01-15", "", 125.0, 14.0, 115.0, 58.0, 200.0, 8.0, 3.5, 1.4, 5.8, 29.0, regYear, "1"},
+        };
+
+        // EPSG:5186 좌표 (제주도 범위)
+        double[][] coords = {
+                {155000.0, 300000.0}, {160000.0, 280000.0}, {158000.0, 305000.0}, {162000.0, 285000.0},
+                {153000.0, 298000.0}, {165000.0, 282000.0}, {157000.0, 307000.0}, {151000.0, 296000.0},
+                {164000.0, 284000.0}, {159000.0, 310000.0}, {163000.0, 286000.0}, {156000.0, 302000.0},
+        };
+
+        for (int i = 0; i < rows.length; i++) {
+            Object[] r = rows[i];
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("wellNo", r[0]);           // perm_nt_no
+            item.put("wellSrvCode", r[1]);      // substring(1) → 용도코드
+            item.put("wellDtlsrv_code", r[2]);  // 세부용도코드
+            item.put("wellType", r[3]);          // permit/report
+            item.put("wellPublic", r[4]);        // pub/pri
+            item.put("wellStatusCode", r[5]);    // 01/03/06
+            item.put("wellDrinkYn", r[6]);       // A0/A1/""
+            item.put("countynm", r[7]);          // 제주시/서귀포시
+            item.put("wellDong", r[8]);          // dvop_loc_regn_code 용
+            item.put("wellSan", r[9]);           // dvop_loc_san
+            item.put("wellBunji", r[10]);        // dvop_loc_bunji
+            item.put("wellHo", r[11]);           // dvop_loc_ho
+            item.put("wellFstPermitDt", r[12]);  // 최초허가일
+            item.put("wellDealDt", r[13]);       // 처분일(양도/폐공)
+            item.put("wellDepth", r[14]);        // dig_dph
+            item.put("wellDiameter", r[15]);     // dig_diam
+            item.put("fwPlanQty", r[16]);        // frw_pln_qua
+            item.put("pumpHrp", r[17]);          // dyn_eqn_hrp
+            item.put("pipeDiameter", r[18]);     // pipe_diam
+            item.put("rwtCapacity", r[19]);      // rwt_cap
+            item.put("natWtlv", r[20]);          // nat_wtlv
+            item.put("stbWtlv", r[21]);          // stb_wtlv
+            item.put("wellElev", r[22]);         // elev
+            item.put("yearUseQty", r[23]);       // y_use_qua
+            item.put("yyGbn", r[24]);            // yy_gbn (= reg_year)
+            item.put("permYn", r[25]);           // perm_yn
+            item.put("wellX", coords[i][0]);     // EPSG:5186 X
+            item.put("wellY", coords[i][1]);     // EPSG:5186 Y
+            items.add(item);
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("totalCount", items.size());
+        response.put("data", items);
+        return response;
+    }
+
     // ===================== GIMS 내부 시스템 Mock =====================
 
     /**

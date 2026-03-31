@@ -265,13 +265,18 @@ export default function ApiCollectPage() {
     try {
       setSaving(true);
 
-      // Step 1: endpoint 생성 (기본정보 + 적재설정 한번에)
+      // Step 1: endpoint 생성 (기본정보 + 적재설정 한번에) — trim 처리
       const submitForm = {
         ...form,
+        apiName: form.apiName?.trim(),
+        url: form.url?.trim(),
+        contentType: form.contentType?.trim(),
+        authConfig: form.authConfig?.trim(),
+        description: form.description?.trim(),
         executorType: executorType || undefined,
         dataRootPath: isCustom ? undefined : selectedDataRoot,
         targetDatasourceId: isCustom ? (selectedDatasourceId || undefined) : selectedDatasourceId,
-        targetTableName: isCustom ? undefined : targetTable,
+        targetTableName: isCustom ? undefined : targetTable?.trim(),
         upsertEnabled: isCustom ? undefined : upsertEnabled,
       };
       const created = await endpointApi.create(submitForm);
@@ -280,7 +285,14 @@ export default function ApiCollectPage() {
       try {
         // Step 2: params 저장
         if (params.filter(p => p.paramName).length > 0) {
-          await paramApi.save(endpointId, params.filter(p => p.paramName));
+          const trimmedParams = params.filter(p => p.paramName).map(p => ({
+            ...p,
+            paramName: p.paramName?.trim(),
+            staticValue: p.staticValue?.trim(),
+            dynamicFormat: p.dynamicFormat?.trim(),
+            description: p.description?.trim(),
+          }));
+          await paramApi.save(endpointId, trimmedParams);
         }
 
         // Step 3: mappings 저장 (범용만)

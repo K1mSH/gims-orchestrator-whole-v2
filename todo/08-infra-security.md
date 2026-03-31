@@ -15,4 +15,9 @@
 - [x] test_plan/bojo-test.md (API Key/보안, Proxy 섹션 추가)
 - [x] dev_plan 계획 문서 (3/3~3/24)
 
-**진행도: 9/9 = 100%**
+## 네이밍 정리
+- [ ] IF 테이블 prefix `if_rsv_` → `if_rcv_` 일괄 변경 (Agent 유형명 `RCV`와 통일)
+  - 대상: YAML 설정, DB 테이블명, 엔티티, ARCHITECTURE.md, service-name-mapping.md 등
+  - 현재 `if_rsv_`로 전체 사용 중 — 기능 안정화 후 일괄 리네이밍 권장
+
+**진행도: 9/10**

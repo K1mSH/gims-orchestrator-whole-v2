@@ -50,10 +50,10 @@
 
 | # | 신규 서비스명 | 레거시 프로그램 | 소스 | 적재 테이블 (DMZ DB) | 특수 처리 |
 |---|-------------|---------------|------|-------------------|----------|
-| D1 | **JejuJewonExecutor** | InsetTb_jeju_jewon | selectObsv.json (POST) | `jeju_jewon` | 좌표변환(5186→4326), 코드변환 3종 |
-| D2 | **JejuObsvDataExecutor** | InsertJeju | selectObsvData.json (POST) | `jeju_obsv_data` | site_code별 루프, 일일 수집 |
-| D3 | **JejuFacilityExecutor** | RgetstgmsProgram + yearProgram | selectJejuUse.json (POST) | `jeju_facility_pmms` + `jeju_facility_stgms` | 1000건 페이징, 좌표변환, 코드변환(11종), yearProgram은 executionParams로 통합 |
-| D4 | **JejuWaterQualityExecutor** | RgetnwaviProgram | selectSujil.json (POST) | `jeju_wavi_05` + `jeju_wavi_06` | 항목명 한→영 매핑, 용도구분(A/D) 분기 |
+| D1 | **JejuJewonExecutor** | InsetTb_jeju_jewon | selectObsv.json (POST) | `tb_jeju_jewon` | 좌표변환(5186→4326), 코드변환 3종 |
+| D2 | **JejuObsvDataExecutor** | InsertJeju | selectObsvData.json (POST) | `tb_jeju` | site_code별 루프, 일일 수집 |
+| D3 | **JejuFacilityExecutor** | RgetstgmsProgram + yearProgram | selectJejuUse.json (POST) | `rgetnpmms01` + `rgetstgms01` | 1000건 페이징, 좌표변환, 코드변환(8종), yearProgram은 동적파라미터 YEAR로 통합 |
+| D4 | **JejuWaterQualityExecutor** | RgetnwaviProgram | selectSujil.json (POST) | `rgetnwavi05` + `rgetnwavi06` | 항목명 한→영 매핑, 용도구분(A/D) 분기 |
 | D5 | **AnyangUsageExecutor** | (신규) | Mock API | `anyang_api_fac` + `anyang_api_data` + `use_legacy_data` | 이미 구현 (구조만) |
 
 ---
@@ -72,12 +72,12 @@ IF_RSV 수신 (기존 source-to-if Step 재사용)
 
 | # | DMZ 소스 테이블 | IF_SND (DMZ) | IF_RSV (Internal) | 도메인 |
 |---|---------------|-------------|-------------------|--------|
-| 1 | jeju_jewon | if_snd_jeju_jewon | if_rsv_jeju_jewon | 관측점 마스터 |
-| 2 | jeju_obsv_data | if_snd_jeju_obsv_data | if_rsv_jeju_obsv_data | 수위 관측 |
-| 3 | jeju_facility_pmms | if_snd_jeju_facility_pmms | if_rsv_jeju_facility_pmms | 이용시설(펌프) |
-| 4 | jeju_facility_stgms | if_snd_jeju_facility_stgms | if_rsv_jeju_facility_stgms | 이용시설(실태) |
-| 5 | jeju_wavi_05 | if_snd_jeju_wavi_05 | if_rsv_jeju_wavi_05 | 수질검사 |
-| 6 | jeju_wavi_06 | if_snd_jeju_wavi_06 | if_rsv_jeju_wavi_06 | 수질검사내역 |
+| 1 | tb_jeju_jewon | if_snd_tb_jeju_jewon | if_rsv_tb_jeju_jewon | 관측점 마스터 |
+| 2 | tb_jeju | if_snd_tb_jeju | if_rsv_tb_jeju | 수위 관측 |
+| 3 | rgetnpmms01 | if_snd_rgetnpmms01 | if_rsv_rgetnpmms01 | 허가신고정보 |
+| 4 | rgetstgms01 | if_snd_rgetstgms01 | if_rsv_rgetstgms01 | 이용실태 |
+| 5 | rgetnwavi05 | if_snd_rgetnwavi05 | if_rsv_rgetnwavi05 | 수질검사 |
+| 6 | rgetnwavi06 | if_snd_rgetnwavi06 | if_rsv_rgetnwavi06 | 수질검사내역 |
 
 ### IF 테이블 목록 (새올 — 16개 전부 실존 확인 3/30)
 
@@ -131,10 +131,10 @@ bojoint/
 
 | # | 신규 Step | 레거시 | IF_RSV 소스 | 타겟 테이블 (GIMS) | 특수 처리 |
 |---|----------|--------|-----------|-------------------|----------|
-| I1 | **JejuJewonLoadStep** | JewonDB | if_rsv_jeju_jewon | `TM_GD60001`, `TM_GD10001`, `TM_GD60130`, `TM_GD60002`, `GD60101_Gl`, `GD60101_Wtemp`, `GD60101_Scond` | 1→**7타겟** 분산, 고정값(V1~V10) |
-| I2 | **JejuObsvdataLoadStep** | ObsvrdataDB | if_rsv_jeju_obsv_data | `Pm60201(Gl/Wtemp/Scond)`, `Pm60202(Gl/Wtemp/Scond)` | 센서분기(S11→60201, S2x→60202), lc_sn, RID 증분 |
-| I3 | **JejuFacilityLoadStep** | JejuInToDB | if_rsv_jeju_facility_stgms | `TmGd31010Gms`, `TmGd31010`, `PmGd31022` | 존재체크 후 조건부 INSERT, 연도별 |
-| I4 | **JejuRgetnLoadStep** | RgetnDB | if_rsv_jeju_facility_stgms | `RGETSTGMS01` (내부망) | 단순 전체 이관 |
+| I1 | **JejuJewonLoadStep** | JewonDB | if_rsv_tb_jeju_jewon | `TM_GD60001`, `TM_GD10001`, `TM_GD60130`, `TM_GD60002`, `GD60101_Gl`, `GD60101_Wtemp`, `GD60101_Scond` | 1→**7타겟** 분산, 고정값(V1~V10) |
+| I2 | **JejuObsvdataLoadStep** | ObsvrdataDB | if_rsv_tb_jeju | `Pm60201(Gl/Wtemp/Scond)`, `Pm60202(Gl/Wtemp/Scond)` | 센서분기(S11→60201, S2x→60202), lc_sn, RID 증분 |
+| I3 | **JejuFacilityLoadStep** | JejuInToDB | if_rsv_rgetstgms01 | `TmGd31010Gms`, `TmGd31010`, `PmGd31022` | 존재체크 후 조건부 INSERT, 연도별 |
+| I4 | **JejuRgetnLoadStep** | RgetnDB | if_rsv_rgetstgms01 | `RGETSTGMS01` (내부망) | 단순 전체 이관 |
 | I5 | **JejuUsageLoadStep** | UseToIn | if_rsv_use_legacy_data + if_rsv_use_status_data | `PM_GD31021`, `PM_GD31022`, `TM_GD31025` | SN 증분, 음수→0 보정, 후처리 |
 | I6 | **SaeolMergeLoadStep** | saeol | if_rsv_rgetstgms01 외 15개 | 내부망 동일 16개 테이블 | flag(I/U/D)→MERGE/DELETE, TM_GD70001 진행추적, 동적 SQL |
 
@@ -145,19 +145,19 @@ bojoint/
 ### 제주 보조관측망
 
 ```
-[제주 API]                [DMZ DB]          [IF_SND]              [IF_RSV]              [GIMS]
-selectObsv.json  ─D1─→ jeju_jewon      → if_snd_jeju_jewon    → if_rsv_jeju_jewon    ─I1─→ TM_GD60001 외 7개
-selectObsvData   ─D2─→ jeju_obsv_data  → if_snd_jeju_obsv_data → if_rsv_jeju_obsv_data ─I2─→ Pm60201/60202 (6개)
+[제주 API]                [DMZ DB]          [IF_SND]                [IF_RSV]                [GIMS]
+selectObsv.json  ─D1─→ tb_jeju_jewon   → if_snd_tb_jeju_jewon → if_rsv_tb_jeju_jewon ─I1─→ TM_GD60001 외 7개
+selectObsvData   ─D2─→ tb_jeju         → if_snd_tb_jeju       → if_rsv_tb_jeju       ─I2─→ Pm60201/60202 (6개)
 ```
 
 ### 제주 이용량
 
 ```
-[제주 API]                [DMZ DB]                  [IF_SND]                       [IF_RSV]                       [GIMS]
-selectJejuUse    ─D3─→ jeju_facility_pmms      → if_snd_jeju_facility_pmms    → if_rsv_jeju_facility_pmms    ─(I4)─→ RGETSTGMS01
-                        jeju_facility_stgms     → if_snd_jeju_facility_stgms   → if_rsv_jeju_facility_stgms   ─(I3)─→ TmGd31010Gms 등
-selectSujil      ─D4─→ jeju_wavi_05            → if_snd_jeju_wavi_05          → if_rsv_jeju_wavi_05          ─(미정)→ 내부망 수질
-                        jeju_wavi_06            → if_snd_jeju_wavi_06          → if_rsv_jeju_wavi_06          ─(미정)→ 내부망 수질
+[제주 API]                [DMZ DB]         [IF_SND]               [IF_RSV]               [GIMS]
+selectJejuUse    ─D3─→ rgetnpmms01    → if_snd_rgetnpmms01  → if_rsv_rgetnpmms01  ─(I4)─→ RGETNPMMS01 (내부망)
+                        rgetstgms01    → if_snd_rgetstgms01  → if_rsv_rgetstgms01  ─(I3)─→ TmGd31010Gms 등
+selectSujil      ─D4─→ rgetnwavi05    → if_snd_rgetnwavi05  → if_rsv_rgetnwavi05  ─(미정)→ 내부망 수질
+                        rgetnwavi06    → if_snd_rgetnwavi06  → if_rsv_rgetnwavi06  ─(미정)→ 내부망 수질
 ```
 
 ### 이용량 레거시 + 새올

@@ -78,6 +78,6 @@ public class ApiParam {
     }
 
     public enum DynamicType {
-        TODAY, NOW, CUSTOM
+        TODAY, NOW, YEAR, CUSTOM
     }
 }
