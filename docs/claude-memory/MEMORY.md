@@ -114,7 +114,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - Loader 핵심: `DefaultLoadStep.java`, `LoaderStepHelper.java`, `TargetRepositoryService.java`
 - 공통 추출: `sync-agent-common/.../step/SourceToIfStep.java`
 - Tracing: `sync-agent-common/.../controller/ExecutionDataController.java`
-- Orchestrator 실행: `sync-orchestrator/backend/.../execution/ExecutionService.java`
+- Orchestrator 실행: `sync-orchestrator/backend/.../service/ExecutionService.java`
 
 ## 참고 문서 (필요시 읽기)
 | 문서 | 언제 읽나 | 경로 |
@@ -177,4 +177,5 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - **ScheduleExecutor 패턴**: `@EventListener(ContextRefreshedEvent)` 초기화, `registerSchedule`/`unregisterSchedule`/`getActiveScheduleCount`
 - **PipelineController 응답**: `PipelineDto` (common) 사용, 요청은 `Map<String, Object>` 유지 (동적 파라미터)
 - **Agent 상태 추적**: `runningAgentCodes` Set + finally 블록 (bojo, bojo-int 양쪽)
+- **패키지 구조**: 전 모듈 레이어 기반 통일 (controller/dto/entity/repository/service/scheduler/config) — 3/31 완료
 
