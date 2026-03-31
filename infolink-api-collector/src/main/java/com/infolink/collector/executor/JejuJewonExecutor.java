@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 /**
- * 제주 보조관측망 관측점 마스터 커스텀 실행기
+ * [D1] 제주 보조관측망 관측점 마스터 커스텀 실행기
  *
  * 레거시: InsetTb_jeju_jewon.java
  * 타겟: TB_JEJU_JEWON (OBSRVT_ID PK)

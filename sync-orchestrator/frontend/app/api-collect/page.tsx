@@ -694,6 +694,7 @@ export default function ApiCollectPage() {
                               onChange={e => updateParam(i, 'dynamicType', e.target.value)}>
                               <option value="TODAY">날짜</option>
                               <option value="NOW">시간</option>
+                              <option value="YEAR">연도</option>
                             </select>
                             <input className="form-input" value={p.dynamicFormat || ''} style={{ fontSize: '0.85rem', width: '100px' }}
                               onChange={e => updateParam(i, 'dynamicFormat', e.target.value)} placeholder="yyyyMMdd" />

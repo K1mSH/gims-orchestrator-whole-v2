@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 제주 보조관측망 수위 관측 데이터 커스텀 실행기
+ * [D2] 제주 보조관측망 수위 관측 데이터 커스텀 실행기
  *
  * 레거시: InsertJeju.java
  * 타겟: TB_JEJU (RID PK, obsrvt_id+ymd+data_time+msn UK)

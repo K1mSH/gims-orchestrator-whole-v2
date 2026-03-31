@@ -371,6 +371,57 @@ public class MockApiController {
         return response;
     }
 
+    // ===================== 제주 수질검사 Mock =====================
+
+    /**
+     * Mock 제주 수질검사 API — selectSujil.json 시뮬레이션
+     * 레거시: RgetnwaviProgram
+     * 페이징 없음, data 배열 직접 반환
+     */
+    @PostMapping("/jeju/water-quality")
+    public Map<String, Object> jejuWaterQuality(
+            @RequestParam(value = "data_date", defaultValue = "2025") String dataDate) {
+
+        log.info("Mock 제주 수질검사 API 호출: data_date={}", dataDate);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+
+        // 같은 permissionNum에 여러 항목(itemName)이 오는 구조
+        Object[][] rows = {
+                {"6510-WQ-001", "JJ-2025-001", "음용수(원수)", "제주시 한림읍", "탁도(Turbidity)", "0.5", "2025/03/15 10:30:00"},
+                {"6510-WQ-001", "JJ-2025-001", "음용수(원수)", "제주시 한림읍", "총대장균군", "불검출", "2025/03/15 10:30:00"},
+                {"6510-WQ-001", "JJ-2025-001", "음용수(원수)", "제주시 한림읍", "일반세균", "2", "2025/03/15 10:30:00"},
+                {"6510-WQ-001", "JJ-2025-001", "음용수(원수)", "제주시 한림읍", "암모니아성질소", "0.01", "2025/03/15 10:30:00"},
+                {"6510-WQ-002", "JJ-2025-002", "생활용수", "서귀포시 표선면", "탁도(Turbidity)", "1.2", "2025/04/20 14:00:00"},
+                {"6510-WQ-002", "JJ-2025-002", "생활용수", "서귀포시 표선면", "색도(Colority)", "3", "2025/04/20 14:00:00"},
+                {"6510-WQ-002", "JJ-2025-002", "생활용수", "서귀포시 표선면", "불소(F)", "0.15", "2025/04/20 14:00:00"},
+                {"6510-WQ-003", "JJ-2025-003", "음용수(원수)", "제주시 조천읍", "분원성대장균군", "불검출", "2025/05/10 09:15:00"},
+                {"6510-WQ-003", "JJ-2025-003", "음용수(원수)", "제주시 조천읍", "망간(Mn)", "0.02", "2025/05/10 09:15:00"},
+                {"6510-WQ-003", "JJ-2025-003", "음용수(원수)", "제주시 조천읍", "맛(Taste)", "무미", "2025/05/10 09:15:00"},
+                {"6510-WQ-003", "JJ-2025-003", "음용수(원수)", "제주시 조천읍", "냄새(Odor)", "무취", "2025/05/10 09:15:00"},
+                {"6510-WQ-004", "JJ-2025-004", "생활용수", "서귀포시 남원읍", "알루미늄(Al)", "0.05", "2025/06/05 11:45:00"},
+                {"6510-WQ-004", "JJ-2025-004", "생활용수", "서귀포시 남원읍", "탁도(Turbidity)", "0.8", "2025/06/05 11:45:00"},
+                {"6510-WQ-004", "JJ-2025-004", "생활용수", "서귀포시 남원읍", "총대장균군", "불검출", "2025/06/05 11:45:00"},
+                {"6510-WQ-005", "JJ-2025-005", "음용수(원수)", "제주시 애월읍", "일반세균", "1", "2025/07/22 16:20:00"},
+        };
+
+        for (Object[] r : rows) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("permissionNum", r[0]);   // PERM_NT_NO
+            item.put("acceptNum", r[1]);       // → qwIspSno (하이픈 뒤)
+            item.put("codeNm", r[2]);          // 음용수(원수)→A / else→D
+            item.put("checkAddress", r[3]);    // 제주시→6510000 / else→6520000
+            item.put("itemName", r[4]);        // 한글→영문 매핑
+            item.put("dataValue", r[5]);       // RT (검사결과값)
+            item.put("dataIndate", r[6]);      // FIRST_REG_DTHR
+            items.add(item);
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("data", items);
+        return response;
+    }
+
     // ===================== GIMS 내부 시스템 Mock =====================
 
     /**

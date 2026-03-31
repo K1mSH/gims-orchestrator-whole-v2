@@ -17,7 +17,7 @@ import javax.sql.DataSource;
 import java.util.*;
 
 /**
- * 제주 이용시설 커스텀 실행기
+ * [D3] 제주 이용시설 커스텀 실행기
  *
  * 레거시: RgetstgmsProgram.java + yearProgram.java
  * API: POST selectJejuUse.json (reg_year, page 파라미터, 1000건 페이징)

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { endpointApi, paramApi, apiKeyApi, testApi, ApiKeyItem, TestCallResponse } from '@/lib/collectorApi';
+import { endpointApi, paramApi, apiKeyApi, testApi, customExecutorApi, ApiKeyItem, TestCallResponse, CustomExecutorItem } from '@/lib/collectorApi';
 import {
   ApiEndpointDetail,
   ApiEndpointUpdateRequest,
@@ -20,6 +20,15 @@ interface InfoTabProps {
 
 export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
   const isCustom = !!endpoint.executorType;
+  // --- 실행기 목록 (커스텀용) ---
+  const [executorType, setExecutorType] = useState<string>(endpoint.executorType || '');
+  const [customExecutors, setCustomExecutors] = useState<CustomExecutorItem[]>([]);
+  useEffect(() => {
+    if (isCustom) {
+      customExecutorApi.getAll().then(setCustomExecutors).catch(() => {});
+    }
+  }, [isCustom]);
+
   // --- 기본정보 ---
   const [form, setForm] = useState<ApiEndpointUpdateRequest>({
     apiName: endpoint.apiName,
@@ -86,6 +95,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         dataRootPath: endpoint.dataRootPath?.trim() || undefined,
         targetDatasourceId: endpoint.targetDatasourceId?.trim() || undefined,
         targetTableName: endpoint.targetTableName?.trim() || undefined,
+        executorType: executorType || undefined,
       };
       await endpointApi.update(endpoint.id, trimmed);
       alert('저장되었습니다.');
@@ -187,8 +197,12 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
             {isCustom && (
               <div>
                 <div style={labelStyle}>실행기</div>
-                <input className="form-input" value={endpoint.executorType || ''} disabled
-                  style={{ background: 'var(--gray-50)' }} />
+                <select className="form-select" value={executorType}
+                  onChange={e => setExecutorType(e.target.value)}>
+                  {customExecutors.map(ce => (
+                    <option key={ce.id} value={ce.id}>{ce.displayName}</option>
+                  ))}
+                </select>
               </div>
             )}
             <div>
