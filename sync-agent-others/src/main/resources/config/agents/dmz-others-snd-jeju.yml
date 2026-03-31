@@ -1,0 +1,46 @@
+# ── DMZ Others SND — 제주 (3테이블) ──
+# 제주 보조관측 데이터를 IF_SND 테이블에 적재
+# 소스 테이블에 link_status 컬럼 있음 → 증분 동기화 가능
+agent-code: dmz-others-snd-jeju
+type: SND
+
+steps:
+  - id: jeju-jewon-snd
+    name: 제주 관측점 마스터 송신
+    factory-key: source-to-if
+    source-table: tb_jeju_jewon
+    target-table: if_snd_tb_jeju_jewon
+    primary-key: obsrvt_id
+    conflict-key: source_refs
+
+  - id: jeju-obsv-snd
+    name: 제주 수위 관측 송신
+    factory-key: source-to-if
+    source-table: tb_jeju
+    target-table: if_snd_tb_jeju
+    primary-key: rid
+    conflict-key: rid
+
+  - id: jeju-stgms-snd
+    name: 제주 이용실태 송신
+    factory-key: source-to-if
+    source-table: rgetstgms01
+    target-table: if_snd_rgetstgms01
+    primary-key: perm_nt_no
+    conflict-key: source_refs
+
+select-tables:
+  - tb_jeju_jewon
+  - tb_jeju
+  - rgetstgms01
+
+table-mappings:
+  - name: jeju-jewon
+    source: [tb_jeju_jewon]
+    target: [if_snd_tb_jeju_jewon]
+  - name: jeju-obsv
+    source: [tb_jeju]
+    target: [if_snd_tb_jeju]
+  - name: jeju-stgms
+    source: [rgetstgms01]
+    target: [if_snd_rgetstgms01]

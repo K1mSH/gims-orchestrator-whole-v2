@@ -162,4 +162,9 @@ public class Rgetnpmms01 {
     @Column(name = "last_mod_dthr")
     @Comment("최종수정일시 (= first_reg_dthr)")
     private LocalDateTime lastModDthr;
+
+    @Builder.Default
+    @Column(name = "link_status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    @Comment("SND 연계 상태 (PENDING/SUCCESS/FAILED)")
+    private String linkStatus = "PENDING";
 }

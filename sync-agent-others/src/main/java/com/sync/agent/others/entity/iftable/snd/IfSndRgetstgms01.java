@@ -1,35 +1,42 @@
-package com.infolink.collector.entity;
+package com.sync.agent.others.entity.iftable.snd;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * 제주 이용시설 이용실태정보
- * - 원본: RGETSTGMS01 (새올 DB)
- * - 레거시: RgetstgmsProgram → selectJejuUse.json → MERGE INTO RGETSTGMS01
- * - PK: PERM_NT_NO (허가신고번호)
+ * IF_SND 제주 이용시설 이용실태정보 엔티티.
+ *
+ * <p>SND 파이프라인에서 Target DB의 이용실태 데이터를 IF_SND 테이블로 추출할 때 사용된다.
+ * {@code source_refs}에 UK, {@code execution_id}에 인덱스가 설정되어 있다.</p>
+ *
+ * <p>테이블: {@code if_snd_rgetstgms01}</p>
+ *
+ * @see com.infolink.collector.entity.Rgetstgms01
  */
 @Entity
-@Table(name = "rgetstgms01")
-@org.hibernate.annotations.Table(appliesTo = "rgetstgms01", comment = "제주 이용시설 이용실태정보")
+@Table(name = "if_snd_rgetstgms01",
+       uniqueConstraints = @UniqueConstraint(
+           name = "uk_if_snd_rgetstgms01_source_refs",
+           columnNames = {"source_refs"}
+       ),
+       indexes = @Index(name = "idx_if_snd_rgetstgms01_exec_id", columnList = "execution_id"))
+@org.hibernate.annotations.Table(appliesTo = "if_snd_rgetstgms01", comment = "IF_SND 제주 이용시설 이용실태정보")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Rgetstgms01 {
+public class IfSndRgetstgms01 {
 
     @Id
     @Column(name = "perm_nt_no", length = 50)
     @Comment("허가신고번호 (PK)")
     private String permNtNo;
+
+    // ========== 비즈니스 컬럼 ==========
 
     @Column(name = "rel_trans_cgg_code", length = 10)
     @Comment("시군구코드")
@@ -40,7 +47,7 @@ public class Rgetstgms01 {
     private String yyGbn;
 
     @Column(name = "sf_team_code", length = 10)
-    @Comment("담당팀코드 (= rel_trans_cgg_code)")
+    @Comment("담당팀코드")
     private String sfTeamCode;
 
     @Column(name = "perm_nt_form_code", length = 5)
@@ -48,7 +55,7 @@ public class Rgetstgms01 {
     private String permNtFormCode;
 
     @Column(name = "regn_code", length = 50)
-    @Comment("지역코드 (= dvop_loc_regn_code)")
+    @Comment("지역코드")
     private String regnCode;
 
     @Column(name = "san", length = 10)
@@ -96,7 +103,7 @@ public class Rgetstgms01 {
     private String uwaterSrvCode;
 
     @Column(name = "pub_pri_gbn", length = 5)
-    @Comment("공공/민간 (= perm_nt_form_code)")
+    @Comment("공공/민간")
     private String pubPriGbn;
 
     @Column(name = "pota_yn", length = 2)
@@ -155,8 +162,26 @@ public class Rgetstgms01 {
     @Comment("세부용도코드")
     private String uwaterDtlSrvCode;
 
+    // ========== IF 메타 컬럼 ==========
+
+    @Column(name = "source_refs", columnDefinition = "TEXT")
+    @Comment("원본 참조키 (UK)")
+    private String sourceRefs;
+
     @Builder.Default
-    @Column(name = "link_status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
-    @Comment("SND 연계 상태 (PENDING/SUCCESS/FAILED)")
+    @Column(name = "link_status", length = 20)
+    @Comment("연계 상태 (PENDING/SUCCESS/FAILED)")
     private String linkStatus = "PENDING";
+
+    @Column(name = "extracted_at")
+    @Comment("추출 시각")
+    private LocalDateTime extractedAt;
+
+    @Column(name = "updated_at")
+    @Comment("수정 시각")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "execution_id")
+    @Comment("처리 실행 ID")
+    private String executionId;
 }

@@ -1,51 +1,50 @@
 package com.infolink.collector.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * 이용량 결과 기록 (FAC + DATA JOIN 파생)
+ * 이용량 상태 데이터
+ * - 원본: USE_STATUS (source.xml select_use_status_data)
+ * - 컬럼: SN, TELNO, OBSR_DT, LAST_CHANGE_DT, STAT
  */
 @Entity
-@Table(name = "use_legacy_data")
+@Table(name = "use_status_data")
+@org.hibernate.annotations.Table(appliesTo = "use_status_data", comment = "이용량 상태 데이터")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UseLegacyData {
+public class UseStatusData {
 
     @Id
     @Column(name = "sn")
-    @Comment("시퀀스 (db_in_seq)")
+    @Comment("일련번호 (PK)")
     private Long sn;
 
     @Column(name = "telno", length = 20)
-    @Comment("전화번호 (0 + cdma_no 8~18자리)")
+    @Comment("전화번호")
     private String telno;
 
     @Column(name = "obsr_dt")
-    @Comment("관측일시 (meter_dtm)")
+    @Comment("관측일시")
     private LocalDateTime obsrDt;
 
-    @Column(name = "last_measure_value")
-    @Comment("최종검침값")
-    private Long lastMeasureValue;
-
-    @Column(name = "usgqty")
-    @Comment("사용량")
-    private Long usgqty;
-
     @Column(name = "last_change_dt")
-    @Comment("최종변경일시 (db_in_dtm)")
+    @Comment("최종변경일시")
     private LocalDateTime lastChangeDt;
+
+    @Column(name = "stat", length = 5)
+    @Comment("상태 (Y/N)")
+    private String stat;
 
     @Builder.Default
     @Column(name = "link_status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")

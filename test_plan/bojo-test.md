@@ -751,6 +751,23 @@ curl -X POST http://localhost:8092/api/cleanup/internal-bojo-loader \
 
 ---
 
+## 10. 주의사항 / 알려진 허점
+
+### 10-1. 직접 API 호출 시 source_refs 불완전
+- **현상**: Agent API를 직접 호출(`POST /api/pipeline/execute`)하면 StepContext에 zone/dsId/tableId 정보가 없어 source_refs가 `U:0:0:pk` 형태로 생성됨
+- **원인**: Orchestrator 경유 시에만 params에 datasource 메타정보(zone, datasourceDbId, tableIds)가 포함됨
+- **영향**: 이후 Orchestrator 경유로 재실행하면 source_refs가 달라져(`D:1018:33:pk`) PK 충돌 발생
+- **대응**: 테스트 시 반드시 **Orchestrator 경유로 실행** (`POST /api/executions/{agentId}/run`). 직접 API 호출로 생긴 IF 데이터는 DELETE 후 재실행
+- **상태**: 구조적 제약 (직접 호출 시 context 부족), 운영 환경에서는 항상 Orchestrator 경유이므로 문제 없음
+
+### 10-2. Proxy 미기동 시 실행 실패
+- **현상**: `Proxy에서 datasource 해석 실패: {datasourceId}`
+- **원인**: Agent가 datasource 연결정보를 Proxy 경유로만 해석 (직접 fallback 없음)
+- **대응**: Agent 기동 전 Proxy(8083/8093) 반드시 먼저 기동
+- **확인**: `curl http://localhost:8083/health` → 200 확인 후 실행
+
+---
+
 ## 부록: 빌드 명령어
 ```bash
 # common 수정 시

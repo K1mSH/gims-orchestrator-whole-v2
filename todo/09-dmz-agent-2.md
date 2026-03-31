@@ -1,43 +1,89 @@
-# DMZ Agent 2호기 (이용량/제주/새올 담당)
+# DMZ Agent 2호기 — sync-agent-others (8085)
 
-> 서비스명 미정 — bojo(보조관측)와 동일 구조, 담당 데이터만 다름
-> 회의 결과 (2026-03-30): 기존 bojo에 전부 넣으면 운영상 불안 → 별도 서비스로 분리
+> 기존 bojo(보조관측)와 동일 구조, 담당 데이터만 다름
+> 운영 안정성 위해 별도 서비스 분리 (2026-03-30 회의)
+> 계획서: `dev_plan/2026_03/31/sync-agent-others.md`
 
-## 배경
-- 기존 bojo-dmz(8082): 보조관측 RCV 10 + Loader 1 + SND 1 = 12개 Agent
-- 신규 IF 테이블 관련 SND Agent가 추가로 필요 (제주 6쌍 + 새올 16쌍 + 이용량 2쌍)
-- 하나의 서비스에 다 넣으면 장애 시 전체 영향 → 서비스 분리
+## 확정 사항
 
-## 요구사항
+| 항목 | 값 |
+|------|-----|
+| 모듈명 | sync-agent-others |
+| 포트 | 8085 |
+| 역할 | DMZ DB → IF_SND (SND 전용) |
+| agent-code prefix | `dmz-others-snd-*` |
 
-### 서비스 구조
-- [ ] 서비스명 확정 (bojo와 구분되는 이름)
-- [ ] 포트 확정 (8082 아닌 별도 포트)
-- [ ] bojo와 동일한 Agent 프레임워크 사용 (sync-agent-common 기반)
-- [ ] 별도 모듈 생성 (sync-agent-??? )
+## SND 대상 — 확정 (6개)
 
-### 담당 범위
-- [ ] 제주 보조관측 SND (jeju_jewon, jeju_obsv_data → IF_SND)
-- [ ] 제주 이용량 SND (jeju_facility_pmms/stgms, jeju_wavi_05/06 → IF_SND)
-- [ ] 이용량 레거시 SND (use_legacy_data, use_status → IF_SND)
-- [ ] 새올 SND (RGETSTGMS01 외 16개 → IF_SND, 새올 DB=Tibero/Oracle 읽기)
+레거시 Internal 전송 프로그램이 확인된 테이블만 확정.
 
-### 서비스 구분
-현재 Orchestrator가 Agent를 찾는 방식: `endpoint_url`(서비스 주소) + `agent_code`(파이프라인 식별)
-→ 2호기는 **포트만 다르게** 하면 기존 코드 수정 없이 구분 가능
+| # | DMZ 테이블 | DMZ 적재 | Internal 프로그램 | GIMS 타겟 |
+|---|-----------|---------|------------------|----------|
+| 1 | tb_jeju_jewon | D1 JejuJewonExecutor | JewonDB | TM_GD60001 외 7개 |
+| 2 | tb_jeju | D2 JejuObsvDataExecutor | ObsvrdataDB | Pm60201/60202 |
+| 3 | rgetstgms01 | D3 JejuFacilityExecutor | RgetnDB | RGETSTGMS01 (내부망) |
+| 4 | use_legacy_data | D5 AnyangUsageExecutor | UseToIn | PM_GD31021, PM_GD31022 |
+| 5 | use_status_data | DB에 존재 | UseToIn | TM_GD31025 |
+| 6 | use_jeju_day | **외부 시스템 적재** | JejuInToDB | TmGd31010, PmGd31022 |
 
-예시:
-| 서비스 | endpoint_url | agent_code 예시 |
-|--------|-------------|----------------|
-| bojo (보조, 기존) | http://localhost:8082 | dmz-bojo-rcv-*, dmz-bojo-snd |
-| 2호기 (신규) | http://localhost:8085 | dmz-???-snd-jeju, dmz-???-snd-saeol 등 |
+### use_jeju_day 특이사항
+- 우리 API Collector가 적재하지 않음. 외부 시스템이 DMZ DB에 직접 적재.
+- 역컴파일에 적재 프로그램 없으나 실DB에 작년 데이터까지 존재 → 다른 담당이 운영 중.
+- 우리 역할: **IF_SND로 퍼나르기만** 담당 (적재 관여 X).
+- JejuInToDB.java가 `select_use_jeju_day`로 읽어서 target TmGd31010/PmGd31022에 전송.
 
-- [ ] 포트 확정 (8085 예상)
-- [ ] Orchestrator agent 테이블에 신규 Agent 등록 (endpoint_url = 2호기 주소)
-- [ ] 프론트에서 어떤 Agent가 어떤 서비스인지 식별 가능해야 함
-- [ ] 모니터링/실행이력에서 서비스별 구분
+## SND 대상 — 보류 (3개)
 
-### 기술적 고려
-- [ ] 보조망 DB (PG) + 새올 DB (Tibero/Oracle) 두 소스를 다뤄야 함
-- [ ] 기존 bojo의 common 의존성 그대로 사용
-- [ ] YAML 기반 Agent 설정 (기존 패턴 따름)
+DMZ 적재는 하지만, Internal로 보내는 레거시 프로그램이 확인되지 않은 테이블.
+
+| # | DMZ 테이블 | DMZ 적재 | 보류 사유 |
+|---|-----------|---------|----------|
+| 1 | rgetnpmms01 | D3 JejuFacilityExecutor | target.xml에 `insertRgetnpmms01` MERGE SQL 존재하지만 호출하는 Java 없음. RgetnDB는 rgetstgms01만 처리. |
+| 2 | rgetnwavi05 | D4 JejuWaterQualityExecutor | target.xml에 `insetRgetnwavi05` SQL 존재하지만 호출하는 Java 없음. |
+| 3 | rgetnwavi06 | D4 JejuWaterQualityExecutor | 동일. `insetRgetnwavi06` SQL만 존재. |
+
+> **판단**: 역컴파일 누락인지 실제 미사용인지 현시점 확인 불가.
+> **조치**: 실서버 배포 시 담당자에게 확인 → SND 추가 여부 결정.
+> **추가 시**: YAML + IF 테이블 생성만 하면 됨 (SQL 매핑은 이미 준비).
+
+## SND 대상 — 새올 (16개, 후순위)
+
+| 소스 | 구조 | 비고 |
+|------|------|------|
+| 새올 Oracle (29005) 16개 테이블 | DB 직접 읽기 → IF_SND | API Collector 경유 아님 |
+
+> Tibero(실서버)/Oracle(개발) 드라이버 분기 필요. 제주+이용량 완료 후 진행.
+
+## 구현 체크리스트
+
+### 모듈 생성
+- [ ] sync-agent-others 디렉토리 + build.gradle
+- [ ] application.yml (port 8085, datasource)
+- [ ] PipelineRegistry, DatasourceConfig 등 공통 구조
+- [ ] OthersAgentApplication.java
+
+### IF_SND 테이블
+- [ ] if_snd_tb_jeju_jewon
+- [ ] if_snd_tb_jeju
+- [ ] if_snd_rgetstgms01
+- [ ] if_snd_use_legacy_data
+- [ ] if_snd_use_status_data
+- [ ] if_snd_use_jeju_day
+
+### YAML 설정
+- [ ] dmz-others-snd-jeju.yml (3테이블: jewon, obsv, stgms)
+- [ ] dmz-others-snd-use.yml (3테이블: legacy, status, jejuday)
+
+### Orchestrator 등록
+- [ ] agent 테이블에 신규 Agent 등록 (endpoint_url: http://localhost:8085)
+
+### 보류 (담당자 확인 후)
+- [ ] rgetnpmms01 SND 추가 여부
+- [ ] rgetnwavi05 SND 추가 여부
+- [ ] rgetnwavi06 SND 추가 여부
+
+### 새올 (후순위)
+- [ ] 새올 16개 테이블 SND 설계
+- [ ] Tibero/Oracle 드라이버 분기
+
+**진행도: 0/10 (보류 3 + 새올 2 제외)**

@@ -103,4 +103,9 @@ public class JejuJewon {
     @Column(name = "legaldong_code", length = 10)
     @Comment("법정동코드 (제주시=6510000, 서귀포시=6520000)")
     private String legaldongCode;
+
+    @Builder.Default
+    @Column(name = "link_status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    @Comment("SND 연계 상태 (PENDING/SUCCESS/FAILED)")
+    private String linkStatus = "PENDING";
 }

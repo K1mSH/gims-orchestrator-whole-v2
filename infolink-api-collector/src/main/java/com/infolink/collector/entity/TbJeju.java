@@ -61,4 +61,9 @@ public class TbJeju {
     @Column(name = "msn", length = 20)
     @Comment("센서 식별 (S11, S21, S22 등)")
     private String msn;
+
+    @Builder.Default
+    @Column(name = "link_status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    @Comment("SND 연계 상태 (PENDING/SUCCESS/FAILED)")
+    private String linkStatus = "PENDING";
 }

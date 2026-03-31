@@ -1,0 +1,47 @@
+# ── DMZ Others SND — 이용량 (3테이블) ──
+# 이용량 관련 데이터를 IF_SND 테이블에 적재
+# use_legacy_data, use_status_data: link_status 있음 → 증분 동기화
+# use_jeju_day: 외부 시스템 적재 테이블 (link_status 추가됨)
+agent-code: dmz-others-snd-use
+type: SND
+
+steps:
+  - id: use-legacy-snd
+    name: 이용량 레거시 송신
+    factory-key: source-to-if
+    source-table: use_legacy_data
+    target-table: if_snd_use_legacy_data
+    primary-key: sn
+    conflict-key: source_refs
+
+  - id: use-status-snd
+    name: 이용량 상태 송신
+    factory-key: source-to-if
+    source-table: use_status_data
+    target-table: if_snd_use_status_data
+    primary-key: sn
+    conflict-key: source_refs
+
+  - id: use-jejuday-snd
+    name: 제주 일일이용량 송신
+    factory-key: source-to-if
+    source-table: use_jeju_day
+    target-table: if_snd_use_jeju_day
+    primary-key: obsrvt_id,obsr_de
+    conflict-key: source_refs
+
+select-tables:
+  - use_legacy_data
+  - use_status_data
+  - use_jeju_day
+
+table-mappings:
+  - name: use-legacy
+    source: [use_legacy_data]
+    target: [if_snd_use_legacy_data]
+  - name: use-status
+    source: [use_status_data]
+    target: [if_snd_use_status_data]
+  - name: use-jejuday
+    source: [use_jeju_day]
+    target: [if_snd_use_jeju_day]

@@ -402,21 +402,28 @@ public class ExecutionDataController {
                     // 소량 + 같은 DB: 서브쿼리
                     String targetTable = targetTableNames.get(0);
                     String tgtDbType = dataSourceProvider.getDbType(execTargetDsId);
+
+                    // PK 컬럼 타입 확인 → 숫자면 BIGINT/NUMBER, 아니면 TEXT 캐스팅
+                    String rawPkCol = actualPkCol != null ? actualPkCol : "id";
+                    boolean isNumericPk = isNumericPkColumn(sourceJdbc, actualSourceTable, rawPkCol, srcDbType);
+
                     String subquery;
                     if (isOracle(tgtDbType)) {
                         String cleaned = "REPLACE(REPLACE(REPLACE(source_refs, '[', ''), ']', ''), '\"', '')";
+                        String castType = isNumericPk ? "NUMBER" : "VARCHAR2(200)";
                         subquery = String.format(
-                            "SELECT CAST(SUBSTR(%s, INSTR(%s, ':', 1, 3) + 1) AS NUMBER) " +
-                            "FROM %s WHERE execution_id = ?", cleaned, cleaned, targetTable);
+                            "SELECT CAST(SUBSTR(%s, INSTR(%s, ':', 1, 3) + 1) AS %s) " +
+                            "FROM %s WHERE execution_id = ?", cleaned, cleaned, castType, targetTable);
                     } else {
                         String cleaned = "TRIM(BOTH '\"' FROM TRIM(BOTH '[]' FROM source_refs))";
+                        String castType = isNumericPk ? "BIGINT" : "TEXT";
                         subquery = String.format(
-                            "SELECT CAST(SPLIT_PART(%s, ':', 4) AS BIGINT) " +
-                            "FROM %s WHERE execution_id = ?", cleaned, targetTable);
+                            "SELECT CAST(SPLIT_PART(%s, ':', 4) AS %s) " +
+                            "FROM %s WHERE execution_id = ?", cleaned, castType, targetTable);
                     }
                     String fragment = pkColumn + " IN (" + subquery + ")";
-                    log.info("Source 필터(서브쿼리): {} → {} ({}건, executionId={})",
-                            sourceTableName, targetTableNames, sourceRefsSet.size(), executionId);
+                    log.info("Source 필터(서브쿼리): {} → {} ({}건, executionId={}, numericPk={})",
+                            sourceTableName, targetTableNames, sourceRefsSet.size(), executionId, isNumericPk);
                     return new SourceFilterResult(fragment, List.of(executionId), "subquery");
                 }
 
@@ -981,12 +988,18 @@ public class ExecutionDataController {
                     // SyncLog에서 해당 base를 포함하는 SOURCE 테이블 찾기
                     List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
                     String finalBaseName = baseName;
-                    sourceTable = allLogs.stream()
+                    // 정확 매칭 우선, 없으면 contains 매칭
+                    List<String> allSourceTables = allLogs.stream()
                             .map(SyncLog::getSourceTables)
                             .filter(Objects::nonNull)
                             .flatMap(json -> parseJsonArray(json).stream())
-                            .filter(t -> t.toLowerCase().contains(finalBaseName))
+                            .toList();
+                    sourceTable = allSourceTables.stream()
+                            .filter(t -> t.toLowerCase().equals(finalBaseName))
                             .findFirst()
+                            .or(() -> allSourceTables.stream()
+                                    .filter(t -> t.toLowerCase().contains(finalBaseName))
+                                    .findFirst())
                             .orElse(sourceTable);  // 못 찾으면 원본 유지
                     log.debug("Resolved sourceTable from IF table: {} -> {}", lowerTable, sourceTable);
                 } else {
@@ -1465,6 +1478,30 @@ public class ExecutionDataController {
 
     private static boolean isOracle(String dbType) {
         return "ORACLE".equalsIgnoreCase(dbType) || "TIBERO".equalsIgnoreCase(dbType);
+    }
+
+    /** PK 컬럼이 숫자 타입인지 확인 (source_refs 서브쿼리 캐스팅용) */
+    private boolean isNumericPkColumn(JdbcTemplate jdbc, String tableName, String pkColumn, String dbType) {
+        try {
+            String sql;
+            if (isOracle(dbType)) {
+                sql = String.format(
+                    "SELECT DATA_TYPE FROM USER_TAB_COLUMNS WHERE TABLE_NAME = UPPER('%s') AND COLUMN_NAME = UPPER('%s')",
+                    tableName, pkColumn);
+            } else {
+                sql = String.format(
+                    "SELECT data_type FROM information_schema.columns WHERE table_name = '%s' AND column_name = '%s'",
+                    tableName.toLowerCase(), pkColumn.toLowerCase());
+            }
+            String dataType = jdbc.queryForObject(sql, String.class);
+            if (dataType == null) return true;
+            dataType = dataType.toUpperCase();
+            return dataType.contains("INT") || dataType.contains("NUMBER") || dataType.contains("NUMERIC")
+                    || dataType.contains("SERIAL") || dataType.contains("DECIMAL");
+        } catch (Exception e) {
+            log.debug("PK 타입 확인 실패 (기본값 숫자): table={}, pk={}, error={}", tableName, pkColumn, e.getMessage());
+            return true;
+        }
     }
 
     /** Oracle 호환 페이징: PG/MySQL=LIMIT+OFFSET, Oracle=OFFSET+FETCH */
