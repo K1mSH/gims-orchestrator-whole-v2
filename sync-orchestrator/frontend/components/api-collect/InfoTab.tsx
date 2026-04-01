@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { endpointApi, paramApi, apiKeyApi, testApi, customExecutorApi, ApiKeyItem, TestCallResponse, CustomExecutorItem } from '@/lib/collectorApi';
+import { datasourceApi } from '@/lib/api';
+import type { DatasourceSimple } from '@/types';
 import {
   ApiEndpointDetail,
   ApiEndpointUpdateRequest,
@@ -28,6 +30,13 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
       customExecutorApi.getAll().then(setCustomExecutors).catch(() => {});
     }
   }, [isCustom]);
+
+  // --- Target Datasource ---
+  const [targetDsId, setTargetDsId] = useState<string>(endpoint.targetDatasourceId || '');
+  const [datasources, setDatasources] = useState<DatasourceSimple[]>([]);
+  useEffect(() => {
+    datasourceApi.getSimple().then(setDatasources).catch(() => {});
+  }, []);
 
   // --- 기본정보 ---
   const [form, setForm] = useState<ApiEndpointUpdateRequest>({
@@ -93,7 +102,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         authConfig: form.authConfig?.trim(),
         description: form.description?.trim(),
         dataRootPath: endpoint.dataRootPath?.trim() || undefined,
-        targetDatasourceId: endpoint.targetDatasourceId?.trim() || undefined,
+        targetDatasourceId: targetDsId.trim() || undefined,
         targetTableName: endpoint.targetTableName?.trim() || undefined,
         executorType: executorType || undefined,
       };
@@ -205,6 +214,18 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
                 </select>
               </div>
             )}
+            <div>
+              <div style={labelStyle}>Target Datasource</div>
+              <select className="form-select" value={targetDsId}
+                onChange={e => setTargetDsId(e.target.value)}>
+                <option value="">-- 선택 --</option>
+                {datasources.map(ds => (
+                  <option key={ds.datasourceId} value={ds.datasourceId}>
+                    {ds.datasourceId} ({ds.dbType})
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <div style={labelStyle}>URL</div>
               <input className="form-input" value={form.url}

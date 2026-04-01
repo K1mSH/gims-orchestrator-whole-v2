@@ -398,7 +398,12 @@ public class ExecutionDataController {
                 String execTargetDsId = (exec != null) ? exec.getTargetDatasourceId() : targetDatasourceId;
                 boolean sameDb = execSourceDsId != null && execSourceDsId.equals(execTargetDsId);
 
-                if (sameDb && !targetTableNames.isEmpty() && sourceRefsSet.size() <= 5000) {
+                // 복합PK 감지: source_refs에서 파싱한 PK에 "|"가 포함되면 서브쿼리 불가 → 배치 모드로 전환
+                boolean isCompositePk = sourceRefsSet.stream()
+                        .flatMap(refs -> parseSourceRefsPks(refs).stream())
+                        .anyMatch(pk -> pk.contains("|"));
+
+                if (sameDb && !targetTableNames.isEmpty() && sourceRefsSet.size() <= 5000 && !isCompositePk) {
                     // 소량 + 같은 DB: 서브쿼리
                     String targetTable = targetTableNames.get(0);
                     String tgtDbType = dataSourceProvider.getDbType(execTargetDsId);
@@ -437,6 +442,31 @@ public class ExecutionDataController {
                     return new SourceFilterResult("", List.of(), "empty");
                 }
 
+                // 복합PK: 개별 (col1=? AND col2=?) OR (...) 생성
+                if (isCompositePk) {
+                    List<String> sourcePkCols = findPkColumns(sourceJdbc, actualSourceTable, srcDbType);
+                    List<String> orClauses = new ArrayList<>();
+                    List<Object> params = new ArrayList<>();
+                    for (String pk : pkSet) {
+                        String[] parts = pk.split("\\|");
+                        if (parts.length != sourcePkCols.size()) continue;
+                        List<String> andParts = new ArrayList<>();
+                        for (int i = 0; i < sourcePkCols.size(); i++) {
+                            andParts.add(qi(sourcePkCols.get(i), srcDbType) + " = ?");
+                            boolean isNumeric = isNumericPkColumn(sourceJdbc, actualSourceTable, sourcePkCols.get(i), srcDbType);
+                            params.add(isNumeric ? typedValue(parts[i]) : parts[i]);
+                        }
+                        orClauses.add("(" + String.join(" AND ", andParts) + ")");
+                    }
+                    if (orClauses.isEmpty()) {
+                        return new SourceFilterResult("", List.of(), "empty");
+                    }
+                    String fragment = String.join(" OR ", orClauses);
+                    log.info("Source 필터(복합PK): {} → {} ({}건, executionId={})",
+                            sourceTableName, targetTableNames, pkSet.size(), executionId);
+                    return new SourceFilterResult(fragment, params, "composite_pk");
+                }
+
                 List<Object> allPks = new ArrayList<>();
                 for (String pk : pkSet) {
                     try {
@@ -463,6 +493,16 @@ public class ExecutionDataController {
             log.warn("Source 필터 생성 실패 (fallback to 전체): {}", e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * SyncLog의 sourceTables/targetTables에 테이블명이 포함되어 있는지 확인
+     */
+    private boolean containsTable(SyncLog syncLog, String tableName) {
+        return parseJsonArray(syncLog.getSourceTables()).stream()
+                .anyMatch(t -> t.equalsIgnoreCase(tableName))
+                || parseJsonArray(syncLog.getTargetTables()).stream()
+                .anyMatch(t -> t.equalsIgnoreCase(tableName));
     }
 
     /**
@@ -729,34 +769,51 @@ public class ExecutionDataController {
 
     /**
      * 특정 매핑의 처리 로그 조회
+     * mappingName 또는 테이블명으로 검색 (Orchestrator는 테이블명을 보내므로 fallback 필요)
      */
-    @GetMapping("/{executionId}/tables/{mappingName}")
+    @GetMapping("/{executionId}/tables/{name}")
     public ResponseEntity<SyncLog> getTableLog(
             @PathVariable String executionId,
-            @PathVariable String mappingName) {
-        return syncLogRepository.findByExecutionIdAndMappingName(executionId, mappingName)
+            @PathVariable String name) {
+        // 1차: mappingName 매칭
+        Optional<SyncLog> byMapping = syncLogRepository.findByExecutionIdAndMappingName(executionId, name);
+        if (byMapping.isPresent()) return ResponseEntity.ok(byMapping.get());
+
+        // 2차: sourceTables/targetTables JSON에서 테이블명 매칭
+        return syncLogRepository.findByExecutionId(executionId).stream()
+                .filter(l -> containsTable(l, name))
+                .findFirst()
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     /**
      * 특정 매핑의 실패 정보 조회
+     * mappingName 또는 테이블명으로 검색
      */
-    @GetMapping("/{executionId}/tables/{mappingName}/failed")
+    @GetMapping("/{executionId}/tables/{name}/failed")
     public ResponseEntity<Map<String, Object>> getTableFailedInfo(
             @PathVariable String executionId,
-            @PathVariable String mappingName) {
-        return syncLogRepository.findByExecutionIdAndMappingName(executionId, mappingName)
-                .filter(syncLog -> syncLog.getFailedCount() != null && syncLog.getFailedCount() > 0)
-                .map(syncLog -> {
-                    Map<String, Object> result = new LinkedHashMap<>();
-                    result.put("mappingName", syncLog.getMappingName());
-                    result.put("failedCount", syncLog.getFailedCount());
-                    result.put("failedKeys", syncLog.getFailedKeys());
-                    result.put("errorSummary", syncLog.getErrorSummary());
-                    return ResponseEntity.ok(result);
-                })
-                .orElse(ResponseEntity.notFound().build());
+            @PathVariable String name) {
+        // 1차: mappingName 매칭
+        Optional<SyncLog> byMapping = syncLogRepository.findByExecutionIdAndMappingName(executionId, name);
+        SyncLog syncLog = byMapping.orElseGet(() ->
+                // 2차: 테이블명 매칭
+                syncLogRepository.findByExecutionId(executionId).stream()
+                        .filter(l -> containsTable(l, name))
+                        .findFirst()
+                        .orElse(null));
+
+        if (syncLog == null || syncLog.getFailedCount() == null || syncLog.getFailedCount() <= 0) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("mappingName", syncLog.getMappingName());
+        result.put("failedCount", syncLog.getFailedCount());
+        result.put("failedKeys", syncLog.getFailedKeys());
+        result.put("errorSummary", syncLog.getErrorSummary());
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -822,7 +879,7 @@ public class ExecutionDataController {
                         break;
                     }
 
-                    // Pattern B (범용): pkValue만으로 검색
+                    // Pattern B (범용): pkValue로 검색
                     String patternB = "%:" + pkValue + "\"]";
                     String sqlB = String.format(
                             "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ?",
@@ -1121,7 +1178,8 @@ public class ExecutionDataController {
                         for (int i = 0; i < pkColumns.size(); i++) {
                             if (i > 0) whereClause.append(" AND ");
                             whereClause.append(qi(pkColumns.get(i), sourceDbType)).append(" = ?");
-                            params.add(typedValue(pkParts[i]));
+                            boolean isNumeric = isNumericPkColumn(sourceJdbc, actualTableName, pkColumns.get(i), sourceDbType);
+                            params.add(isNumeric ? typedValue(pkParts[i]) : pkParts[i]);
                         }
 
                         String sql = String.format("SELECT * FROM %s WHERE %s", quotedTableName, whereClause);

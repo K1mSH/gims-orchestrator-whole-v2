@@ -161,10 +161,8 @@ export default function ExecutionDetailPage() {
     // SOURCE, TARGET_IF, TARGET 테이블에서 트레이싱 가능
     if (!tableType || (tableType !== 'SOURCE' && tableType !== 'TARGET_IF' && tableType !== 'TARGET') || !tableData) return;
 
-    // 행 식별용 키 계산 (렌더링의 rowPk 계산과 동일하게)
-    // 모든 테이블 타입: 첫 번째 컬럼(PK) 사용 — 행별 유니크 보장
-    const pkColumn = tableData.columns[0];
-    const rowId = pkColumn ? String(row[pkColumn] ?? rowIndex) : String(rowIndex);
+    // 행 식별용 키: 인덱스 기반 (복합PK 테이블에서 첫 컬럼 중복 방지)
+    const rowId = String(rowIndex);
     if (!rowId) return;
 
     // 이미 확장된 행 클릭 시 접기
@@ -183,11 +181,58 @@ export default function ExecutionDetailPage() {
       let result;
 
       if (tableType === 'SOURCE') {
-        // SOURCE 행 클릭 → Target 데이터 조회
-        const pkColumn = tableData.columns[0];
-        const pkValue = String(row[pkColumn] ?? '');
-        const sourceTable = tableData.tableName;
-        result = await executionApi.traceBySourcePk(executionId, pkValue, pkColumn, sourceTable);
+        // SOURCE 행 클릭 → target-if의 source_refs 기반으로 추적
+        // 1. 대응 target-if 테이블 찾기 (SyncLog의 sourceTables↔targetTables 매핑)
+        const sourceTableName = tableData.tableName;
+        const matchingStat = tableStats.find(s =>
+          (s.sourceTables ?? []).some(t => t === sourceTableName)
+        );
+        const ifTableName = matchingStat?.targetTables?.[
+          (matchingStat.sourceTables ?? []).indexOf(sourceTableName)
+        ] ?? matchingStat?.targetTables?.[0];
+
+        if (ifTableName) {
+          // 2. target-if 테이블에서 이 실행의 데이터 조회 → source_refs에서 행 매칭
+          const ifData = await executionApi.getTargetIfData(executionId, {
+            tableName: ifTableName, page: 0, size: 1000
+          });
+          // 3. 클릭한 source 행의 컬럼 값이 source_refs PK 부분에 모두 포함되는 행 찾기
+          // source_refs 형식: ["D:dsId:tableIdx:pk1|pk2"]
+          const matchedRow = ifData.data?.find((ifRow: Record<string, unknown>) => {
+            const refs = String(ifRow.source_refs ?? ifRow.SOURCE_REFS ?? '');
+            // source_refs에서 PK 부분 추출 (마지막 ":" 이후)
+            const pkMatch = refs.match(/:([^:"\]]+)"\]/);
+            if (!pkMatch) return false;
+            const pkParts = pkMatch[1].split('|');
+            // source 행의 비시스템 컬럼 값들과 매칭
+            return pkParts.every(part =>
+              Object.values(row).some(v => String(v) === part)
+            );
+          });
+
+          if (matchedRow) {
+            // target-if 행을 직접 결과로 구성 (API 호출 불필요)
+            const sourceRefs = String(matchedRow.source_refs ?? matchedRow.SOURCE_REFS ?? '');
+            result = {
+              executionId,
+              sourceRefs,
+              traceStatus: 'SYNCED' as const,
+              targetTableName: ifTableName,
+              targetRecords: [matchedRow],
+              targetCount: 1,
+            };
+          } else {
+            // fallback: 기존 pkValue 방식
+            const pkCol = tableData.columns[0];
+            const pkValue = String(row[pkCol] ?? '');
+            result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
+          }
+        } else {
+          // target-if 매핑 없음: 기존 방식
+          const pkCol = tableData.columns[0];
+          const pkValue = String(row[pkCol] ?? '');
+          result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
+        }
       } else {
         // TARGET_IF/TARGET 행 클릭 → Source 데이터 조회 (역추적)
         const sourceRefs = row.sourceRefs as string || row.source_refs as string || row.SOURCE_REFS as string;
@@ -711,9 +756,8 @@ export default function ExecutionDetailPage() {
                   </thead>
                   <tbody>
                     {tableData.data.map((row, idx) => {
-                      // 모든 테이블: 첫 번째 컬럼(PK) 사용 — 행별 유니크 보장
-                      const pkColumn = tableData.columns[0];
-                      const rowPk = pkColumn ? String(row[pkColumn] ?? idx) : String(idx);
+                      // 행 식별: 인덱스 기반 (복합PK 중복 방지)
+                      const rowPk = String(idx);
                       const isExpanded = isTraceable && expandedRowPk === rowPk;
 
                       return (
@@ -767,11 +811,11 @@ export default function ExecutionDetailPage() {
                                       {/* 트레이스 상태 */}
                                       <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                         <span style={{ fontWeight: 600 }}>
-                                          {traceResult.sourceRecords ? (
-                                            <>sourceRefs: <code style={{ fontSize: '0.75rem' }}>{traceResult.pkValues?.join(', ') || expandedRowPk}</code></>
-                                          ) : (
-                                            <>{traceResult.pkColumn ?? 'PK'}: <code>{traceResult.pkValue ?? expandedRowPk}</code></>
-                                          )}
+                                          {traceResult.sourceRefs ? (
+                                            <>sourceRefs: <code style={{ fontSize: '0.75rem' }}>{traceResult.sourceRefs}</code></>
+                                          ) : traceResult.pkValue ? (
+                                            <>{traceResult.pkColumn ?? 'PK'}: <code>{traceResult.pkValue}</code></>
+                                          ) : null}
                                         </span>
                                         {traceResult.traceStatus && (
                                           <span style={{
