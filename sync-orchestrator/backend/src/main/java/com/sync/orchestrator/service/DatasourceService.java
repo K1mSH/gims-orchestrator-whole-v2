@@ -672,6 +672,41 @@ public class DatasourceService {
     }
 
     /**
+     * 테이블 컬럼 갱신 (기존 컬럼 교체, 테이블 ID 유지)
+     */
+    @Transactional
+    public DatasourceDto.TableResponse refreshTableColumns(String datasourceId, Long tableId, DatasourceDto.TableCreateRequest request) {
+        DatasourceTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> new IllegalArgumentException("테이블을 찾을 수 없습니다: " + tableId));
+
+        if (!table.getDatasourceId().equals(datasourceId)) {
+            throw new IllegalArgumentException("데이터소스가 일치하지 않습니다: " + datasourceId);
+        }
+
+        // 기존 컬럼 전부 제거 (orphanRemoval=true로 자동 DELETE)
+        table.getColumns().clear();
+
+        // 새 컬럼 추가
+        if (request.getColumns() != null) {
+            for (DatasourceDto.ColumnCreateRequest colReq : request.getColumns()) {
+                DatasourceColumn column = DatasourceColumn.builder()
+                        .columnName(colReq.getColumnName())
+                        .columnAlias(colReq.getColumnAlias())
+                        .dataType(colReq.getDataType())
+                        .isPrimaryKey(colReq.getIsPrimaryKey() != null ? colReq.getIsPrimaryKey() : false)
+                        .isNullable(colReq.getIsNullable() != null ? colReq.getIsNullable() : true)
+                        .description(colReq.getDescription())
+                        .build();
+                table.addColumn(column);
+            }
+        }
+
+        DatasourceTable saved = tableRepository.save(table);
+        log.info("테이블 컬럼 갱신: {} ({}개 컬럼)", table.getTableName(), saved.getColumns().size());
+        return DatasourceDto.TableResponse.from(saved);
+    }
+
+    /**
      * 테이블 삭제
      */
     @Transactional

@@ -726,6 +726,33 @@ function TableManagementModal({
     }
   };
 
+  const [refreshingTableId, setRefreshingTableId] = useState<number | null>(null);
+
+  const handleRefreshColumns = async (table: DatasourceTable) => {
+    setRefreshingTableId(table.id);
+    try {
+      const dbColumns = await datasourceApi.searchColumns(datasource.datasourceId, table.tableName);
+      await datasourceApi.refreshTableColumns(datasource.datasourceId, table.id, {
+        tableName: table.tableName,
+        tableAlias: table.tableAlias || undefined,
+        description: table.description || undefined,
+        columns: dbColumns.map(c => ({
+          columnName: c.columnName,
+          dataType: c.dataType,
+          isPrimaryKey: c.isPrimaryKey,
+          isNullable: c.isNullable,
+        })),
+      });
+      fetchRegisteredTables();
+      alert(`${table.tableName} 컬럼 갱신 완료 (${dbColumns.length}개)`);
+    } catch (error) {
+      console.error('컬럼 재수집 실패:', error);
+      alert('컬럼 재수집에 실패했습니다.');
+    } finally {
+      setRefreshingTableId(null);
+    }
+  };
+
   // 이미 등록된 테이블인지 확인
   const isTableRegistered = (tableName: string) => {
     return registeredTables.some(t => t.tableName === tableName);
@@ -933,12 +960,21 @@ function TableManagementModal({
                       <strong style={{ fontSize: '1rem' }}>{table.tableName}</strong>
                       {table.tableAlias && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
                     </span>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => handleDeleteTable(table.id)}
-                    >
-                      삭제
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleRefreshColumns(table)}
+                        disabled={refreshingTableId === table.id}
+                      >
+                        {refreshingTableId === table.id ? '수집중...' : '컬럼 재수집'}
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDeleteTable(table.id)}
+                      >
+                        삭제
+                      </button>
+                    </div>
                   </div>
                   <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                     {table.columns.map((c) => (

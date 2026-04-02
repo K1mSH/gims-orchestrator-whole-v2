@@ -167,6 +167,17 @@ public class DatasourceController {
     }
 
     /**
+     * 테이블 컬럼 갱신 (기존 컬럼 교체)
+     */
+    @PutMapping("/{datasourceId}/tables/{tableId}/columns")
+    public ResponseEntity<DatasourceDto.TableResponse> refreshTableColumns(
+            @PathVariable String datasourceId,
+            @PathVariable Long tableId,
+            @RequestBody DatasourceDto.TableCreateRequest request) {
+        return ResponseEntity.ok(datasourceService.refreshTableColumns(datasourceId, tableId, request));
+    }
+
+    /**
      * 테이블 삭제
      */
     @DeleteMapping("/{datasourceId}/tables/{tableId}")

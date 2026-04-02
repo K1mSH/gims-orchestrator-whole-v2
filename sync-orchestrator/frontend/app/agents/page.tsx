@@ -90,7 +90,7 @@ export default function AgentsPage() {
   // 타입별 그룹핑
   const groupedAgents = AGENT_TYPE_ORDER.map(type => ({
     type,
-    agents: agents.filter(a => a.agentType === type),
+    agents: agents.filter(a => a.agentType === type).sort((a, b) => a.agentCode.localeCompare(b.agentCode)),
   }));
 
   if (loading) {

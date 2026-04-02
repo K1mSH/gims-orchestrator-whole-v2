@@ -315,6 +315,9 @@ export const datasourceApi = {
   deleteTable: (datasourceId: string, tableId: number) =>
     api.delete(`/datasources/${encodeURIComponent(datasourceId)}/tables/${tableId}`),
 
+  refreshTableColumns: (datasourceId: string, tableId: number, data: TableCreateRequest) =>
+    api.put<DatasourceTable>(`/datasources/${encodeURIComponent(datasourceId)}/tables/${tableId}/columns`, data).then((res) => res.data),
+
   // sourceRef 해석용 lookup 데이터
   getSourceRefLookup: () =>
     api.get<{ datasources: Record<string, string>; tables: Record<string, string> }>(
