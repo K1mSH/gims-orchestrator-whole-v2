@@ -132,9 +132,12 @@ public class SourceToIfStep implements StepExecutor {
     private static Object convertParamForTarget(Object value, String targetDbType) {
         if (value == null) return null;
 
-        // Time → "HH:mm:ss" 문자열 (모든 target DB 공통 — VARCHAR 호환)
+        // Time → Oracle/Tibero는 문자열 변환 (VARCHAR2 호환), PG/MySQL은 그대로 유지
         if (value instanceof java.sql.Time) {
-            return value.toString(); // java.sql.Time.toString() = "HH:mm:ss"
+            if (isOracle(targetDbType)) {
+                return value.toString();
+            }
+            return value;
         }
 
         // Clob → String

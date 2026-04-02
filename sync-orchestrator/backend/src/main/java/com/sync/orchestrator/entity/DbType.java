@@ -29,6 +29,12 @@ public enum DbType {
             return String.format("jdbc:mariadb://%s:%d/%s", host, port, databaseName);
         }
     },
+    TIBERO("com.tmax.tibero.jdbc.TbDriver") {
+        @Override
+        public String buildJdbcUrl(String host, int port, String databaseName) {
+            return String.format("jdbc:tibero:thin:@%s:%d:%s", host, port, databaseName);
+        }
+    },
     MSSQL("com.microsoft.sqlserver.jdbc.SQLServerDriver") {
         @Override
         public String buildJdbcUrl(String host, int port, String databaseName) {

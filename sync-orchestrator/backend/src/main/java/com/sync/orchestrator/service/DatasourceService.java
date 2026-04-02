@@ -92,10 +92,17 @@ public class DatasourceService {
      */
     public Map<String, String> getTableAliasMap() {
         return tableRepository.findAll().stream()
-                .filter(t -> t.getTableAlias() != null && !t.getTableAlias().isEmpty())
+                .filter(t -> (t.getTableAlias() != null && !t.getTableAlias().isEmpty())
+                        || (t.getDescription() != null && !t.getDescription().isEmpty()))
                 .collect(Collectors.toMap(
                         DatasourceTable::getTableName,
-                        DatasourceTable::getTableAlias,
+                        t -> {
+                            // alias 우선, 없으면 description fallback
+                            if (t.getTableAlias() != null && !t.getTableAlias().isEmpty()) {
+                                return t.getTableAlias();
+                            }
+                            return t.getDescription();
+                        },
                         (existing, replacement) -> existing
                 ));
     }
@@ -469,12 +476,14 @@ public class DatasourceService {
             try (Connection conn = DriverManager.getConnection(jdbcUrl, decryptedUsername, decryptedPassword)) {
                 DatabaseMetaData metaData = conn.getMetaData();
 
-                // MySQL은 catalog에 DB명을 지정해야 해당 DB 테이블만 반환
+                // MySQL은 catalog에 DB명, Oracle은 schema에 유저명 지정
                 String catalog = datasource.getDbType() == DbType.MYSQL ? datasource.getDatabaseName() : null;
+                String schema = (datasource.getDbType() == DbType.ORACLE || datasource.getDbType() == DbType.TIBERO)
+                        ? passwordEncryptor.decrypt(datasource.getUsername()).toUpperCase() : null;
                 String[] types = {"TABLE", "VIEW"};
                 String searchPattern = query != null && !query.isEmpty() ? "%" + query.toUpperCase() + "%" : "%";
 
-                try (ResultSet rs = metaData.getTables(catalog, null, searchPattern, types)) {
+                try (ResultSet rs = metaData.getTables(catalog, schema, searchPattern, types)) {
                     int count = 0;
                     while (rs.next() && count < 100) {
                         results.add(DatasourceDto.TableSearchResult.builder()

@@ -42,11 +42,11 @@ public class SyncLog {
     @Comment("매핑 이름 (YAML table-mappings의 name)")
     private String mappingName;
 
-    @Column(name = "source_tables", columnDefinition = "TEXT")
+    @Column(name = "source_tables", length = 4000)
     @Comment("source 테이블 목록 (JSON 배열)")
     private String sourceTables;
 
-    @Column(name = "target_tables", columnDefinition = "TEXT")
+    @Column(name = "target_tables", length = 4000)
     @Comment("target 테이블 목록 (JSON 배열)")
     private String targetTables;
 
@@ -70,11 +70,11 @@ public class SyncLog {
     @Builder.Default
     private Long skipCount = 0L;
 
-    @Column(name = "failed_keys", columnDefinition = "TEXT")
+    @Column(name = "failed_keys", length = 4000)
     @Comment("실패 키 목록")
     private String failedKeys;
 
-    @Column(name = "error_summary", columnDefinition = "TEXT")
+    @Column(name = "error_summary", length = 4000)
     @Comment("오류 요약")
     private String errorSummary;
 

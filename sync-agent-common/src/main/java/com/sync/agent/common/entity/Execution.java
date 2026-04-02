@@ -63,7 +63,7 @@ public class Execution {
     @Comment("실행 소요 시간 (ms)")
     private Long durationMs;
 
-    @Column(name = "error_message", columnDefinition = "TEXT")
+    @Column(name = "error_message", length = 4000)
     @Comment("오류 메시지")
     private String errorMessage;
 

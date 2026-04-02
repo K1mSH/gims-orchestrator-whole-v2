@@ -5,22 +5,22 @@ spring:
   application:
     name: sync-agent-bojo-int
 
-  # Agent 자체 DB (로그, 실행 기록 저장용) - 내부망 PostgreSQL
+  # Agent 자체 DB (로그, 실행 기록 저장용) - 내부망 Oracle
   datasource:
-    url: ENC(uroYs9u+QwUMtCKphJCYSN2YXVhl2eZ5cDZnCvmwoG6ejQ33E/06ypmEzm069+cTNHC74pYJxcsqtKdkyxxyKCT/RYPjfeVBONmg3dCE+MI=)
+    url: ENC(TwI3tlpv7biH/S+xk7AN8xpONDuiJALhU1R1kXZn2agE3vjnKmx2cGQRW31J/fR9ym8LddhbBKD8vE8711K9TsczEVuL65jpkfrV1qtJsYQ=)
     username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
     password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: oracle.jdbc.OracleDriver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.Oracle12cDialect
 
 # common 컨트롤러/필터 활성화
 common:

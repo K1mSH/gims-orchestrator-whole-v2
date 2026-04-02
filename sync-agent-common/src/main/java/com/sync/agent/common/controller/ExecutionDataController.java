@@ -512,10 +512,31 @@ public class ExecutionDataController {
     private List<String> parseJsonArray(String json) {
         if (json == null || json.isBlank()) return List.of();
         List<String> result = new ArrayList<>();
-        // 간단한 파싱: 따옴표 사이 문자열 추출
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"([^\"]+)\"").matcher(json);
-        while (m.find()) {
-            result.add(m.group(1));
+        try {
+            // JSON 배열 파싱: [{"name":"RGETNPMMS01"}] 또는 ["sec_jewon"]
+            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            if (root.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode node : root) {
+                    if (node.isObject() && node.has("name")) {
+                        result.add(node.get("name").asText());
+                    } else if (node.isTextual()) {
+                        result.add(node.asText());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fallback: 정규식으로 "name":"값" 패턴 추출
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+            while (m.find()) {
+                result.add(m.group(1));
+            }
+            // 매칭 없으면 기존 방식 (단순 문자열 배열)
+            if (result.isEmpty()) {
+                m = java.util.regex.Pattern.compile("\"([^\"]+)\"").matcher(json);
+                while (m.find()) {
+                    result.add(m.group(1));
+                }
+            }
         }
         return result;
     }
@@ -1489,8 +1510,13 @@ public class ExecutionDataController {
                     }
                 }
             } else {
-                // 단일 값이면 그대로 사용
-                pks.add(sourceRefs);
+                // 단일 값: zone:dsId:tbId:pk 형식일 수 있음
+                String[] parts = sourceRefs.split(":", 4);
+                if (parts.length >= 4) {
+                    pks.add(parts[3]); // pk 부분만 추출
+                } else {
+                    pks.add(sourceRefs); // 파싱 불가하면 그대로 사용
+                }
             }
         } catch (Exception e) {
             log.warn("Failed to parse sourceRefs: {}", sourceRefs, e);
@@ -1760,15 +1786,22 @@ public class ExecutionDataController {
         }
 
         String dbType = detectDbType(jdbcTemplate);
-        String castType = isMysql(dbType) ? "CHAR" : "TEXT";
-        String likeOp = isMysql(dbType) ? "LIKE" : "ILIKE";
+        boolean oracleDb = isOracle(dbType);
+        boolean mysqlDb = isMysql(dbType);
+        String castType = mysqlDb ? "CHAR" : (oracleDb ? "VARCHAR2(4000)" : "TEXT");
+        String likeOp = mysqlDb || oracleDb ? "LIKE" : "ILIKE";
+
+        // Oracle: UPPER로 대소문자 무시 검색
+        String searchVal = oracleDb ? "%" + search.toUpperCase() + "%" : "%" + search + "%";
 
         // 특정 컬럼 검색
         if (searchColumn != null && !searchColumn.isBlank()) {
             String actualColumn = findActualColumnName(jdbcTemplate, tableName, searchColumn);
             if (actualColumn != null) {
-                params.add("%" + search + "%");
-                return " AND CAST(" + qi(actualColumn, dbType) + " AS " + castType + ") " + likeOp + " ?";
+                params.add(searchVal);
+                String castExpr = "CAST(" + qi(actualColumn, dbType) + " AS " + castType + ")";
+                if (oracleDb) castExpr = "UPPER(" + castExpr + ")";
+                return " AND " + castExpr + " " + likeOp + " ?";
             }
             return "";
         }
@@ -1786,8 +1819,10 @@ public class ExecutionDataController {
             if (!first) {
                 searchClause.append(" OR ");
             }
-            searchClause.append("CAST(").append(qi(col, dbType)).append(" AS ").append(castType).append(") ").append(likeOp).append(" ?");
-            params.add("%" + search + "%");
+            String castExpr = "CAST(" + qi(col, dbType) + " AS " + castType + ")";
+            if (oracleDb) castExpr = "UPPER(" + castExpr + ")";
+            searchClause.append(castExpr).append(" ").append(likeOp).append(" ?");
+            params.add(searchVal);
             first = false;
         }
         searchClause.append(")");
