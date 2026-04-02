@@ -31,6 +31,7 @@ dependencies {
     // Database Drivers
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc8'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

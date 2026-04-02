@@ -1,0 +1,285 @@
+# 새올 SND 구현 계획서 (4/2)
+
+> 기반: `dev_plan/2026_04/01/saeol-snd-16tables.md` (4/1 설계서)
+> 이 문서는 설계서 재검토 결과 + 구현 세부사항을 보강한 버전
+
+---
+
+## 1. 오늘 구현 범위
+
+**DMZ 쪽만** (SND: 새올 Oracle → IF_SND Oracle 적재)
+
+| 포함 | 제외 (후속) |
+|------|------------|
+| Oracle DDL (소스+IF_SND+LINK_PLAN) | 내부망 RCV (Oracle IF_SND 읽기) |
+| 커스텀 SND Step | Proxy ojdbc11 추가 |
+| YAML 작성 | DELETE 처리 (IUD 체계 전환) |
+| Orchestrator Agent/Datasource/테이블 등록 | 내부망 Loader 통합 |
+| E2E 테스트 (대표 2~3개 테이블) | 나머지 13개 테이블 테스트 데이터 |
+
+---
+
+## 2. 결정 필요 사항
+
+### 2-1. 커스텀 Step 구현 방식 — ✅ 확정: 수정 A안
+
+**결론: 커스텀 Step + common 유틸 재사용 (SourceToIfStep 수정 없음)**
+
+배경:
+- 기존 SND는 소스에 `link_status`가 있어서 `source-to-if` 한 방이면 됨
+- 새올은 소스에 link_status 없음 → LINK_PLAN(변경 로그) 기반 → 커스텀 필요
+- SourceToIfStep은 기존 레거시(bojo RCV/Loader/SND + others jeju/use)가 많이 걸려있어 **수정 금지**
+- B안(위임)/C안(전처리+source-to-if)은 SourceToIfStep 수정 불가피 → 탈락
+
+구현 방식:
+- `SaeolLinkPlanSndStep`이 전체 로직을 자체 처리
+- MERGE SQL은 **Oracle 메타데이터(`USER_TAB_COLUMNS`)에서 컬럼 목록 동적 조회** → 자동 빌드
+  - 90~95컬럼 테이블도 수작업 불필요
+- `SourceRefUtils` (common의 public 유틸) 재사용
+- SyncLog 저장도 common 서비스 호출
+- SourceToIfStep 코드는 한 줄도 안 건드림
+
+장점:
+- 기존 코드 안전 (회귀 리스크 0)
+- LINK_PLAN 특화 로직 깔끔 분리
+- Oracle 메타 기반이라 DDL 변경에도 자동 대응
+
+---
+
+### 2-2. link_idx 커서 저장 위치 — ✅ 확정: 같은 Oracle(29005)에 커서 테이블
+
+배경:
+- LINK_PLAN은 append-only 변경 로그 (새올이 관리, 삭제 안 됨)
+- 매 실행 시 "어디까지 처리했는지" 알아야 새 이벤트만 가져올 수 있음
+- 레거시는 DMZ LINK_PLAN + 내부망 TM_GD70001(row 1개) 분리 → 비효율
+
+결론:
+- **LINK_PLAN은 건드리지 않음** (새올 시스템 관리 테이블, 읽기만)
+- **IF_SND와 같은 Oracle(29005)에 커서 테이블 생성**
+- 레거시의 네트워크 분리 비효율 해소 (같은 DB에 있으므로 트랜잭션 원자성 확보)
+
+```sql
+CREATE TABLE LINK_PLAN_CURSOR (
+    AGENT_CODE VARCHAR2(50) PRIMARY KEY,
+    LAST_LINK_IDX NUMBER DEFAULT 0 NOT NULL,
+    UPDATED_AT TIMESTAMP DEFAULT SYSTIMESTAMP
+);
+```
+
+처리 흐름:
+```
+1. SELECT LAST_LINK_IDX FROM LINK_PLAN_CURSOR WHERE AGENT_CODE = ?
+2. SELECT * FROM LINK_PLAN WHERE LINK_IDX > ? ORDER BY LINK_IDX
+3. 테이블별 그룹핑 → 소스 SELECT → IF_SND MERGE
+4. UPDATE LINK_PLAN_CURSOR SET LAST_LINK_IDX = ?, UPDATED_AT = SYSTIMESTAMP
+   (MERGE + 커서 업데이트를 같은 Oracle 트랜잭션으로 묶기 가능)
+```
+
+재동기화(RESYNC) 시: `UPDATE LINK_PLAN_CURSOR SET LAST_LINK_IDX = 0`
+
+---
+
+### 2-3. 동일 PK 중복 이벤트 처리 — ✅ 확정: Java에서 deduplicate
+
+레거시: deduplicate 없이 link_idx 순서대로 전부 처리 (같은 PK면 MERGE 여러 번)
+
+우리: Java에서 `Map<테이블+PK, 최신row>` 로 deduplicate 후 1회만 MERGE
+- SQL PARTITION BY는 테이블마다 PK 구성이 달라서 복잡 → Java가 현실적
+- I/U 구분 없이 MERGE (레거시도 I/U 분기 주석처리하고 MERGE로 통합한 상태)
+- D(DELETE)는 현재 skip (후속 IUD 체계 전환 시 구현)
+- MERGE가 idempotent이므로 결과 정확성 보장
+
+---
+
+### 2-4. 테스트 우선 테이블 선정
+
+16개 중 대표 2~3개로 E2E 먼저:
+
+| 후보 | 컬럼수 | PK | 특성 |
+|------|--------|-----|------|
+| RGETNTGMS02 | 7 | 3컬럼 | 최소 컬럼, 빠른 검증 |
+| RGETNPMMS01 | 95 | 2컬럼 | 최대 컬럼, 대량 테스트 |
+| RGETNOPMS01 | 46 | 3컬럼(LP에 2개) | 그룹 재동기화 패턴 |
+
+> **의견**: 
+좋은생각이야 그건, 구현 이후에 테스트 문서 작성할때 생각해보자
+
+> **답변**: 알겠습니다. DDL은 16개 전부 만들되, 테스트 데이터 범위는 나중에 정합니다.
+
+---
+
+## 3. 레거시 대비 개선사항
+
+### 레거시 구조 (saeol.java)
+```
+[DMZ - 새올 Tibero]                    [내부망 - GIMS Oracle]
+LINK_PLAN (16개 테이블 이벤트 혼재)      TM_GD70001 (커서, row 1개)
+  - 변경 시 자동 INSERT                   - LAST_CNTC_NO: 마지막 link_idx
+  - 삭제 안 됨, 무한 증가                  - 매 건 처리 후 갱신
+```
+- 내부망 프로그램이 DMZ에 접속해서 LINK_PLAN 읽음
+- link_idx 순서대로 **1건씩** TABLE_NAME 분기 → 소스 SELECT → 내부망 MERGE
+- 16개 테이블 × 전용 메서드 하드코딩 (2000줄)
+- 같은 PK 중복 이벤트도 전부 처리 (MERGE 여러 번)
+
+### 개선 내역
+
+| # | 항목 | 레거시 | 우리 |
+|---|------|--------|------|
+| 1 | **처리 단위** | 1건씩 MERGE (매번 DB 왕복) | 테이블별 그룹핑 → 배치 SELECT + 배치 MERGE (1000건 단위) |
+| 2 | **중복 이벤트** | deduplicate 없음 (같은 PK → MERGE N번) | Java에서 `Map<테이블+PK, 최신row>` deduplicate → MERGE 1번 |
+| 3 | **커서 위치** | 내부망 TM_GD70001 (네트워크 분리) | 같은 Oracle(29005) LINK_PLAN_CURSOR (트랜잭션 원자성) |
+| 4 | **커서 갱신** | 매 건마다 UPDATE | 전체 완료 후 1회 (MERGE가 idempotent이라 실패 시 재처리 가능) |
+| 5 | **테이블 매핑** | 16개 메서드 하드코딩 (2000줄) | YAML `link-plan-keys` 선언적 매핑 |
+| 6 | **MERGE SQL** | ResultSetMetaData로 직접 조립 | Oracle `USER_TAB_COLUMNS` 메타 → 동적 빌드 |
+| 7 | **I/U 분기** | 주석처리 후 MERGE 통합 | 처음부터 MERGE 통합 (I/U 무관) |
+
+### Step 처리 흐름 (개선 후)
+
+```
+① LINK_PLAN_CURSOR에서 LAST_LINK_IDX 읽기
+    ↓
+② SELECT * FROM LINK_PLAN WHERE LINK_IDX > ? ORDER BY LINK_IDX
+    ↓
+③ Java에서 deduplicate:
+   - Map<"RGETNPMMS01:3650000:A001", Row> → 같은 PK면 최신 link_idx만 유지
+   - D flag → skip (후속)
+    ↓
+④ TABLE_NAME별 그룹핑:
+   RGETNPMMS01 그룹: [{PK1}, {PK2}, {PK3}]
+   RGETSTGMS01 그룹: [{PK4}]
+   ...
+    ↓
+⑤ 테이블별 배치 처리 (YAML link-plan-keys로 WHERE 매핑):
+   SELECT * FROM RGETSTGMS01
+   WHERE (REL_TRANS_CGG_CODE, PERM_NT_NO, YY_GBN) IN ((?,?,?), (?,?,?), ...)
+    ↓
+⑥ IF_SND에 배치 MERGE (Oracle 메타 기반 동적 SQL):
+   MERGE INTO IF_SND_RGETSTGMS01 t
+   USING (SELECT ? AS col1, ... FROM DUAL) s
+   ON (t.SOURCE_REFS = s.SOURCE_REFS)
+   WHEN MATCHED THEN UPDATE SET ...
+   WHEN NOT MATCHED THEN INSERT ...
+    ↓
+⑦ SyncLog 저장 (Agent PG)
+    ↓
+⑧ LINK_PLAN_CURSOR 갱신: LAST_LINK_IDX = MAX(처리한 link_idx)
+```
+
+---
+
+## 4. 확정 사항 (재검토 후 결론)
+
+### 4-1. Source 테이블 업데이트 생략
+
+새올 소스 테이블은 **읽기 전용** — link_status 컬럼 없음.
+- 커스텀 Step에서 source 업데이트 로직 명시적 skip
+- (SourceToIfStep 위임 시 `skip-source-status-update: true`)
+
+### 4-2. IF_SND id 컬럼
+
+Oracle `GENERATED BY DEFAULT AS IDENTITY` 사용.
+- SourceToIfStep의 `AUTO_INCREMENT_PK_COLUMNS = ["id"]` 제외 로직 활용
+- DDL: `ID NUMBER GENERATED BY DEFAULT AS IDENTITY`
+
+### 4-3. Oracle 대문자 정책
+
+- Oracle DDL: 따옴표 없이 정의 → 자동 대문자 저장
+- common의 `qi()`: Oracle이면 인용 없이 반환 → 대문자 매칭
+- YAML: 소문자로 작성 OK (Oracle이 자동 변환)
+- IF_SND 메타 컬럼도 대문자: `SOURCE_REFS`, `LINK_STATUS`, `EXTRACTED_AT`, `UPDATED_AT`, `EXECUTION_ID`
+
+### 4-4. SyncLog 저장 위치
+
+Agent 로컬 PG에 저장 (기존 패턴 유지).
+- 추적 시: SyncLog(PG)에서 테이블명 확인 → 해당 datasource(Oracle)로 실제 데이터 조회
+- 이미 cross-DB trace 로직 존재 (common ExecutionDataController)
+
+### 4-5. 그룹 재동기화 (부분 PK)
+
+LINK_PLAN에 PK 일부만 있는 테이블 (RGETNOPMS01 등):
+- 있는 키만으로 WHERE → 해당 그룹 전체 SELECT → MERGE
+- SyncLog readCount가 실제 변경건수보다 클 수 있음 → 수용 (레거시 동일)
+
+---
+
+## 5. 구현 순서
+
+### Step 1: Oracle DDL (`scripts/saeol-oracle-init.sql`)
+
+```
+- 소스 16개 테이블 DDL (sol.txt 기반, K1M 스키마)
+- LINK_PLAN 테이블 DDL
+- LINK_PLAN_CURSOR 테이블 DDL (커서 관리)
+- IF_SND 16개 테이블 DDL (소스 컬럼 + 메타 5컬럼 + IDENTITY id)
+- 테스트 데이터: 우선 테이블 2~3개 + LINK_PLAN 이벤트
+- 나머지 13개: DDL만 (테스트 데이터는 후속)
+```
+
+### Step 2: build.gradle 수정
+
+```
+- sync-agent-others/build.gradle에 ojdbc11 의존성 추가
+- runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+```
+
+### Step 3: 커스텀 SND Step 구현
+
+```
+- SaeolLinkPlanSndStep (또는 선택한 방식)
+- LINK_PLAN 조회 → table_name별 그룹핑 → 소스 SELECT → IF_SND MERGE
+- link_idx 커서 관리
+- SyncLog 기록
+```
+
+### Step 4: YAML 작성
+
+```
+- config/agents/dmz-others-snd-saeol.yml
+- 16개 테이블의 source-table, target-table, primary-key, link-plan-keys 매핑
+```
+
+### Step 5: Orchestrator 등록
+
+```
+- data.sql:
+  - Agent: dmz-others-snd-saeol (port 8085, others)
+  - Datasource: saeol-oracle (host, port 29005, XEPDB1, ORACLE)
+  - 테이블: 소스 16개 + IF_SND 16개 = 32개 INSERT
+```
+
+### Step 6: 테스트
+
+```
+1. Oracle 컨테이너(29005)에 DDL 실행
+2. 테스트 데이터 INSERT (소스 + LINK_PLAN)
+3. others 서비스 기동 (8085)
+4. Orchestrator에서 실행 트리거
+5. IF_SND 적재 확인 + link_status 확인
+6. 추적 현황 확인
+```
+
+---
+
+## 6. 수정 파일 (예상)
+
+| 모듈 | 파일 | 내용 |
+|------|------|------|
+| scripts | saeol-oracle-init.sql | **신규** — DDL + 테스트 데이터 |
+| sync-agent-others | build.gradle | ojdbc11 의존성 추가 |
+| sync-agent-others | step/SaeolLinkPlanSndStep.java | **신규** — 커스텀 Step |
+| sync-agent-others | config/SaeolPipelineConfig.java | **신규** — Step 등록 (또는 기존 config에 추가) |
+| scripts | saeol-oracle-init.sql 내 | LINK_PLAN_CURSOR DDL 포함 |
+| sync-agent-others | config/agents/dmz-others-snd-saeol.yml | **신규** — YAML |
+| sync-orchestrator/backend | data.sql | Agent + Datasource + 테이블 32개 등록 |
+
+---
+
+## 7. 리스크
+
+| 리스크 | 영향 | 대응 |
+|--------|------|------|
+| Oracle XE 21c IDENTITY 미지원 | DDL 실패 | SEQUENCE + TRIGGER fallback |
+| 90컬럼 MERGE SQL 파라미터 순서 | 데이터 꼬임 | Oracle 메타데이터 기반 동적 빌드 |
+| LINK_PLAN 대량 이벤트 시 성능 | 느림 | 배치 크기 조절, 청크 처리 |
+| 기존 others Agent(jeju/use) 회귀 | 서비스 장애 | 빌드 후 기존 테스트 재실행 |
