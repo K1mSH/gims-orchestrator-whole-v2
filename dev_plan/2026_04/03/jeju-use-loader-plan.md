@@ -6,6 +6,25 @@
 ## 목적
 IF_RSV → GIMS 실테이블 적재. 레거시 로직을 커스텀 Step으로 구현.
 
+## 핵심 결정사항
+
+### 1. 전 Step 커스텀 (source-to-if 미사용)
+- I1~I3, I5: 복잡한 로직 (분산/분기/조건부/증분)
+- I4: 단순 이관이지만 **컬럼명 변환** 필요
+- source-to-if는 동일 컬럼명 전제 → 컬럼 매핑 기능 없음
+- column-mapping 확장은 에이전트 로직 복잡도 증가로 비채택
+
+### 2. 컬럼명: 환경부 표준 적용
+- **GIMS 타겟 DDL**: 환경부 표준 컬럼명으로 생성
+- **IF_RSV**: 이전(레거시) 컬럼명 유지 (이미 생성됨)
+- **Loader Step**: IF_RSV(이전) → GIMS(표준) 매핑 변환 처리
+- 예: `SPOT_ID → BRNCH_ID`, `OBSRVT_NM → OBSVTR_NM`
+- 매핑은 각 Step 내 Java Map/상수로 정의
+
+### 3. 기존 매핑 기능 비채택 사유
+- api-collector 매핑: JSON→DB 변환 용도, DB→DB와 다름
+- 에이전트 YAML: DB 테이블 등록과 실행 로직 분리 구조 → 매핑 끼우기 부적합
+
 ## 아키텍처
 
 ```
@@ -27,127 +46,133 @@ sync-agent-bojo-int/src/main/java/com/sync/agent/bojoint/
 
 ## Step별 상세
 
-### I4: JejuRgetnLoadStep (가장 단순 — 먼저 구현)
+### I4: JejuRgetnLoadStep (단순 MERGE + 컬럼명 변환)
 
 | 항목 | 값 |
 |------|-----|
-| 소스 | IF_RSV_RGETSTGMS01 (제주 데이터) |
-| 타겟 | RGETSTGMS01 (내부망 Oracle) |
-| 로직 | source_refs 기준 MERGE (전컬럼) |
-| 난이도 | **낮음** — 단순 1:1 이관 |
+| 소스 | IF_RSV_RGETSTGMS01 (이전 컬럼명) |
+| 타겟 | RGETSTGMS01 (환경부 표준 컬럼명) |
+| 로직 | source_refs 기준 MERGE, 전컬럼 매핑 변환 |
+| 레거시 | RgetnDB.java, target.xml `insetRgetstgms01` |
+| 난이도 | **낮음** — 1:1 이관 + 컬럼명 치환 |
+
+**참고**: IF_RSV_RGETSTGMS01은 새올/제주 공유 테이블. 새올은 새올 Loader(source-to-if)에서 같은 컬럼명으로 처리, 제주는 이 커스텀 Step에서 표준 변환.
 
 ### I1: JejuJewonLoadStep (1→7 분산)
 
 | 항목 | 값 |
 |------|-----|
 | 소스 | IF_RSV_TB_JEJU_JEWON |
-| 타겟 | 7개 테이블 |
-| 로직 | 관측점 1건 → 7개 타겟에 분산 INSERT/UPDATE |
+| 타겟 | 5개 테이블 (실제 target.xml 기준) |
+| 레거시 | JewonDB.java, target.xml |
+| 난이도 | **높음** — 다수 타겟, 고정값, 서브쿼리 |
 
-**타겟 테이블 매핑 (레거시 JewonDB 기준):**
+**타겟 테이블 (표준 컬럼명 적용):**
 
-| # | 타겟 | 내용 | 매핑 특징 |
-|---|------|------|----------|
-| 1 | TM_GD60001 | 제주 관측점 마스터 | obsrvt_id → OBSV_CODE, 좌표/주소 매핑 |
-| 2 | TM_GD10001 | 관측소 정보 | OBSV_CODE 기준 MERGE |
-| 3 | TM_GD60130 | 관측점 시설 | 고정값 다수 (V1~V10) |
-| 4 | TM_GD60002 | 관측점 상세 | 심도/구경 등 |
-| 5 | GD60101_Gl | 수위 센서 등록 | 고정값 (ITEM_CODE='GL') |
-| 6 | GD60101_Wtemp | 수온 센서 등록 | 고정값 (ITEM_CODE='WTEMP') |
-| 7 | GD60101_Scond | 전기전도도 센서 등록 | 고정값 (ITEM_CODE='SCOND') |
-
-**난이도: 높음** — 타겟 7개 DDL 필요, 고정값 매핑 복잡
+| # | 테이블 | 11자리 표준명 | 설명 | PK (표준) |
+|---|--------|-------------|------|-----------|
+| 1 | TM_GD60001 | TM_GD970001 | ODM관측소 | BRNCH_ID |
+| 2 | TM_GD10001 | TM_GD120001 | 관정 | GWEL_NO |
+| 3 | TM_GD60130 | TM_GD970130 | ODM관정사양 | GWEL_NO + BRNCH_ID |
+| 4 | TM_GD60002 | TM_GD970002 | ODM관측소사양 | BRNCH_ID |
+| 5 | TM_GD60101 | TM_GD970101 | ODM결과 (센서 3종 등록) | RSLT_ID |
 
 ### I2: JejuObsvdataLoadStep (센서 분기)
 
 | 항목 | 값 |
 |------|-----|
 | 소스 | IF_RSV_TB_JEJU |
-| 타겟 | Pm60201 (3개 항목) + Pm60202 (3개 항목) = 6개 논리 타겟 |
-| 로직 | msn(센서코드) 분기: S11→60201, S21/S22→60202 |
+| 타겟 | 2개 테이블 × 3항목(GL/WTEMP/SCOND) = 6개 논리 INSERT |
+| 레거시 | ObsvrdataDB.java, target.xml `insetPm60201_*`, `insetPm60202_*` |
+| 난이도 | **중간** — msn 센서분기 + EAV + RESULT_ID 참조 |
 
-**컬럼 매핑:**
-- gl → 수위값, wtemp → 수온값, scond → 전기전도도값
-- 각 항목별 별도 row INSERT (EAV 패턴)
-- lc_sn(관측소일련번호) 조회 필요
+**타겟 테이블:**
 
-**난이도: 중간** — 센서 분기 + EAV 변환
+| # | 테이블 | 11자리 표준명 | 설명 | PK (표준) |
+|---|--------|-------------|------|-----------|
+| 1 | PM_GD60201 | PM_GD970201 | ODM관측자료 | OBSRVN_DATA_ID |
+| 2 | PM_GD60202 | PM_GD970202 | ODM다심도관측자료 | RSLT_ID + OBSRVN_DATA_ID |
+
+**센서 분기**: msn=S11 → PM_GD60201, msn=S21/S22 → PM_GD60202
 
 ### I3: JejuFacilityLoadStep (조건부 INSERT)
 
 | 항목 | 값 |
 |------|-----|
 | 소스 | IF_RSV_RGETSTGMS01 |
-| 타겟 | TmGd31010Gms, TmGd31010, PmGd31022 |
-| 로직 | 존재체크 후 INSERT (없으면만), 연도별 처리 |
+| 타겟 | 2개 테이블 |
+| 레거시 | JejuInToDB.java, target.xml `insertTmGd31010Gms`, `insertPmGd31022` |
+| 난이도 | **중간** — 존재체크 MERGE, 연도별 |
 
-**난이도: 중간**
+**타겟 테이블:**
+
+| # | 테이블 | 11자리 표준명 | 설명 | PK (표준) |
+|---|--------|-------------|------|-----------|
+| 1 | TM_GD31010 | TM_GD111010 | 이용량시설 | BRNCH_ID |
+| 2 | PM_GD31022 | PM_GD111022 | 이용량일자료 | BRNCH_ID + OBSRVN_YMD |
 
 ### I5: UseLoadStep (이용량)
 
 | 항목 | 값 |
 |------|-----|
 | 소스 | IF_RSV_USE_LEGACY_DATA + IF_RSV_USE_STATUS_DATA |
-| 타겟 | PM_GD31021, PM_GD31022, TM_GD31025 |
-| 로직 | SN 증분, 음수→0 보정, legacy+status 합산 |
+| 타겟 | 4개 테이블 |
+| 레거시 | UseToIn.java, target.xml |
+| 난이도 | **중간** — SN 증분, 음수→0, 후처리(lastReceive) |
 
-**난이도: 중간**
+**타겟 테이블:**
 
-## GIMS 타겟 테이블 DDL
+| # | 테이블 | 11자리 표준명 | 설명 | PK (표준) |
+|---|--------|-------------|------|-----------|
+| 1 | PM_GD31021 | PM_GD111021 | 이용량시간자료 | BRNCH_ID + OBSRVN_DT |
+| 2 | PM_GD31022 | PM_GD111022 | 이용량일자료 (I3과 공유) | BRNCH_ID + OBSRVN_YMD |
+| 3 | TM_GD31024 | TM_GD111024 | 이용량최근수신현황 | BRNCH_ID |
+| 4 | TM_GD31025 | TM_GD111025 | 이용량관측데이터 | SN |
 
-내부망 Oracle(29004)에 생성 필요. **실서버 스키마 확인 필수.**
+## GIMS 타겟 DDL
 
-### I4 타겟 (이미 존재)
-- RGETSTGMS01 — 새올 Loader에서 이미 생성됨 ✓
+**소스**: `dev_plan/2026_04/03/제주_이용량_ddl.txt` (환경부 표준화 문서 추출)
+**컬럼명**: `환경부표준` 컬럼 사용 (이전 컬럼명 X)
+**대상**: 11개 테이블 (PM_GD31022 공유로 실제 11개)
 
-### I1 타겟 (7개 — DDL 필요)
-- TM_GD60001, TM_GD10001, TM_GD60130, TM_GD60002
-- GD60101_Gl, GD60101_Wtemp, GD60101_Scond
-- → **실서버 스키마 필요** (txt 파일로 받기)
+| # | 테이블 | Step | 컬럼수 |
+|---|--------|------|--------|
+| 1 | TM_GD60001 | I1 | 16 |
+| 2 | TM_GD10001 | I1 | 33 |
+| 3 | TM_GD60130 | I1 | 57 |
+| 4 | TM_GD60002 | I1 | 21 |
+| 5 | TM_GD60101 | I1 | 18 |
+| 6 | PM_GD60201 | I2 | 5 |
+| 7 | PM_GD60202 | I2 | 6 |
+| 8 | TM_GD31010 | I3 | 50 |
+| 9 | PM_GD31022 | I3/I5 | 4 |
+| 10 | PM_GD31021 | I5 | 4 |
+| 11 | TM_GD31024 | I5 | 2 |
+| 12 | TM_GD31025 | I5 | 4 |
 
-### I2 타겟 (2개 — DDL 필요)
-- PM_GD60201, PM_GD60202
-- → **실서버 스키마 필요**
+## 레거시 참조 소스
 
-### I3 타겟 (3개 — DDL 필요)
-- TM_GD31010_GMS, TM_GD31010, PM_GD31022
-- → **실서버 스키마 필요**
+| Step | 레거시 Java | 레거시 XML | 위치 |
+|------|-----------|-----------|------|
+| I1 | JewonDB.java (class) | target.xml | `D:\dev\claude\copySource\test\internal\in_use\` |
+| I2 | ObsvrdataDB.java | target.xml | 동일 |
+| I3 | JejuInToDB.java | target.xml | 동일 |
+| I4 | RgetnDB.java | target.xml (`insetRgetstgms01`) | 동일 |
+| I5 | UseToIn.java | target.xml | 동일 |
 
-### I5 타겟 (3개 — DDL 필요)
-- PM_GD31021, PM_GD31022 (I3과 공유?), TM_GD31025
-- → **실서버 스키마 필요**
-
-## 구현 순서 (추천)
+## 구현 순서
 
 ```
-Phase 1: 인프라 (YAML + Factory)
+Phase 1: DDL + 인프라
+  - 12개 GIMS 타겟 테이블 DDL (환경부 표준 컬럼명)
   - internal-jeju-loader.yml (4 step: I1~I4)
   - internal-use-loader.yml (1 step: I5)
   - JejuLoadStepFactory, UseLoadStepFactory
+  - Orchestrator Agent 등록
 
-Phase 2: I4 (단순 이관) — 가장 빠르게 E2E 검증
-  - RGETSTGMS01 이미 존재
-  - 단순 MERGE SQL
-
-Phase 3: I1 (제원 분산) — 실서버 DDL 받은 후
-Phase 4: I2 (관측 센서 분기)
-Phase 5: I3 (이용시설)
-Phase 6: I5 (이용량)
+Phase 2: I4 (단순 MERGE + 컬럼 변환) → E2E 검증
+Phase 3: I5 (이용량) → E2E 검증
+Phase 4: I3 (이용시설) → E2E 검증
+Phase 5: I2 (관측 센서 분기) → E2E 검증
+Phase 6: I1 (제원 1→5 분산) → E2E 검증
 ```
-
-## 선행 조건
-
-1. **GIMS 타겟 테이블 DDL** — I1(7개), I2(2개), I3(3개), I5(3개) = 총 ~15개
-   - 실서버 스키마 txt 파일 필요 (RGETSTGMS01.txt 처럼)
-   - 또는 레거시 소스에서 CREATE TABLE 추출
-
-2. **레거시 Java 소스** — 각 Step의 상세 매핑 로직
-   - JewonDB.java, ObsvrdataDB.java, JejuInToDB.java, RgetnDB.java, UseToIn.java
-   - `D:\dev\claude\copySource\test\` 에 있다고 문서에 기재됨
-
-## 오늘 가능한 범위
-
-**Phase 1 + Phase 2 (I4)** — YAML + Factory 인프라 + 가장 단순한 I4 구현 + E2E
-- 코드 수정: bojo-int 내 3~4개 파일 신규
-- DDL: 불필요 (RGETSTGMS01 이미 존재)
-- 테스트: Mock → D3 → SND → RCV → Loader(I4) → RGETSTGMS01 검증
