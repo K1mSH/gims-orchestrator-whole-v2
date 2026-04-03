@@ -8,7 +8,6 @@ import StatusBadge from '@/components/StatusBadge';
 const ZONE_LABELS: Record<Zone, string> = {
   EXTERNAL: '외부망',
   DMZ: 'DMZ',
-  INTERNAL: '내부망',
   INTERNAL_COMMON: '내부공통망',
   INTERNAL_SERVICE: '내부서비스망',
 };
@@ -366,7 +365,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
           ]);
           setSourceDatasource(ds);
           // Agent에 설정된 테이블만 필터링
-          setSourceTables(tables.filter(t => agent.sourceTableIds?.includes(t.id)));
+          setSourceTables(tables.filter(t => agent.sourceTableIds?.includes(t.id)).sort((a, b) => a.tableName.localeCompare(b.tableName)));
         } catch (e) { console.error('Source datasource 조회 실패:', e); }
       }
       if (agent.targetDatasourceId) {
@@ -376,7 +375,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
             datasourceApi.getRegisteredTables(agent.targetDatasourceId),
           ]);
           setTargetDatasource(ds);
-          setTargetTables(tables.filter(t => agent.targetTableIds?.includes(t.id)));
+          setTargetTables(tables.filter(t => agent.targetTableIds?.includes(t.id)).sort((a, b) => a.tableName.localeCompare(b.tableName)));
         } catch (e) { console.error('Target datasource 조회 실패:', e); }
       }
     };
@@ -399,7 +398,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   useEffect(() => {
     if (editMode && agentForm.sourceDatasourceId) {
       datasourceApi.getRegisteredTables(agentForm.sourceDatasourceId)
-        .then(setAvailableSourceTables)
+        .then(tables => setAvailableSourceTables(tables.sort((a, b) => a.tableName.localeCompare(b.tableName))))
         .catch(console.error);
     } else {
       setAvailableSourceTables([]);
@@ -410,7 +409,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   useEffect(() => {
     if (editMode && agentForm.targetDatasourceId) {
       datasourceApi.getRegisteredTables(agentForm.targetDatasourceId)
-        .then(setAvailableTargetTables)
+        .then(tables => setAvailableTargetTables(tables.sort((a, b) => a.tableName.localeCompare(b.tableName))))
         .catch(console.error);
     } else {
       setAvailableTargetTables([]);
@@ -650,7 +649,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               onChange={() => handleSourceTableToggle(table.id)}
                             />
                             <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
-                            {table.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description}</span>}
+                            {(table.description || table.tableAlias) && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description || table.tableAlias}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -688,7 +687,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               onChange={() => handleTargetTableToggle(table.id)}
                             />
                             <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
-                            {table.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description}</span>}
+                            {(table.description || table.tableAlias) && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description || table.tableAlias}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -728,7 +727,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                           <div style={{ fontWeight: 500 }}>
                             {table.tableName}
                             {table.tableAlias && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
-                            {table.description && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description}</span>}
+                            {(table.description || table.tableAlias) && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description || table.tableAlias}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.columns.length}컬럼)</span>
                           </div>
                         </div>
@@ -761,7 +760,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                           <div style={{ fontWeight: 500 }}>
                             {table.tableName}
                             {table.tableAlias && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
-                            {table.description && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description}</span>}
+                            {(table.description || table.tableAlias) && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description || table.tableAlias}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.columns.length}컬럼)</span>
                           </div>
                         </div>

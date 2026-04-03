@@ -1,0 +1,46 @@
+# ── Internal 이용량 RCV Agent ──
+# DMZ Others IF_SND(PG 29001) → 내부망 IF_RSV(Oracle 29004) 적재
+# 3개 테이블: 이용량 레거시, 이용량 상태, 제주 일일이용량
+agent-code: internal-use-rcv
+type: RCV
+
+steps:
+  - id: use-legacy-rcv
+    name: 이용량 레거시 수신
+    factory-key: source-to-if
+    source-table: if_snd_use_legacy_data
+    target-table: IF_RSV_USE_LEGACY_DATA
+    primary-key: sn
+    conflict-key: source_refs
+
+  - id: use-status-rcv
+    name: 이용량 상태 수신
+    factory-key: source-to-if
+    source-table: if_snd_use_status_data
+    target-table: IF_RSV_USE_STATUS_DATA
+    primary-key: sn
+    conflict-key: source_refs
+
+  - id: use-jejuday-rcv
+    name: 제주 일일이용량 수신
+    factory-key: source-to-if
+    source-table: if_snd_use_jeju_day
+    target-table: IF_RSV_USE_JEJU_DAY
+    primary-key: id
+    conflict-key: source_refs
+
+select-tables:
+  - if_snd_use_legacy_data
+  - if_snd_use_status_data
+  - if_snd_use_jeju_day
+
+table-mappings:
+  - name: use-legacy
+    source: [if_snd_use_legacy_data]
+    target: [IF_RSV_USE_LEGACY_DATA]
+  - name: use-status
+    source: [if_snd_use_status_data]
+    target: [IF_RSV_USE_STATUS_DATA]
+  - name: use-jejuday
+    source: [if_snd_use_jeju_day]
+    target: [IF_RSV_USE_JEJU_DAY]

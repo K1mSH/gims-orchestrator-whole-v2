@@ -727,16 +727,38 @@ function TableManagementModal({
   };
 
   const [refreshingTableId, setRefreshingTableId] = useState<number | null>(null);
+  const [expandedTableId, setExpandedTableId] = useState<number | null>(null);
+  const [refreshTarget, setRefreshTarget] = useState<DatasourceTable | null>(null);
+  const [refreshDbColumns, setRefreshDbColumns] = useState<ColumnSearchResult[]>([]);
+  const [refreshSelectedColumns, setRefreshSelectedColumns] = useState<ColumnSearchResult[]>([]);
+  const [refreshSaving, setRefreshSaving] = useState(false);
 
   const handleRefreshColumns = async (table: DatasourceTable) => {
     setRefreshingTableId(table.id);
     try {
       const dbColumns = await datasourceApi.searchColumns(datasource.datasourceId, table.tableName);
-      await datasourceApi.refreshTableColumns(datasource.datasourceId, table.id, {
-        tableName: table.tableName,
-        tableAlias: table.tableAlias || undefined,
-        description: table.description || undefined,
-        columns: dbColumns.map(c => ({
+      setRefreshDbColumns(dbColumns);
+      // 기존 등록된 컬럼은 pre-check
+      const existingNames = new Set(table.columns.map(c => c.columnName));
+      setRefreshSelectedColumns(dbColumns.filter(c => existingNames.has(c.columnName)));
+      setRefreshTarget(table);
+    } catch (error) {
+      console.error('컬럼 재수집 실패:', error);
+      alert('컬럼 재수집에 실패했습니다.');
+    } finally {
+      setRefreshingTableId(null);
+    }
+  };
+
+  const handleRefreshConfirm = async () => {
+    if (!refreshTarget || refreshSelectedColumns.length === 0) return;
+    setRefreshSaving(true);
+    try {
+      await datasourceApi.refreshTableColumns(datasource.datasourceId, refreshTarget.id, {
+        tableName: refreshTarget.tableName,
+        tableAlias: refreshTarget.tableAlias || undefined,
+        description: refreshTarget.description || undefined,
+        columns: refreshSelectedColumns.map(c => ({
           columnName: c.columnName,
           dataType: c.dataType,
           isPrimaryKey: c.isPrimaryKey,
@@ -744,13 +766,22 @@ function TableManagementModal({
         })),
       });
       fetchRegisteredTables();
-      alert(`${table.tableName} 컬럼 갱신 완료 (${dbColumns.length}개)`);
+      setRefreshTarget(null);
+      alert(`${refreshTarget.tableName} 컬럼 갱신 완료 (${refreshSelectedColumns.length}개)`);
     } catch (error) {
-      console.error('컬럼 재수집 실패:', error);
-      alert('컬럼 재수집에 실패했습니다.');
+      console.error('컬럼 갱신 실패:', error);
+      alert('컬럼 갱신에 실패했습니다.');
     } finally {
-      setRefreshingTableId(null);
+      setRefreshSaving(false);
     }
+  };
+
+  const handleRefreshToggleColumn = (col: ColumnSearchResult) => {
+    setRefreshSelectedColumns(prev =>
+      prev.some(c => c.columnName === col.columnName)
+        ? prev.filter(c => c.columnName !== col.columnName)
+        : [...prev, col]
+    );
   };
 
   // 이미 등록된 테이블인지 확인
@@ -958,7 +989,7 @@ function TableManagementModal({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>
                       <strong style={{ fontSize: '1rem' }}>{table.tableName}</strong>
-                      {table.tableAlias && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
+                      {(table.description || table.tableAlias) && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.description || table.tableAlias})</span>}
                     </span>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
@@ -976,29 +1007,114 @@ function TableManagementModal({
                       </button>
                     </div>
                   </div>
-                  <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                    {table.columns.map((c) => (
-                      <span
-                        key={c.id}
-                        style={{
-                          display: 'inline-block',
-                          background: c.isPrimaryKey ? 'var(--primary-bg, #e3f2fd)' : 'var(--card-bg, white)',
-                          border: '1px solid var(--border-color, #ddd)',
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                        }}
-                      >
-                        {c.columnName}
-                        {c.isPrimaryKey && <span style={{ color: 'var(--primary-color, #1976d2)' }}> (PK)</span>}
-                      </span>
-                    ))}
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <button
+                      className="btn btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      onClick={() => setExpandedTableId(expandedTableId === table.id ? null : table.id)}
+                    >
+                      {expandedTableId === table.id ? '▼' : '▶'} 컬럼 ({table.columns.length}개)
+                    </button>
+                    {expandedTableId === table.id && (
+                      <div style={{ marginTop: '0.25rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                        {table.columns.map((c) => (
+                          <span
+                            key={c.id}
+                            style={{
+                              display: 'inline-block',
+                              background: c.isPrimaryKey ? 'var(--primary-bg, #e3f2fd)' : 'var(--card-bg, white)',
+                              border: '1px solid var(--border-color, #ddd)',
+                              padding: '0.125rem 0.5rem',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                            }}
+                          >
+                            {c.columnName}
+                            {c.isPrimaryKey && <span style={{ color: 'var(--primary-color, #1976d2)' }}> (PK)</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* 컬럼 재수집 선택 모달 */}
+        {refreshTarget && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+          }}>
+            <div className="card" style={{ width: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0 }}>컬럼 재수집 — {refreshTarget.tableName}</h4>
+                <button className="btn btn-sm" onClick={() => setRefreshTarget(null)} style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  선택: {refreshSelectedColumns.length}/{refreshDbColumns.length}
+                </span>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setRefreshSelectedColumns(
+                    refreshSelectedColumns.length === refreshDbColumns.length ? [] : [...refreshDbColumns]
+                  )}
+                >
+                  {refreshSelectedColumns.length === refreshDbColumns.length ? '전체해제' : '전체선택'}
+                </button>
+              </div>
+              <div style={{
+                flex: 1, overflow: 'auto', border: '1px solid var(--border-color, #ddd)',
+                borderRadius: '0.375rem', background: 'var(--bg-secondary, #f9f9f9)',
+              }}>
+                {refreshDbColumns.map((col) => {
+                  const isExisting = refreshTarget.columns.some(c => c.columnName === col.columnName);
+                  const isSelected = refreshSelectedColumns.some(c => c.columnName === col.columnName);
+                  return (
+                    <label
+                      key={col.columnName}
+                      style={{
+                        display: 'flex', alignItems: 'center', padding: '0.5rem 0.75rem', cursor: 'pointer',
+                        borderBottom: '1px solid var(--border-color, #eee)',
+                        background: isSelected ? 'var(--primary-bg, #e3f2fd)' : undefined,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleRefreshToggleColumn(col)}
+                        style={{ marginRight: '0.75rem' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: col.isPrimaryKey ? 600 : 400 }}>
+                          {col.columnName}
+                          {col.isPrimaryKey && <span style={{ color: 'var(--primary-color, #1976d2)', marginLeft: '0.25rem' }}>(PK)</span>}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+                          {col.dataType} {col.isNullable ? '' : '(NOT NULL)'}
+                        </span>
+                        {!isExisting && <span style={{ color: 'var(--success-color, #2e7d32)', fontSize: '0.7rem', marginLeft: '0.5rem' }}>NEW</span>}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: '0.75rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setRefreshTarget(null)}>취소</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleRefreshConfirm}
+                  disabled={refreshSaving || refreshSelectedColumns.length === 0}
+                >
+                  {refreshSaving ? '저장중...' : `갱신 (${refreshSelectedColumns.length}개 컬럼)`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

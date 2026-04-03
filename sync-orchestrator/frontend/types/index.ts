@@ -22,7 +22,7 @@ export interface Agent {
   targetTableIds: number[];
 }
 
-export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
+export type Zone = 'EXTERNAL' | 'DMZ' | 'INTERNAL_COMMON' | 'INTERNAL_SERVICE';
 
 export interface AgentCreateRequest {
   agentCode: string;

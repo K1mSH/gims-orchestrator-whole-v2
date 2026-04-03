@@ -9,7 +9,6 @@ import Link from 'next/link';
 const ZONE_LABELS: Record<Zone, string> = {
   EXTERNAL: '외부망',
   DMZ: 'DMZ',
-  INTERNAL: '내부망',
   INTERNAL_COMMON: '내부공통망',
   INTERNAL_SERVICE: '내부서비스망',
 };
