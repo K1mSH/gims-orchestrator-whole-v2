@@ -9,13 +9,5 @@ steps:
   - id: internal-bojo-load
     name: 내부망 GIMS 적재
     factory-key: internal-bojo-load
-
-select-tables:
-  - IF_RSV_SEC_JEWON
-  - IF_RSV_SEC_OBSVDATA
-  - TM_GD970001
-
-table-mappings:
-  - name: obsvdata
-    source: [IF_RSV_SEC_OBSVDATA]
-    target: [PM_GD970201]
+    source-table: IF_RSV_SEC_OBSVDATA
+    target-table: [PM_GD970201, TM_GD970101, TM_GD980002]

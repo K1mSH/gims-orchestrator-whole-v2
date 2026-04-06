@@ -9,6 +9,7 @@ import com.sync.agent.common.step.StepExecutor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,13 +29,21 @@ public class JejuLoadStepFactory implements StepFactory {
         return "jeju-jewon-load";
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public StepExecutor create(Map<String, Object> config) {
         String stepId = (String) config.getOrDefault("id", "jeju-jewon-load");
         String stepName = (String) config.getOrDefault("name", "제주 제원 적재");
 
+        List<String> sourceTables = (List<String>) config.get("source-table");
+        List<String> targetTables = (List<String>) config.get("target-table");
+
+        String ifTable = sourceTables != null && !sourceTables.isEmpty()
+                ? sourceTables.get(0) : "IF_RSV_TB_JEJU_JEWON";
+
         return new JejuJewonLoadStep(
-                stepId, stepName,
+                stepId, stepName, ifTable,
+                sourceTables, targetTables,
                 dataSourceProvider, syncLogRepository, ifTableService
         );
     }

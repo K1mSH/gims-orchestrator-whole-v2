@@ -23,15 +23,3 @@ steps:
     conflict-key: source_refs
     date-column: obsv_date
     time-column: obsv_time
-
-select-tables:
-  - sec_jewon
-  - sec_obsvdata
-
-table-mappings:
-  - name: jewon
-    source: [sec_jewon]
-    target: [if_snd_sec_jewon]
-  - name: obsvdata
-    source: [sec_obsvdata]
-    target: [if_snd_sec_obsvdata]

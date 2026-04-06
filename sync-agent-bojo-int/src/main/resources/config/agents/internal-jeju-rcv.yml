@@ -29,19 +29,3 @@ steps:
     target-table: IF_RSV_RGETSTGMS01
     primary-key: perm_nt_no
     conflict-key: source_refs
-
-select-tables:
-  - if_snd_tb_jeju_jewon
-  - if_snd_tb_jeju
-  - if_snd_rgetstgms01
-
-table-mappings:
-  - name: jeju-jewon
-    source: [if_snd_tb_jeju_jewon]
-    target: [IF_RSV_TB_JEJU_JEWON]
-  - name: jeju-obsv
-    source: [if_snd_tb_jeju]
-    target: [IF_RSV_TB_JEJU]
-  - name: jeju-stgms
-    source: [if_snd_rgetstgms01]
-    target: [IF_RSV_RGETSTGMS01]

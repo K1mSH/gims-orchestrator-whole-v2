@@ -140,6 +140,42 @@ public class ConditionBuilder {
     }
 
     /**
+     * 커스텀 Step용: IF 테이블 조건 조회 WHERE 절 생성
+     *
+     * - 조건실행(conditions): 사용자 조건으로 조회 (tableName 필터링 포함)
+     * - 기본실행: WHERE LINK_STATUS IN ('PENDING', 'RESYNC')
+     *
+     * @param options    실행 옵션 (context.getExecutionOptions())
+     * @param ifTable    IF 테이블명 (조건의 tableName 필터링용)
+     * @param dbType     DB 타입 (ORACLE, POSTGRESQL 등)
+     * @return WhereClause (toWhereSql()로 SQL에 붙이면 됨)
+     */
+    public static WhereClause buildIfTableQuery(ExecutionOptions options, String ifTable, String dbType) {
+        boolean hasConditions = options != null && options.hasConditions();
+
+        if (hasConditions) {
+            // 조건실행: 사용자 조건에서 tableName 필터링
+            List<ExecutionCondition> filtered = options.getConditions().stream()
+                    .filter(c -> c.getTableName() == null || c.getTableName().isEmpty()
+                            || c.getTableName().equalsIgnoreCase(ifTable))
+                    .collect(java.util.stream.Collectors.toList());
+            return build(filtered, dbType);
+        }
+
+        // 기본실행: PENDING/RESYNC
+        Map<String, ExecutionCondition> defaults = new LinkedHashMap<>();
+        defaults.put("LINK_STATUS", ExecutionCondition.in("LINK_STATUS", "PENDING,RESYNC"));
+        return build(defaults, dbType);
+    }
+
+    /**
+     * 조건실행 여부 판별 (커스텀 Step용)
+     */
+    public static boolean isResyncExecution(ExecutionOptions options) {
+        return options != null && (options.hasConditions() || options.isTimeRangeExecution());
+    }
+
+    /**
      * 날짜 형식(yyyy-MM-dd)이면 java.sql.Date로 변환, 아니면 원본 반환.
      * PostgreSQL date 컬럼에 String 바인딩 시 타입 불일치 방지.
      */

@@ -29,19 +29,3 @@ steps:
     target-table: if_snd_use_jeju_day
     primary-key: obsrvt_id,obsr_de
     conflict-key: source_refs
-
-select-tables:
-  - use_legacy_data
-  - use_status_data
-  - use_jeju_day
-
-table-mappings:
-  - name: use-legacy
-    source: [use_legacy_data]
-    target: [if_snd_use_legacy_data]
-  - name: use-status
-    source: [use_status_data]
-    target: [if_snd_use_status_data]
-  - name: use-jejuday
-    source: [use_jeju_day]
-    target: [if_snd_use_jeju_day]

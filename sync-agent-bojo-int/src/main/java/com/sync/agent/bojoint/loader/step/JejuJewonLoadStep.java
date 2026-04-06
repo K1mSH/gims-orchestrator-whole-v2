@@ -4,6 +4,7 @@ import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.service.IfTableService;
+import com.sync.agent.common.step.ConditionBuilder;
 import com.sync.agent.common.step.StepContext;
 import com.sync.agent.common.step.StepExecutor;
 import com.sync.agent.common.step.StepResult;
@@ -31,8 +32,6 @@ import java.util.Map;
 @Slf4j
 public class JejuJewonLoadStep implements StepExecutor {
 
-    private static final String IF_TABLE = "IF_RSV_TB_JEJU_JEWON";
-
     // 고정값 (레거시 JewonDB.class 디컴파일 확인)
     private static final String V1_BRNCH_TYPE = "보조지하수관측망";
     private static final String V2_VTCL_CTRL = "제주도평균해수면";
@@ -53,16 +52,24 @@ public class JejuJewonLoadStep implements StepExecutor {
 
     private final String stepId;
     private final String stepName;
+    private final String ifTable;
+    private final List<String> configSourceTables;
+    private final List<String> configTargetTables;
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
 
     public JejuJewonLoadStep(String stepId, String stepName,
+                              String ifTable,
+                              List<String> configSourceTables, List<String> configTargetTables,
                               DataSourceProvider dataSourceProvider,
                               SyncLogRepository syncLogRepository,
                               IfTableService ifTableService) {
         this.stepId = stepId;
         this.stepName = stepName;
+        this.ifTable = ifTable;
+        this.configSourceTables = configSourceTables;
+        this.configTargetTables = configTargetTables;
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.ifTableService = ifTableService;
@@ -90,11 +97,16 @@ public class JejuJewonLoadStep implements StepExecutor {
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
             String executionId = context.getExecutionId();
 
-            // 1. PENDING 데이터 조회
-            List<Map<String, Object>> pendingRows = sourceJdbc.queryForList(
-                    "SELECT * FROM " + IF_TABLE + " WHERE LINK_STATUS IN ('PENDING', 'RESYNC')");
+            // 1. 조건실행 판별 + IF 테이블 조회
+            String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
+            boolean isResync = ConditionBuilder.isResyncExecution(context.getExecutionOptions());
+            ConditionBuilder.WhereClause where = ConditionBuilder.buildIfTableQuery(
+                    context.getExecutionOptions(), ifTable, sourceDbType);
+            String sql = "SELECT * FROM " + ifTable + where.toWhereSql();
+            List<Map<String, Object>> pendingRows = sourceJdbc.queryForList(sql, where.getParamsArray());
             readCount = pendingRows.size();
-            log.info("[{}] IF_RSV에서 {} 건의 제원 데이터 조회", stepId, readCount);
+            log.info("[{}] IF_RSV에서 {} 건의 {} 제원 데이터 조회", stepId, readCount,
+                    isResync ? "재동기화 (조건)" : "대기중");
 
             if (pendingRows.isEmpty()) {
                 return StepResult.builder()
@@ -113,7 +125,7 @@ public class JejuJewonLoadStep implements StepExecutor {
                 try {
                     // source_refs 생성
                     Object ifId = row.get("ID");
-                    String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, IF_TABLE, ifId);
+                    String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifTable, ifId);
 
                     // (1) TM_GD970001 MERGE → BRNCH_ID 확보
                     long brnchId = mergeGd970001(targetJdbc, row, sourceRef, executionId);
@@ -145,10 +157,10 @@ public class JejuJewonLoadStep implements StepExecutor {
 
             // 3. IF 상태 업데이트
             if (!successIds.isEmpty()) {
-                ifTableService.batchMarkAsProcessed(IF_TABLE, "ID", successIds, "SUCCESS", executionId);
+                ifTableService.batchMarkAsProcessed(ifTable, "ID", successIds, "SUCCESS", executionId);
             }
             if (!failedIds.isEmpty()) {
-                ifTableService.batchMarkAsProcessed(IF_TABLE, "ID", failedIds, "FAILED", executionId);
+                ifTableService.batchMarkAsProcessed(ifTable, "ID", failedIds, "FAILED", executionId);
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
@@ -387,12 +399,14 @@ public class JejuJewonLoadStep implements StepExecutor {
     private void saveSyncLog(String executionId, int readCount, int writeCount,
                               int failedCount, List<String> failedKeys, String errorSummary) {
         try {
+            String sourceJson = "[" + configSourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+            String targetJson = "[" + configTargetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
             SyncLog logEntry = SyncLog.builder()
                     .executionId(executionId)
                     .stepId(stepId)
-                    .mappingName("jeju-jewon")
-                    .sourceTables("[\"IF_RSV_TB_JEJU_JEWON\"]")
-                    .targetTables("[\"TM_GD970001\",\"TM_GD120001\",\"TM_GD970130\",\"TM_GD970002\",\"TM_GD970101\"]")
+                    .mappingName(stepId)
+                    .sourceTables(sourceJson)
+                    .targetTables(targetJson)
                     .readCount((long) readCount)
                     .writeCount((long) writeCount)
                     .failedCount((long) failedCount)

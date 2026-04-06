@@ -6,8 +6,6 @@ import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.service.IfTableService;
 import com.sync.agent.common.step.ConditionBuilder;
-import com.sync.agent.common.step.ExecutionCondition;
-import com.sync.agent.common.step.ExecutionOptions;
 import com.sync.agent.common.step.StepContext;
 import com.sync.agent.common.step.StepExecutor;
 import com.sync.agent.common.step.StepResult;
@@ -43,6 +41,8 @@ public class InternalBojoLoadStep implements StepExecutor {
     private final String targetObsvdataTable;
     private final String targetLinkTable;
     private final String targetResultTable;
+    private final List<String> configSourceTables;
+    private final List<String> configTargetTables;
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
@@ -56,6 +56,7 @@ public class InternalBojoLoadStep implements StepExecutor {
                             String ifObsvdataTable,
                             String targetJewonTable, String targetObsvdataTable,
                             String targetLinkTable, String targetResultTable,
+                            List<String> configSourceTables, List<String> configTargetTables,
                             DataSourceProvider dataSourceProvider,
                             SyncLogRepository syncLogRepository,
                             IfTableService ifTableService) {
@@ -66,6 +67,8 @@ public class InternalBojoLoadStep implements StepExecutor {
         this.targetObsvdataTable = targetObsvdataTable;
         this.targetLinkTable = targetLinkTable;
         this.targetResultTable = targetResultTable;
+        this.configSourceTables = configSourceTables;
+        this.configTargetTables = configTargetTables;
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.ifTableService = ifTableService;
@@ -106,18 +109,7 @@ public class InternalBojoLoadStep implements StepExecutor {
             String executionId = context.getExecutionId();
 
             // 조건실행 판별
-            ExecutionOptions options = context.getExecutionOptions();
-            boolean isResyncExecution = options.hasConditions() || options.isTimeRangeExecution();
-
-            // 통합 조건 빌드 (tableName 필터링: obsvdata 테이블 대상만)
-            List<ExecutionCondition> mergedConditions = buildMergedConditions(options, ifObsvdataTable);
-
-            if (isResyncExecution) {
-                log.info("[{}] 재동기화 실행: {} 조건", getStepId(), mergedConditions.size());
-                for (ExecutionCondition c : mergedConditions) {
-                    log.info("[{}]   조건: {} {} {}", getStepId(), c.getColumn(), c.getOperator(), c.getValue());
-                }
-            }
+            boolean isResyncExecution = ConditionBuilder.isResyncExecution(context.getExecutionOptions());
 
             // ===== 1. 사전 매핑 로드 (Target DB에서 READ) =====
             log.info("[{}] 1단계: Target DB에서 brnch_id / rslt_id 매핑 로드", getStepId());
@@ -136,18 +128,11 @@ public class InternalBojoLoadStep implements StepExecutor {
             // ===== 2. 관측데이터 처리 (EAV 1→3 확장) =====
             log.info("[{}] 2단계: 관측데이터 로드 (EAV 확장)", getStepId());
 
-            List<Map<String, Object>> pendingObsv;
             String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
-            if (isResyncExecution) {
-                // Resync 실행: 통합 조건으로 조회
-                ConditionBuilder.WhereClause where = ConditionBuilder.build(mergedConditions, sourceDbType);
-                String sql = "SELECT * FROM " + ifObsvdataTable + where.toWhereSql();
-                pendingObsv = sourceJdbc.queryForList(sql, where.getParamsArray());
-            } else {
-                // 기본 실행: PENDING 또는 RESYNC
-                pendingObsv = sourceJdbc.queryForList(
-                        "SELECT * FROM " + ifObsvdataTable + " WHERE link_status IN ('PENDING', 'RESYNC')");
-            }
+            ConditionBuilder.WhereClause where = ConditionBuilder.buildIfTableQuery(
+                    context.getExecutionOptions(), ifObsvdataTable, sourceDbType);
+            String sql = "SELECT * FROM " + ifObsvdataTable + where.toWhereSql();
+            List<Map<String, Object>> pendingObsv = sourceJdbc.queryForList(sql, where.getParamsArray());
 
             obsvReadCount = pendingObsv.size();
             readCount += obsvReadCount;
@@ -273,9 +258,9 @@ public class InternalBojoLoadStep implements StepExecutor {
                     getStepId(), readCount, writeCount, skipCount, durationMs);
 
             // ===== 4. SyncLog 요약 저장 (매핑 단위, link 제외) =====
-            saveSyncLogMapping(executionId, "obsvdata",
-                    List.of(ifObsvdataTable),
-                    List.of(targetObsvdataTable),
+            saveSyncLogMapping(executionId, stepId,
+                    configSourceTables != null ? configSourceTables : List.of(ifObsvdataTable),
+                    configTargetTables != null ? configTargetTables : List.of(targetObsvdataTable),
                     (long) obsvReadCount, (long) obsvSuccess, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     obsvFirstError);
@@ -321,47 +306,6 @@ public class InternalBojoLoadStep implements StepExecutor {
 
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
         }
-    }
-
-    // ==================== 조건 빌드 ====================
-
-    /**
-     * ExecutionOptions에서 통합 조건 목록 생성 (tableName 필터링 포함)
-     */
-    private List<ExecutionCondition> buildMergedConditions(ExecutionOptions options, String targetTable) {
-        List<ExecutionCondition> merged = new ArrayList<>();
-
-        // 1. 사용자 동적 조건 (tableName 필터링)
-        if (options.hasConditions()) {
-            options.getConditions().stream()
-                    .filter(c -> c.getTableName() == null || c.getTableName().isEmpty()
-                            || c.getTableName().equalsIgnoreCase(targetTable))
-                    .forEach(merged::add);
-        }
-
-        // 2. 시간 범위 → obsv_date 조건
-        if (options.isTimeRangeExecution()) {
-            LocalDateTime start = options.getTimeRange().getStartTime();
-            LocalDateTime end = options.getTimeRange().getEndTime();
-            if (start != null && end != null) {
-                merged.add(ExecutionCondition.between("obsv_date",
-                        start.toLocalDate().toString(), end.toLocalDate().toString()));
-            } else if (start != null) {
-                merged.add(ExecutionCondition.gte("obsv_date", start.toLocalDate().toString()));
-            }
-        }
-
-        // 3. obsv-code 파라미터 → obsv_code 조건
-        String filterObsvCode = options.getParamValue("obsv-code");
-        if (filterObsvCode != null) {
-            if (filterObsvCode.contains(",")) {
-                merged.add(ExecutionCondition.in("obsv_code", filterObsvCode));
-            } else {
-                merged.add(ExecutionCondition.eq("obsv_code", filterObsvCode.trim()));
-            }
-        }
-
-        return merged;
     }
 
     // ==================== 헬퍼 메서드 ====================

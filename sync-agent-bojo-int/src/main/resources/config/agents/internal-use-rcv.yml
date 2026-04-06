@@ -28,19 +28,3 @@ steps:
     target-table: IF_RSV_USE_JEJU_DAY
     primary-key: id
     conflict-key: source_refs
-
-select-tables:
-  - if_snd_use_legacy_data
-  - if_snd_use_status_data
-  - if_snd_use_jeju_day
-
-table-mappings:
-  - name: use-legacy
-    source: [if_snd_use_legacy_data]
-    target: [IF_RSV_USE_LEGACY_DATA]
-  - name: use-status
-    source: [if_snd_use_status_data]
-    target: [IF_RSV_USE_STATUS_DATA]
-  - name: use-jejuday
-    source: [if_snd_use_jeju_day]
-    target: [IF_RSV_USE_JEJU_DAY]

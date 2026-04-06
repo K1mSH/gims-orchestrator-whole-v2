@@ -32,15 +32,3 @@ steps:
     factory-key: link-update
     if-table: if_rsv_sec_obsvdata
     link-table: link_ngwis
-
-select-tables:
-  - SEC_JEWON_VIEW
-  - SEC_OBSVDATA_VIEW
-
-table-mappings:
-  - name: jewon
-    source: [SEC_JEWON_VIEW]
-    target: [if_rsv_sec_jewon]
-  - name: obsvdata
-    source: [SEC_OBSVDATA_VIEW]
-    target: [if_rsv_sec_obsvdata]
