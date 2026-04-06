@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
 import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable, DatasourceColumn, AgentType } from '@/types';
 import { CONDITION_OPERATORS } from '@/types';
@@ -21,9 +21,12 @@ type TabType = 'info' | 'history';
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const agentId = Number(params.id);
 
-  const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [activeTab, setActiveTab] = useState<TabType>(
+    searchParams.get('tab') === 'history' ? 'history' : 'info'
+  );
   const [agent, setAgent] = useState<Agent | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [executions, setExecutions] = useState<ExecutionHistory[]>([]);
@@ -167,9 +170,6 @@ export default function AgentDetailPage() {
           )}
         </div>
         <div>
-          <button className="btn btn-secondary" onClick={() => router.push('/agents')} style={{ marginRight: '0.5rem' }}>
-            목록
-          </button>
           <button className="btn btn-primary" onClick={handleHealthCheck} style={{ marginRight: '0.5rem' }}>
             상태확인
           </button>

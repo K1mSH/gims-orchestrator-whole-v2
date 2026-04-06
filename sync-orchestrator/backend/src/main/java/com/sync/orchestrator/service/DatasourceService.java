@@ -511,13 +511,19 @@ public class DatasourceService {
         Datasource datasource = datasourceRepository.findById(datasourceId)
                 .orElseThrow(() -> new IllegalArgumentException("Datasource not found: " + datasourceId));
 
+        // Oracle/Tibero는 메타데이터 조회 시 대문자 테이블명 필요
+        String resolvedTableName = tableName;
+        if (datasource.getDbType() == DbType.ORACLE) {
+            resolvedTableName = tableName.toUpperCase();
+        }
+
         // zone이 설정되어 있으면 agent를 통해 검색
         if (datasource.getZone() != null && !datasource.getZone().isEmpty()) {
-            return searchColumnsViaAgent(datasource, tableName, query);
+            return searchColumnsViaAgent(datasource, resolvedTableName, query);
         }
 
         // zone 없으면 직접 검색
-        return searchColumnsInternal(datasource, tableName, query);
+        return searchColumnsInternal(datasource, resolvedTableName, query);
     }
 
     /**

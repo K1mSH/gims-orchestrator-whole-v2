@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { executionApi, datasourceApi, ExecutionDataSummary, TableData, TableDataParams, TraceResult } from '@/lib/api';
-import type { ExecutionDetail, TableStats } from '@/types';
+import { executionApi, datasourceApi, agentApi, ExecutionDataSummary, TableData, TableDataParams, TraceResult } from '@/lib/api';
+import type { Agent, ExecutionDetail, TableStats } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
+import TabButton from '@/components/agent/TabButton';
 
 // 선택된 테이블 (tableName + tableType 조합으로 유니크하게 식별)
 type SelectedTable = { tableName: string; tableType: string } | null;
@@ -26,6 +27,8 @@ export default function ExecutionDetailPage() {
   const executionId = decodeURIComponent(params.id as string);
   const agentId = extractAgentId(executionId);
 
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [executionCount, setExecutionCount] = useState<number>(0);
   const [executionDetail, setExecutionDetail] = useState<ExecutionDetail | null>(null);
   const [summary, setSummary] = useState<ExecutionDataSummary | null>(null);
   const [tableStats, setTableStats] = useState<TableStats[]>([]);
@@ -65,6 +68,23 @@ export default function ExecutionDetailPage() {
 
   const fetchExecution = useCallback(async () => {
     try {
+      // Agent 정보 조회 (헤더 표시용)
+      if (!agent) {
+        try {
+          const agents = await agentApi.getAll();
+          const found = agents.find(a => a.agentCode === agentId);
+          if (found) {
+            setAgent(found);
+            // 실행이력 건수 조회
+            try {
+              const { executionHistoryApi } = await import('@/lib/api');
+              const histories = await executionHistoryApi.getByAgent(found.id);
+              setExecutionCount(histories.length);
+            } catch { /* 무시 */ }
+          }
+        } catch { /* 무시 */ }
+      }
+
       // Agent DB에서 실행 상세 정보 조회
       const detail = await executionApi.getDetail(executionId);
       setExecutionDetail(detail);
@@ -382,22 +402,27 @@ export default function ExecutionDetailPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
-      {/* 헤더 */}
+      {/* 헤더 (Agent 상세와 동일) */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 className="page-title">실행 상세</h1>
-          <StatusBadge status={executionDetail.status as 'SUCCESS' | 'FAILED' | 'RUNNING'} />
-        </div>
-        <div>
-          <Link href={`/agents/${agentId}`}>
-            <button className="btn btn-secondary" style={{ marginRight: '0.5rem' }}>
-              Agent 상세
-            </button>
+          <Link href={agent ? `/agents/${agent.id}` : `/agents`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <h1 className="page-title" style={{ cursor: 'pointer' }}>
+              {agent?.agentName || decodeURIComponent(agentId)}
+            </h1>
           </Link>
-          <button className="btn btn-secondary" onClick={() => router.back()}>
-            뒤로
-          </button>
+          {agent && <StatusBadge status={agent.status} />}
         </div>
+        <div />
+      </div>
+
+      {/* 탭 네비게이션 (Agent 상세와 동일) */}
+      <div style={{ display: 'flex', gap: '0', marginBottom: '1.5rem', borderBottom: '2px solid var(--gray-200)' }}>
+        <TabButton active={false} onClick={() => agent && router.push(`/agents/${agent.id}`)}>
+          기본정보
+        </TabButton>
+        <TabButton active={true} onClick={() => agent && router.push(`/agents/${agent.id}?tab=history`)}>
+          실행이력 ({executionCount})
+        </TabButton>
       </div>
 
       {/* 실행 정보 요약 */}
@@ -411,11 +436,9 @@ export default function ExecutionDetailPage() {
             </div>
           </div>
           <div>
-            <strong>Agent</strong>
+            <strong>상태</strong>
             <div style={{ marginTop: '0.25rem' }}>
-              <Link href={`/agents/${agentId}`} style={{ color: 'var(--primary)' }}>
-                {decodeURIComponent(agentId)}
-              </Link>
+              <StatusBadge status={executionDetail.status as 'SUCCESS' | 'FAILED' | 'RUNNING'} />
             </div>
           </div>
           <div>

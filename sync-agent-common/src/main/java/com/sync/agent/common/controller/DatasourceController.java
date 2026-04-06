@@ -169,13 +169,16 @@ public class DatasourceController {
                 DatabaseMetaData metaData = conn.getMetaData();
 
                 // MySQL은 catalog에 DB명, Oracle/Tibero는 schema에 유저명 지정
+                boolean isOracleType = "ORACLE".equalsIgnoreCase(request.getDbType()) || "TIBERO".equalsIgnoreCase(request.getDbType());
                 String catalog = "MYSQL".equalsIgnoreCase(request.getDbType()) ? request.getDatabaseName() : null;
-                String schema = ("ORACLE".equalsIgnoreCase(request.getDbType()) || "TIBERO".equalsIgnoreCase(request.getDbType()))
-                        ? request.getUsername().toUpperCase() : null;
+                String schema = isOracleType ? request.getUsername().toUpperCase() : null;
+
+                // Oracle/Tibero는 메타데이터 조회 시 대문자 테이블명 필요
+                String resolvedTableName = isOracleType ? request.getTableName().toUpperCase() : request.getTableName();
 
                 // PK 컬럼 조회
                 Set<String> pkColumns = new HashSet<>();
-                try (ResultSet pkRs = metaData.getPrimaryKeys(catalog, schema, request.getTableName())) {
+                try (ResultSet pkRs = metaData.getPrimaryKeys(catalog, schema, resolvedTableName)) {
                     while (pkRs.next()) {
                         pkColumns.add(pkRs.getString("COLUMN_NAME"));
                     }
@@ -187,7 +190,7 @@ public class DatasourceController {
                         ? "%" + request.getQuery().toUpperCase() + "%"
                         : "%";
 
-                try (ResultSet rs = metaData.getColumns(catalog, schema, request.getTableName(), columnPattern)) {
+                try (ResultSet rs = metaData.getColumns(catalog, schema, resolvedTableName, columnPattern)) {
                     while (rs.next()) {
                         String columnName = rs.getString("COLUMN_NAME");
                         results.add(ColumnSearchResult.builder()

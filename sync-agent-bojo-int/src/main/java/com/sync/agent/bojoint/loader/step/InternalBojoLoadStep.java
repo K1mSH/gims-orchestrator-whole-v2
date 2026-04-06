@@ -27,7 +27,7 @@ import java.util.*;
  *
  * IF_RSV → GIMS Target 적재:
  * - 제원(tm_gd970001)은 GIMS 서비스가 자체 관리하는 마스터 데이터
- *   → Loader는 READ ONLY (spot_id 매핑용)
+ *   → Loader는 READ ONLY (brnch_id 매핑용)
  *   → 외부 업체 제원은 IF_RSV에서 끊김
  * - 관측데이터: IF_RSV PENDING 읽기 → EAV 확장 (1→3행) → batch INSERT
  * - 시간설정 실행 시: 해당 구간 UPDATE
@@ -120,16 +120,16 @@ public class InternalBojoLoadStep implements StepExecutor {
             }
 
             // ===== 1. 사전 매핑 로드 (Target DB에서 READ) =====
-            log.info("[{}] 1단계: Target DB에서 spot_id / result_id 매핑 로드", getStepId());
+            log.info("[{}] 1단계: Target DB에서 brnch_id / rslt_id 매핑 로드", getStepId());
 
-            Map<String, Long> spotIdMap = targetRepo.loadSpotIdMap(targetJewonTable);
-            Map<String, Long> resultIdMap = targetRepo.loadResultIdMap(targetResultTable);
+            Map<String, Long> brnchIdMap = targetRepo.loadSpotIdMap(targetJewonTable);
+            Map<String, Long> rsltIdMap = targetRepo.loadResultIdMap(targetResultTable);
 
-            log.info("[{}] spot_id {} 건, result_id {} 건 매핑 로드 완료",
-                    getStepId(), spotIdMap.size(), resultIdMap.size());
+            log.info("[{}] brnch_id {} 건, rslt_id {} 건 매핑 로드 완료",
+                    getStepId(), brnchIdMap.size(), rsltIdMap.size());
 
-            if (spotIdMap.isEmpty()) {
-                log.warn("[{}] {}에서 spot_id 매핑을 찾을 수 없음 - target 제원이 아직 등록되지 않았을 수 있음",
+            if (brnchIdMap.isEmpty()) {
+                log.warn("[{}] {}에서 brnch_id 매핑을 찾을 수 없음 - target 제원이 아직 등록되지 않았을 수 있음",
                         getStepId(), targetJewonTable);
             }
 
@@ -168,13 +168,13 @@ public class InternalBojoLoadStep implements StepExecutor {
                     Object obsvTimeObj = row.get("obsv_time");
 
                     try {
-                        Long spotId = spotIdMap.get(obsvCode);
-                        if (spotId == null) {
-                            log.warn("[{}] obsv_code={}에 대한 spot_id 없음, 건너뜀", getStepId(), obsvCode);
+                        Long brnchId = brnchIdMap.get(obsvCode);
+                        if (brnchId == null) {
+                            log.warn("[{}] obsv_code={}에 대한 brnch_id 없음, 건너뜀", getStepId(), obsvCode);
                             obsvFailed++;
                             obsvFailedIds.add(row.get("id"));
                             obsvFailedKeys.add(obsvCode);
-                            if (obsvFirstError == null) obsvFirstError = "obsv_code=" + obsvCode + "에 대한 spot_id 없음";
+                            if (obsvFirstError == null) obsvFirstError = "obsv_code=" + obsvCode + "에 대한 brnch_id 없음";
                             skipCount++;
                             continue;
                         }
@@ -187,10 +187,10 @@ public class InternalBojoLoadStep implements StepExecutor {
                         Double gwtemp = toDouble(row.get("gwtemp"));
                         Double ec = toDouble(row.get("ec"));
 
-                        // result_id 확보 (없으면 자동 생성)
-                        long resultGwdep = targetRepo.ensureResultId(targetResultTable, resultIdMap, spotId, IEM_GWDEP);
-                        long resultGwtemp = targetRepo.ensureResultId(targetResultTable, resultIdMap, spotId, IEM_GWTEMP);
-                        long resultEc = targetRepo.ensureResultId(targetResultTable, resultIdMap, spotId, IEM_EC);
+                        // rslt_id 확보 (없으면 자동 생성)
+                        long rsltGwdep = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWDEP);
+                        long rsltGwtemp = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWTEMP);
+                        long rsltEc = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_EC);
 
                         // source_refs: IF 레코드의 id 참조
                         Object ifId = row.get("id");
@@ -198,13 +198,13 @@ public class InternalBojoLoadStep implements StepExecutor {
 
                         // 3행 생성 (값이 있는 항목만)
                         if (gwdep != null) {
-                            expandedRows.add(new Object[]{resultGwdep, gwdep, obsrvnDt, 1, executionId, sourceRef});
+                            expandedRows.add(new Object[]{rsltGwdep, gwdep, obsrvnDt, 1, executionId, sourceRef});
                         }
                         if (gwtemp != null) {
-                            expandedRows.add(new Object[]{resultGwtemp, gwtemp, obsrvnDt, 1, executionId, sourceRef});
+                            expandedRows.add(new Object[]{rsltGwtemp, gwtemp, obsrvnDt, 1, executionId, sourceRef});
                         }
                         if (ec != null) {
-                            expandedRows.add(new Object[]{resultEc, ec, obsrvnDt, 1, executionId, sourceRef});
+                            expandedRows.add(new Object[]{rsltEc, ec, obsrvnDt, 1, executionId, sourceRef});
                         }
 
                         obsvSuccessIds.add(row.get("id"));
@@ -253,14 +253,14 @@ public class InternalBojoLoadStep implements StepExecutor {
                     for (Map.Entry<String, String[]> entry : maxDateTimePerCode.entrySet()) {
                         String obsvCode = entry.getKey();
                         String[] dateTime = entry.getValue();
-                        Long spotId = spotIdMap.get(obsvCode);
-                        if (spotId == null) continue;
+                        Long brnchId = brnchIdMap.get(obsvCode);
+                        if (brnchId == null) continue;
 
                         linkRows.add(new Object[]{
-                                obsvCode, spotId,
-                                dateTime[0], dateTime[1],  // last_obsrvn_de, last_obsrvn_time
-                                now,                        // change_dt
-                                dateTime[0], dateTime[1]    // frst_date, frst_time (신규 INSERT 시만 사용)
+                                obsvCode, brnchId,
+                                dateTime[0], dateTime[1],  // last_obsrvn_ymd, last_obsrvn_hr
+                                now,                        // chg_dt
+                                dateTime[0], dateTime[1]    // frst_obsrvn_ymd, frst_obsrvn_hr (신규 INSERT 시만 사용)
                         });
                     }
                     linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
@@ -398,7 +398,9 @@ public class InternalBojoLoadStep implements StepExecutor {
     }
 
     private String formatDateStr(Object dateObj) {
-        if (dateObj instanceof java.sql.Date) {
+        if (dateObj instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) dateObj).toLocalDateTime().toLocalDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        } else if (dateObj instanceof java.sql.Date) {
             return ((java.sql.Date) dateObj).toLocalDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         } else if (dateObj instanceof LocalDate) {
             return ((LocalDate) dateObj).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -409,7 +411,9 @@ public class InternalBojoLoadStep implements StepExecutor {
     }
 
     private String formatTimeStr(Object timeObj) {
-        if (timeObj instanceof java.sql.Time) {
+        if (timeObj instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) timeObj).toLocalDateTime().toLocalTime().format(DateTimeFormatter.ofPattern("HHmmss"));
+        } else if (timeObj instanceof java.sql.Time) {
             return ((java.sql.Time) timeObj).toLocalTime().format(DateTimeFormatter.ofPattern("HHmmss"));
         } else if (timeObj instanceof LocalTime) {
             return ((LocalTime) timeObj).format(DateTimeFormatter.ofPattern("HHmmss"));

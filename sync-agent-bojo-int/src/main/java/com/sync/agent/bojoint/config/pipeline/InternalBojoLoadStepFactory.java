@@ -25,19 +25,19 @@ public class InternalBojoLoadStepFactory implements StepFactory {
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
 
-    @Value("${loader.if-table.obsvdata:if_rsv_sec_obsvdata}")
+    @Value("${loader.if-table.obsvdata:IF_RSV_SEC_OBSVDATA}")
     private String ifObsvdataTable;
 
-    @Value("${loader.target-table.jewon:tm_gd970001}")
+    @Value("${loader.target-table.jewon:TM_GD970001}")
     private String targetJewonTable;
 
-    @Value("${loader.target-table.obsvdata:pm_gd970201}")
+    @Value("${loader.target-table.obsvdata:PM_GD970201}")
     private String targetObsvdataTable;
 
-    @Value("${loader.target-table.link:tm_gd980002}")
+    @Value("${loader.target-table.link:TM_GD980002}")
     private String targetLinkTable;
 
-    @Value("${loader.target-table.result:tm_gd970101}")
+    @Value("${loader.target-table.result:TM_GD970101}")
     private String targetResultTable;
 
     @Override
