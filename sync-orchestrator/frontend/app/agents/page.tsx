@@ -242,9 +242,15 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
   const [discoveredZone, setDiscoveredZone] = useState('');
   const [discoverError, setDiscoverError] = useState('');
 
-  // Step 2: 선택된 agentCode
+  // Step 2: 선택된 agentCode + 파이프라인 정보
   const [selectedAgentCode, setSelectedAgentCode] = useState('');
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType | ''>('');
+  const [agentInfoMap, setAgentInfoMap] = useState<Record<string, any>>({});
+  const [selectedAgentInfo, setSelectedAgentInfo] = useState<any>(null);
+
+  // 테이블 검증 상태
+  const [sourceTableVerify, setSourceTableVerify] = useState<Record<string, boolean>>({});
+  const [targetTableVerify, setTargetTableVerify] = useState<Record<string, boolean>>({});
 
   // Step 3: 나머지 폼 데이터
   const [formData, setFormData] = useState({
@@ -281,11 +287,12 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
     loadDatasources();
   }, []);
 
-  // Source Datasource 변경 시 테이블 로드
+  // Source Datasource 변경 시 테이블 로드 + 검증
   useEffect(() => {
     if (!formData.sourceDatasourceId) {
       setSourceTables([]);
       setSelectedSourceTableIds([]);
+      setSourceTableVerify({});
       return;
     }
     const loadTables = async () => {
@@ -293,18 +300,30 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
         const tables = await datasourceApi.getRegisteredTables(formData.sourceDatasourceId);
         setSourceTables(tables);
         setSelectedSourceTableIds([]);
+        // auto-discover 테이블 검증
+        if (selectedAgentInfo) {
+          const registeredNames = new Set(tables.map((t: any) => t.tableName.toUpperCase()));
+          const verify: Record<string, boolean> = {};
+          for (const step of selectedAgentInfo.steps || []) {
+            for (const t of step.sourceTables || []) {
+              verify[t] = registeredNames.has(t.toUpperCase());
+            }
+          }
+          setSourceTableVerify(verify);
+        }
       } catch (error) {
         console.error('Source 테이블 조회 실패:', error);
       }
     };
     loadTables();
-  }, [formData.sourceDatasourceId]);
+  }, [formData.sourceDatasourceId, selectedAgentInfo]);
 
-  // Target Datasource 변경 시 테이블 로드
+  // Target Datasource 변경 시 테이블 로드 + 검증
   useEffect(() => {
     if (!formData.targetDatasourceId) {
       setTargetTables([]);
       setSelectedTargetTableIds([]);
+      setTargetTableVerify({});
       return;
     }
     const loadTables = async () => {
@@ -312,12 +331,23 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
         const tables = await datasourceApi.getRegisteredTables(formData.targetDatasourceId);
         setTargetTables(tables);
         setSelectedTargetTableIds([]);
+        // auto-discover 테이블 검증
+        if (selectedAgentInfo) {
+          const registeredNames = new Set(tables.map((t: any) => t.tableName.toUpperCase()));
+          const verify: Record<string, boolean> = {};
+          for (const step of selectedAgentInfo.steps || []) {
+            for (const t of step.targetTables || []) {
+              verify[t] = registeredNames.has(t.toUpperCase());
+            }
+          }
+          setTargetTableVerify(verify);
+        }
       } catch (error) {
         console.error('Target 테이블 조회 실패:', error);
       }
     };
     loadTables();
-  }, [formData.targetDatasourceId]);
+  }, [formData.targetDatasourceId, selectedAgentInfo]);
 
   // Agent 조회
   const handleDiscover = async () => {
@@ -337,6 +367,13 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
       } else {
         setDiscoveredAgents(result.agents || []);
         setDiscoveredZone(result.zone || '');
+        // agentInfo를 agentCode 기준 Map으로 저장
+        const infoList = result.agentInfo || [];
+        const infoMap: Record<string, any> = {};
+        for (const info of infoList) {
+          infoMap[info.agentCode] = info;
+        }
+        setAgentInfoMap(infoMap);
       }
     } catch (error) {
       console.error('Agent 조회 실패:', error);
@@ -351,7 +388,10 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
     if (agent.registered) return;
     setSelectedAgentCode(agent.agentCode);
     setSelectedAgentType(agent.type);
+    setSelectedAgentInfo(agentInfoMap[agent.agentCode] || null);
     setFormData(prev => ({ ...prev, agentName: agent.agentCode }));
+    setSourceTableVerify({});
+    setTargetTableVerify({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -362,7 +402,20 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
     }
     setSubmitting(true);
     try {
-      // 1. Agent 등록
+      // 1. Agent 등록 (auto-discover 테이블명 또는 기존 ID 방식)
+      const sourceTableNames: string[] = [];
+      const targetTableNames: string[] = [];
+      if (selectedAgentInfo) {
+        for (const step of selectedAgentInfo.steps || []) {
+          for (const t of step.sourceTables || []) {
+            if (!sourceTableNames.includes(t)) sourceTableNames.push(t);
+          }
+          for (const t of step.targetTables || []) {
+            if (!targetTableNames.includes(t)) targetTableNames.push(t);
+          }
+        }
+      }
+
       const createdAgent = await agentApi.create({
         agentCode: selectedAgentCode,
         agentName: formData.agentName,
@@ -373,8 +426,10 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
         datasourceTag: formData.datasourceTag || undefined,
         sourceDatasourceId: formData.sourceDatasourceId || undefined,
         targetDatasourceId: formData.targetDatasourceId || undefined,
-        sourceTableIds: selectedSourceTableIds,
-        targetTableIds: selectedTargetTableIds,
+        sourceTableIds: sourceTableNames.length > 0 ? undefined : selectedSourceTableIds,
+        targetTableIds: targetTableNames.length > 0 ? undefined : selectedTargetTableIds,
+        sourceTableNames: sourceTableNames.length > 0 ? sourceTableNames : undefined,
+        targetTableNames: targetTableNames.length > 0 ? targetTableNames : undefined,
       });
 
       // 2. 스케줄 등록 (프록시 Agent는 스케줄 불필요)
@@ -567,12 +622,33 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
               </div>
             </div>
 
-            {/* Datasource 및 테이블 설정 (프록시 Agent는 제외) */}
+            {/* Datasource & 파이프라인 설정 (프록시 Agent는 제외) */}
             {selectedAgentType !== 'DB_CON_PROXY' && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
-              <strong style={{ marginBottom: '1rem', display: 'block' }}>Datasource 및 테이블 설정</strong>
+              <strong style={{ marginBottom: '1rem', display: 'block' }}>Datasource & 테이블 설정</strong>
+
+              {/* 파이프라인 구성 표시 (auto-discover) */}
+              {selectedAgentInfo && (
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'white', borderRadius: '0.375rem', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.5rem' }}>파이프라인 구성 (YAML 기반)</div>
+                  {(selectedAgentInfo.steps || []).map((step: any, idx: number) => (
+                    <div key={idx} style={{ marginBottom: idx < selectedAgentInfo.steps.length - 1 ? '0.75rem' : 0, padding: '0.5rem', background: 'var(--gray-50)', borderRadius: '0.25rem' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                        [{step.stepId}] {step.stepName}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
+                        <span style={{ color: '#2563eb' }}>Source:</span> {(step.sourceTables || []).join(', ') || '-'}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
+                        <span style={{ color: '#16a34a' }}>Target:</span> {(step.targetTables || []).join(', ') || '-'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {/* Source */}
+                {/* Source Datasource */}
                 <div>
                   <div className="form-group">
                     <label className="form-label">Source Datasource</label>
@@ -589,7 +665,20 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                       ))}
                     </select>
                   </div>
-                  {sourceTables.length > 0 && (
+                  {/* 테이블 검증 표시 (auto-discover) */}
+                  {selectedAgentInfo && formData.sourceDatasourceId && Object.keys(sourceTableVerify).length > 0 && (
+                    <div style={{ fontSize: '0.8rem', padding: '0.5rem', background: 'white', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}>
+                      {Object.entries(sourceTableVerify).map(([table, found]) => (
+                        <div key={table} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.125rem 0' }}>
+                          <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
+                          <span>{table}</span>
+                          {!found && <span style={{ color: '#dc2626', fontSize: '0.7rem' }}>(미발견)</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* 기존 수동 선택 (agentInfo 없을 때만) */}
+                  {!selectedAgentInfo && sourceTables.length > 0 && (
                     <div className="form-group">
                       <label className="form-label">Source 테이블 선택 ({selectedSourceTableIds.length}/{sourceTables.length})</label>
                       <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
@@ -601,7 +690,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                               onChange={() => toggleTableSelection(table.id, 'source')}
                             />
                             <span>{table.tableName}</span>
-                            {table.tableAlias && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.tableAlias})</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -610,7 +698,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                   )}
                 </div>
 
-                {/* Target */}
+                {/* Target Datasource */}
                 <div>
                   <div className="form-group">
                     <label className="form-label">Target Datasource</label>
@@ -627,7 +715,20 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                       ))}
                     </select>
                   </div>
-                  {targetTables.length > 0 && (
+                  {/* 테이블 검증 표시 (auto-discover) */}
+                  {selectedAgentInfo && formData.targetDatasourceId && Object.keys(targetTableVerify).length > 0 && (
+                    <div style={{ fontSize: '0.8rem', padding: '0.5rem', background: 'white', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}>
+                      {Object.entries(targetTableVerify).map(([table, found]) => (
+                        <div key={table} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.125rem 0' }}>
+                          <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
+                          <span>{table}</span>
+                          {!found && <span style={{ color: '#dc2626', fontSize: '0.7rem' }}>(미발견)</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* 기존 수동 선택 (agentInfo 없을 때만) */}
+                  {!selectedAgentInfo && targetTables.length > 0 && (
                     <div className="form-group">
                       <label className="form-label">Target 테이블 선택 ({selectedTargetTableIds.length}/{targetTables.length})</label>
                       <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
@@ -639,7 +740,6 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                               onChange={() => toggleTableSelection(table.id, 'target')}
                             />
                             <span>{table.tableName}</span>
-                            {table.tableAlias && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.tableAlias})</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}

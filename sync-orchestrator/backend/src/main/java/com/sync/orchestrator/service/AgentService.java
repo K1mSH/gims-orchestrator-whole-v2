@@ -84,12 +84,45 @@ public class AgentService {
                 .description(request.getDescription())
                 .build();
 
-        // 선택된 테이블 추가
-        addAgentTables(agent, request.getSourceTableIds(), AgentTable.TableType.SOURCE);
-        addAgentTables(agent, request.getTargetTableIds(), AgentTable.TableType.TARGET);
+        // 테이블 연결: 테이블명 기반 자동 연결 우선, 없으면 기존 ID 방식
+        if (request.getSourceTableNames() != null && !request.getSourceTableNames().isEmpty()) {
+            List<Long> ids = resolveTableIds(request.getSourceDatasourceId(), request.getSourceTableNames());
+            addAgentTables(agent, ids, AgentTable.TableType.SOURCE);
+        } else {
+            addAgentTables(agent, request.getSourceTableIds(), AgentTable.TableType.SOURCE);
+        }
+
+        if (request.getTargetTableNames() != null && !request.getTargetTableNames().isEmpty()) {
+            List<Long> ids = resolveTableIds(request.getTargetDatasourceId(), request.getTargetTableNames());
+            addAgentTables(agent, ids, AgentTable.TableType.TARGET);
+        } else {
+            addAgentTables(agent, request.getTargetTableIds(), AgentTable.TableType.TARGET);
+        }
 
         Agent saved = agentRepository.save(agent);
         return AgentDto.Response.from(saved);
+    }
+
+    /**
+     * 테이블명 → datasource_table ID 변환 (없으면 자동 등록)
+     */
+    private List<Long> resolveTableIds(String datasourceId, List<String> tableNames) {
+        List<Long> ids = new ArrayList<>();
+        if (datasourceId == null || tableNames == null) return ids;
+
+        for (String tableName : tableNames) {
+            DatasourceTable dt = tableRepository.findByDatasourceIdAndTableName(datasourceId, tableName)
+                    .orElseGet(() -> {
+                        // 자동 등록
+                        DatasourceTable newTable = DatasourceTable.builder()
+                                .datasourceId(datasourceId)
+                                .tableName(tableName)
+                                .build();
+                        return tableRepository.save(newTable);
+                    });
+            ids.add(dt.getId());
+        }
+        return ids;
     }
 
     /**
@@ -173,6 +206,18 @@ public class AgentService {
             }
 
             result.put("agents", agents);
+
+            // step/테이블 정보 조회 (/api/pipeline/info)
+            try {
+                String infoUrl = endpointUrl.endsWith("/") ? endpointUrl + "api/pipeline/info" : endpointUrl + "/api/pipeline/info";
+                ResponseEntity<List> infoResponse = restTemplate.getForEntity(infoUrl, List.class);
+                if (infoResponse.getBody() != null) {
+                    result.put("agentInfo", infoResponse.getBody());
+                }
+            } catch (Exception infoEx) {
+                log.warn("Agent info 조회 실패 (등록은 가능): {}", infoEx.getMessage());
+            }
+
             log.info("{}개의 Agent를 탐색했습니다: {}", agents.size(), endpointUrl);
 
         } catch (Exception e) {

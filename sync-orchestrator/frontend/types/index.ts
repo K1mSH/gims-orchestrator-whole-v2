@@ -37,6 +37,8 @@ export interface AgentCreateRequest {
   description?: string;
   sourceTableIds?: number[];
   targetTableIds?: number[];
+  sourceTableNames?: string[];
+  targetTableNames?: string[];
 }
 
 // Agent 조회(Discover) 관련 타입

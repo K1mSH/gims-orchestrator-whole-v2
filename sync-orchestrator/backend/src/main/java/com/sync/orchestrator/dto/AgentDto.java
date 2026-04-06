@@ -34,9 +34,12 @@ public class AgentDto {
         private String sourceDatasourceId;
         private String targetDatasourceId;
         private String description;
-        // 선택된 테이블 ID 목록
+        // 선택된 테이블 ID 목록 (기존 방식, 하위호환)
         private List<Long> sourceTableIds;
         private List<Long> targetTableIds;
+        // 테이블명 기반 자동 연결 (auto-discover 방식)
+        private List<String> sourceTableNames;
+        private List<String> targetTableNames;
     }
 
     @Getter

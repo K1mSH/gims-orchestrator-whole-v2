@@ -203,6 +203,7 @@ public class PipelineController {
      * 파이프라인 테이블 정보 조회
      */
     @GetMapping("/{agentCode}/tables")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<?> getPipelineTables(@PathVariable String agentCode) {
         if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
             return ResponseEntity.badRequest().body(ErrorResponse.builder()
@@ -215,19 +216,50 @@ public class PipelineController {
             if (!agentCode.equals(def.getAgentCode())) continue;
 
             for (Map<String, Object> stepConfig : def.getSteps()) {
-                String sourceTable = (String) stepConfig.get("source-table");
-                String targetTable = (String) stepConfig.get("target-table");
-                if (sourceTable != null) {
-                    tables.add(TableInfo.builder().tableName(sourceTable).type("SOURCE").build());
+                List<String> sourceTables = (List<String>) stepConfig.get("source-table");
+                List<String> targetTables = (List<String>) stepConfig.get("target-table");
+                if (sourceTables != null) {
+                    sourceTables.forEach(t -> tables.add(TableInfo.builder().tableName(t).type("SOURCE").build()));
                 }
-                if (targetTable != null) {
-                    tables.add(TableInfo.builder().tableName(targetTable).type("TARGET").build());
+                if (targetTables != null) {
+                    targetTables.forEach(t -> tables.add(TableInfo.builder().tableName(t).type("TARGET").build()));
                 }
             }
         }
 
-        log.info("[Others] 파이프라인 테이블 조회 {}: {}", agentCode, tables);
+        log.info("[Others] 파이프라인 테이블 목록 {}: {}", agentCode, tables);
         return ResponseEntity.ok(TablesResponse.builder()
                 .agentCode(agentCode).tables(tables).build());
+    }
+
+    /**
+     * Agent 전체 정보 조회 (등록용 auto-discover)
+     * Orchestrator가 Agent 등록 시 호출하여 step/테이블 구성을 자동 수집
+     */
+    @GetMapping("/info")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<List<Map<String, Object>>> getAgentInfo() {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
+            Map<String, Object> agentInfo = new HashMap<>();
+            agentInfo.put("agentCode", def.getAgentCode());
+            agentInfo.put("type", def.getType());
+
+            List<Map<String, Object>> stepsInfo = new ArrayList<>();
+            for (Map<String, Object> stepConfig : def.getSteps()) {
+                Map<String, Object> stepInfo = new HashMap<>();
+                stepInfo.put("stepId", stepConfig.get("id"));
+                stepInfo.put("stepName", stepConfig.get("name"));
+                stepInfo.put("sourceTables", stepConfig.get("source-table"));
+                stepInfo.put("targetTables", stepConfig.get("target-table"));
+                stepsInfo.add(stepInfo);
+            }
+            agentInfo.put("steps", stepsInfo);
+            result.add(agentInfo);
+        }
+
+        log.info("[Others] Agent 정보 조회: {} 개 Agent", result.size());
+        return ResponseEntity.ok(result);
     }
 }
