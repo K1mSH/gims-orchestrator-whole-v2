@@ -1,0 +1,18 @@
+# ── Internal 제주 Loader Agent ──
+# 내부망 IF_RSV(Oracle 29004) → GIMS 타겟(Oracle 29004) 적재
+# 제원 1→5 분산 (커스텀 Step)
+agent-code: internal-jeju-loader
+type: LOADER
+
+steps:
+  - id: jeju-jewon-load
+    name: 제주 제원 적재
+    factory-key: jeju-jewon-load
+
+select-tables:
+  - IF_RSV_TB_JEJU_JEWON
+
+table-mappings:
+  - name: jeju-jewon
+    source: [IF_RSV_TB_JEJU_JEWON]
+    target: [TM_GD970001, TM_GD120001, TM_GD970130, TM_GD970002, TM_GD970101]

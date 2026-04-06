@@ -1,4 +1,4 @@
-package com.sync.agent.bojo.config.pipeline;
+package com.sync.agent.bojo.rcv.factory;
 
 import com.sync.agent.bojo.rcv.step.LinkTableUpdateStep;
 import com.sync.agent.common.controller.DataSourceProvider;

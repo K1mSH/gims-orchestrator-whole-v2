@@ -649,7 +649,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               onChange={() => handleSourceTableToggle(table.id)}
                             />
                             <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
-                            {(table.description || table.tableAlias) && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description || table.tableAlias}</span>}
+                            {table.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -687,7 +687,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               onChange={() => handleTargetTableToggle(table.id)}
                             />
                             <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
-                            {(table.description || table.tableAlias) && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description || table.tableAlias}</span>}
+                            {table.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
                           </label>
                         ))}
@@ -726,8 +726,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                         <div key={table.id} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < sourceTables.length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
                           <div style={{ fontWeight: 500 }}>
                             {table.tableName}
-                            {table.tableAlias && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
-                            {(table.description || table.tableAlias) && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description || table.tableAlias}</span>}
+                            {table.description && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.columns.length}컬럼)</span>
                           </div>
                         </div>
@@ -759,8 +758,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                         <div key={table.id} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < targetTables.length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
                           <div style={{ fontWeight: 500 }}>
                             {table.tableName}
-                            {table.tableAlias && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.tableAlias})</span>}
-                            {(table.description || table.tableAlias) && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description || table.tableAlias}</span>}
+                            {table.description && <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}> - {table.description}</span>}
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.columns.length}컬럼)</span>
                           </div>
                         </div>
@@ -826,7 +824,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                             <select className="form-input" value={t.table} onChange={(e) => handleRetentionTargetChange(i, 'table', e.target.value)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
                               <option value="">-- 테이블 선택 --</option>
                               {retentionTables.map(tb => (
-                                <option key={tb.id} value={tb.tableName}>{tb.tableName}{tb.tableAlias ? ` (${tb.tableAlias})` : ''}</option>
+                                <option key={tb.id} value={tb.tableName}>{tb.tableName}{tb.description ? ` (${tb.description})` : ''}</option>
                               ))}
                             </select>
                           </td>

@@ -697,6 +697,7 @@ function TableManagementModal({
       await datasourceApi.registerTable(datasource.datasourceId, {
         tableName: selectedTable.tableName,
         tableAlias: selectedTable.remarks || undefined,
+        description: selectedTable.remarks || undefined,
         columns,
       });
 

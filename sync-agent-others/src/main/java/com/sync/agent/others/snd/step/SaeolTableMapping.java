@@ -1,4 +1,4 @@
-package com.sync.agent.others.step;
+package com.sync.agent.others.snd.step;
 
 import lombok.Builder;
 import lombok.Getter;

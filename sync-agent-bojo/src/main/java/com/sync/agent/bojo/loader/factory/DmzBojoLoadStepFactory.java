@@ -1,4 +1,4 @@
-package com.sync.agent.bojo.config.pipeline;
+package com.sync.agent.bojo.loader.factory;
 
 import com.sync.agent.bojo.loader.step.DmzBojoLoadStep;
 import com.sync.agent.common.pipeline.StepFactory;

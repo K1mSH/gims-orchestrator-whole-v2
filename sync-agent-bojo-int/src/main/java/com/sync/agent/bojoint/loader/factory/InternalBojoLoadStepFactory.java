@@ -1,4 +1,4 @@
-package com.sync.agent.bojoint.config.pipeline;
+package com.sync.agent.bojoint.loader.factory;
 
 import com.sync.agent.bojoint.loader.step.InternalBojoLoadStep;
 import com.sync.agent.common.controller.DataSourceProvider;

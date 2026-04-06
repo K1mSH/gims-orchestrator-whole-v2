@@ -114,15 +114,23 @@ public class DatasourceController {
         try {
             Class.forName(getDriverClassName(request.getDbType()));
             log.info("Driver loaded successfully");
+            boolean isOracleType = "ORACLE".equalsIgnoreCase(request.getDbType()) || "TIBERO".equalsIgnoreCase(request.getDbType());
 
-            try (Connection conn = DriverManager.getConnection(jdbcUrl, request.getUsername(), request.getPassword())) {
+            // Oracle: COMMENT 조회를 위해 remarksReporting 활성화
+            java.util.Properties connProps = new java.util.Properties();
+            connProps.setProperty("user", request.getUsername());
+            connProps.setProperty("password", request.getPassword());
+            if (isOracleType) {
+                connProps.setProperty("oracle.jdbc.remarksReporting", "true");
+            }
+
+            try (Connection conn = DriverManager.getConnection(jdbcUrl, connProps)) {
                 log.info("Connection established");
                 DatabaseMetaData metaData = conn.getMetaData();
 
                 // MySQL은 catalog에 DB명, Oracle/Tibero는 schema에 유저명 지정
                 String catalog = "MYSQL".equalsIgnoreCase(request.getDbType()) ? request.getDatabaseName() : null;
-                String schema = ("ORACLE".equalsIgnoreCase(request.getDbType()) || "TIBERO".equalsIgnoreCase(request.getDbType()))
-                        ? request.getUsername().toUpperCase() : null;
+                String schema = isOracleType ? request.getUsername().toUpperCase() : null;
                 String[] types = {"TABLE", "VIEW"};
                 String searchPattern = request.getQuery() != null && !request.getQuery().isEmpty()
                         ? "%" + request.getQuery().toUpperCase() + "%"
@@ -164,12 +172,21 @@ public class DatasourceController {
 
         try {
             Class.forName(getDriverClassName(request.getDbType()));
-            try (Connection conn = DriverManager.getConnection(jdbcUrl, request.getUsername(), request.getPassword())) {
+            boolean isOracleType = "ORACLE".equalsIgnoreCase(request.getDbType()) || "TIBERO".equalsIgnoreCase(request.getDbType());
+
+            // Oracle: COMMENT 조회를 위해 remarksReporting 활성화
+            java.util.Properties connProps = new java.util.Properties();
+            connProps.setProperty("user", request.getUsername());
+            connProps.setProperty("password", request.getPassword());
+            if (isOracleType) {
+                connProps.setProperty("oracle.jdbc.remarksReporting", "true");
+            }
+
+            try (Connection conn = DriverManager.getConnection(jdbcUrl, connProps)) {
                 log.info("Connection established for column search");
                 DatabaseMetaData metaData = conn.getMetaData();
 
                 // MySQL은 catalog에 DB명, Oracle/Tibero는 schema에 유저명 지정
-                boolean isOracleType = "ORACLE".equalsIgnoreCase(request.getDbType()) || "TIBERO".equalsIgnoreCase(request.getDbType());
                 String catalog = "MYSQL".equalsIgnoreCase(request.getDbType()) ? request.getDatabaseName() : null;
                 String schema = isOracleType ? request.getUsername().toUpperCase() : null;
 

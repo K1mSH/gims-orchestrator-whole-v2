@@ -1,4 +1,4 @@
-package com.sync.agent.others.step;
+package com.sync.agent.others.snd.step;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sync.agent.common.controller.DataSourceProvider;
@@ -93,13 +93,14 @@ public class SaeolLinkPlanSndStep implements StepExecutor {
             int totalWrite = 0;
             long maxLinkIdx = lastLinkIdx;
 
-            // ④ 테이블별 배치 처리
+            // ④ 테이블별 배치 처리 (전체 매핑 순회 — 이벤트 없는 테이블도 SyncLog 0건 기록)
             for (SaeolTableMapping mapping : tableMappings) {
                 String sourceTable = mapping.getSourceTable();
                 String targetTable = mapping.getTargetTable();
 
                 Map<String, Map<String, Object>> pkRows = groupedByTable.get(sourceTable);
                 if (pkRows == null || pkRows.isEmpty()) {
+                    saveSyncLog(executionId, sourceTable, targetTable, 0, 0);
                     continue;
                 }
 
@@ -111,6 +112,7 @@ public class SaeolLinkPlanSndStep implements StepExecutor {
 
                 if (sourceRows.isEmpty()) {
                     log.warn("[새올SND] {} 소스 데이터 0건", sourceTable);
+                    saveSyncLog(executionId, sourceTable, targetTable, 0, 0);
                     continue;
                 }
 
