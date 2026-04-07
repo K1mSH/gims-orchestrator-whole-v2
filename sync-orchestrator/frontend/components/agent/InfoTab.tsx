@@ -259,6 +259,16 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   const [datasources, setDatasources] = useState<DatasourceSimple[]>([]);
   const [availableSourceTables, setAvailableSourceTables] = useState<DatasourceTable[]>([]);
   const [availableTargetTables, setAvailableTargetTables] = useState<DatasourceTable[]>([]);
+  const [dsChangeMode, setDsChangeMode] = useState(false);
+  const [sourceTableVerify, setSourceTableVerify] = useState<Record<string, boolean>>({});
+  const [targetTableVerify, setTargetTableVerify] = useState<Record<string, boolean>>({});
+  // YAML 기반 파이프라인 테이블 목록 (검증 대상)
+  const [pipelineSourceTableNames, setPipelineSourceTableNames] = useState<string[]>([]);
+  const [pipelineTargetTableNames, setPipelineTargetTableNames] = useState<string[]>([]);
+  // 읽기 모드용 pass/fail
+  const [viewSourceVerify, setViewSourceVerify] = useState<Record<string, boolean>>({});
+  const [viewTargetVerify, setViewTargetVerify] = useState<Record<string, boolean>>({});
+  const [syncing, setSyncing] = useState(false);
 
   // 조건실행
 
@@ -292,6 +302,59 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   useEffect(() => {
     fetchRetention();
   }, [fetchRetention]);
+
+  // 읽기 모드: pipeline/info 조회 → pass/fail
+  const loadPipelineVerify = useCallback(async () => {
+    if (agent.agentType === 'DB_CON_PROXY' || !agent.endpointUrl) return;
+    try {
+      const result = await agentApi.discover(agent.endpointUrl);
+      const infoList = (result as any).agentInfo || [];
+      const info = infoList.find((a: any) => a.agentCode === agent.agentCode);
+      if (!info) return;
+
+      const srcNames: string[] = (info.steps || []).flatMap((s: any) => s.sourceTables || []);
+      const tgtNames: string[] = (info.steps || []).flatMap((s: any) => s.targetTables || []);
+      const uniqueSrc = Array.from(new Set(srcNames));
+      const uniqueTgt = Array.from(new Set(tgtNames));
+
+      // source 검증
+      if (agent.sourceDatasourceId) {
+        const tables = await datasourceApi.getRegisteredTables(agent.sourceDatasourceId);
+        const registered = new Set(tables.map(t => t.tableName.toUpperCase()));
+        const v: Record<string, boolean> = {};
+        uniqueSrc.forEach(name => { v[name] = registered.has(name.toUpperCase()); });
+        setViewSourceVerify(v);
+      }
+      // target 검증
+      if (agent.targetDatasourceId) {
+        const tables = await datasourceApi.getRegisteredTables(agent.targetDatasourceId);
+        const registered = new Set(tables.map(t => t.tableName.toUpperCase()));
+        const v: Record<string, boolean> = {};
+        uniqueTgt.forEach(name => { v[name] = registered.has(name.toUpperCase()); });
+        setViewTargetVerify(v);
+      }
+    } catch {
+      // Agent OFFLINE — 무시
+    }
+  }, [agent.agentCode, agent.endpointUrl, agent.agentType, agent.sourceDatasourceId, agent.targetDatasourceId]);
+
+  useEffect(() => {
+    loadPipelineVerify();
+  }, [loadPipelineVerify]);
+
+  const handleSyncTables = async () => {
+    setSyncing(true);
+    try {
+      await agentApi.syncTables(agent.id);
+      await loadPipelineVerify();
+      onUpdate();
+    } catch (error) {
+      console.error('테이블 갱신 실패:', error);
+      alert('테이블 갱신에 실패했습니다. Agent가 실행 중인지 확인하세요.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleRetentionEdit = () => {
     setRetentionForm(retentionConfig
@@ -394,27 +457,53 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
     targetTableIds: agent.targetTableIds || [] as number[],
   });
 
-  // Source Datasource 변경 시 테이블 목록 로드
+  // Source Datasource 변경 시 테이블 목록 로드 + YAML 기반 검증
   useEffect(() => {
-    if (editMode && agentForm.sourceDatasourceId) {
+    if (editMode && agentForm.sourceDatasourceId && pipelineSourceTableNames.length > 0) {
+      datasourceApi.getRegisteredTables(agentForm.sourceDatasourceId)
+        .then(tables => {
+          setAvailableSourceTables(tables.sort((a, b) => a.tableName.localeCompare(b.tableName)));
+          const registeredNames = new Set(tables.map(t => t.tableName.toUpperCase()));
+          const verify: Record<string, boolean> = {};
+          pipelineSourceTableNames.forEach(name => {
+            verify[name] = registeredNames.has(name.toUpperCase());
+          });
+          setSourceTableVerify(verify);
+        })
+        .catch(console.error);
+    } else if (editMode && agentForm.sourceDatasourceId) {
       datasourceApi.getRegisteredTables(agentForm.sourceDatasourceId)
         .then(tables => setAvailableSourceTables(tables.sort((a, b) => a.tableName.localeCompare(b.tableName))))
         .catch(console.error);
     } else {
       setAvailableSourceTables([]);
+      setSourceTableVerify({});
     }
-  }, [editMode, agentForm.sourceDatasourceId]);
+  }, [editMode, agentForm.sourceDatasourceId, pipelineSourceTableNames]);
 
-  // Target Datasource 변경 시 테이블 목록 로드
+  // Target Datasource 변경 시 테이블 목록 로드 + YAML 기반 검증
   useEffect(() => {
-    if (editMode && agentForm.targetDatasourceId) {
+    if (editMode && agentForm.targetDatasourceId && pipelineTargetTableNames.length > 0) {
+      datasourceApi.getRegisteredTables(agentForm.targetDatasourceId)
+        .then(tables => {
+          setAvailableTargetTables(tables.sort((a, b) => a.tableName.localeCompare(b.tableName)));
+          const registeredNames = new Set(tables.map(t => t.tableName.toUpperCase()));
+          const verify: Record<string, boolean> = {};
+          pipelineTargetTableNames.forEach(name => {
+            verify[name] = registeredNames.has(name.toUpperCase());
+          });
+          setTargetTableVerify(verify);
+        })
+        .catch(console.error);
+    } else if (editMode && agentForm.targetDatasourceId) {
       datasourceApi.getRegisteredTables(agentForm.targetDatasourceId)
         .then(tables => setAvailableTargetTables(tables.sort((a, b) => a.tableName.localeCompare(b.tableName))))
         .catch(console.error);
     } else {
       setAvailableTargetTables([]);
+      setTargetTableVerify({});
     }
-  }, [editMode, agentForm.targetDatasourceId]);
+  }, [editMode, agentForm.targetDatasourceId, pipelineTargetTableNames]);
 
   // 수정 모드 진입 시 form 초기화
   const handleEditMode = () => {
@@ -430,6 +519,18 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
       targetTableIds: agent.targetTableIds || [],
     });
     setEditMode(true);
+    setDsChangeMode(true);
+    // YAML 기반 파이프라인 테이블 목록 조회
+    agentApi.discover(agent.endpointUrl).then(result => {
+      const infoList = (result as any).agentInfo || [];
+      const info = infoList.find((a: any) => a.agentCode === agent.agentCode);
+      if (info) {
+        const srcTables = (info.steps || []).flatMap((s: any) => s.sourceTables || []);
+        const tgtTables = (info.steps || []).flatMap((s: any) => s.targetTables || []);
+        setPipelineSourceTableNames(Array.from(new Set(srcTables as string[])));
+        setPipelineTargetTableNames(Array.from(new Set(tgtTables as string[])));
+      }
+    }).catch(() => { /* Agent 미기동 시 무시 */ });
   };
 
   const handleSourceTableToggle = (tableId: number) => {
@@ -458,10 +559,20 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   });
 
   const handleAgentUpdate = async () => {
+    // datasource 변경 시 테이블 검증 실패 차단
+    if (dsChangeMode) {
+      const hasFail = Object.values(sourceTableVerify).some(v => !v)
+                   || Object.values(targetTableVerify).some(v => !v);
+      if (hasFail) {
+        alert('미발견 테이블이 있는 Datasource로 변경할 수 없습니다.');
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       await agentApi.update(agent.id, agentForm);
       setEditMode(false);
+      setDsChangeMode(false);
       onUpdate();
     } catch (error) {
       console.error('Agent 수정 실패:', error);
@@ -618,40 +729,65 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
             {/* Datasource & 테이블 설정 (프록시 Agent 제외) */}
             {agent.agentType !== 'DB_CON_PROXY' && (
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
-              <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', fontWeight: 600 }}>Datasource & 테이블 설정</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Datasource & 테이블 설정</h4>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleSyncTables}
+                  disabled={syncing}
+                >
+                  {syncing ? '갱신중...' : '테이블 갱신'}
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                 {/* Source */}
                 <div>
                   <div className="form-group">
                     <label className="form-label" style={{ color: 'var(--primary-color, #1976d2)' }}>Source Datasource</label>
-                    <select
-                      className="form-select"
-                      value={agentForm.sourceDatasourceId}
-                      onChange={(e) => setAgentForm({ ...agentForm, sourceDatasourceId: e.target.value, sourceTableIds: [] })}
-                    >
-                      <option value="">선택 안함</option>
-                      {datasources.map(ds => (
-                        <option key={ds.datasourceId} value={ds.datasourceId}>
-                          {ds.datasourceName} ({ds.dbType})
-                        </option>
-                      ))}
-                    </select>
+                    {dsChangeMode ? (
+                      <select
+                        className="form-select"
+                        value={agentForm.sourceDatasourceId}
+                        onChange={(e) => setAgentForm({ ...agentForm, sourceDatasourceId: e.target.value })}
+                      >
+                        <option value="">선택 안함</option>
+                        {datasources.map(ds => (
+                          <option key={ds.datasourceId} value={ds.datasourceId}>
+                            {ds.datasourceName} ({ds.dbType})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" className="form-input" value={sourceDatasource ? `${sourceDatasource.datasourceName} (${sourceDatasource.dbType})` : agentForm.sourceDatasourceId || '-'} disabled style={{ background: 'var(--gray-100)' }} />
+                    )}
                   </div>
-                  {availableSourceTables.length > 0 && (
+                  {/* 테이블 검증 */}
+                  {Object.keys(sourceTableVerify).length > 0 && (
+                    <div style={{ fontSize: '0.8rem', padding: '0.5rem', background: 'white', borderRadius: '0.25rem', border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                      {Object.entries(sourceTableVerify).map(([table, found]) => {
+                        const tableInfo = availableSourceTables.find(t => t.tableName.toUpperCase() === table.toUpperCase());
+                        return (
+                          <div key={table} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.125rem 0' }}>
+                            <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
+                            <span>{table}</span>
+                            {tableInfo?.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tableInfo.description}</span>}
+                            {!found && <span style={{ color: '#dc2626', fontSize: '0.7rem' }}>(미발견)</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* 테이블 목록 (검증 없을 때만 표시) */}
+                  {Object.keys(sourceTableVerify).length === 0 && sourceTables.length > 0 && (
                     <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                      <label className="form-label">Source 테이블</label>
-                      <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                        {availableSourceTables.map(table => (
-                          <label key={table.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={agentForm.sourceTableIds.includes(table.id)}
-                              onChange={() => handleSourceTableToggle(table.id)}
-                            />
-                            <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
-                            {table.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description}</span>}
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
-                          </label>
+                      <label className="form-label">Source 테이블 ({sourceTables.length}개)</label>
+                      <div style={{ fontSize: '0.85rem', padding: '0.5rem', background: 'white', borderRadius: '0.375rem', border: '1px solid var(--border-color)' }}>
+                        {sourceTables.map(t => (
+                          <div key={t.id} style={{ padding: '0.125rem 0', color: 'var(--text-primary)' }}>
+                            {t.tableName}
+                            {t.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{t.description}</span>}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -662,34 +798,49 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 <div>
                   <div className="form-group">
                     <label className="form-label" style={{ color: 'var(--success-color, #28a745)' }}>Target Datasource</label>
-                    <select
-                      className="form-select"
-                      value={agentForm.targetDatasourceId}
-                      onChange={(e) => setAgentForm({ ...agentForm, targetDatasourceId: e.target.value, targetTableIds: [] })}
-                    >
-                      <option value="">선택 안함</option>
-                      {datasources.map(ds => (
-                        <option key={ds.datasourceId} value={ds.datasourceId}>
-                          {ds.datasourceName} ({ds.dbType})
-                        </option>
-                      ))}
-                    </select>
+                    {dsChangeMode ? (
+                      <select
+                        className="form-select"
+                        value={agentForm.targetDatasourceId}
+                        onChange={(e) => setAgentForm({ ...agentForm, targetDatasourceId: e.target.value })}
+                      >
+                        <option value="">선택 안함</option>
+                        {datasources.map(ds => (
+                          <option key={ds.datasourceId} value={ds.datasourceId}>
+                            {ds.datasourceName} ({ds.dbType})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" className="form-input" value={targetDatasource ? `${targetDatasource.datasourceName} (${targetDatasource.dbType})` : agentForm.targetDatasourceId || '-'} disabled style={{ background: 'var(--gray-100)' }} />
+                    )}
                   </div>
-                  {availableTargetTables.length > 0 && (
+                  {/* 테이블 검증 */}
+                  {Object.keys(targetTableVerify).length > 0 && (
+                    <div style={{ fontSize: '0.8rem', padding: '0.5rem', background: 'white', borderRadius: '0.25rem', border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                      {Object.entries(targetTableVerify).map(([table, found]) => {
+                        const tableInfo = availableTargetTables.find(t => t.tableName.toUpperCase() === table.toUpperCase());
+                        return (
+                          <div key={table} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.125rem 0' }}>
+                            <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
+                            <span>{table}</span>
+                            {tableInfo?.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tableInfo.description}</span>}
+                            {!found && <span style={{ color: '#dc2626', fontSize: '0.7rem' }}>(미발견)</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* 테이블 목록 (검증 없을 때만 표시) */}
+                  {Object.keys(targetTableVerify).length === 0 && targetTables.length > 0 && (
                     <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                      <label className="form-label">Target 테이블</label>
-                      <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                        {availableTargetTables.map(table => (
-                          <label key={table.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={agentForm.targetTableIds.includes(table.id)}
-                              onChange={() => handleTargetTableToggle(table.id)}
-                            />
-                            <span style={{ fontSize: '0.875rem' }}>{table.tableName}</span>
-                            {table.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> - {table.description}</span>}
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
-                          </label>
+                      <label className="form-label">Target 테이블 ({targetTables.length}개)</label>
+                      <div style={{ fontSize: '0.85rem', padding: '0.5rem', background: 'white', borderRadius: '0.375rem', border: '1px solid var(--border-color)' }}>
+                        {targetTables.map(t => (
+                          <div key={t.id} style={{ padding: '0.125rem 0', color: 'var(--text-primary)' }}>
+                            {t.tableName}
+                            {t.description && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{t.description}</span>}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -720,7 +871,23 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       ({sourceDatasource.dbType}) {sourceDatasource.host}:{sourceDatasource.port}
                     </span>
                   </div>
-                  {sourceTables.length > 0 ? (
+                  {Object.keys(viewSourceVerify).length > 0 ? (
+                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', overflow: 'hidden' }}>
+                      {Object.entries(viewSourceVerify).map(([table, found], idx) => {
+                        const tableInfo = sourceTables.find(t => t.tableName.toUpperCase() === table.toUpperCase());
+                        return (
+                          <div key={table} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < Object.keys(viewSourceVerify).length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                              <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
+                              <span style={{ fontWeight: 500 }}>{table}</span>
+                              {tableInfo?.description && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tableInfo.description}</span>}
+                              {!found && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>(미등록)</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : sourceTables.length > 0 ? (
                     <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', overflow: 'hidden' }}>
                       {sourceTables.map((table, idx) => (
                         <div key={table.id} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < sourceTables.length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
@@ -752,7 +919,23 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       ({targetDatasource.dbType}) {targetDatasource.host}:{targetDatasource.port}
                     </span>
                   </div>
-                  {targetTables.length > 0 ? (
+                  {Object.keys(viewTargetVerify).length > 0 ? (
+                    <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', overflow: 'hidden' }}>
+                      {Object.entries(viewTargetVerify).map(([table, found], idx) => {
+                        const tableInfo = targetTables.find(t => t.tableName.toUpperCase() === table.toUpperCase());
+                        return (
+                          <div key={table} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < Object.keys(viewTargetVerify).length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                              <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
+                              <span style={{ fontWeight: 500 }}>{table}</span>
+                              {tableInfo?.description && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tableInfo.description}</span>}
+                              {!found && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>(미등록)</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : targetTables.length > 0 ? (
                     <div style={{ border: '1px solid var(--border-color)', borderRadius: '0.375rem', overflow: 'hidden' }}>
                       {targetTables.map((table, idx) => (
                         <div key={table.id} style={{ padding: '0.5rem 0.75rem', borderBottom: idx < targetTables.length - 1 ? '1px solid var(--border-color)' : 'none', background: idx % 2 === 0 ? 'var(--gray-50)' : 'white' }}>

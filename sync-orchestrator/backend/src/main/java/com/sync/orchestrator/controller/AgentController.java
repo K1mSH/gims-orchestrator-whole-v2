@@ -61,6 +61,14 @@ public class AgentController {
     }
 
     /**
+     * Agent 테이블 갱신 (pipeline/info 기반 agent_table 동기화)
+     */
+    @PostMapping("/{id}/sync-tables")
+    public ResponseEntity<Map<String, Object>> syncAgentTables(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.syncAgentTables(id));
+    }
+
+    /**
      * Agent의 retention(자동삭제) 설정 조회 (DB)
      */
     @GetMapping("/{id}/retention")

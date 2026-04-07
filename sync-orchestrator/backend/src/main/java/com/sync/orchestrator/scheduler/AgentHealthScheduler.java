@@ -34,6 +34,7 @@ public class AgentHealthScheduler {
 
     private final AgentRepository agentRepository;
     private final ExecutionHistoryRepository executionHistoryRepository;
+    private final com.sync.orchestrator.service.AgentService agentService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -116,6 +117,14 @@ public class AgentHealthScheduler {
                     agent.setStatus(AgentStatus.ONLINE);
                     agentRepository.save(agent);
                     changed++;
+                    // OFFLINE→ONLINE: pipeline/info 기반 agent_table 자동 동기화
+                    if (currentStatus == AgentStatus.OFFLINE) {
+                        try {
+                            agentService.syncAgentTables(agent.getId());
+                        } catch (Exception syncEx) {
+                            log.warn("Agent {} 테이블 자동 갱신 실패: {}", agent.getAgentCode(), syncEx.getMessage());
+                        }
+                    }
                 }
             }
         }

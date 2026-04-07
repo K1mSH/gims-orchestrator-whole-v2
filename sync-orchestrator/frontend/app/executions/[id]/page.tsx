@@ -197,6 +197,17 @@ export default function ExecutionDetailPage() {
     setTraceLoading(true);
     setTraceResult(null);
 
+    // source_refs가 null인 행은 추적 비대상 (파생 데이터)
+    const sourceRefs = row.source_refs ?? row.SOURCE_REFS;
+    if (sourceRefs === null || sourceRefs === undefined || sourceRefs === '') {
+      setTraceResult({
+        executionId,
+        traceStatus: 'NOT_TRACKABLE' as any,
+      } as TraceResult);
+      setTraceLoading(false);
+      return;
+    }
+
     try {
       let result;
 
@@ -582,6 +593,9 @@ export default function ExecutionDetailPage() {
                   )}
                 </tbody>
               </table>
+              <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)', padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border-color)' }}>
+                write 건수에는 집계/후처리 등 파생 데이터가 포함될 수 있습니다
+              </div>
             </div>
           </div>
       )}
@@ -846,11 +860,12 @@ export default function ExecutionDetailPage() {
                                             borderRadius: '0.25rem',
                                             fontSize: '0.75rem',
                                             fontWeight: 500,
-                                            background: (traceResult.traceStatus === 'SYNCED' || traceResult.traceStatus === 'FULLY_SYNCED' || traceResult.traceStatus === 'FOUND' || traceResult.traceStatus === 'FOUND_IN_IF') ? 'var(--green-100)' : 'var(--red-100)',
-                                            color: (traceResult.traceStatus === 'SYNCED' || traceResult.traceStatus === 'FULLY_SYNCED' || traceResult.traceStatus === 'FOUND' || traceResult.traceStatus === 'FOUND_IN_IF') ? 'var(--green-700)' : 'var(--red-700)',
+                                            background: traceResult.traceStatus === 'NOT_TRACKABLE' ? 'var(--gray-100)' : (traceResult.traceStatus === 'SYNCED' || traceResult.traceStatus === 'FULLY_SYNCED' || traceResult.traceStatus === 'FOUND' || traceResult.traceStatus === 'FOUND_IN_IF') ? 'var(--green-100)' : 'var(--red-100)',
+                                            color: traceResult.traceStatus === 'NOT_TRACKABLE' ? 'var(--gray-600)' : (traceResult.traceStatus === 'SYNCED' || traceResult.traceStatus === 'FULLY_SYNCED' || traceResult.traceStatus === 'FOUND' || traceResult.traceStatus === 'FOUND_IN_IF') ? 'var(--green-700)' : 'var(--red-700)',
                                           }}>
                                             {traceResult.traceStatus === 'SYNCED' || traceResult.traceStatus === 'FULLY_SYNCED' ? '동기화 완료' :
                                              traceResult.traceStatus === 'FOUND' || traceResult.traceStatus === 'FOUND_IN_IF' ? '원본 찾음' :
+                                             traceResult.traceStatus === 'NOT_TRACKABLE' ? '추적 비대상 (파생 데이터)' :
                                              traceResult.traceStatus === 'SOURCE_NOT_FOUND' ? '원본 없음' : '미동기화'}
                                           </span>
                                         )}

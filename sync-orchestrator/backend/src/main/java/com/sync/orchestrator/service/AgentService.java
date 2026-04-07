@@ -288,6 +288,115 @@ public class AgentService {
         return AgentDto.Response.from(agent);
     }
 
+    /**
+     * pipeline/info 기반 agent_table 동기화 (추가만, 삭제 안 함)
+     * YAML의 테이블 중 datasource_table에 등록된 것만 agent_table에 연결
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> syncAgentTables(Long agentId) {
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + agentId));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("agentCode", agent.getAgentCode());
+
+        try {
+            String infoUrl = agent.getEndpointUrl() + "/api/pipeline/info";
+            ResponseEntity<List> infoResponse = restTemplate.getForEntity(infoUrl, List.class);
+            List<Map<String, Object>> infoList = infoResponse.getBody();
+            if (infoList == null) {
+                result.put("status", "NO_DATA");
+                return result;
+            }
+
+            // 해당 agentCode의 steps 찾기
+            Map<String, Object> agentInfo = infoList.stream()
+                    .filter(info -> agent.getAgentCode().equals(((Map<String, Object>) info).get("agentCode")))
+                    .map(info -> (Map<String, Object>) info)
+                    .findFirst().orElse(null);
+
+            if (agentInfo == null) {
+                result.put("status", "AGENT_NOT_FOUND");
+                return result;
+            }
+
+            List<Map<String, Object>> steps = (List<Map<String, Object>>) agentInfo.get("steps");
+            if (steps == null) {
+                result.put("status", "NO_STEPS");
+                return result;
+            }
+
+            // YAML에서 source/target 테이블명 수집
+            Set<String> yamlSourceTables = new LinkedHashSet<>();
+            Set<String> yamlTargetTables = new LinkedHashSet<>();
+            for (Map<String, Object> step : steps) {
+                List<String> src = (List<String>) step.get("sourceTables");
+                List<String> tgt = (List<String>) step.get("targetTables");
+                if (src != null) yamlSourceTables.addAll(src);
+                if (tgt != null) yamlTargetTables.addAll(tgt);
+            }
+
+            // 기존 agent_table에 연결된 datasource_table ID
+            Set<Long> existingTableIds = agent.getAgentTables().stream()
+                    .map(AgentTable::getDatasourceTableId)
+                    .collect(Collectors.toSet());
+
+            int added = 0;
+
+            // Source 테이블 매칭 + 연결
+            if (agent.getSourceDatasourceId() != null) {
+                for (String tableName : yamlSourceTables) {
+                    Optional<DatasourceTable> dt = tableRepository.findByDatasourceIdAndTableName(
+                            agent.getSourceDatasourceId(), tableName);
+                    if (dt.isPresent() && !existingTableIds.contains(dt.get().getId())) {
+                        AgentTable at = AgentTable.builder()
+                                .agent(agent)
+                                .datasourceTableId(dt.get().getId())
+                                .tableType(AgentTable.TableType.SOURCE)
+                                .build();
+                        agent.getAgentTables().add(at);
+                        existingTableIds.add(dt.get().getId());
+                        added++;
+                        log.info("[테이블 갱신] {} SOURCE 추가: {}", agent.getAgentCode(), tableName);
+                    }
+                }
+            }
+
+            // Target 테이블 매칭 + 연결
+            if (agent.getTargetDatasourceId() != null) {
+                for (String tableName : yamlTargetTables) {
+                    Optional<DatasourceTable> dt = tableRepository.findByDatasourceIdAndTableName(
+                            agent.getTargetDatasourceId(), tableName);
+                    if (dt.isPresent() && !existingTableIds.contains(dt.get().getId())) {
+                        AgentTable at = AgentTable.builder()
+                                .agent(agent)
+                                .datasourceTableId(dt.get().getId())
+                                .tableType(AgentTable.TableType.TARGET)
+                                .build();
+                        agent.getAgentTables().add(at);
+                        existingTableIds.add(dt.get().getId());
+                        added++;
+                        log.info("[테이블 갱신] {} TARGET 추가: {}", agent.getAgentCode(), tableName);
+                    }
+                }
+            }
+
+            agentRepository.save(agent);
+            result.put("status", "OK");
+            result.put("added", added);
+            result.put("yamlSourceTables", yamlSourceTables);
+            result.put("yamlTargetTables", yamlTargetTables);
+
+        } catch (Exception e) {
+            log.warn("[테이블 갱신] {} 실패: {}", agent.getAgentCode(), e.getMessage());
+            result.put("status", "ERROR");
+            result.put("error", e.getMessage());
+        }
+
+        return result;
+    }
+
     @Transactional
     public void delete(Long id) {
         if (!agentRepository.existsById(id)) {

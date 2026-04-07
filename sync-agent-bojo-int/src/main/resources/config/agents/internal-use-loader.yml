@@ -1,0 +1,12 @@
+# ── Internal 이용량 Loader Agent ──
+# 내부망 IF_RSV(Oracle 29004) → GIMS 타겟(Oracle 29004) 적재
+# Legacy(시간/일/수신현황) + Status(관측데이터)
+agent-code: internal-use-loader
+type: LOADER
+
+steps:
+  - id: use-load
+    name: 이용량 적재
+    factory-key: use-load
+    source-table: [IF_RSV_USE_LEGACY_DATA, IF_RSV_USE_STATUS_DATA]
+    target-table: [PM_GD111021, PM_GD111022, TM_GD111024, TM_GD111025]

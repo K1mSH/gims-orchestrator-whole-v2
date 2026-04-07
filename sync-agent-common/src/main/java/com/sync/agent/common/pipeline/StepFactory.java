@@ -2,6 +2,8 @@ package com.sync.agent.common.pipeline;
 
 import com.sync.agent.common.step.StepExecutor;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,9 +16,18 @@ import java.util.Map;
 public interface StepFactory {
 
     /**
-     * 이 Factory의 매핑 키 — YAML의 factory-key 값과 일치해야 함
+     * 이 Factory의 대표 매핑 키 — YAML의 factory-key 값과 일치해야 함
      */
     String getFactoryKey();
+
+    /**
+     * 이 Factory가 처리 가능한 모든 키 목록.
+     * 하나의 Factory가 여러 factory-key를 담당할 때 오버라이드한다.
+     * 기본 구현: getFactoryKey() 하나만 반환
+     */
+    default List<String> getFactoryKeys() {
+        return Collections.singletonList(getFactoryKey());
+    }
 
     /**
      * YAML step config(Map)로 StepExecutor 생성

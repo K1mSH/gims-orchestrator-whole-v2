@@ -39,8 +39,9 @@ public class ApiKeyFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         String path = httpRequest.getRequestURI();
 
-        // health 엔드포인트는 인증 제외
-        if (path.equals("/health") || path.startsWith("/health/")) {
+        // health, pipeline info 엔드포인트는 인증 제외 (읽기 전용 메타데이터)
+        if (path.equals("/health") || path.startsWith("/health/")
+                || path.equals("/api/pipeline/info")) {
             chain.doFilter(request, response);
             return;
         }

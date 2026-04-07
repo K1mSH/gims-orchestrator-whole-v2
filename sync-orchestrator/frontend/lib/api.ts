@@ -57,6 +57,9 @@ export const agentApi = {
     api.get<DiscoverResponse>('/agents/discover', { params: { endpointUrl } })
       .then((res) => res.data),
 
+  syncTables: (id: number) =>
+    api.post<Record<string, unknown>>(`/agents/${id}/sync-tables`).then((res) => res.data),
+
   generateTestData: (id: number, count: number = 1000) =>
     api.post<{ message: string; created: number; requested: number; timeRange: { from: string; to: string } }>(
       `/agents/${id}/generate-test-data?count=${count}`

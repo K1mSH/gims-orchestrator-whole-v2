@@ -10,3 +10,9 @@ steps:
     factory-key: jeju-jewon-load
     source-table: IF_RSV_TB_JEJU_JEWON
     target-table: [TM_GD970001, TM_GD120001, TM_GD970130, TM_GD970002, TM_GD970101]
+
+  - id: jeju-obsvdata-load
+    name: 제주 관측데이터 적재
+    factory-key: jeju-obsvdata-load
+    source-table: IF_RSV_TB_JEJU
+    target-table: [PM_GD970201, PM_GD970202]

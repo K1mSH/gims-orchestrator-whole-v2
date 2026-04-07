@@ -872,7 +872,13 @@ function TableManagementModal({
                 }}
               >
                 <option value="">테이블을 선택하세요</option>
-                {allTables.map((table) => (
+                {[...allTables]
+                  .sort((a, b) => {
+                    const aReg = isTableRegistered(a.tableName) ? 1 : 0;
+                    const bReg = isTableRegistered(b.tableName) ? 1 : 0;
+                    return aReg - bReg || a.tableName.localeCompare(b.tableName);
+                  })
+                  .map((table) => (
                   <option
                     key={table.tableName}
                     value={table.tableName}

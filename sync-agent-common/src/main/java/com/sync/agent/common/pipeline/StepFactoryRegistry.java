@@ -22,9 +22,11 @@ public class StepFactoryRegistry {
 
     public StepFactoryRegistry(List<StepFactory> factoryList) {
         for (StepFactory f : factoryList) {
-            factories.put(f.getFactoryKey(), f);
-            log.info("Registered StepFactory: factory-key={}, class={}",
-                    f.getFactoryKey(), f.getClass().getSimpleName());
+            for (String key : f.getFactoryKeys()) {
+                factories.put(key, f);
+                log.info("Registered StepFactory: factory-key={}, class={}",
+                        key, f.getClass().getSimpleName());
+            }
         }
         log.info("Total {} StepFactory registered: {}", factories.size(), factories.keySet());
     }
