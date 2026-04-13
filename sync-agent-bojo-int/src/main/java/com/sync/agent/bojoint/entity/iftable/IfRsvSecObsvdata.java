@@ -13,8 +13,10 @@ import lombok.*;
 @Builder
 public class IfRsvSecObsvdata {
 
-    @Column(name = "ID", nullable = false)
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ID")
+    private Long id;
 
     @Column(name = "OBSV_CODE", nullable = false)
     private String obsvCode;

@@ -1,5 +1,7 @@
 package com.sync.agent.bojoint.loader.step;
 
+import com.sync.agent.bojoint.config.DynamicEntityManagerService;
+import com.sync.agent.bojoint.entity.iftable.IfRsvSecObsvdata;
 import com.sync.agent.bojoint.loader.repository.GimsTargetRepository;
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.entity.SyncLog;
@@ -135,7 +137,30 @@ public class InternalBojoLoadStep implements StepExecutor {
             ConditionBuilder.WhereClause where = ConditionBuilder.buildIfTableQuery(
                     context.getExecutionOptions(), ifObsvdataTable, sourceDbType);
             String sql = "SELECT * FROM " + ifObsvdataTable + where.toWhereSql();
-            List<Map<String, Object>> pendingObsv = sourceJdbc.queryForList(sql, where.getParamsArray());
+            List<Map<String, Object>> pendingObsv;
+            javax.persistence.EntityManager sourceEm = dynamicEmService.getSourceEntityManager();
+            try {
+                javax.persistence.Query query = sourceEm.createNativeQuery(sql, IfRsvSecObsvdata.class);
+                Object[] params = where.getParamsArray();
+                for (int i = 0; i < params.length; i++) {
+                    query.setParameter(i + 1, params[i]);
+                }
+                List<IfRsvSecObsvdata> entities = query.getResultList();
+                pendingObsv = new ArrayList<>();
+                for (IfRsvSecObsvdata e : entities) {
+                    Map<String, Object> map = new HashMap<>();
+                    java.lang.reflect.Field[] fields = e.getClass().getDeclaredFields();
+                    for (java.lang.reflect.Field f : fields) {
+                        f.setAccessible(true);
+                        javax.persistence.Column col = f.getAnnotation(javax.persistence.Column.class);
+                        String key = col != null ? col.name().toLowerCase() : f.getName();
+                        try { map.put(key, f.get(e)); } catch (IllegalAccessException ex) { /* skip */ }
+                    }
+                    pendingObsv.add(map);
+                }
+            } finally {
+                sourceEm.close();
+            }
 
             obsvReadCount = pendingObsv.size();
             readCount += obsvReadCount;

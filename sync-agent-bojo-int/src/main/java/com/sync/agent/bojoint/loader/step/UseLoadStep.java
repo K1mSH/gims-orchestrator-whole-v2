@@ -220,7 +220,7 @@ public class UseLoadStep implements StepExecutor {
         LegacyResult result = new LegacyResult();
 
         for (IfRsvUseLegacyData row : rows) {
-            Integer ifId = row.getId();
+            Long ifId = row.getId();
             String telno = row.getTelno();
 
             try {
@@ -327,7 +327,7 @@ public class UseLoadStep implements StepExecutor {
         StatusResult result = new StatusResult();
 
         for (IfRsvUseStatusData row : rows) {
-            Integer ifId = row.getId();
+            Long ifId = row.getId();
             Long sn = row.getSn();
 
             try {

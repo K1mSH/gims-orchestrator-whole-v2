@@ -16,7 +16,7 @@ public class IfRsvRgetntgms02 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ID")
-    private String id;
+    private Long id;
 
     @Column(name = "REL_TRANS_CGG_CODE", length = 7)
     private String relTransCggCode;

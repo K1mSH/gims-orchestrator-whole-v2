@@ -13,8 +13,10 @@ import lombok.*;
 @Builder
 public class IfRsvUseLegacyData {
 
-    @Column(name = "ID", nullable = false)
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ID")
+    private Long id;
 
     @Column(name = "SN")
     private Long sn;

@@ -1,5 +1,7 @@
 package com.sync.agent.bojoint.loader.step;
 
+import com.sync.agent.bojoint.config.DynamicEntityManagerService;
+import com.sync.agent.bojoint.entity.iftable.IfRsvTbJeju;
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
@@ -12,6 +14,8 @@ import com.sync.agent.common.step.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -93,13 +97,28 @@ public class JejuObsvdataLoadStep implements StepExecutor {
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
             String executionId = context.getExecutionId();
 
-            // 1. IF 테이블 조회
+            // 1. IF 테이블 조회 (JPA native query)
             String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
             boolean isResync = ConditionBuilder.isResyncExecution(context.getExecutionOptions());
             ConditionBuilder.WhereClause where = ConditionBuilder.buildIfTableQuery(
                     context.getExecutionOptions(), ifTable, sourceDbType);
             String sql = "SELECT * FROM " + ifTable + where.toWhereSql();
-            List<Map<String, Object>> pendingRows = sourceJdbc.queryForList(sql, where.getParamsArray());
+            List<Map<String, Object>> pendingRows;
+            EntityManager sourceEm = dynamicEmService.getSourceEntityManager();
+            try {
+                Query query = sourceEm.createNativeQuery(sql, IfRsvTbJeju.class);
+                Object[] params = where.getParamsArray();
+                for (int i = 0; i < params.length; i++) {
+                    query.setParameter(i + 1, params[i]);
+                }
+                List<IfRsvTbJeju> entities = query.getResultList();
+                pendingRows = new ArrayList<>();
+                for (IfRsvTbJeju e : entities) {
+                    pendingRows.add(entityToMap(e));
+                }
+            } finally {
+                sourceEm.close();
+            }
             readCount = pendingRows.size();
             log.info("[{}] IF_RSV에서 {} 건의 {} 관측데이터 조회", stepId, readCount,
                     isResync ? "재동기화 (조건)" : "대기중");
@@ -268,6 +287,22 @@ public class JejuObsvdataLoadStep implements StepExecutor {
 
     private String nvl(String val) {
         return val != null ? val : "";
+    }
+
+    private Map<String, Object> entityToMap(IfRsvTbJeju e) {
+        Map<String, Object> map = new HashMap<>();
+        java.lang.reflect.Field[] fields = e.getClass().getDeclaredFields();
+        for (java.lang.reflect.Field f : fields) {
+            f.setAccessible(true);
+            javax.persistence.Column col = f.getAnnotation(javax.persistence.Column.class);
+            String key = col != null ? col.name() : f.getName().toUpperCase();
+            try {
+                map.put(key, f.get(e));
+            } catch (IllegalAccessException ex) {
+                // skip
+            }
+        }
+        return map;
     }
 
     private void saveSyncLog(String executionId, int readCount, int writeCount,

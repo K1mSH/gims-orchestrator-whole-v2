@@ -17,7 +17,7 @@ public class IfRsvRgetnkcno01 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ID")
-    private String id;
+    private Long id;
 
     @Column(name = "PERM_NT_NO", length = 10)
     private String permNtNo;
