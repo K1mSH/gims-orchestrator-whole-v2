@@ -16,3 +16,9 @@ steps:
     factory-key: jeju-obsvdata-load
     source-table: IF_RSV_TB_JEJU
     target-table: [PM_GD970201, PM_GD970202]
+
+  - id: jeju-facility-load
+    name: 제주 이용시설 적재
+    factory-key: jeju-facility-load
+    source-table: IF_RSV_RGETSTGMS01
+    target-table: [TM_GD111010]

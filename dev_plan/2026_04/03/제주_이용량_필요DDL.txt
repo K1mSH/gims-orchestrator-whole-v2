@@ -1,22 +1,25 @@
+ I1: JejuJewonLoadStep — 레거시 JewonDB.java
+
   1. TM_GD60001 — 제주 관측점 마스터
   2. TM_GD10001 — 관측소 정보
   3. TM_GD60130 — 관측점 시설
   4. TM_GD60002 — 관측점 상세
-  5. GD60101 — 센서 등록 (GL/WTEMP/SCOND 공용 테이블인지, 별도인지 확인 필요)
+  5. TM_GD60101 — 센서 등록 (GL/WTEMP/SCOND 같은 테이블, OBSR_IEM_ID로 구분)
 
-  I2 (제주 수위 → 2개 타겟)
+  I2: JejuObsvdataLoadStep — 레거시 ObsvrdataDB.java
 
-  6. PM_GD60201 — 수위 관측 (S11 센서)
-  7. PM_GD60202 — 수위 관측 (S2x 센서)
+  6. PM_GD60201 — 수위 관측 (S11)
+  7. PM_GD60202 — 수위 관측 (S2x)
 
-  I3 (이용시설 → 3개 타겟)
+  I3: JejuFacilityLoadStep — 레거시 JejuInToDB.java
 
-  8. TM_GD31010_GMS — 이용시설 관리
-  9. TM_GD31010 — 이용시설 정보
-  10. PM_GD31022 — 이용시설 실적
+  8. TM_GD31010 — 이용시설 정보 (GMS도 같은 테이블)
+  9. PM_GD31022 — 이용시설 실적
 
-  I5 (이용량 → 3개 타겟)
+  I5: UseLoadStep — 레거시 UseToIn.java
 
-  11. PM_GD31021 — 이용량 데이터
-  12. PM_GD31022 — (I3과 공유 가능, 확인 필요)
+  10. PM_GD31021 — 이용량 데이터
+  11. PM_GD31022 — (I3과 공유)
+  12. TM_GD31024 — 최종수신 집계 (lastReceive)
   13. TM_GD31025 — 이용량 상태
+
