@@ -18,7 +18,7 @@ public class IfRsvRgetnyyms01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "ORG_REGNUM", length = 13)
@@ -33,16 +33,16 @@ public class IfRsvRgetnyyms01 {
     @Column(name = "INDI_SID_SNO", length = 3)
     private String indiSidSno;
 
-    @Column(name = "SF_TEAM_CODE", length = 7)
+    @Column(name = "SF_TEAM_CODE", columnDefinition = "CHAR(7)")
     private String sfTeamCode;
 
-    @Column(name = "APPL_YMD", length = 8)
+    @Column(name = "APPL_YMD", columnDefinition = "CHAR(8)")
     private String applYmd;
 
     @Column(name = "NM", length = 60)
     private String nm;
 
-    @Column(name = "REG_YMD", length = 8)
+    @Column(name = "REG_YMD", columnDefinition = "CHAR(8)")
     private String regYmd;
 
     @Column(name = "COR_ISSUE_NO", length = 100)
@@ -51,22 +51,22 @@ public class IfRsvRgetnyyms01 {
     @Column(name = "SPEC_MPW_TOT_NUM")
     private Long specMpwTotNum;
 
-    @Column(name = "COR_ISSUE_YMD", length = 8)
+    @Column(name = "COR_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String corIssueYmd;
 
-    @Column(name = "OTR_ORG_TRANS_YN", length = 1)
+    @Column(name = "OTR_ORG_TRANS_YN", columnDefinition = "CHAR(1)")
     private String otrOrgTransYn;
 
-    @Column(name = "REG_CANCEL_YMD", length = 8)
+    @Column(name = "REG_CANCEL_YMD", columnDefinition = "CHAR(8)")
     private String regCancelYmd;
 
     @Column(name = "REG_CANCEL_WHY", length = 250)
     private String regCancelWhy;
 
-    @Column(name = "CHG_NOTC_ISSUE_YMD", length = 8)
+    @Column(name = "CHG_NOTC_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String chgNotcIssueYmd;
 
-    @Column(name = "TRD_STP_YN", length = 1)
+    @Column(name = "TRD_STP_YN", columnDefinition = "CHAR(1)")
     private String trdStpYn;
 
     @Column(name = "REM", length = 250)

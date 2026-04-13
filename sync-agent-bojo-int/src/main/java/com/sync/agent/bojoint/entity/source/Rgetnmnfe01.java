@@ -27,10 +27,10 @@ public class Rgetnmnfe01 {
     @Column(name = "UPCH_SNO", length = 3)
     private String upchSno;
 
-    @Column(name = "UPCH_GBN", length = 1)
+    @Column(name = "UPCH_GBN", columnDefinition = "CHAR(1)")
     private String upchGbn;
 
-    @Column(name = "MPW_EQI_GBN", length = 1)
+    @Column(name = "MPW_EQI_GBN", columnDefinition = "CHAR(1)")
     private String mpwEqiGbn;
 
     @Column(name = "NM", length = 60)
@@ -45,10 +45,10 @@ public class Rgetnmnfe01 {
     @Column(name = "ADDR", length = 200)
     private String addr;
 
-    @Column(name = "JCMP_YMD", length = 8)
+    @Column(name = "JCMP_YMD", columnDefinition = "CHAR(8)")
     private String jcmpYmd;
 
-    @Column(name = "RSGN_YMD", length = 8)
+    @Column(name = "RSGN_YMD", columnDefinition = "CHAR(8)")
     private String rsgnYmd;
 
     @Column(name = "TELNO", length = 30)
@@ -57,13 +57,13 @@ public class Rgetnmnfe01 {
     @Column(name = "EQI_NM", length = 100)
     private String eqiNm;
 
-    @Column(name = "LEAS_YN", length = 1)
+    @Column(name = "LEAS_YN", columnDefinition = "CHAR(1)")
     private String leasYn;
 
-    @Column(name = "LEAS_STDT", length = 8)
+    @Column(name = "LEAS_STDT", columnDefinition = "CHAR(8)")
     private String leasStdt;
 
-    @Column(name = "LEAS_ENDDT", length = 8)
+    @Column(name = "LEAS_ENDDT", columnDefinition = "CHAR(8)")
     private String leasEnddt;
 
     @Column(name = "MPW_REM", length = 1000)

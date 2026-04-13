@@ -18,7 +18,7 @@ public class IfRsvRgetnjhms01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PRFCN_UPCH_REGNUM", length = 13)
@@ -33,16 +33,16 @@ public class IfRsvRgetnjhms01 {
     @Column(name = "INDI_SID_SNO", length = 3)
     private String indiSidSno;
 
-    @Column(name = "SF_TEAM_CODE", length = 7)
+    @Column(name = "SF_TEAM_CODE", columnDefinition = "CHAR(7)")
     private String sfTeamCode;
 
     @Column(name = "NM", length = 60)
     private String nm;
 
-    @Column(name = "APPL_YMD", length = 8)
+    @Column(name = "APPL_YMD", columnDefinition = "CHAR(8)")
     private String applYmd;
 
-    @Column(name = "REG_YMD", length = 8)
+    @Column(name = "REG_YMD", columnDefinition = "CHAR(8)")
     private String regYmd;
 
     @Column(name = "COR_ISSUE_NO", length = 100)
@@ -51,37 +51,37 @@ public class IfRsvRgetnjhms01 {
     @Column(name = "TEC_CAP_TOT_NUM")
     private Long tecCapTotNum;
 
-    @Column(name = "COR_PRN_YMD", length = 8)
+    @Column(name = "COR_PRN_YMD", columnDefinition = "CHAR(8)")
     private String corPrnYmd;
 
-    @Column(name = "TRF_GBN", length = 1)
+    @Column(name = "TRF_GBN", columnDefinition = "CHAR(1)")
     private String trfGbn;
 
-    @Column(name = "UNION_GBN", length = 1)
+    @Column(name = "UNION_GBN", columnDefinition = "CHAR(1)")
     private String unionGbn;
 
-    @Column(name = "SUC_GBN", length = 1)
+    @Column(name = "SUC_GBN", columnDefinition = "CHAR(1)")
     private String sucGbn;
 
-    @Column(name = "OTR_ORG_TRANS_YN", length = 1)
+    @Column(name = "OTR_ORG_TRANS_YN", columnDefinition = "CHAR(1)")
     private String otrOrgTransYn;
 
-    @Column(name = "REG_CANCEL_YMD", length = 8)
+    @Column(name = "REG_CANCEL_YMD", columnDefinition = "CHAR(8)")
     private String regCancelYmd;
 
-    @Column(name = "TRD_STP_YMD", length = 8)
+    @Column(name = "TRD_STP_YMD", columnDefinition = "CHAR(8)")
     private String trdStpYmd;
 
-    @Column(name = "REG_CRIT_FTNS_YN", length = 1)
+    @Column(name = "REG_CRIT_FTNS_YN", columnDefinition = "CHAR(1)")
     private String regCritFtnsYn;
 
-    @Column(name = "DISNT_ISSUE_YMD", length = 8)
+    @Column(name = "DISNT_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String disntIssueYmd;
 
     @Column(name = "CHA_DEPT_NM", length = 60)
     private String chaDeptNm;
 
-    @Column(name = "LAST_CHG_YMD", length = 8)
+    @Column(name = "LAST_CHG_YMD", columnDefinition = "CHAR(8)")
     private String lastChgYmd;
 
     @Column(name = "FIRST_REG_DTHR")

@@ -18,16 +18,16 @@ public class Rgetnwams01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
-    @Column(name = "QW_ISP_SORT_CODE", length = 1)
+    @Column(name = "QW_ISP_SORT_CODE", columnDefinition = "CHAR(1)")
     private String qwIspSortCode;
 
     @Column(name = "LIST_CODE", length = 20)
     private String listCode;
 
-    @Column(name = "IPT_ORD", length = 2)
+    @Column(name = "IPT_ORD", columnDefinition = "CHAR(2)")
     private String iptOrd;
 
     @Column(name = "ISP_CRIT", length = 50)

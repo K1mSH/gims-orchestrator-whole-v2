@@ -19,10 +19,10 @@ public class IfRsvRgetnsckt01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
-    @Column(name = "MW_TAKE_NO", length = 18)
+    @Column(name = "MW_TAKE_NO", columnDefinition = "CHAR(18)")
     private String mwTakeNo;
 
     @Column(name = "PERM_NT_NO", length = 10)
@@ -34,13 +34,13 @@ public class IfRsvRgetnsckt01 {
     @Column(name = "OP_UPCH_SNO", length = 3)
     private String opUpchSno;
 
-    @Column(name = "PERM_YMD", length = 8)
+    @Column(name = "PERM_YMD", columnDefinition = "CHAR(8)")
     private String permYmd;
 
-    @Column(name = "DVOP_LOC_REGN_CODE", length = 10)
+    @Column(name = "DVOP_LOC_REGN_CODE", columnDefinition = "CHAR(10)")
     private String dvopLocRegnCode;
 
-    @Column(name = "DVOP_LOC_SAN", length = 1)
+    @Column(name = "DVOP_LOC_SAN", columnDefinition = "CHAR(1)")
     private String dvopLocSan;
 
     @Column(name = "DVOP_LOC_BUNJI", length = 20)
@@ -112,13 +112,13 @@ public class IfRsvRgetnsckt01 {
     @Column(name = "MG_NO", length = 20)
     private String mgNo;
 
-    @Column(name = "RWT_CAPB_SUM_YN", length = 1)
+    @Column(name = "RWT_CAPB_SUM_YN", columnDefinition = "CHAR(1)")
     private String rwtCapbSumYn;
 
     @Column(name = "SUM_FACIL_REM", length = 250)
     private String sumFacilRem;
 
-    @Column(name = "ITG_DIST_IN_FACIL_YN", length = 1)
+    @Column(name = "ITG_DIST_IN_FACIL_YN", columnDefinition = "CHAR(1)")
     private String itgDistInFacilYn;
 
     @Column(name = "DIST_IN_FACIL_REM", length = 250)
@@ -136,10 +136,10 @@ public class IfRsvRgetnsckt01 {
     @Column(name = "DEAL_WHY", length = 250)
     private String dealWhy;
 
-    @Column(name = "DVOP_LOC_ADMDNG_CODE", length = 10)
+    @Column(name = "DVOP_LOC_ADMDNG_CODE", columnDefinition = "CHAR(10)")
     private String dvopLocAdmdngCode;
 
-    @Column(name = "UWATER_POTA_YN", length = 1)
+    @Column(name = "UWATER_POTA_YN", columnDefinition = "CHAR(1)")
     private String uwaterPotaYn;
 
     @Column(name = "DVOP_LOC_RDN_CGG_CODE", length = 5)

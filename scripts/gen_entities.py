@@ -270,7 +270,12 @@ def generate_entity(table_name, table_info, subpackage):
         # @Column
         col_attrs = []
         col_attrs.append(f'name = "{col_name}"')
-        if col["length"] and col["length"] != 255:
+        # CHAR 타입은 columnDefinition으로 명시 (Oracle CHAR vs VARCHAR2 검증 문제 방지)
+        is_char = col["oracle_type"].upper().startswith("CHAR")
+        if is_char:
+            char_len = col["length"] if col["length"] else 1
+            col_attrs.append(f'columnDefinition = "CHAR({char_len})"')
+        elif col["length"] and col["length"] != 255:
             col_attrs.append(f'length = {col["length"]}')
         if col["not_null"] and col_name not in pk_cols:
             col_attrs.append("nullable = false")

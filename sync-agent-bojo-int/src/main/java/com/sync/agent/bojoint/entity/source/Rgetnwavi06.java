@@ -19,7 +19,7 @@ public class Rgetnwavi06 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PERM_NT_NO", length = 10)
@@ -28,7 +28,7 @@ public class Rgetnwavi06 {
     @Column(name = "QW_ISP_SNO")
     private Long qwIspSno;
 
-    @Column(name = "QW_ISP_SORT_CODE", length = 1)
+    @Column(name = "QW_ISP_SORT_CODE", columnDefinition = "CHAR(1)")
     private String qwIspSortCode;
 
     @Column(name = "LIST_CODE", length = 20)
@@ -40,7 +40,7 @@ public class Rgetnwavi06 {
     @Column(name = "RT_VLU")
     private BigDecimal rtVlu;
 
-    @Column(name = "ELIG_YN", length = 1)
+    @Column(name = "ELIG_YN", columnDefinition = "CHAR(1)")
     private String eligYn;
 
     @Column(name = "SOURCE_REFS", length = 4000)

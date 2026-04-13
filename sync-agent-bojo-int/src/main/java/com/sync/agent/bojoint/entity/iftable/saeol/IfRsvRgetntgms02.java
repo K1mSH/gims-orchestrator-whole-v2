@@ -18,16 +18,16 @@ public class IfRsvRgetntgms02 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
-    @Column(name = "SF_TEAM_CODE", length = 7)
+    @Column(name = "SF_TEAM_CODE", columnDefinition = "CHAR(7)")
     private String sfTeamCode;
 
-    @Column(name = "CRIT_YY", length = 4)
+    @Column(name = "CRIT_YY", columnDefinition = "CHAR(4)")
     private String critYy;
 
-    @Column(name = "QW_ISP_SORT_CODE", length = 1)
+    @Column(name = "QW_ISP_SORT_CODE", columnDefinition = "CHAR(1)")
     private String qwIspSortCode;
 
     @Column(name = "LIST_CODE", length = 20)

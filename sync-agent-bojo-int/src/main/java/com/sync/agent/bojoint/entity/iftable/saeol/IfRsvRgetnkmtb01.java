@@ -18,10 +18,10 @@ public class IfRsvRgetnkmtb01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
-    @Column(name = "MW_TAKE_NO", length = 18)
+    @Column(name = "MW_TAKE_NO", columnDefinition = "CHAR(18)")
     private String mwTakeNo;
 
     @Column(name = "FACIL_NM", length = 60)
@@ -30,7 +30,7 @@ public class IfRsvRgetnkmtb01 {
     @Column(name = "IPRV_ACT_CMPT_CTN", length = 1000)
     private String iprvActCmptCtn;
 
-    @Column(name = "IPRV_ACT_CMPT_YMD", length = 8)
+    @Column(name = "IPRV_ACT_CMPT_YMD", columnDefinition = "CHAR(8)")
     private String iprvActCmptYmd;
 
     @Column(name = "PLAN_OP_UPCH_REGNUM", length = 36)

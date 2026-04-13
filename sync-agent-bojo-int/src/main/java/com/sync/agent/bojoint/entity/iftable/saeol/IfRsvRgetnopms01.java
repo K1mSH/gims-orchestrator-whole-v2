@@ -19,7 +19,7 @@ public class IfRsvRgetnopms01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PERM_NT_NO", length = 10)
@@ -34,7 +34,7 @@ public class IfRsvRgetnopms01 {
     @Column(name = "OP_UPCH_SNO", length = 3)
     private String opUpchSno;
 
-    @Column(name = "APPL_DOC_GBN_CODE", length = 2)
+    @Column(name = "APPL_DOC_GBN_CODE", columnDefinition = "CHAR(2)")
     private String applDocGbnCode;
 
     @Column(name = "DIG_DPH")
@@ -64,64 +64,64 @@ public class IfRsvRgetnopms01 {
     @Column(name = "UWATER_SRV", length = 30)
     private String uwaterSrv;
 
-    @Column(name = "UWATER_SRV_CODE", length = 1)
+    @Column(name = "UWATER_SRV_CODE", columnDefinition = "CHAR(1)")
     private String uwaterSrvCode;
 
-    @Column(name = "UWATER_DTL_SRV_CODE", length = 2)
+    @Column(name = "UWATER_DTL_SRV_CODE", columnDefinition = "CHAR(2)")
     private String uwaterDtlSrvCode;
 
-    @Column(name = "UWATER_POTA_YN", length = 1)
+    @Column(name = "UWATER_POTA_YN", columnDefinition = "CHAR(1)")
     private String uwaterPotaYn;
 
     @Column(name = "UWATER_DAY_USE_QUA")
     private BigDecimal uwaterDayUseQua;
 
-    @Column(name = "CGONG_YMD", length = 8)
+    @Column(name = "CGONG_YMD", columnDefinition = "CHAR(8)")
     private String cgongYmd;
 
-    @Column(name = "JGONG_YMD", length = 8)
+    @Column(name = "JGONG_YMD", columnDefinition = "CHAR(8)")
     private String jgongYmd;
 
     @Column(name = "ETC_DTL", length = 1000)
     private String etcDtl;
 
-    @Column(name = "JGONG_APPL_YMD", length = 8)
+    @Column(name = "JGONG_APPL_YMD", columnDefinition = "CHAR(8)")
     private String jgongApplYmd;
 
     @Column(name = "JGONG_TKIT_MG_NO", length = 100)
     private String jgongTkitMgNo;
 
-    @Column(name = "JGEV_ISSUE_YMD", length = 8)
+    @Column(name = "JGEV_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String jgevIssueYmd;
 
-    @Column(name = "OGG_YN", length = 1)
+    @Column(name = "OGG_YN", columnDefinition = "CHAR(1)")
     private String oggYn;
 
-    @Column(name = "CHSU_EQN_YN", length = 1)
+    @Column(name = "CHSU_EQN_YN", columnDefinition = "CHAR(1)")
     private String chsuEqnYn;
 
-    @Column(name = "GRWT_YN", length = 1)
+    @Column(name = "GRWT_YN", columnDefinition = "CHAR(1)")
     private String grwtYn;
 
-    @Column(name = "UPS_PROT_HOLE_YN", length = 1)
+    @Column(name = "UPS_PROT_HOLE_YN", columnDefinition = "CHAR(1)")
     private String upsProtHoleYn;
 
-    @Column(name = "WTLV_MSM_KWAN_YN", length = 1)
+    @Column(name = "WTLV_MSM_KWAN_YN", columnDefinition = "CHAR(1)")
     private String wtlvMsmKwanYn;
 
-    @Column(name = "CSI_YN", length = 1)
+    @Column(name = "CSI_YN", columnDefinition = "CHAR(1)")
     private String csiYn;
 
-    @Column(name = "ELEC_TEMPE_YN", length = 1)
+    @Column(name = "ELEC_TEMPE_YN", columnDefinition = "CHAR(1)")
     private String elecTempeYn;
 
-    @Column(name = "LID_ESB_YN", length = 1)
+    @Column(name = "LID_ESB_YN", columnDefinition = "CHAR(1)")
     private String lidEsbYn;
 
     @Column(name = "FACIL_DETAIL_DTL", length = 1000)
     private String facilDetailDtl;
 
-    @Column(name = "JGFACIL_SORT_CODE", length = 1)
+    @Column(name = "JGFACIL_SORT_CODE", columnDefinition = "CHAR(1)")
     private String jgfacilSortCode;
 
     @Column(name = "UPS_PROT_HOLE_BRE")

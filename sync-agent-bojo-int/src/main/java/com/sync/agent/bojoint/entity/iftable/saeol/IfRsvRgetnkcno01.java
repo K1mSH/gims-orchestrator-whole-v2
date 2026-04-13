@@ -22,13 +22,13 @@ public class IfRsvRgetnkcno01 {
     @Column(name = "PERM_NT_NO", length = 10)
     private String permNtNo;
 
-    @Column(name = "DIG_ORD", length = 3)
+    @Column(name = "DIG_ORD", columnDefinition = "CHAR(3)")
     private String digOrd;
 
-    @Column(name = "REGN_CODE", length = 10)
+    @Column(name = "REGN_CODE", columnDefinition = "CHAR(10)")
     private String regnCode;
 
-    @Column(name = "SAN", length = 1)
+    @Column(name = "SAN", columnDefinition = "CHAR(1)")
     private String san;
 
     @Column(name = "BUNJI", length = 20)
@@ -91,16 +91,16 @@ public class IfRsvRgetnkcno01 {
     @Column(name = "LAST_CORT_ID", length = 20)
     private String lastCortId;
 
-    @Column(name = "DVOP_LOC_ADMDNG_CODE", length = 10)
+    @Column(name = "DVOP_LOC_ADMDNG_CODE", columnDefinition = "CHAR(10)")
     private String dvopLocAdmdngCode;
 
-    @Column(name = "CGONG_PLAN_YMD", length = 8)
+    @Column(name = "CGONG_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String cgongPlanYmd;
 
-    @Column(name = "JGONG_PLAN_YMD", length = 8)
+    @Column(name = "JGONG_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String jgongPlanYmd;
 
-    @Column(name = "OSTRS_PLAN_YMD", length = 8)
+    @Column(name = "OSTRS_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String ostrsPlanYmd;
 
     @Column(name = "PLAN_OP_UPCH_REGNUM", length = 50)
@@ -121,19 +121,19 @@ public class IfRsvRgetnkcno01 {
     @Column(name = "PLAN_OP_UPCH_ADDR", length = 250)
     private String planOpUpchAddr;
 
-    @Column(name = "LNHO_RAISE_YMD", length = 8)
+    @Column(name = "LNHO_RAISE_YMD", columnDefinition = "CHAR(8)")
     private String lnhoRaiseYmd;
 
-    @Column(name = "LNHO_DEAL_YMD", length = 8)
+    @Column(name = "LNHO_DEAL_YMD", columnDefinition = "CHAR(8)")
     private String lnhoDealYmd;
 
-    @Column(name = "LNHO_DEAL_MET_CODE", length = 1)
+    @Column(name = "LNHO_DEAL_MET_CODE", columnDefinition = "CHAR(1)")
     private String lnhoDealMetCode;
 
     @Column(name = "LNHO_DPP_NM", length = 60)
     private String lnhoDppNm;
 
-    @Column(name = "DVUS_ENDDT", length = 8)
+    @Column(name = "DVUS_ENDDT", columnDefinition = "CHAR(8)")
     private String dvusEnddt;
 
     @Column(name = "DIG_LNHO_RAISE_CAU", length = 250)

@@ -19,10 +19,10 @@ public class IfRsvRgetnycsg01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
-    @Column(name = "MW_TAKE_NO", length = 18)
+    @Column(name = "MW_TAKE_NO", columnDefinition = "CHAR(18)")
     private String mwTakeNo;
 
     @Column(name = "UWATER_OVF_QUA")
@@ -31,10 +31,10 @@ public class IfRsvRgetnycsg01 {
     @Column(name = "USE_PLN_QUA")
     private BigDecimal usePlnQua;
 
-    @Column(name = "CGONG_PLAN_YMD", length = 8)
+    @Column(name = "CGONG_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String cgongPlanYmd;
 
-    @Column(name = "JGONG_PLAN_YMD", length = 8)
+    @Column(name = "JGONG_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String jgongPlanYmd;
 
     @Column(name = "CSTW_BRF", length = 100)

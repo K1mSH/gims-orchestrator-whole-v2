@@ -18,7 +18,7 @@ public class IfRsvRgetnwavi05 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PERM_NT_NO", length = 10)
@@ -27,19 +27,19 @@ public class IfRsvRgetnwavi05 {
     @Column(name = "QW_ISP_SNO")
     private Long qwIspSno;
 
-    @Column(name = "QW_ISP_YN", length = 1)
+    @Column(name = "QW_ISP_YN", columnDefinition = "CHAR(1)")
     private String qwIspYn;
 
-    @Column(name = "QW_ISP_SORT_CODE", length = 1)
+    @Column(name = "QW_ISP_SORT_CODE", columnDefinition = "CHAR(1)")
     private String qwIspSortCode;
 
-    @Column(name = "QW_ISP_RT", length = 1)
+    @Column(name = "QW_ISP_RT", columnDefinition = "CHAR(1)")
     private String qwIspRt;
 
     @Column(name = "QW_ISP_ORG_NM", length = 60)
     private String qwIspOrgNm;
 
-    @Column(name = "QW_ISP_YMD", length = 8)
+    @Column(name = "QW_ISP_YMD", columnDefinition = "CHAR(8)")
     private String qwIspYmd;
 
     @Column(name = "REM", length = 250)

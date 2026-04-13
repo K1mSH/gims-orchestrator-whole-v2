@@ -19,13 +19,13 @@ public class Rgetstgms01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PERM_NT_NO", length = 10)
     private String permNtNo;
 
-    @Column(name = "YY_GBN", length = 4)
+    @Column(name = "YY_GBN", columnDefinition = "CHAR(4)")
     private String yyGbn;
 
     @Column(name = "OP_UPCH_REGNUM", length = 36)
@@ -34,19 +34,19 @@ public class Rgetstgms01 {
     @Column(name = "OP_UPCH_SNO", length = 3)
     private String opUpchSno;
 
-    @Column(name = "SF_TEAM_CODE", length = 7)
+    @Column(name = "SF_TEAM_CODE", columnDefinition = "CHAR(7)")
     private String sfTeamCode;
 
-    @Column(name = "PERM_NT_FORM_CODE", length = 1)
+    @Column(name = "PERM_NT_FORM_CODE", columnDefinition = "CHAR(1)")
     private String permNtFormCode;
 
-    @Column(name = "RELL_LAW_CODE", length = 2)
+    @Column(name = "RELL_LAW_CODE", columnDefinition = "CHAR(2)")
     private String rellLawCode;
 
-    @Column(name = "REGN_CODE", length = 10)
+    @Column(name = "REGN_CODE", columnDefinition = "CHAR(10)")
     private String regnCode;
 
-    @Column(name = "SAN", length = 1)
+    @Column(name = "SAN", columnDefinition = "CHAR(1)")
     private String san;
 
     @Column(name = "BUNJI", length = 20)
@@ -91,13 +91,13 @@ public class Rgetstgms01 {
     @Column(name = "ELEV")
     private Long elev;
 
-    @Column(name = "UWATER_SRV_CODE", length = 1)
+    @Column(name = "UWATER_SRV_CODE", columnDefinition = "CHAR(1)")
     private String uwaterSrvCode;
 
-    @Column(name = "UWATER_DTL_SRV_CODE", length = 2)
+    @Column(name = "UWATER_DTL_SRV_CODE", columnDefinition = "CHAR(2)")
     private String uwaterDtlSrvCode;
 
-    @Column(name = "PUB_PRI_GBN", length = 1)
+    @Column(name = "PUB_PRI_GBN", columnDefinition = "CHAR(1)")
     private String pubPriGbn;
 
     @Column(name = "USE_GIGAN_ST")
@@ -109,7 +109,7 @@ public class Rgetstgms01 {
     @Column(name = "USE_DAYCNT")
     private Long useDaycnt;
 
-    @Column(name = "POTA_YN", length = 1)
+    @Column(name = "POTA_YN", columnDefinition = "CHAR(1)")
     private String potaYn;
 
     @Column(name = "FEED_FAM")
@@ -124,10 +124,10 @@ public class Rgetstgms01 {
     @Column(name = "MONG_AREA")
     private BigDecimal mongArea;
 
-    @Column(name = "STNUM_DEAL_YN", length = 1)
+    @Column(name = "STNUM_DEAL_YN", columnDefinition = "CHAR(1)")
     private String stnumDealYn;
 
-    @Column(name = "UWATER_SOUC_CODE", length = 1)
+    @Column(name = "UWATER_SOUC_CODE", columnDefinition = "CHAR(1)")
     private String uwaterSoucCode;
 
     @Column(name = "DAY_USE_QUA")
@@ -139,16 +139,16 @@ public class Rgetstgms01 {
     @Column(name = "Y_USE_QUA")
     private BigDecimal yUseQua;
 
-    @Column(name = "CQL_CRIT_CODE", length = 1)
+    @Column(name = "CQL_CRIT_CODE", columnDefinition = "CHAR(1)")
     private String cqlCritCode;
 
-    @Column(name = "JNHO_FORM_CODE", length = 1)
+    @Column(name = "JNHO_FORM_CODE", columnDefinition = "CHAR(1)")
     private String jnhoFormCode;
 
-    @Column(name = "AUV_BDR_GBN", length = 1)
+    @Column(name = "AUV_BDR_GBN", columnDefinition = "CHAR(1)")
     private String auvBdrGbn;
 
-    @Column(name = "DVOP_YMD", length = 8)
+    @Column(name = "DVOP_YMD", columnDefinition = "CHAR(8)")
     private String dvopYmd;
 
     @Column(name = "DPH")
@@ -166,25 +166,25 @@ public class Rgetstgms01 {
     @Column(name = "PIPE_DIAM")
     private BigDecimal pipeDiam;
 
-    @Column(name = "OGG_ESB_YN", length = 1)
+    @Column(name = "OGG_ESB_YN", columnDefinition = "CHAR(1)")
     private String oggEsbYn;
 
-    @Column(name = "CHSU_EQN_ESB_YN", length = 1)
+    @Column(name = "CHSU_EQN_ESB_YN", columnDefinition = "CHAR(1)")
     private String chsuEqnEsbYn;
 
-    @Column(name = "GRWT_ESB_YN", length = 1)
+    @Column(name = "GRWT_ESB_YN", columnDefinition = "CHAR(1)")
     private String grwtEsbYn;
 
-    @Column(name = "UPPRHO_ESB_YN", length = 1)
+    @Column(name = "UPPRHO_ESB_YN", columnDefinition = "CHAR(1)")
     private String upprhoEsbYn;
 
-    @Column(name = "WTMSKW_ESB_YN", length = 1)
+    @Column(name = "WTMSKW_ESB_YN", columnDefinition = "CHAR(1)")
     private String wtmskwEsbYn;
 
-    @Column(name = "CSI_ESB_YN", length = 1)
+    @Column(name = "CSI_ESB_YN", columnDefinition = "CHAR(1)")
     private String csiEsbYn;
 
-    @Column(name = "ELEC_TEMPE_YN", length = 1)
+    @Column(name = "ELEC_TEMPE_YN", columnDefinition = "CHAR(1)")
     private String elecTempeYn;
 
     @Column(name = "NAT_WTLV")
@@ -196,34 +196,34 @@ public class Rgetstgms01 {
     @Column(name = "FRW_PLN_QUA")
     private BigDecimal frwPlnQua;
 
-    @Column(name = "LNHO_RAISE_YN", length = 1)
+    @Column(name = "LNHO_RAISE_YN", columnDefinition = "CHAR(1)")
     private String lnhoRaiseYn;
 
-    @Column(name = "LNHO_RAISE_CAU_CODE", length = 1)
+    @Column(name = "LNHO_RAISE_CAU_CODE", columnDefinition = "CHAR(1)")
     private String lnhoRaiseCauCode;
 
-    @Column(name = "LNHO_RAISE_YMD", length = 8)
+    @Column(name = "LNHO_RAISE_YMD", columnDefinition = "CHAR(8)")
     private String lnhoRaiseYmd;
 
-    @Column(name = "LNHO_DEAL_YMD", length = 8)
+    @Column(name = "LNHO_DEAL_YMD", columnDefinition = "CHAR(8)")
     private String lnhoDealYmd;
 
-    @Column(name = "OSTRS_MET_CODE", length = 1)
+    @Column(name = "OSTRS_MET_CODE", columnDefinition = "CHAR(1)")
     private String ostrsMetCode;
 
-    @Column(name = "LNHO_DEAL_MET_CODE", length = 1)
+    @Column(name = "LNHO_DEAL_MET_CODE", columnDefinition = "CHAR(1)")
     private String lnhoDealMetCode;
 
-    @Column(name = "END_NT_YN", length = 1)
+    @Column(name = "END_NT_YN", columnDefinition = "CHAR(1)")
     private String endNtYn;
 
-    @Column(name = "DVUS_ENDDT", length = 8)
+    @Column(name = "DVUS_ENDDT", columnDefinition = "CHAR(8)")
     private String dvusEnddt;
 
     @Column(name = "DVUS_END_WHY", length = 250)
     private String dvusEndWhy;
 
-    @Column(name = "DVUS_END_NT_YMD", length = 8)
+    @Column(name = "DVUS_END_NT_YMD", columnDefinition = "CHAR(8)")
     private String dvusEndNtYmd;
 
     @Column(name = "DVUS_END_APLR_NM", length = 60)
@@ -232,13 +232,13 @@ public class Rgetstgms01 {
     @Column(name = "DVUS_END_NT_NO", length = 20)
     private String dvusEndNtNo;
 
-    @Column(name = "END_NTKIT_ISSUE_YMD", length = 8)
+    @Column(name = "END_NTKIT_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String endNtkitIssueYmd;
 
-    @Column(name = "LAST_QW_ISP_RT", length = 1)
+    @Column(name = "LAST_QW_ISP_RT", columnDefinition = "CHAR(1)")
     private String lastQwIspRt;
 
-    @Column(name = "SRCH_RT_REFL_YN", length = 1)
+    @Column(name = "SRCH_RT_REFL_YN", columnDefinition = "CHAR(1)")
     private String srchRtReflYn;
 
     @Column(name = "FIRST_REG_DTHR")

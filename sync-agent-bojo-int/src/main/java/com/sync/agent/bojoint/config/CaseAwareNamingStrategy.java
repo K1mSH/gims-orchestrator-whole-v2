@@ -40,7 +40,8 @@ public class CaseAwareNamingStrategy extends PhysicalNamingStrategyStandardImpl 
 
     private String toSnakeCase(String name) {
         if (name == null) return null;
-        if (name.equals(name.toLowerCase()) || name.contains("_")) {
+        // 이미 소문자이거나, snake_case이거나, 전부 대문자인 경우 그대로 반환
+        if (name.equals(name.toLowerCase()) || name.contains("_") || name.equals(name.toUpperCase())) {
             return name;
         }
         StringBuilder result = new StringBuilder();

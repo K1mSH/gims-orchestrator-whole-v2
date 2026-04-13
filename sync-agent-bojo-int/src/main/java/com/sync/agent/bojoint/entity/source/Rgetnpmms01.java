@@ -19,7 +19,7 @@ public class Rgetnpmms01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PERM_NT_NO", length = 10)
@@ -37,22 +37,22 @@ public class Rgetnpmms01 {
     @Column(name = "PRFCN_UPCH_SNO", length = 3)
     private String prfcnUpchSno;
 
-    @Column(name = "SF_TEAM_CODE", length = 7)
+    @Column(name = "SF_TEAM_CODE", columnDefinition = "CHAR(7)")
     private String sfTeamCode;
 
-    @Column(name = "PERM_NT_FORM_CODE", length = 1)
+    @Column(name = "PERM_NT_FORM_CODE", columnDefinition = "CHAR(1)")
     private String permNtFormCode;
 
-    @Column(name = "PERM_NT_YMD", length = 8)
+    @Column(name = "PERM_NT_YMD", columnDefinition = "CHAR(8)")
     private String permNtYmd;
 
-    @Column(name = "APLR_GBN_CODE", length = 2)
+    @Column(name = "APLR_GBN_CODE", columnDefinition = "CHAR(2)")
     private String aplrGbnCode;
 
-    @Column(name = "DVOP_LOC_REGN_CODE", length = 10)
+    @Column(name = "DVOP_LOC_REGN_CODE", columnDefinition = "CHAR(10)")
     private String dvopLocRegnCode;
 
-    @Column(name = "DVOP_LOC_SAN", length = 1)
+    @Column(name = "DVOP_LOC_SAN", columnDefinition = "CHAR(1)")
     private String dvopLocSan;
 
     @Column(name = "DVOP_LOC_BUNJI", length = 20)
@@ -82,13 +82,13 @@ public class Rgetnpmms01 {
     @Column(name = "UWATER_SRV", length = 30)
     private String uwaterSrv;
 
-    @Column(name = "UWATER_SRV_CODE", length = 1)
+    @Column(name = "UWATER_SRV_CODE", columnDefinition = "CHAR(1)")
     private String uwaterSrvCode;
 
-    @Column(name = "UWATER_DTL_SRV_CODE", length = 2)
+    @Column(name = "UWATER_DTL_SRV_CODE", columnDefinition = "CHAR(2)")
     private String uwaterDtlSrvCode;
 
-    @Column(name = "UWATER_POTA_YN", length = 1)
+    @Column(name = "UWATER_POTA_YN", columnDefinition = "CHAR(1)")
     private String uwaterPotaYn;
 
     @Column(name = "DIG_DPH")
@@ -115,22 +115,22 @@ public class Rgetnpmms01 {
     @Column(name = "RWT_CAP")
     private BigDecimal rwtCap;
 
-    @Column(name = "DVUS_ST_PLAN_YMD", length = 8)
+    @Column(name = "DVUS_ST_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String dvusStPlanYmd;
 
-    @Column(name = "DVUS_END_PLAN_YMD", length = 8)
+    @Column(name = "DVUS_END_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String dvusEndPlanYmd;
 
-    @Column(name = "DVUS_ENDDT", length = 8)
+    @Column(name = "DVUS_ENDDT", columnDefinition = "CHAR(8)")
     private String dvusEnddt;
 
-    @Column(name = "DVUS_END_NT_YMD", length = 8)
+    @Column(name = "DVUS_END_NT_YMD", columnDefinition = "CHAR(8)")
     private String dvusEndNtYmd;
 
     @Column(name = "DVUS_END_TKIT_NT_NO", length = 20)
     private String dvusEndTkitNtNo;
 
-    @Column(name = "END_NTKIT_ISSUE_YMD", length = 8)
+    @Column(name = "END_NTKIT_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String endNtkitIssueYmd;
 
     @Column(name = "UWATER_OVF_QUA")
@@ -139,16 +139,16 @@ public class Rgetnpmms01 {
     @Column(name = "USE_PLN_QUA")
     private BigDecimal usePlnQua;
 
-    @Column(name = "CGONG_PLAN_YMD", length = 8)
+    @Column(name = "CGONG_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String cgongPlanYmd;
 
-    @Column(name = "JGONG_PLAN_YMD", length = 8)
+    @Column(name = "JGONG_PLAN_YMD", columnDefinition = "CHAR(8)")
     private String jgongPlanYmd;
 
-    @Column(name = "PERM_EF_STDT", length = 8)
+    @Column(name = "PERM_EF_STDT", columnDefinition = "CHAR(8)")
     private String permEfStdt;
 
-    @Column(name = "PERM_EF_ENDDT", length = 8)
+    @Column(name = "PERM_EF_ENDDT", columnDefinition = "CHAR(8)")
     private String permEfEnddt;
 
     @Column(name = "DVUS_SRV", length = 30)
@@ -157,64 +157,64 @@ public class Rgetnpmms01 {
     @Column(name = "FACIL_CTN", length = 250)
     private String facilCtn;
 
-    @Column(name = "PLVT_FACIL_YN", length = 1)
+    @Column(name = "PLVT_FACIL_YN", columnDefinition = "CHAR(1)")
     private String plvtFacilYn;
 
-    @Column(name = "PERM_YN", length = 1)
+    @Column(name = "PERM_YN", columnDefinition = "CHAR(1)")
     private String permYn;
 
-    @Column(name = "LNHO_RAISE_YN", length = 1)
+    @Column(name = "LNHO_RAISE_YN", columnDefinition = "CHAR(1)")
     private String lnhoRaiseYn;
 
-    @Column(name = "LNHO_RAISE_YMD", length = 8)
+    @Column(name = "LNHO_RAISE_YMD", columnDefinition = "CHAR(8)")
     private String lnhoRaiseYmd;
 
-    @Column(name = "LNHO_DEAL_YMD", length = 8)
+    @Column(name = "LNHO_DEAL_YMD", columnDefinition = "CHAR(8)")
     private String lnhoDealYmd;
 
-    @Column(name = "LNHO_RAISE_CAU_CODE", length = 1)
+    @Column(name = "LNHO_RAISE_CAU_CODE", columnDefinition = "CHAR(1)")
     private String lnhoRaiseCauCode;
 
-    @Column(name = "OSTRS_MET_CODE", length = 1)
+    @Column(name = "OSTRS_MET_CODE", columnDefinition = "CHAR(1)")
     private String ostrsMetCode;
 
-    @Column(name = "LNHO_DEAL_MET_CODE", length = 1)
+    @Column(name = "LNHO_DEAL_MET_CODE", columnDefinition = "CHAR(1)")
     private String lnhoDealMetCode;
 
-    @Column(name = "QW_ISP_EXM_TGT", length = 1)
+    @Column(name = "QW_ISP_EXM_TGT", columnDefinition = "CHAR(1)")
     private String qwIspExmTgt;
 
-    @Column(name = "END_NT_YN", length = 1)
+    @Column(name = "END_NT_YN", columnDefinition = "CHAR(1)")
     private String endNtYn;
 
-    @Column(name = "EXT_CHG_PERM_NT_YMD", length = 8)
+    @Column(name = "EXT_CHG_PERM_NT_YMD", columnDefinition = "CHAR(8)")
     private String extChgPermNtYmd;
 
-    @Column(name = "DIGBH_NTKIT_GNT_YMD", length = 8)
+    @Column(name = "DIGBH_NTKIT_GNT_YMD", columnDefinition = "CHAR(8)")
     private String digbhNtkitGntYmd;
 
-    @Column(name = "VFUWAT_NTKIT_GNT_YMD", length = 8)
+    @Column(name = "VFUWAT_NTKIT_GNT_YMD", columnDefinition = "CHAR(8)")
     private String vfuwatNtkitGntYmd;
 
-    @Column(name = "ISSUE_YMD", length = 8)
+    @Column(name = "ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String issueYmd;
 
     @Column(name = "MG_NO", length = 20)
     private String mgNo;
 
-    @Column(name = "RWT_CAPB_SUM_YN", length = 1)
+    @Column(name = "RWT_CAPB_SUM_YN", columnDefinition = "CHAR(1)")
     private String rwtCapbSumYn;
 
-    @Column(name = "ITG_DIST_IN_FACIL_YN", length = 1)
+    @Column(name = "ITG_DIST_IN_FACIL_YN", columnDefinition = "CHAR(1)")
     private String itgDistInFacilYn;
 
-    @Column(name = "PERM_CANCEL_YN", length = 1)
+    @Column(name = "PERM_CANCEL_YN", columnDefinition = "CHAR(1)")
     private String permCancelYn;
 
-    @Column(name = "PERM_CANCEL_YMD", length = 8)
+    @Column(name = "PERM_CANCEL_YMD", columnDefinition = "CHAR(8)")
     private String permCancelYmd;
 
-    @Column(name = "LAST_QW_ISP_RT", length = 1)
+    @Column(name = "LAST_QW_ISP_RT", columnDefinition = "CHAR(1)")
     private String lastQwIspRt;
 
     @Column(name = "CHA_DEPT_NM", length = 60)
@@ -226,10 +226,10 @@ public class Rgetnpmms01 {
     @Column(name = "DIG_OSTRS_MET", length = 250)
     private String digOstrsMet;
 
-    @Column(name = "JGONG_DEAL_YN", length = 1)
+    @Column(name = "JGONG_DEAL_YN", columnDefinition = "CHAR(1)")
     private String jgongDealYn;
 
-    @Column(name = "LAST_CHG_YMD", length = 8)
+    @Column(name = "LAST_CHG_YMD", columnDefinition = "CHAR(8)")
     private String lastChgYmd;
 
     @Column(name = "FIRST_REG_DTHR")
@@ -241,16 +241,16 @@ public class Rgetnpmms01 {
     @Column(name = "BF_PERM_NT_NO", length = 10)
     private String bfPermNtNo;
 
-    @Column(name = "BF_JGONG_YMD", length = 8)
+    @Column(name = "BF_JGONG_YMD", columnDefinition = "CHAR(8)")
     private String bfJgongYmd;
 
-    @Column(name = "DEL_YN", length = 1)
+    @Column(name = "DEL_YN", columnDefinition = "CHAR(1)")
     private String delYn;
 
     @Column(name = "JUNSU", length = 600)
     private String junsu;
 
-    @Column(name = "UNLAW_YN", length = 1)
+    @Column(name = "UNLAW_YN", columnDefinition = "CHAR(1)")
     private String unlawYn;
 
     @Column(name = "DVOP_LOC_RDN_CGG_CODE", length = 5)

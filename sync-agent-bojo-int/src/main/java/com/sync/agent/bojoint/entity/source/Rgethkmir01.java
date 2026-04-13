@@ -18,19 +18,19 @@ public class Rgethkmir01 {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "REL_TRANS_CGG_CODE", length = 7)
+    @Column(name = "REL_TRANS_CGG_CODE", columnDefinition = "CHAR(7)")
     private String relTransCggCode;
 
     @Column(name = "PERM_NT_NO", length = 10)
     private String permNtNo;
 
-    @Column(name = "EXE_HIS_YMD", length = 8)
+    @Column(name = "EXE_HIS_YMD", columnDefinition = "CHAR(8)")
     private String exeHisYmd;
 
     @Column(name = "ORD")
     private Long ord;
 
-    @Column(name = "RPRT_DOC_ISSUE_YMD", length = 8)
+    @Column(name = "RPRT_DOC_ISSUE_YMD", columnDefinition = "CHAR(8)")
     private String rprtDocIssueYmd;
 
     @Column(name = "RPRT_DTL", length = 1000)
@@ -39,7 +39,7 @@ public class Rgethkmir01 {
     @Column(name = "IPRV_ACT_CMPT_CTN", length = 1000)
     private String iprvActCmptCtn;
 
-    @Column(name = "IPRV_ACT_CMPT_YMD", length = 8)
+    @Column(name = "IPRV_ACT_CMPT_YMD", columnDefinition = "CHAR(8)")
     private String iprvActCmptYmd;
 
     @Column(name = "EXE_DTL", length = 1000)
@@ -69,7 +69,7 @@ public class Rgethkmir01 {
     @Column(name = "LAST_MOD_DTHR")
     private LocalDateTime lastModDthr;
 
-    @Column(name = "MW_TAKE_NO", length = 18)
+    @Column(name = "MW_TAKE_NO", columnDefinition = "CHAR(18)")
     private String mwTakeNo;
 
     @Column(name = "PLAN_OP_UPCH_RDN_WHL_ADDR", length = 500)
