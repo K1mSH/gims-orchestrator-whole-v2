@@ -370,6 +370,57 @@ JPA의 대량 쓰기 성능은 구조적 한계로 인해 실무 요구사항을
 - **JDBCTemplate 사용**: 대량 쓰기, UPSERT/DO NOTHING이 필요할 때, 동적 테이블/컬럼일 때
 - 같은 서비스 클래스 내에서 읽기(JPA)와 쓰기(JDBCTemplate) 혼용 가능
 
+### 엔티티 소유권 규칙
+
+> **원칙: 내 DB의 테이블만 엔티티로 정의한다. 남의 DB는 JDBC.**
+
+| 관계 | 접근 방식 | 엔티티 | 이유 |
+|------|----------|--------|------|
+| **내 기본 DB의 테이블** | JPA 읽기 + JDBC 쓰기 | **필수** | 스키마 소유, 컴파일 타임 검증 |
+| **다른 망/에이전트의 DB** | 순수 JDBC | **만들지 않음** | 스키마 소유자가 다름, 의존성 제거 |
+| **외부 시스템 DB** (새올 등) | 순수 JDBC | **만들지 않음** | 우리 소유 아님, 스키마 변경 불가 |
+
+**구체적 적용:**
+
+```
+RCV: [남의 IF_SND] → [내 IF_RSV]
+     순수 JDBC        엔티티 O
+
+Loader: [내 IF_RSV] → [내 Target]
+        JPA 읽기       JDBC 쓰기   ← 둘 다 엔티티 O
+
+SND: [내 Source/Target] → [내 IF_SND]
+     순수 JDBC            순수 JDBC  ← common 모듈, 동적 테이블
+```
+
+**새 Agent 모듈 생성 시 반드시 포함할 entity 구조:**
+```
+entity/
+├── iftable/     ← 내 IF_RSV/IF_SND 엔티티
+├── source/      ← 내 DB에 있는 Source 테이블 (Read Only)
+└── target/      ← 내 DB에 있는 Target 테이블
+```
+이 구조 없이 raw SQL만으로 Step을 구현하면 안 된다.
+
+### DDL 스크립트 관리
+
+실서버에는 JPA ddl-auto를 사용할 수 없으므로, 배포용 DDL을 별도 관리한다.
+
+```
+scripts/ddl/
+├── saeol-tibero/         ← 새올 Tibero 배포용 (DBA 전달)
+├── internal-oracle/      ← 내부 Oracle 배포용
+└── dmz-pg/               ← DMZ PG (JPA 관리, 참고용)
+```
+
+| DB | DDL 관리 방식 |
+|----|-------------|
+| DMZ PG | JPA `ddl-auto` 가능 → DDL 스크립트 선택적 |
+| 새올 Tibero | IF_SND만 우리 소유 → DDL 스크립트 필수, DBA 전달 |
+| 내부 Oracle | 전체 우리 소유 → DDL 스크립트 필수 |
+
+**엔티티 변경 시 해당 DDL 스크립트도 반드시 동기화할 것.**
+
 ---
 
 ## 1.3 테이블 설계 원칙

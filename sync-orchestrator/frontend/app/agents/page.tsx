@@ -255,6 +255,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
   // Step 3: 나머지 폼 데이터
   const [formData, setFormData] = useState({
     agentName: '',
+    zone: '' as string,
     description: '',
     datasourceTag: '',
     sourceDatasourceId: '',
@@ -367,6 +368,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
       } else {
         setDiscoveredAgents(result.agents || []);
         setDiscoveredZone(result.zone || '');
+        setFormData(prev => ({ ...prev, zone: result.zone || '' }));
         // agentInfo를 agentCode 기준 Map으로 저장
         const infoList = result.agentInfo || [];
         const infoMap: Record<string, any> = {};
@@ -400,6 +402,10 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
       alert('Agent를 선택하세요.');
       return;
     }
+    if (!formData.zone) {
+      alert('망구분을 선택하세요.');
+      return;
+    }
     setSubmitting(true);
     try {
       // 1. Agent 등록 (auto-discover 테이블명 또는 기존 ID 방식)
@@ -419,7 +425,7 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
       const createdAgent = await agentApi.create({
         agentCode: selectedAgentCode,
         agentName: formData.agentName,
-        zone: discoveredZone || 'DMZ',
+        zone: formData.zone || discoveredZone || 'DMZ',
         agentType: selectedAgentType,
         endpointUrl: endpointUrl,
         description: formData.description || undefined,
@@ -599,6 +605,16 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                   placeholder="주문 추출 Agent"
                   required
                 />
+              </div>
+              <div className="form-group">
+                <label className="form-label">망구분</label>
+                <select className="form-select" value={formData.zone} onChange={(e) => setFormData({ ...formData, zone: e.target.value })}>
+                  <option value="">선택하세요</option>
+                  <option value="EXTERNAL">외부망</option>
+                  <option value="DMZ">DMZ</option>
+                  <option value="INTERNAL_COMMON">내부공통망</option>
+                  <option value="INTERNAL_SERVICE">내부서비스망</option>
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Datasource Tag (선택)</label>

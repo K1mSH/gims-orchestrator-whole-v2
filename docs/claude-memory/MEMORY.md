@@ -10,6 +10,10 @@
 - [project_oracle_target.md](project_oracle_target.md) - Internal Agent target DB를 Oracle(도커)로 전환 필요
 - [feedback_trace_definition.md](feedback_trace_definition.md) - 추적 검증 = 건수 + 단건 역추적(/trace-source)까지 포함
 - [feedback_memory_pattern_first.md](feedback_memory_pattern_first.md) - 계획 시 MEMORY 패턴 먼저 확인하고 적용
+- [feedback_test_scenario.md](feedback_test_scenario.md) - 단위테스트 결과서: 원본 양식 엄수, F열 숨김 주의, 시나리오 흐름 단위
+- [feedback_condition_query_common.md](feedback_condition_query_common.md) - 커스텀 Step 필수기능: 조건실행+Retention 공통 헬퍼 사용
+- [feedback_strategy_check_before_plan.md](feedback_strategy_check_before_plan.md) - 계획 문서 작성 전 ARCHITECTURE.md 전략 확인 필수
+- [feedback_entity_ownership.md](feedback_entity_ownership.md) - 내 DB=엔티티, 남의 DB=JDBC, 새 Agent 모듈에 entity/ 구조 필수
 
 ## 작업 규칙
 
@@ -44,7 +48,12 @@ orchestrator_v2/
 ├── dev_logs/2026_MM/     # 작업 일지 (년월 디렉토리)
 ├── dev_plan/2026_MM/DD/  # 계획 문서 (년월/일 디렉토리)
 ├── test_plan/            # 기능별 테스트 문서 (재사용)
-└── scripts/              # testdata.sh 등
+└── scripts/
+    ├── ddl/              # 배포용 DDL (DB별 분리)
+    │   ├── saeol-tibero/     # 새올 Tibero (DBA 전달)
+    │   ├── internal-oracle/  # 내부 Oracle
+    │   └── dmz-pg/           # DMZ PG (JPA 관리, 참고용)
+    └── *.sh, *.py 등     # 유틸리티
 ```
 
 ## 빌드 명령어
@@ -87,6 +96,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 | Agent DMZ (sync-agent-bojo) | 8082 |
 | Proxy DMZ (sync-proxy-dmz) | 8083 |
 | API Collector DMZ | 8084 |
+| **Agent Others DMZ (sync-agent-others)** | **8085** |
 | Agent Internal (sync-agent-bojo-int) | 8092 |
 | Proxy Internal (sync-proxy-internal) | 8093 |
 | API Collector Internal | 8094 |
