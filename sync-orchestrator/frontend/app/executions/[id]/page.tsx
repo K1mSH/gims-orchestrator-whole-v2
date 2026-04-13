@@ -197,15 +197,18 @@ export default function ExecutionDetailPage() {
     setTraceLoading(true);
     setTraceResult(null);
 
-    // source_refs가 null인 행은 추적 비대상 (파생 데이터)
-    const sourceRefs = row.source_refs ?? row.SOURCE_REFS;
-    if (sourceRefs === null || sourceRefs === undefined || sourceRefs === '') {
-      setTraceResult({
-        executionId,
-        traceStatus: 'NOT_TRACKABLE' as any,
-      } as TraceResult);
-      setTraceLoading(false);
-      return;
+    // TARGET/TARGET_IF에서 source_refs가 null인 행은 추적 비대상 (파생 데이터: 집계/후처리)
+    // SOURCE(IF) 테이블은 source_refs 유무와 무관하게 PK 기반으로 Target 추적 가능
+    if (tableType !== 'SOURCE') {
+      const sourceRefs = row.source_refs ?? row.SOURCE_REFS;
+      if (sourceRefs === null || sourceRefs === undefined || sourceRefs === '') {
+        setTraceResult({
+          executionId,
+          traceStatus: 'NOT_TRACKABLE' as any,
+        } as TraceResult);
+        setTraceLoading(false);
+        return;
+      }
     }
 
     try {
@@ -368,23 +371,29 @@ export default function ExecutionDetailPage() {
   const flatTableStats: FlatTableStat[] = [];
   for (const stat of tableStats) {
     for (const t of (stat.sourceTables ?? [])) {
+      const read = stat.readCount ?? 0;
+      const failed = stat.failedCount ?? 0;
+      const skip = stat.skipCount ?? 0;
       flatTableStats.push({
         tableName: t,
         tableType: 'SOURCE',
-        totalCount: stat.readCount ?? 0,
-        successCount: stat.readCount ?? 0,
-        failedCount: stat.failedCount ?? 0,
-        skipCount: stat.skipCount ?? 0,
+        totalCount: read,
+        successCount: read - failed - skip,
+        failedCount: failed,
+        skipCount: skip,
       });
     }
     for (const t of (stat.targetTables ?? [])) {
+      const write = stat.writeCount ?? 0;
+      const failed = stat.failedCount ?? 0;
+      const skip = stat.skipCount ?? 0;
       flatTableStats.push({
         tableName: t,
         tableType: 'TARGET',
-        totalCount: stat.writeCount ?? 0,
-        successCount: stat.writeCount ?? 0,
-        failedCount: stat.failedCount ?? 0,
-        skipCount: stat.skipCount ?? 0,
+        totalCount: write + failed,
+        successCount: write,
+        failedCount: failed,
+        skipCount: skip,
       });
     }
   }
