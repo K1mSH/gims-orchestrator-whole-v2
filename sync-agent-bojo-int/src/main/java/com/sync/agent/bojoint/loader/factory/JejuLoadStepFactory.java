@@ -1,5 +1,6 @@
 package com.sync.agent.bojoint.loader.factory;
 
+import com.sync.agent.bojoint.config.DynamicEntityManagerService;
 import com.sync.agent.bojoint.loader.step.JejuJewonLoadStep;
 import com.sync.agent.bojoint.loader.step.JejuObsvdataLoadStep;
 import com.sync.agent.common.controller.DataSourceProvider;
@@ -28,6 +29,7 @@ public class JejuLoadStepFactory implements StepFactory {
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
+    private final DynamicEntityManagerService dynamicEmService;
 
     @Override
     public String getFactoryKey() {
@@ -57,7 +59,8 @@ public class JejuLoadStepFactory implements StepFactory {
             return new JejuObsvdataLoadStep(
                     stepId, stepName, ifTable,
                     sourceTables, targetTables,
-                    dataSourceProvider, syncLogRepository, ifTableService
+                    dataSourceProvider, syncLogRepository, ifTableService,
+                    dynamicEmService
             );
         }
 
@@ -66,7 +69,8 @@ public class JejuLoadStepFactory implements StepFactory {
         return new JejuJewonLoadStep(
                 stepId, stepName, ifTable,
                 sourceTables, targetTables,
-                dataSourceProvider, syncLogRepository, ifTableService
+                dataSourceProvider, syncLogRepository, ifTableService,
+                dynamicEmService
         );
     }
 }

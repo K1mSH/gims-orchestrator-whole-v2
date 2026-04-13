@@ -46,6 +46,7 @@ public class JejuObsvdataLoadStep implements StepExecutor {
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
+    private final com.sync.agent.bojoint.config.DynamicEntityManagerService dynamicEmService;
 
     // OBSRVT_ID → BRNCH_ID 캐시
     private final Map<String, Long> brnchIdCache = new HashMap<>();
@@ -57,7 +58,8 @@ public class JejuObsvdataLoadStep implements StepExecutor {
                                  List<String> configSourceTables, List<String> configTargetTables,
                                  DataSourceProvider dataSourceProvider,
                                  SyncLogRepository syncLogRepository,
-                                 IfTableService ifTableService) {
+                                 IfTableService ifTableService,
+                                 com.sync.agent.bojoint.config.DynamicEntityManagerService dynamicEmService) {
         this.stepId = stepId;
         this.stepName = stepName;
         this.ifTable = ifTable;
@@ -66,6 +68,7 @@ public class JejuObsvdataLoadStep implements StepExecutor {
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.ifTableService = ifTableService;
+        this.dynamicEmService = dynamicEmService;
     }
 
     @Override

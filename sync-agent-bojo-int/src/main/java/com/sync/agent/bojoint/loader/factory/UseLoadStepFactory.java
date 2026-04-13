@@ -1,5 +1,6 @@
 package com.sync.agent.bojoint.loader.factory;
 
+import com.sync.agent.bojoint.config.DynamicEntityManagerService;
 import com.sync.agent.bojoint.loader.step.UseLoadStep;
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.pipeline.StepFactory;
@@ -23,6 +24,7 @@ public class UseLoadStepFactory implements StepFactory {
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
+    private final DynamicEntityManagerService dynamicEmService;
 
     @Override
     public String getFactoryKey() {
@@ -41,7 +43,8 @@ public class UseLoadStepFactory implements StepFactory {
         return new UseLoadStep(
                 stepId, stepName,
                 sourceTables, targetTables,
-                dataSourceProvider, syncLogRepository, ifTableService
+                dataSourceProvider, syncLogRepository, ifTableService,
+                dynamicEmService
         );
     }
 }

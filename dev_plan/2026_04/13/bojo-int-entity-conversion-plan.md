@@ -286,26 +286,97 @@ public class TmGd970001 {
 
 ## 작업 순서
 
-### Phase 1: 인프라 (2개)
+### Phase 1: 원본 DDL 백업 (검증 기준선)
+
+엔티티 작성 전, 현재 테이블 구조를 원본으로 남겨둔다.
+
+```bash
+# 내부 Oracle — 전체 테이블 DDL 덤프
+docker exec gims_orchestrator_inner_oracle bash -c "
+echo '
+SET LONG 50000
+SET PAGESIZE 0
+SET LINESIZE 300
+SET FEEDBACK OFF
+SELECT DBMS_METADATA.GET_DDL(\"TABLE\", table_name) FROM user_tables ORDER BY table_name;
+' | sqlplus -S k1m/1111@//localhost:1521/XEPDB1
+" > scripts/ddl/internal-oracle/original-ddl-backup.sql
+
+# 새올 Oracle — IF_SND 테이블 DDL 덤프
+docker exec gims_dmz_saeol_oracle bash -c "
+echo '
+SET LONG 50000
+SET PAGESIZE 0
+SET LINESIZE 300
+SET FEEDBACK OFF
+SELECT DBMS_METADATA.GET_DDL(\"TABLE\", table_name) FROM user_tables WHERE table_name LIKE \"IF_SND%\" ORDER BY table_name;
+' | sqlplus -S k1m/1111@//localhost:1521/XEPDB1
+" > scripts/ddl/saeol-tibero/original-if-snd-backup.sql
+```
+
+### Phase 2: 인프라 (2개)
 1. DynamicEntityManagerService 추가
 2. CaseAwareNamingStrategy 추가
 
-### Phase 2: Entity 생성 (52개)
+### Phase 3: Entity 생성 (52개)
 3. Target 엔티티 13개 — DDL 기준으로 컬럼 매핑
 4. IF 비새올 엔티티 7개 — 기존 DDL 기준
 5. IF 새올 엔티티 16개 — oracle_meta.txt 기준 + IF 공통 컬럼
 6. Source 새올 엔티티 16개 — oracle_meta.txt 기준
 
-### Phase 3: Step 리팩터링 (4개)
+### Phase 4: 엔티티 ↔ 원본 DDL 비교 검증
+
+엔티티가 원본과 정확히 일치하는지 확인하는 과정.
+
+**검증 절차:**
+1. 기존 테이블 DROP (백업 확인 후)
+2. `ddl-auto: create`로 앱 기동 → JPA가 엔티티 기반 테이블 재생성
+3. 재생성된 DDL 덤프
+4. 원본 DDL과 diff 비교
+
+```bash
+# 1. 기존 테이블 DROP (주의: 데이터 소실됨 — 테스트 환경에서만)
+# DROP 스크립트는 별도 생성
+
+# 2. application.yml 임시 변경
+#    ddl-auto: validate → ddl-auto: create
+#    앱 기동 → 테이블 재생성
+
+# 3. 재생성된 DDL 덤프
+docker exec gims_orchestrator_inner_oracle bash -c "..." > scripts/ddl/internal-oracle/jpa-generated-ddl.sql
+
+# 4. 비교
+diff scripts/ddl/internal-oracle/original-ddl-backup.sql \
+     scripts/ddl/internal-oracle/jpa-generated-ddl.sql
+```
+
+**비교 기준:**
+| 항목 | 일치해야 함 | 차이 허용 |
+|------|-----------|----------|
+| 테이블명 | O | |
+| 컬럼명 | O | |
+| 컬럼 타입/길이 | O | |
+| NOT NULL 제약 | O | |
+| PK 제약 | O | |
+| 인덱스 | O | 인덱스명 차이는 허용 |
+| IDENTITY/SEQUENCE | O | |
+| 컬럼 순서 | | O (JPA 순서와 다를 수 있음) |
+| COMMENT | | O (JPA가 생성하지 않음 — DDL 스크립트에서 별도 관리) |
+| 테이블스페이스/스토리지 | | O (환경별 설정) |
+
+**불일치 발견 시:** 엔티티 수정 → DROP → 재생성 → 재비교 (일치할 때까지 반복)
+
+### Phase 5: Step 리팩터링 (4개)
 7. GimsTargetRepository JPA 전환
 8. InternalBojoLoadStep 리팩터링
 9. JejuJewonLoadStep (I1) 리팩터링
 10. JejuObsvdataLoadStep (I2) 리팩터링
 11. UseLoadStep (I5) 리팩터링
 
-### Phase 4: 검증
-12. 빌드 테스트 (`./gradlew clean build -x test`)
-13. E2E 테스트 (internal-bojo-loader 실행 → 기존과 동일 결과)
+### Phase 6: E2E 검증
+12. `ddl-auto: create` → `ddl-auto: validate`로 복원
+13. 빌드 테스트 (`./gradlew clean build -x test`)
+14. E2E 테스트 (internal-bojo-loader 실행 → 기존과 동일 결과)
 
 ## 주의사항
 

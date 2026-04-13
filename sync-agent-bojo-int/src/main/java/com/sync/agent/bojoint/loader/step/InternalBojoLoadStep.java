@@ -46,6 +46,7 @@ public class InternalBojoLoadStep implements StepExecutor {
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
+    private final com.sync.agent.bojoint.config.DynamicEntityManagerService dynamicEmService;
 
     // EAV 항목 ID
     private static final int IEM_GWDEP = 5;       // 지하수위
@@ -59,7 +60,8 @@ public class InternalBojoLoadStep implements StepExecutor {
                             List<String> configSourceTables, List<String> configTargetTables,
                             DataSourceProvider dataSourceProvider,
                             SyncLogRepository syncLogRepository,
-                            IfTableService ifTableService) {
+                            IfTableService ifTableService,
+                            com.sync.agent.bojoint.config.DynamicEntityManagerService dynamicEmService) {
         this.stepId = stepId;
         this.stepName = stepName;
         this.ifObsvdataTable = ifObsvdataTable;
@@ -72,6 +74,7 @@ public class InternalBojoLoadStep implements StepExecutor {
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.ifTableService = ifTableService;
+        this.dynamicEmService = dynamicEmService;
     }
 
     @Override

@@ -1,5 +1,9 @@
 package com.sync.agent.bojoint.loader.step;
 
+import com.sync.agent.bojoint.config.DynamicEntityManagerService;
+import com.sync.agent.bojoint.entity.iftable.IfRsvUseLegacyData;
+import com.sync.agent.bojoint.entity.iftable.IfRsvUseStatusData;
+import com.sync.agent.bojoint.entity.target.TmGd111010;
 import com.sync.agent.common.controller.DataSourceProvider;
 import com.sync.agent.common.entity.SyncLog;
 import com.sync.agent.common.repository.SyncLogRepository;
@@ -12,6 +16,8 @@ import com.sync.agent.common.step.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,6 +47,7 @@ public class UseLoadStep implements StepExecutor {
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
+    private final DynamicEntityManagerService dynamicEmService;
 
     // TELNO → BRNCH_ID 캐시
     private final Map<String, Long> brnchIdCache = new HashMap<>();
@@ -49,7 +56,8 @@ public class UseLoadStep implements StepExecutor {
                         List<String> configSourceTables, List<String> configTargetTables,
                         DataSourceProvider dataSourceProvider,
                         SyncLogRepository syncLogRepository,
-                        IfTableService ifTableService) {
+                        IfTableService ifTableService,
+                        DynamicEntityManagerService dynamicEmService) {
         this.stepId = stepId;
         this.stepName = stepName;
         this.configSourceTables = configSourceTables;
@@ -57,6 +65,7 @@ public class UseLoadStep implements StepExecutor {
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.ifTableService = ifTableService;
+        this.dynamicEmService = dynamicEmService;
     }
 
     @Override
@@ -88,13 +97,24 @@ public class UseLoadStep implements StepExecutor {
             ConditionBuilder.WhereClause legacyWhere = ConditionBuilder.buildIfTableQuery(
                     context.getExecutionOptions(), IF_LEGACY, sourceDbType);
             String legacySql = "SELECT * FROM " + IF_LEGACY + legacyWhere.toWhereSql();
-            List<Map<String, Object>> legacyRows = sourceJdbc.queryForList(legacySql, legacyWhere.getParamsArray());
+            EntityManager sourceEm = dynamicEmService.getSourceEntityManager();
+            List<IfRsvUseLegacyData> legacyRows;
+            try {
+                Query legacyQuery = sourceEm.createNativeQuery(legacySql, IfRsvUseLegacyData.class);
+                Object[] legacyParams = legacyWhere.getParamsArray();
+                for (int i = 0; i < legacyParams.length; i++) {
+                    legacyQuery.setParameter(i + 1, legacyParams[i]);
+                }
+                legacyRows = legacyQuery.getResultList();
+            } finally {
+                sourceEm.close();
+            }
             totalRead += legacyRows.size();
             log.info("[{}] Legacy 데이터 {} 건 조회 ({})", stepId, legacyRows.size(),
                     isResync ? "재동기화" : "대기중");
 
             if (!legacyRows.isEmpty()) {
-                LegacyResult lr = processLegacyData(legacyRows, sourceJdbc, targetJdbc,
+                LegacyResult lr = processLegacyData(legacyRows, targetJdbc,
                         sourceDsId, executionId);
                 totalWrite += lr.writeCount;
                 totalSkip += lr.skipCount;
@@ -133,7 +153,18 @@ public class UseLoadStep implements StepExecutor {
             ConditionBuilder.WhereClause statusWhere = ConditionBuilder.buildIfTableQuery(
                     context.getExecutionOptions(), IF_STATUS, sourceDbType);
             String statusSql = "SELECT * FROM " + IF_STATUS + statusWhere.toWhereSql();
-            List<Map<String, Object>> statusRows = sourceJdbc.queryForList(statusSql, statusWhere.getParamsArray());
+            List<IfRsvUseStatusData> statusRows;
+            EntityManager sourceEm2 = dynamicEmService.getSourceEntityManager();
+            try {
+                Query statusQuery = sourceEm2.createNativeQuery(statusSql, IfRsvUseStatusData.class);
+                Object[] statusParams = statusWhere.getParamsArray();
+                for (int i = 0; i < statusParams.length; i++) {
+                    statusQuery.setParameter(i + 1, statusParams[i]);
+                }
+                statusRows = statusQuery.getResultList();
+            } finally {
+                sourceEm2.close();
+            }
             totalRead += statusRows.size();
             log.info("[{}] Status 데이터 {} 건 조회", stepId, statusRows.size());
 
@@ -183,17 +214,17 @@ public class UseLoadStep implements StepExecutor {
 
     // ==================== Legacy 처리 ====================
 
-    private LegacyResult processLegacyData(List<Map<String, Object>> rows,
-                                            JdbcTemplate sourceJdbc, JdbcTemplate targetJdbc,
+    private LegacyResult processLegacyData(List<IfRsvUseLegacyData> rows,
+                                            JdbcTemplate targetJdbc,
                                             String sourceDsId, String executionId) {
         LegacyResult result = new LegacyResult();
 
-        for (Map<String, Object> row : rows) {
-            Object ifId = row.get("ID");
-            String telno = getString(row, "TELNO");
+        for (IfRsvUseLegacyData row : rows) {
+            Integer ifId = row.getId();
+            String telno = row.getTelno();
 
             try {
-                Long brnchId = resolveBrnchId(targetJdbc, telno);
+                Long brnchId = resolveBrnchId(telno);
                 if (brnchId == null) {
                     log.warn("[{}] BRNCH_ID 미발견: telno={}, SKIP", stepId, telno);
                     result.skipCount++;
@@ -204,8 +235,8 @@ public class UseLoadStep implements StepExecutor {
                 String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, IF_LEGACY, ifId);
 
                 // 음수 → 0 변환
-                Number lastMeasure = getNumber(row, "LAST_MEASURE_VALUE");
-                Number usgqty = getNumber(row, "USGQTY");
+                Number lastMeasure = row.getLastMeasureValue();
+                Number usgqty = row.getUsgqty();
                 if (usgqty != null && usgqty.doubleValue() < 0) {
                     usgqty = 0;
                 }
@@ -218,13 +249,13 @@ public class UseLoadStep implements StepExecutor {
                     "WHEN MATCHED THEN UPDATE SET LAST_MSRMT_VL = ?, USE_QNT = ?, EXECUTION_ID = ?, SOURCE_REFS = ? " +
                     "WHEN NOT MATCHED THEN INSERT (BRNCH_ID, OBSRVN_DT, LAST_MSRMT_VL, USE_QNT, EXECUTION_ID, SOURCE_REFS) " +
                     "VALUES (?, ?, ?, ?, ?, ?)",
-                    brnchId, row.get("OBSR_DT"),
+                    brnchId, row.getObsrDt(),
                     lastMeasure, usgqty, executionId, sourceRef,
-                    brnchId, row.get("OBSR_DT"), lastMeasure, usgqty, executionId, sourceRef
+                    brnchId, row.getObsrDt(), lastMeasure, usgqty, executionId, sourceRef
                 );
 
                 // 영향받은 (BRNCH_ID, 날짜) 기록 — 일집계용
-                String ymd = getYmd(row, "OBSR_DT");
+                String ymd = toYmd(row.getObsrDt());
                 if (ymd != null) {
                     result.affectedBrnchDates.add(brnchId + ":" + ymd);
                 }
@@ -290,23 +321,22 @@ public class UseLoadStep implements StepExecutor {
 
     // ==================== Status 처리 ====================
 
-    private StatusResult processStatusData(List<Map<String, Object>> rows,
+    private StatusResult processStatusData(List<IfRsvUseStatusData> rows,
                                             JdbcTemplate targetJdbc,
                                             String sourceDsId, String executionId) {
         StatusResult result = new StatusResult();
 
-        for (Map<String, Object> row : rows) {
-            Object ifId = row.get("ID");
-            Number sn = getNumber(row, "SN");
+        for (IfRsvUseStatusData row : rows) {
+            Integer ifId = row.getId();
+            Long sn = row.getSn();
 
             try {
                 String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, IF_STATUS, ifId);
-                String telno = getString(row, "TELNO");
 
                 targetJdbc.update(
                     "INSERT INTO TM_GD111025 (SN, TELNO, OBSRVN_DT, LAST_CHG_DT, EXECUTION_ID, SOURCE_REFS) " +
                     "VALUES (?, ?, ?, ?, ?, ?)",
-                    sn, telno, row.get("OBSR_DT"), row.get("LAST_CHANGE_DT"), executionId, sourceRef
+                    sn, row.getTelno(), row.getObsrDt(), row.getLastChangeDt(), executionId, sourceRef
                 );
 
                 result.successIds.add(ifId);
@@ -324,37 +354,27 @@ public class UseLoadStep implements StepExecutor {
 
     // ==================== 조회 + 캐시 ====================
 
-    private Long resolveBrnchId(JdbcTemplate jdbc, String telno) {
+    private Long resolveBrnchId(String telno) {
         return brnchIdCache.computeIfAbsent(telno, t -> {
+            EntityManager em = dynamicEmService.getTargetEntityManager();
             try {
-                return jdbc.queryForObject(
-                        "SELECT BRNCH_ID FROM TM_GD111010 WHERE TELNO = ?", Long.class, t);
+                List<TmGd111010> results = em.createQuery(
+                        "SELECT e FROM TmGd111010 e WHERE e.telno = :telno", TmGd111010.class)
+                        .setParameter("telno", t)
+                        .getResultList();
+                return results.isEmpty() ? null : results.get(0).getBrnchId();
             } catch (Exception e) {
                 return null;
+            } finally {
+                em.close();
             }
         });
     }
 
     // ==================== 헬퍼 ====================
 
-    private String getString(Map<String, Object> row, String key) {
-        Object val = row.get(key);
-        return val != null ? val.toString() : null;
-    }
-
-    private Number getNumber(Map<String, Object> row, String key) {
-        Object val = row.get(key);
-        if (val instanceof Number) return (Number) val;
-        if (val != null) {
-            try { return Double.parseDouble(val.toString()); } catch (NumberFormatException e) { return null; }
-        }
-        return null;
-    }
-
-    private String getYmd(Map<String, Object> row, String key) {
-        Object val = row.get(key);
+    private String toYmd(Object val) {
         if (val == null) return null;
-        // TIMESTAMP/DATE → YYYYMMDD
         String str = val.toString().replace("-", "").replace("/", "");
         return str.length() >= 8 ? str.substring(0, 8) : null;
     }

@@ -58,13 +58,15 @@ public class JejuJewonLoadStep implements StepExecutor {
     private final DataSourceProvider dataSourceProvider;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
+    private final com.sync.agent.bojoint.config.DynamicEntityManagerService dynamicEmService;
 
     public JejuJewonLoadStep(String stepId, String stepName,
                               String ifTable,
                               List<String> configSourceTables, List<String> configTargetTables,
                               DataSourceProvider dataSourceProvider,
                               SyncLogRepository syncLogRepository,
-                              IfTableService ifTableService) {
+                              IfTableService ifTableService,
+                              com.sync.agent.bojoint.config.DynamicEntityManagerService dynamicEmService) {
         this.stepId = stepId;
         this.stepName = stepName;
         this.ifTable = ifTable;
@@ -73,6 +75,7 @@ public class JejuJewonLoadStep implements StepExecutor {
         this.dataSourceProvider = dataSourceProvider;
         this.syncLogRepository = syncLogRepository;
         this.ifTableService = ifTableService;
+        this.dynamicEmService = dynamicEmService;
     }
 
     @Override
