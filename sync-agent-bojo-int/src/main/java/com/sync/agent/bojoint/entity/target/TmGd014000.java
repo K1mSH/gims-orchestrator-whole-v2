@@ -41,4 +41,10 @@ public class TmGd014000 {
 
     @Column(name = "REG_YMD", length = 8)
     private String regYmd;
+
+    @Column(name = "EXECUTION_ID")
+    private String executionId;
+
+    @Column(name = "SOURCE_REFS", length = 4000)
+    private String sourceRefs;
 }

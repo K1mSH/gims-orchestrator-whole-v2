@@ -1,0 +1,20 @@
+# ── Internal Loader — API Collector 데이터 적재 ──
+# IF_RSV(Oracle) → Target(Oracle) MERGE 적재
+# 1:1 매핑, 변환 없음
+agent-code: internal-api-collect-loader
+type: LOADER
+
+steps:
+  - id: news-load
+    name: 뉴스 적재
+    factory-key: simple-load
+    source-table: IF_RSV_TM_GD014001
+    target-table: TM_GD014001
+    merge-key: ORGNL_URL
+
+  - id: nara-bid-load
+    name: 나라장터 적재
+    factory-key: simple-load
+    source-table: IF_RSV_TM_GD014000
+    target-table: TM_GD014000
+    merge-key: BID_PBANC_NO
