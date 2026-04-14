@@ -30,3 +30,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+
+# Jira 인증
+dev_plan/jira/jira_token.txt
+dev_plan/jira/jira_email.txt

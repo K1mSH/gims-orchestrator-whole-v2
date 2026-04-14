@@ -1,0 +1,1184 @@
+{
+  "epics": {
+    "01-datasource": {
+      "key": "KAN-252",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline": {
+      "key": "KAN-296",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "03-api-collect": {
+      "key": "KAN-388",
+      "startDate": "2026-03-13",
+      "endDate": null
+    },
+    "04-monitoring": {
+      "key": "KAN-441",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "05-api-provide": {
+      "key": "KAN-522",
+      "startDate": null,
+      "endDate": null
+    },
+    "06-procedure-mgmt": {
+      "key": "KAN-547",
+      "startDate": null,
+      "endDate": null
+    },
+    "07-security": {
+      "key": "KAN-560",
+      "startDate": "2026-03-12",
+      "endDate": null
+    }
+  },
+  "tasks": {
+    "01-datasource#Datasource CRUD": {
+      "key": "KAN-253",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "01-datasource#연결 테스트": {
+      "key": "KAN-261",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "01-datasource#테이블/컬럼 관리": {
+      "key": "KAN-265",
+      "startDate": "2026-03-05",
+      "endDate": null
+    },
+    "01-datasource#DB 등록/수정 화면": {
+      "key": "KAN-274",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "01-datasource#DB 목록 화면": {
+      "key": "KAN-280",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "01-datasource#테이블 관리 모달": {
+      "key": "KAN-283",
+      "startDate": "2026-03-05",
+      "endDate": null
+    },
+    "01-datasource#DB 연결 프록시": {
+      "key": "KAN-289",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#파이프라인 엔진": {
+      "key": "KAN-297",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#조건실행/증분실행": {
+      "key": "KAN-304",
+      "startDate": "2026-03-11",
+      "endDate": null
+    },
+    "02-agent-pipeline#추적/SyncLog": {
+      "key": "KAN-309",
+      "startDate": "2026-03-09",
+      "endDate": null
+    },
+    "02-agent-pipeline#Multi-DB 호환/보안": {
+      "key": "KAN-314",
+      "startDate": "2026-03-17",
+      "endDate": null
+    },
+    "02-agent-pipeline#DMZ 수집 Agent": {
+      "key": "KAN-318",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#DMZ 전송 Agent": {
+      "key": "KAN-325",
+      "startDate": "2026-03-31",
+      "endDate": null
+    },
+    "02-agent-pipeline#내부망 Oracle 전환": {
+      "key": "KAN-332",
+      "startDate": "2026-03-26",
+      "endDate": null
+    },
+    "02-agent-pipeline#내부망 Loader Step": {
+      "key": "KAN-338",
+      "startDate": "2026-04-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#Entity 전환": {
+      "key": "KAN-346",
+      "startDate": "2026-04-13",
+      "endDate": null
+    },
+    "02-agent-pipeline#DB 연결 프록시": {
+      "key": "KAN-352",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)": {
+      "key": "KAN-356",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#DMZ Loader 등록": {
+      "key": "KAN-367",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)": {
+      "key": "KAN-369",
+      "startDate": "2026-03-31",
+      "endDate": null
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)": {
+      "key": "KAN-376",
+      "startDate": "2026-04-02",
+      "endDate": null
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)": {
+      "key": "KAN-382",
+      "startDate": "2026-04-03",
+      "endDate": null
+    },
+    "03-api-collect#범용 실행기": {
+      "key": "KAN-389",
+      "startDate": "2026-03-13",
+      "endDate": null
+    },
+    "03-api-collect#커스텀 실행기": {
+      "key": "KAN-400",
+      "startDate": "2026-03-25",
+      "endDate": null
+    },
+    "03-api-collect#스케줄 실행": {
+      "key": "KAN-407",
+      "startDate": "2026-03-13",
+      "endDate": null
+    },
+    "03-api-collect#Mock API 테스트 환경": {
+      "key": "KAN-412",
+      "startDate": "2026-03-25",
+      "endDate": null
+    },
+    "03-api-collect#API 수집 관리 화면": {
+      "key": "KAN-416",
+      "startDate": "2026-03-13",
+      "endDate": null
+    },
+    "03-api-collect#범용 실행기 등록": {
+      "key": "KAN-421",
+      "startDate": "2026-03-26",
+      "endDate": null
+    },
+    "03-api-collect#커스텀 실행기 등록": {
+      "key": "KAN-427",
+      "startDate": "2026-03-27",
+      "endDate": null
+    },
+    "03-api-collect#후속 파이프라인 연결": {
+      "key": "KAN-434",
+      "startDate": "2026-03-31",
+      "endDate": null
+    },
+    "04-monitoring#Agent 관리 API": {
+      "key": "KAN-442",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "04-monitoring#실행 관리 API": {
+      "key": "KAN-450",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "04-monitoring#실행 이력 API": {
+      "key": "KAN-455",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "04-monitoring#실행 상세/추적 API": {
+      "key": "KAN-461",
+      "startDate": "2026-03-09",
+      "endDate": null
+    },
+    "04-monitoring#스케줄 관리 API": {
+      "key": "KAN-470",
+      "startDate": "2026-03-05",
+      "endDate": null
+    },
+    "04-monitoring#Retention 보존기간": {
+      "key": "KAN-474",
+      "startDate": "2026-03-05",
+      "endDate": null
+    },
+    "04-monitoring#Agent 자동 관리": {
+      "key": "KAN-479",
+      "startDate": "2026-04-06",
+      "endDate": null
+    },
+    "04-monitoring#대시보드 화면": {
+      "key": "KAN-485",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "04-monitoring#Agent 관리 화면": {
+      "key": "KAN-491",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "04-monitoring#Agent 등록 화면": {
+      "key": "KAN-495",
+      "startDate": "2026-04-06",
+      "endDate": null
+    },
+    "04-monitoring#Agent 상세 화면": {
+      "key": "KAN-499",
+      "startDate": "2026-03-06",
+      "endDate": null
+    },
+    "04-monitoring#조건실행 패널": {
+      "key": "KAN-504",
+      "startDate": "2026-03-12",
+      "endDate": null
+    },
+    "04-monitoring#실행 이력 화면": {
+      "key": "KAN-509",
+      "startDate": "2026-03-03",
+      "endDate": null
+    },
+    "04-monitoring#실행 상세 화면": {
+      "key": "KAN-513",
+      "startDate": "2026-03-09",
+      "endDate": null
+    },
+    "04-monitoring#데이터 추적 화면": {
+      "key": "KAN-517",
+      "startDate": "2026-03-10",
+      "endDate": null
+    },
+    "05-api-provide#오퍼레이션 관리": {
+      "key": "KAN-523",
+      "startDate": null,
+      "endDate": null
+    },
+    "05-api-provide#테스트 호출": {
+      "key": "KAN-529",
+      "startDate": null,
+      "endDate": null
+    },
+    "05-api-provide#API 엔드포인트 생성": {
+      "key": "KAN-533",
+      "startDate": null,
+      "endDate": null
+    },
+    "05-api-provide#실행/모니터링": {
+      "key": "KAN-537",
+      "startDate": null,
+      "endDate": null
+    },
+    "05-api-provide#오퍼레이션 관리 화면": {
+      "key": "KAN-541",
+      "startDate": null,
+      "endDate": null
+    },
+    "06-procedure-mgmt#요구사항 확정": {
+      "key": "KAN-548",
+      "startDate": null,
+      "endDate": null
+    },
+    "06-procedure-mgmt#프로시저 게시판": {
+      "key": "KAN-553",
+      "startDate": null,
+      "endDate": null
+    },
+    "06-procedure-mgmt#프로시저 관리 화면": {
+      "key": "KAN-557",
+      "startDate": null,
+      "endDate": null
+    },
+    "07-security#DB 자격증명 암호화": {
+      "key": "KAN-561",
+      "startDate": "2026-03-12",
+      "endDate": null
+    },
+    "07-security#자격증명 전달 흐름": {
+      "key": "KAN-568",
+      "startDate": "2026-03-17",
+      "endDate": null
+    },
+    "07-security#API Key 인증": {
+      "key": "KAN-576",
+      "startDate": "2026-03-19",
+      "endDate": null
+    },
+    "07-security#엔드포인트 보안": {
+      "key": "KAN-581",
+      "startDate": "2026-03-19",
+      "endDate": null
+    },
+    "07-security#HikariCP 풀 하드닝": {
+      "key": "KAN-586",
+      "startDate": "2026-03-19",
+      "endDate": null
+    },
+    "07-security#로그인/인가": {
+      "key": "KAN-589",
+      "startDate": null,
+      "endDate": null
+    }
+  },
+  "subtasks": {
+    "01-datasource#Datasource CRUD#등록 API (DB타입, 호스트, 포트, 인증정보, Zone 설정)": {
+      "key": "KAN-254"
+    },
+    "01-datasource#Datasource CRUD#수정 API": {
+      "key": "KAN-255"
+    },
+    "01-datasource#Datasource CRUD#삭제 API": {
+      "key": "KAN-256"
+    },
+    "01-datasource#Datasource CRUD#목록 조회 / 활성 목록 / 간단 조회 (Agent 등록용)": {
+      "key": "KAN-257"
+    },
+    "01-datasource#Datasource CRUD#단건 조회 + 연결 정보 조회 (자격증명 포함)": {
+      "key": "KAN-258"
+    },
+    "01-datasource#Datasource CRUD#Multi-DB 타입 지원 (PostgreSQL / MySQL / Oracle / MariaDB / SQL Server)": {
+      "key": "KAN-259"
+    },
+    "01-datasource#Datasource CRUD#Jasypt 암호화 (ENC 암호문 저장, 복호화는 Agent에서)": {
+      "key": "KAN-260"
+    },
+    "01-datasource#연결 테스트#저장된 Datasource 연결 테스트 (Proxy 경유 또는 직접)": {
+      "key": "KAN-262"
+    },
+    "01-datasource#연결 테스트#저장 전 연결 테스트 (등록 폼에서 바로 테스트)": {
+      "key": "KAN-263"
+    },
+    "01-datasource#연결 테스트#Zone 기반 분기 — zone 있으면 Proxy 경유, 없으면 직접 연결": {
+      "key": "KAN-264"
+    },
+    "01-datasource#테이블/컬럼 관리#실제 DB에서 테이블 검색 (Proxy 경유)": {
+      "key": "KAN-266"
+    },
+    "01-datasource#테이블/컬럼 관리#실제 DB에서 컬럼 검색": {
+      "key": "KAN-267"
+    },
+    "01-datasource#테이블/컬럼 관리#테이블 등록 (컬럼 포함)": {
+      "key": "KAN-268"
+    },
+    "01-datasource#테이블/컬럼 관리#컬럼 갱신": {
+      "key": "KAN-269"
+    },
+    "01-datasource#테이블/컬럼 관리#테이블 삭제": {
+      "key": "KAN-270"
+    },
+    "01-datasource#테이블/컬럼 관리#테이블 alias 전역 조회": {
+      "key": "KAN-271"
+    },
+    "01-datasource#테이블/컬럼 관리#sourceRef lookup 데이터 조회": {
+      "key": "KAN-272"
+    },
+    "01-datasource#테이블/컬럼 관리#Oracle remarksReporting 활성화 (comment 수집)": {
+      "key": "KAN-273"
+    },
+    "01-datasource#DB 등록/수정 화면#DB 타입 선택 (5종 드롭다운)": {
+      "key": "KAN-275"
+    },
+    "01-datasource#DB 등록/수정 화면#연결 정보 입력 (호스트, 포트, DB명, 사용자, 비밀번호)": {
+      "key": "KAN-276"
+    },
+    "01-datasource#DB 등록/수정 화면#Zone 선택 (EXTERNAL / DMZ / INTERNAL_COMMON / INTERNAL_SERVICE)": {
+      "key": "KAN-277"
+    },
+    "01-datasource#DB 등록/수정 화면#등록 전 연결 테스트 버튼": {
+      "key": "KAN-278"
+    },
+    "01-datasource#DB 등록/수정 화면#수정 모드: 기존 정보 로드 (비밀번호는 보안상 비움)": {
+      "key": "KAN-279"
+    },
+    "01-datasource#DB 목록 화면#목록 테이블 (ID, 이름, DB타입 배지, Zone, 호스트, 포트, 활성 상태)": {
+      "key": "KAN-281"
+    },
+    "01-datasource#DB 목록 화면#작업 버튼: 테이블관리, 연결테스트, 수정, 삭제": {
+      "key": "KAN-282"
+    },
+    "01-datasource#테이블 관리 모달#선택된 Datasource의 테이블 목록 (실제 DB에서 검색)": {
+      "key": "KAN-284"
+    },
+    "01-datasource#테이블 관리 모달#테이블별 컬럼 정보 (이름, 데이터타입, comment/alias)": {
+      "key": "KAN-285"
+    },
+    "01-datasource#테이블 관리 모달#컬럼 재수집 기능": {
+      "key": "KAN-286"
+    },
+    "01-datasource#테이블 관리 모달#미등록 테이블 상단 정렬": {
+      "key": "KAN-287"
+    },
+    "01-datasource#테이블 관리 모달#description 표시 통일 (tableAlias → description)": {
+      "key": "KAN-288"
+    },
+    "01-datasource#DB 연결 프록시#sync-proxy-dmz (8083) — 외부 DB 연결 프록시": {
+      "key": "KAN-290"
+    },
+    "01-datasource#DB 연결 프록시#sync-proxy-internal (8093) — 내부 DB 연결 프록시": {
+      "key": "KAN-291"
+    },
+    "01-datasource#DB 연결 프록시#ProxyDataSourceService (커넥션 풀 캐시 + Orchestrator 폴백)": {
+      "key": "KAN-292"
+    },
+    "01-datasource#DB 연결 프록시#HikariCP 풀 하드닝 (maxPool=10, timeout=10s, leak=60s)": {
+      "key": "KAN-293"
+    },
+    "01-datasource#DB 연결 프록시#API Key 인증": {
+      "key": "KAN-294"
+    },
+    "01-datasource#DB 연결 프록시#Oracle 지원 (ojdbc8)": {
+      "key": "KAN-295"
+    },
+    "02-agent-pipeline#파이프라인 엔진#SourceToIfStep — 소스 DB → IF 테이블 추출 공통 Step": {
+      "key": "KAN-298"
+    },
+    "02-agent-pipeline#파이프라인 엔진#PipelineRegistry — (agentCode, modeId) 복합키 라우팅": {
+      "key": "KAN-299"
+    },
+    "02-agent-pipeline#파이프라인 엔진#LoaderStepHelper — Loader 공통 로직 (processJewon, processObsvdata, saveSyncLog)": {
+      "key": "KAN-300"
+    },
+    "02-agent-pipeline#파이프라인 엔진#StepFactory 다중 factory-key 지원": {
+      "key": "KAN-301"
+    },
+    "02-agent-pipeline#파이프라인 엔진#YAML 기반 설정 — 코드 변경 없이 YAML만으로 파이프라인 추가": {
+      "key": "KAN-302"
+    },
+    "02-agent-pipeline#파이프라인 엔진#AgentConfigLoader — select-tables/table-mappings Step에서 자동 수집 (config 일원화)": {
+      "key": "KAN-303"
+    },
+    "02-agent-pipeline#조건실행/증분실행#ConditionBuilder — 동적 WHERE 조건 생성 (날짜 캐스팅, Oracle/PG 호환)": {
+      "key": "KAN-305"
+    },
+    "02-agent-pipeline#조건실행/증분실행#조건 테이블 바인딩 — tableName별 조건 필터링 (jewon/obsvdata 분리)": {
+      "key": "KAN-306"
+    },
+    "02-agent-pipeline#조건실행/증분실행#증분실행 — LinkTable 기반 (last sync 이후 변경분만 수집)": {
+      "key": "KAN-307"
+    },
+    "02-agent-pipeline#조건실행/증분실행#RESYNC — 전체 재수집 모드": {
+      "key": "KAN-308"
+    },
+    "02-agent-pipeline#추적/SyncLog#SyncLog per-mapping — mappingName/sourceTables/targetTables/readCount/writeCount": {
+      "key": "KAN-310"
+    },
+    "02-agent-pipeline#추적/SyncLog#Source 추적 3단계 분기 — RCV(PK파싱) / Loader(source_refs IN) / SND(PK파싱)": {
+      "key": "KAN-311"
+    },
+    "02-agent-pipeline#추적/SyncLog#execution_id 인덱스 — IF/Target 6개 엔티티": {
+      "key": "KAN-312"
+    },
+    "02-agent-pipeline#추적/SyncLog#복합PK 추적 지원 (배치모드 서브쿼리)": {
+      "key": "KAN-313"
+    },
+    "02-agent-pipeline#Multi-DB 호환/보안#isMysql()/qi() 헬퍼 + Oracle 분기": {
+      "key": "KAN-315"
+    },
+    "02-agent-pipeline#Multi-DB 호환/보안#PasswordEncryptor 중앙화 + ApiKeyFilter 공통": {
+      "key": "KAN-316"
+    },
+    "02-agent-pipeline#Multi-DB 호환/보안#컨트롤러 @ConditionalOnProperty — 모듈별 엔드포인트 선택적 활성화": {
+      "key": "KAN-317"
+    },
+    "02-agent-pipeline#DMZ 수집 Agent#RCV 파이프라인 — 10개 업체 YAML 설정, LinkTable 기반 증분 수집": {
+      "key": "KAN-319"
+    },
+    "02-agent-pipeline#DMZ 수집 Agent#DefaultLoadStep — IF → Target MERGE (DMZ Loader)": {
+      "key": "KAN-320"
+    },
+    "02-agent-pipeline#DMZ 수집 Agent#조건실행/증분실행 통합 (isResyncExecution, buildMergedConditions)": {
+      "key": "KAN-321"
+    },
+    "02-agent-pipeline#DMZ 수집 Agent#SyncDataSourceService — Proxy 경유 + 암호화 통신": {
+      "key": "KAN-322"
+    },
+    "02-agent-pipeline#DMZ 수집 Agent#환경부 표준 컬럼명 적용 (Target 4개 테이블 DDL 재생성 + 코드 반영)": {
+      "key": "KAN-323"
+    },
+    "02-agent-pipeline#DMZ 수집 Agent#HikariCP 풀 하드닝 (maxPool=10, timeout=10s, leak=60s)": {
+      "key": "KAN-324"
+    },
+    "02-agent-pipeline#DMZ 전송 Agent#모듈 생성 (bojo 복제 기반, SND 전용)": {
+      "key": "KAN-326"
+    },
+    "02-agent-pipeline#DMZ 전송 Agent#IF_SND 엔티티 6개 + YAML 2개 Agent (제주/이용량)": {
+      "key": "KAN-327"
+    },
+    "02-agent-pipeline#DMZ 전송 Agent#SaeolLinkPlanSndStep — LINK_PLAN 커서 순회, flag→link_status 매핑, deduplicate": {
+      "key": "KAN-328"
+    },
+    "02-agent-pipeline#DMZ 전송 Agent#IF_SND 16개 테이블 Oracle DDL + 엔티티 (새올)": {
+      "key": "KAN-329"
+    },
+    "02-agent-pipeline#DMZ 전송 Agent#커서 위치 관리 (LINK_PLAN_CURSOR, 전체 완료 후 1회 갱신)": {
+      "key": "KAN-330"
+    },
+    "02-agent-pipeline#DMZ 전송 Agent#rgetnpmms01/rgetnwavi05/rgetnwavi06 SND 추가 (담당자 확인 후)": {
+      "key": "KAN-331"
+    },
+    "02-agent-pipeline#내부망 Oracle 전환#Oracle Docker 환경 (gvenzl/oracle-xe:21-slim, 29004)": {
+      "key": "KAN-333"
+    },
+    "02-agent-pipeline#내부망 Oracle 전환#MERGE INTO, 날짜 함수, Multi-DB 분기": {
+      "key": "KAN-334"
+    },
+    "02-agent-pipeline#내부망 Oracle 전환#자체 DB (sync_log/execution) Oracle 전환": {
+      "key": "KAN-335"
+    },
+    "02-agent-pipeline#내부망 Oracle 전환#Proxy Oracle 지원 (ojdbc8)": {
+      "key": "KAN-336"
+    },
+    "02-agent-pipeline#내부망 Oracle 전환#PG/Oracle 호환 (TEXT→length=4000, ILIKE 분기, Time 바인딩)": {
+      "key": "KAN-337"
+    },
+    "02-agent-pipeline#내부망 Loader Step#InternalBojoLoadStep — 기본 Loader (기존 10업체 데이터)": {
+      "key": "KAN-339"
+    },
+    "02-agent-pipeline#내부망 Loader Step#새올 SaeolLoadStep — 16개 테이블 (LINK_PLAN 커서 기반, 중복 deduplicate)": {
+      "key": "KAN-340"
+    },
+    "02-agent-pipeline#내부망 Loader Step#I1 JejuJewonLoadStep — 제원 (1소스→5타겟 순차 MERGE, 고정값, BRNCH_ID 확보)": {
+      "key": "KAN-341"
+    },
+    "02-agent-pipeline#내부망 Loader Step#I2 JejuObsvdataLoadStep — 관측 (MSN 분기 S11/S2X, EAV, BRNCH_ID 캐싱)": {
+      "key": "KAN-342"
+    },
+    "02-agent-pipeline#내부망 Loader Step#I3 JejuFacilityLoadStep — 이용시설 (계획 수립 완료)": {
+      "key": "KAN-343"
+    },
+    "02-agent-pipeline#내부망 Loader Step#I5 UseLoadStep — 이용량 (Legacy+Status 2소스→4타겟, 일집계 후처리, 음수→0 변환)": {
+      "key": "KAN-344"
+    },
+    "02-agent-pipeline#내부망 Loader Step#내부망 RCV 파이프라인 (6개 IF_RSV 테이블)": {
+      "key": "KAN-345"
+    },
+    "02-agent-pipeline#Entity 전환#gen_entities.py — DDL→Entity 55개 자동 생성": {
+      "key": "KAN-347"
+    },
+    "02-agent-pipeline#Entity 전환#DynamicEntityManagerService + CaseAwareNamingStrategy": {
+      "key": "KAN-348"
+    },
+    "02-agent-pipeline#Entity 전환#ddl-auto:create 검증 (52개 100% 원본 일치)": {
+      "key": "KAN-349"
+    },
+    "02-agent-pipeline#Entity 전환#Phase 5: Step 4개 JPA 읽기 전환": {
+      "key": "KAN-350"
+    },
+    "02-agent-pipeline#Entity 전환#Phase 6: E2E 검증": {
+      "key": "KAN-351"
+    },
+    "02-agent-pipeline#DB 연결 프록시#sync-proxy-dmz (8083) — DMZ Agent ↔ 외부 DB": {
+      "key": "KAN-353"
+    },
+    "02-agent-pipeline#DB 연결 프록시#sync-proxy-internal (8093) — Internal Agent ↔ 내부 DB": {
+      "key": "KAN-354"
+    },
+    "02-agent-pipeline#DB 연결 프록시#Oracle 지원 (ojdbc8 의존성)": {
+      "key": "KAN-355"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#대전 (PostgreSQL, dmz-bojo-rcv-daejeon)": {
+      "key": "KAN-357"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#바이텍 (PostgreSQL, dmz-bojo-rcv-bytek)": {
+      "key": "KAN-358"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#충남 (PostgreSQL, dmz-bojo-rcv-chungnam)": {
+      "key": "KAN-359"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#근산 (PostgreSQL, dmz-bojo-rcv-keunsan, 대문자)": {
+      "key": "KAN-360"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#인포월드 로컬 (MySQL, dmz-bojo-rcv-infoworld-local)": {
+      "key": "KAN-361"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#인포월드 서울 (MySQL, dmz-bojo-rcv-infoworld-seoul)": {
+      "key": "KAN-362"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 아라 (MySQL, dmz-bojo-rcv-hydronet-ara)": {
+      "key": "KAN-363"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 IDC (MySQL, dmz-bojo-rcv-hydronet-idc)": {
+      "key": "KAN-364"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 경남 (MySQL, dmz-bojo-rcv-hydronet-kyungnam)": {
+      "key": "KAN-365"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 원주 (MySQL, dmz-bojo-rcv-hydronet-wonju)": {
+      "key": "KAN-366"
+    },
+    "02-agent-pipeline#DMZ Loader 등록#dmz-bojo-loader (if_rsv → sec_jewon, sec_obsvdata)": {
+      "key": "KAN-368"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-bojo-snd — 보조관측 2테이블 (sec_jewon, sec_obsvdata)": {
+      "key": "KAN-370"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-saeol — 새올 16테이블 (LINK_PLAN 기반)": {
+      "key": "KAN-371"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-jeju — 제주 3테이블 (jewon, obsv, stgms)": {
+      "key": "KAN-372"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-use — 이용량 3테이블 (legacy, status, jejuday)": {
+      "key": "KAN-373"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-api-collect — API수집 2테이블 (tm_gd014000, tm_gd014001)": {
+      "key": "KAN-374"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#제주 보류 3테이블 (rgetnpmms01, rgetnwavi05, rgetnwavi06) — 담당자 확인 후": {
+      "key": "KAN-375"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-bojo-rcv — 보조관측 2테이블": {
+      "key": "KAN-377"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-saeol-rcv — 새올 16테이블": {
+      "key": "KAN-378"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-jeju-rcv — 제주 3테이블": {
+      "key": "KAN-379"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-use-rcv — 이용량 3테이블": {
+      "key": "KAN-380"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-api-collect-rcv — API수집 2테이블 (tm_gd014000, tm_gd014001) **예정**": {
+      "key": "KAN-381"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-bojo-loader — 보조관측 (IF_RSV → PM_GD970201, TM_GD970101, TM_GD980002)": {
+      "key": "KAN-383"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-saeol-loader — 새올 16개 (1:1 MERGE)": {
+      "key": "KAN-384"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-jeju-loader — 제주 (3소스 → 7+ 타겟)": {
+      "key": "KAN-385"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-use-loader — 이용량 (2소스 → 4타겟)": {
+      "key": "KAN-386"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-api-collect-loader — API수집 (2소스 → TM_GD014000, TM_GD014001) **예정**": {
+      "key": "KAN-387"
+    },
+    "03-api-collect#범용 실행기#API 등록 (URL, 인증, 파라미터)": {
+      "key": "KAN-390"
+    },
+    "03-api-collect#범용 실행기#테스트 호출 → JSON 트리 뷰 → 데이터 루트 선택": {
+      "key": "KAN-391"
+    },
+    "03-api-collect#범용 실행기#필드 매핑 (sourceField → targetColumn, TransformType 8종)": {
+      "key": "KAN-392"
+    },
+    "03-api-collect#범용 실행기#LOOKUP 파생 컬럼 (정규식 키 추출 → 공통코드 매칭)": {
+      "key": "KAN-393"
+    },
+    "03-api-collect#범용 실행기#INSERT / UPSERT 적재 (conflictKey 기반)": {
+      "key": "KAN-394"
+    },
+    "03-api-collect#범용 실행기#실행 이력 (페이징 + 날짜 검색 + 신규/갱신/스킵 카운트)": {
+      "key": "KAN-395"
+    },
+    "03-api-collect#범용 실행기#API Key 참조 (isApiKeyRef → resolveApiKey)": {
+      "key": "KAN-396"
+    },
+    "03-api-collect#범용 실행기#동적 파라미터 (TODAY/NOW + offset + format)": {
+      "key": "KAN-397"
+    },
+    "03-api-collect#범용 실행기#테스트 호출 시 API키 실제값 표시 (현재 키 ID 노출)": {
+      "key": "KAN-398"
+    },
+    "03-api-collect#범용 실행기#등록 플로우 브라우저 전체 재테스트": {
+      "key": "KAN-399"
+    },
+    "03-api-collect#커스텀 실행기#CustomExecutor 인터페이스 + Registry (Spring Bean 자동 등록)": {
+      "key": "KAN-401"
+    },
+    "03-api-collect#커스텀 실행기#실행 옵션 (executionParams Map 전달 — 연도 지정, 분기 옵션 등)": {
+      "key": "KAN-402"
+    },
+    "03-api-collect#커스텀 실행기#프론트: 범용/커스텀 선택, 커스텀 시 매핑 탭 비활성화": {
+      "key": "KAN-403"
+    },
+    "03-api-collect#커스텀 실행기#좌표변환 지원 (EPSG:5186 → EPSG:4326)": {
+      "key": "KAN-404"
+    },
+    "03-api-collect#커스텀 실행기#코드변환 지원 (용도코드, 지역코드, 허가형태, 상태코드 등)": {
+      "key": "KAN-405"
+    },
+    "03-api-collect#커스텀 실행기#페이징 반복 호출 (1000건 단위)": {
+      "key": "KAN-406"
+    },
+    "03-api-collect#스케줄 실행#ApiScheduleExecutor (TaskScheduler + CronTrigger)": {
+      "key": "KAN-408"
+    },
+    "03-api-collect#스케줄 실행#@EventListener(ContextRefreshedEvent) 초기화": {
+      "key": "KAN-409"
+    },
+    "03-api-collect#스케줄 실행#registerSchedule/unregisterSchedule/getActiveScheduleCount": {
+      "key": "KAN-410"
+    },
+    "03-api-collect#스케줄 실행#ScheduleTab UI (등록/해제/cron 입력)": {
+      "key": "KAN-411"
+    },
+    "03-api-collect#Mock API 테스트 환경#MockApiController — 공통코드 API (NGW_0118 언론사 65건)": {
+      "key": "KAN-413"
+    },
+    "03-api-collect#Mock API 테스트 환경#MockApiController — API 키 목록": {
+      "key": "KAN-414"
+    },
+    "03-api-collect#Mock API 테스트 환경#제주/안양/나라장터 Mock 시뮬레이션 (개발 완료 후 제거)": {
+      "key": "KAN-415"
+    },
+    "03-api-collect#API 수집 관리 화면#/api-collect 목록 페이지": {
+      "key": "KAN-417"
+    },
+    "03-api-collect#API 수집 관리 화면#/api-collect/[id] 상세 (4탭: 기본정보/매핑/스케줄/이력)": {
+      "key": "KAN-418"
+    },
+    "03-api-collect#API 수집 관리 화면#등록 페이지 (인라인 테스트 → 매핑 → 저장)": {
+      "key": "KAN-419"
+    },
+    "03-api-collect#API 수집 관리 화면#Next.js proxy (/collector-api/* → localhost:8084)": {
+      "key": "KAN-420"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 #1 공사 (ID:16, target: tm_gd014000)": {
+      "key": "KAN-422"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 #2 용역 (ID:18, target: tm_gd014000)": {
+      "key": "KAN-423"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 #3 외자 (ID:19, target: tm_gd014000)": {
+      "key": "KAN-424"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 #4 물품 (ID:20, target: tm_gd014000)": {
+      "key": "KAN-425"
+    },
+    "03-api-collect#범용 실행기 등록#네이버 뉴스 수집 (ID:15, target: tm_gd014001)": {
+      "key": "KAN-426"
+    },
+    "03-api-collect#커스텀 실행기 등록#D1 jeju-jewon — 제주 관측점 마스터 (ID:21, target: tb_jeju_jewon)": {
+      "key": "KAN-428"
+    },
+    "03-api-collect#커스텀 실행기 등록#D2 jeju-obsv-data — 제주 수위 관측 (ID:22, target: tb_jeju)": {
+      "key": "KAN-429"
+    },
+    "03-api-collect#커스텀 실행기 등록#D3 jeju-facility — 제주 이용시설 (ID:23, target: rgetstgms01)": {
+      "key": "KAN-430"
+    },
+    "03-api-collect#커스텀 실행기 등록#D3 jeju-facility 수동 — 별도 오퍼레이션 (ID:24, target: rgetstgms01)": {
+      "key": "KAN-431"
+    },
+    "03-api-collect#커스텀 실행기 등록#D4 jeju-water-quality — 제주 수질검사 (ID:25, target: rgetnwavi05/06)": {
+      "key": "KAN-432"
+    },
+    "03-api-collect#커스텀 실행기 등록#D5 anyang-usage — 안양 이용량 (ID:17, target: anyang_api_fac/data, use_legacy_data)": {
+      "key": "KAN-433"
+    },
+    "03-api-collect#후속 파이프라인 연결#tb_jeju_jewon → dmz-others-snd-jeju → TM_GD970001 외 5개": {
+      "key": "KAN-435"
+    },
+    "03-api-collect#후속 파이프라인 연결#tb_jeju → dmz-others-snd-jeju → PM_GD970201, PM_GD970202": {
+      "key": "KAN-436"
+    },
+    "03-api-collect#후속 파이프라인 연결#rgetstgms01 → dmz-others-snd-jeju → TM_GD111010": {
+      "key": "KAN-437"
+    },
+    "03-api-collect#후속 파이프라인 연결#use_legacy/status_data → dmz-others-snd-use → PM_GD111021/22, TM_GD111024/25": {
+      "key": "KAN-438"
+    },
+    "03-api-collect#후속 파이프라인 연결#use_jeju_day → dmz-others-snd-use → (외부 시스템 적재, SND만 담당)": {
+      "key": "KAN-439"
+    },
+    "03-api-collect#후속 파이프라인 연결#tm_gd014000/014001 → dmz-others-snd-api-collect → TM_GD014000/014001 **(RCV/Loader 예정)**": {
+      "key": "KAN-440"
+    },
+    "04-monitoring#Agent 관리 API#Agent CRUD (등록/수정/삭제/조회)": {
+      "key": "KAN-443"
+    },
+    "04-monitoring#Agent 관리 API#auto-discover — Agent 프로세스의 가용 agentCode 목록 조회": {
+      "key": "KAN-444"
+    },
+    "04-monitoring#Agent 관리 API#상태 확인 (health-check)": {
+      "key": "KAN-445"
+    },
+    "04-monitoring#Agent 관리 API#테이블 동기화 — pipeline/info 기반 자동 갱신": {
+      "key": "KAN-446"
+    },
+    "04-monitoring#Agent 관리 API#Retention 설정 조회/저장": {
+      "key": "KAN-447"
+    },
+    "04-monitoring#Agent 관리 API#조건실행용 select-tables 조회": {
+      "key": "KAN-448"
+    },
+    "04-monitoring#Agent 관리 API#테스트 데이터 생성/삭제": {
+      "key": "KAN-449"
+    },
+    "04-monitoring#실행 관리 API#실행 트리거 (수동/조건/증분 실행, conditions 파라미터)": {
+      "key": "KAN-451"
+    },
+    "04-monitoring#실행 관리 API#빈 conditions 거부 (400 안전가드)": {
+      "key": "KAN-452"
+    },
+    "04-monitoring#실행 관리 API#실행 콜백 (started/finished)": {
+      "key": "KAN-453"
+    },
+    "04-monitoring#실행 관리 API#runningAgentCodes 동시 실행 방지 + finally 해제": {
+      "key": "KAN-454"
+    },
+    "04-monitoring#실행 이력 API#Agent별 이력 조회 (Agent DB 직접 / Orchestrator DB)": {
+      "key": "KAN-456"
+    },
+    "04-monitoring#실행 이력 API#페이징 이력 조회 — 필터(상태/Zone/타입/날짜/Agent) + 검색": {
+      "key": "KAN-457"
+    },
+    "04-monitoring#실행 이력 API#최근 50건 (대시보드용)": {
+      "key": "KAN-458"
+    },
+    "04-monitoring#실행 이력 API#실행 중 목록": {
+      "key": "KAN-459"
+    },
+    "04-monitoring#실행 이력 API#대시보드 통계": {
+      "key": "KAN-460"
+    },
+    "04-monitoring#실행 상세/추적 API#실행 상세 + Step별 결과": {
+      "key": "KAN-462"
+    },
+    "04-monitoring#실행 상세/추적 API#테이블별 통계 (per-mapping readCount/writeCount/failedCount/skipCount)": {
+      "key": "KAN-463"
+    },
+    "04-monitoring#실행 상세/추적 API#테이블 레코드 조회 (페이징+검색) + 실패 레코드 조회": {
+      "key": "KAN-464"
+    },
+    "04-monitoring#실행 상세/추적 API#실행 데이터 조회 (SOURCE/TARGET_IF/TARGET 페이징+검색)": {
+      "key": "KAN-465"
+    },
+    "04-monitoring#실행 상세/추적 API#정방향 추적 — Source PK → Target 데이터 흐름": {
+      "key": "KAN-466"
+    },
+    "04-monitoring#실행 상세/추적 API#역추적 — Target → Source 역방향": {
+      "key": "KAN-467"
+    },
+    "04-monitoring#실행 상세/추적 API#3단계 자동 분기 (RCV/Loader/SND)": {
+      "key": "KAN-468"
+    },
+    "04-monitoring#실행 상세/추적 API#복합PK 추적 + 테이블명 fallback 검색": {
+      "key": "KAN-469"
+    },
+    "04-monitoring#스케줄 관리 API#스케줄 CRUD (생성/수정/삭제/조회)": {
+      "key": "KAN-471"
+    },
+    "04-monitoring#스케줄 관리 API#활성화/비활성화 토글": {
+      "key": "KAN-472"
+    },
+    "04-monitoring#스케줄 관리 API#ScheduleExecutor 패턴 통일 (@EventListener)": {
+      "key": "KAN-473"
+    },
+    "04-monitoring#Retention 보존기간#Agent별 Retention 설정 (테이블별 보존일수)": {
+      "key": "KAN-475"
+    },
+    "04-monitoring#Retention 보존기간#보존기간 초과 데이터 자동 삭제": {
+      "key": "KAN-476"
+    },
+    "04-monitoring#Retention 보존기간#음수 방어 4계층 (프론트 min=1 → API 검증 → Controller 예외 → Service skip)": {
+      "key": "KAN-477"
+    },
+    "04-monitoring#Retention 보존기간#targetDatasourceId body 필수 (Internal Agent cleanup)": {
+      "key": "KAN-478"
+    },
+    "04-monitoring#Agent 자동 관리#auto-discover — pipeline/info 조회 → 파이프라인 구성 자동 등록": {
+      "key": "KAN-480"
+    },
+    "04-monitoring#Agent 자동 관리#pipeline/info 인증 예외 처리 (ApiKeyFilter)": {
+      "key": "KAN-481"
+    },
+    "04-monitoring#Agent 자동 관리#agent_table 자동 동기화 — OFFLINE→ONLINE 시 테이블 목록 갱신": {
+      "key": "KAN-482"
+    },
+    "04-monitoring#Agent 자동 관리#수동 테이블 갱신 버튼": {
+      "key": "KAN-483"
+    },
+    "04-monitoring#Agent 자동 관리#Agent 등록 시 zone 드롭다운 + 필수 검증": {
+      "key": "KAN-484"
+    },
+    "04-monitoring#대시보드 화면#통계 카드 — Agent 전체/온라인/오프라인, 실행 중, 오늘 실행/실패": {
+      "key": "KAN-486"
+    },
+    "04-monitoring#대시보드 화면#카드 클릭형 필터 — 해당 상태의 Agent/실행이력 테이블 표시": {
+      "key": "KAN-487"
+    },
+    "04-monitoring#대시보드 화면#Agent 상태 테이블 — 이름, Zone, 상태(배지), 마지막 실행": {
+      "key": "KAN-488"
+    },
+    "04-monitoring#대시보드 화면#실행 이력 테이블 — Agent명, 타입, 상태, 건수, 소요시간": {
+      "key": "KAN-489"
+    },
+    "04-monitoring#대시보드 화면#10초 자동 갱신 (setInterval 폴링)": {
+      "key": "KAN-490"
+    },
+    "04-monitoring#Agent 관리 화면#Agent 타입별 그룹화 (RCV/SND/Loader/DB Proxy 색상 코드)": {
+      "key": "KAN-492"
+    },
+    "04-monitoring#Agent 관리 화면#그룹 접힘/펼침 토글": {
+      "key": "KAN-493"
+    },
+    "04-monitoring#Agent 관리 화면#작업 버튼: 상태확인, 상세, 삭제": {
+      "key": "KAN-494"
+    },
+    "04-monitoring#Agent 등록 화면#3단계 auto-discover (URL 입력 → Agent 선택 → 검증+등록)": {
+      "key": "KAN-496"
+    },
+    "04-monitoring#Agent 등록 화면#auto-discover 테이블 검증 — YAML vs Datasource 자동 대조 (✓/✗)": {
+      "key": "KAN-497"
+    },
+    "04-monitoring#Agent 등록 화면#agentInfo 없을 때 수동 테이블 선택 (체크박스)": {
+      "key": "KAN-498"
+    },
+    "04-monitoring#Agent 상세 화면#상태 배지 (ONLINE/OFFLINE/RUNNING)": {
+      "key": "KAN-500"
+    },
+    "04-monitoring#Agent 상세 화면#헤더 버튼: 상태확인, 실행(온라인시만), 조건실행(드롭다운), 삭제": {
+      "key": "KAN-501"
+    },
+    "04-monitoring#Agent 상세 화면#기본정보 탭 — 파이프라인 구성, Datasource 매핑, pass/fail 검증, Retention, 스케줄": {
+      "key": "KAN-502"
+    },
+    "04-monitoring#Agent 상세 화면#실행이력 탭 — 상태, 건수, 소요시간, 트리거": {
+      "key": "KAN-503"
+    },
+    "04-monitoring#조건실행 패널#동적 WHERE 조건 빌더": {
+      "key": "KAN-505"
+    },
+    "04-monitoring#조건실행 패널#테이블/컬럼/연산자/값 선택 (dataType별 필터링)": {
+      "key": "KAN-506"
+    },
+    "04-monitoring#조건실행 패널#BETWEEN 시 range 입력": {
+      "key": "KAN-507"
+    },
+    "04-monitoring#조건실행 패널#조건 추가/제거": {
+      "key": "KAN-508"
+    },
+    "04-monitoring#실행 이력 화면#2줄 필터 바 (상태/Zone/Agent Code/타입/날짜/검색)": {
+      "key": "KAN-510"
+    },
+    "04-monitoring#실행 이력 화면#페이지네이션 (이전/다음 + 페이지 번호)": {
+      "key": "KAN-511"
+    },
+    "04-monitoring#실행 이력 화면#URL 쿼리 동기화": {
+      "key": "KAN-512"
+    },
+    "04-monitoring#실행 상세 화면#실행 정보 (상태, 소요시간, 건수, 트리거, 시작/종료)": {
+      "key": "KAN-514"
+    },
+    "04-monitoring#실행 상세 화면#테이블 스탯 — SOURCE/TARGET_IF/TARGET별 건수 요약": {
+      "key": "KAN-515"
+    },
+    "04-monitoring#실행 상세 화면#테이블 데이터 탭 — 3타입 전환, 검색, 필터, 정렬, 페이징": {
+      "key": "KAN-516"
+    },
+    "04-monitoring#데이터 추적 화면#행 클릭 → SOURCE ↔ TARGET_IF ↔ TARGET 트레이싱": {
+      "key": "KAN-518"
+    },
+    "04-monitoring#데이터 추적 화면#source_refs 기반 자동 매칭": {
+      "key": "KAN-519"
+    },
+    "04-monitoring#데이터 추적 화면#추적 비대상 표시 (파생 데이터)": {
+      "key": "KAN-520"
+    },
+    "04-monitoring#데이터 추적 화면#Fallback 모드 감지 (실행 덮어쓰기 시)": {
+      "key": "KAN-521"
+    },
+    "05-api-provide#오퍼레이션 관리#오퍼레이션 등록 (Datasource + 테이블 선택)": {
+      "key": "KAN-524"
+    },
+    "05-api-provide#오퍼레이션 관리#제공 컬럼 선택": {
+      "key": "KAN-525"
+    },
+    "05-api-provide#오퍼레이션 관리#WHERE 조건 설정": {
+      "key": "KAN-526"
+    },
+    "05-api-provide#오퍼레이션 관리#정렬/LIMIT 설정": {
+      "key": "KAN-527"
+    },
+    "05-api-provide#오퍼레이션 관리#응답 포맷 선택 (JSON, XML 등)": {
+      "key": "KAN-528"
+    },
+    "05-api-provide#테스트 호출#등록한 오퍼레이션 미리보기 (실제 쿼리 실행 → 결과 샘플 표시)": {
+      "key": "KAN-530"
+    },
+    "05-api-provide#테스트 호출#결과 확인 후 \"게시\" — 게시 전에는 외부 노출 안 됨": {
+      "key": "KAN-531"
+    },
+    "05-api-provide#테스트 호출#게시/비게시 상태 관리": {
+      "key": "KAN-532"
+    },
+    "05-api-provide#API 엔드포인트 생성#게시된 오퍼레이션 → 동적 SELECT 쿼리 생성": {
+      "key": "KAN-534"
+    },
+    "05-api-provide#API 엔드포인트 생성#REST API 자동 노출 (오퍼레이션 ID 기반)": {
+      "key": "KAN-535"
+    },
+    "05-api-provide#API 엔드포인트 생성#인증/인가 (API Key, IP 제한 등)": {
+      "key": "KAN-536"
+    },
+    "05-api-provide#실행/모니터링#호출 이력 저장": {
+      "key": "KAN-538"
+    },
+    "05-api-provide#실행/모니터링#호출량 통계": {
+      "key": "KAN-539"
+    },
+    "05-api-provide#실행/모니터링#에러 모니터링": {
+      "key": "KAN-540"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#오퍼레이션 목록/등록/수정": {
+      "key": "KAN-542"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#컬럼 선택 UI": {
+      "key": "KAN-543"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#WHERE 조건 빌더": {
+      "key": "KAN-544"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#테스트 결과 미리보기": {
+      "key": "KAN-545"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#게시/비게시 토글": {
+      "key": "KAN-546"
+    },
+    "06-procedure-mgmt#요구사항 확정#대상 범위: 어떤 DB의 프로시저를 관리할 것인지": {
+      "key": "KAN-549"
+    },
+    "06-procedure-mgmt#요구사항 확정#암호화 방식: 조회 시 복호화 제공 여부, 권한 체계": {
+      "key": "KAN-550"
+    },
+    "06-procedure-mgmt#요구사항 확정#버전 관리: 프로시저 변경 이력 추적 여부": {
+      "key": "KAN-551"
+    },
+    "06-procedure-mgmt#요구사항 확정#실행 기능: 등록된 프로시저를 UI에서 직접 실행 가능 여부": {
+      "key": "KAN-552"
+    },
+    "06-procedure-mgmt#프로시저 게시판#프로시저 등록/수정/삭제": {
+      "key": "KAN-554"
+    },
+    "06-procedure-mgmt#프로시저 게시판#프로시저 문 암호화 저장": {
+      "key": "KAN-555"
+    },
+    "06-procedure-mgmt#프로시저 게시판#조회 시 복호화 제공": {
+      "key": "KAN-556"
+    },
+    "06-procedure-mgmt#프로시저 관리 화면#게시판 형태 목록/상세": {
+      "key": "KAN-558"
+    },
+    "06-procedure-mgmt#프로시저 관리 화면#프로시저 문 등록/편집": {
+      "key": "KAN-559"
+    },
+    "07-security#DB 자격증명 암호화#Jasypt PBEWithHMACSHA512AndAES_256 + RandomIV": {
+      "key": "KAN-562"
+    },
+    "07-security#DB 자격증명 암호화#PasswordEncryptor 클래스 (common 모듈, 전 서비스 공유)": {
+      "key": "KAN-563"
+    },
+    "07-security#DB 자격증명 암호화#암호문 형식: ENC(base64) — decrypt 시 래핑 자동 제거": {
+      "key": "KAN-564"
+    },
+    "07-security#DB 자격증명 암호화#암호화 키 외부화 (JASYPT_PASSWORD 환경변수, Docker 전달)": {
+      "key": "KAN-565"
+    },
+    "07-security#DB 자격증명 암호화#application.yml 내 민감정보 ENC() 래핑 (5개 모듈)": {
+      "key": "KAN-566"
+    },
+    "07-security#DB 자격증명 암호화#CLI 암복호화 도구 (scripts/encrypt.java)": {
+      "key": "KAN-567"
+    },
+    "07-security#자격증명 전달 흐름#Orchestrator에서 암호화 후 DB 저장": {
+      "key": "KAN-569"
+    },
+    "07-security#자격증명 전달 흐름#실행 요청에 ID만 전달 (평문 자격증명 미포함)": {
+      "key": "KAN-570"
+    },
+    "07-security#자격증명 전달 흐름#Agent → Proxy: datasourceId로 연결정보 요청 (X-API-Key 인증)": {
+      "key": "KAN-571"
+    },
+    "07-security#자격증명 전달 흐름#Proxy → Agent: 암호문 그대로 반환 (패스스루)": {
+      "key": "KAN-572"
+    },
+    "07-security#자격증명 전달 흐름#Agent: 자체 비밀키로 복호화 → ThreadLocal에 평문 보관 → DB 직접 접속": {
+      "key": "KAN-573"
+    },
+    "07-security#자격증명 전달 흐름#실행 완료 시 ThreadLocal 정리 (clearCurrentDatasources)": {
+      "key": "KAN-574"
+    },
+    "07-security#자격증명 전달 흐름#연결 테스트: Orchestrator 직접(zone 없음) 또는 Proxy 경유(zone 있음), 내부망 통신+API Key 인증, HTTPS 적용 시 전송 구간 보호 가능": {
+      "key": "KAN-575"
+    },
+    "07-security#API Key 인증#ApiKeyFilter (common 모듈, @ConditionalOnProperty)": {
+      "key": "KAN-577"
+    },
+    "07-security#API Key 인증#대상: /api/** (예외: /health, /api/pipeline/info)": {
+      "key": "KAN-578"
+    },
+    "07-security#API Key 인증#헤더: X-API-Key — Orchestrator RestTemplate에 자동 추가": {
+      "key": "KAN-579"
+    },
+    "07-security#API Key 인증#빈 키면 필터 비활성화 (개발 편의)": {
+      "key": "KAN-580"
+    },
+    "07-security#엔드포인트 보안#@ConditionalOnProperty — 모듈별 엔드포인트 선택적 활성화": {
+      "key": "KAN-582"
+    },
+    "07-security#엔드포인트 보안#Agent: 전부 활성 / Proxy: execution-data, datasource만 활성": {
+      "key": "KAN-583"
+    },
+    "07-security#엔드포인트 보안#새 컨트롤러 추가 시 명시적으로 켜지 않으면 비활성 (구조적 방어)": {
+      "key": "KAN-584"
+    },
+    "07-security#엔드포인트 보안#/debug/datasources 제거 (호스트/포트/DB명 노출 방지)": {
+      "key": "KAN-585"
+    },
+    "07-security#HikariCP 풀 하드닝#maxPoolSize=10, connectionTimeout=10s, leakDetectionThreshold=60s": {
+      "key": "KAN-587"
+    },
+    "07-security#HikariCP 풀 하드닝#전 Agent/Proxy 통일 적용": {
+      "key": "KAN-588"
+    },
+    "07-security#로그인/인가#사용자 로그인 기능 (ID/PW 인증)": {
+      "key": "KAN-590"
+    },
+    "07-security#로그인/인가#세션 또는 JWT 기반 인증 유지": {
+      "key": "KAN-591"
+    },
+    "07-security#로그인/인가#권한 체계 (관리자/운영자/조회자 등)": {
+      "key": "KAN-592"
+    },
+    "07-security#로그인/인가#미인증 접근 차단 (프론트 + 백엔드)": {
+      "key": "KAN-593"
+    },
+    "01-datasource#Datasource CRUD#Multi-DB 타입 지원 (PostgreSQL / MySQL / Oracle / MariaDB / SQL Server) ※ 배포환경 Tibero는 Oracle로 대체 구현": {
+      "key": "KAN-594"
+    },
+    "02-agent-pipeline#내부망 Loader Step#새올 16개 테이블 Loader (DefaultLoadStep, 1:1 MERGE)": {
+      "key": "KAN-595"
+    },
+    "02-agent-pipeline#내부망 Loader Step#I3 JejuFacilityLoadStep — 이용시설 (JPA+MERGE+SyncLog)": {
+      "key": "KAN-596"
+    },
+    "03-api-collect#범용 실행기#테스트 호출 시 API키 ID 표시 (실제값 노출 불필요, 설명으로 식별)": {
+      "key": "KAN-597"
+    },
+    "07-security#HikariCP 풀 하드닝#Agent/Proxy 통일 적용 (maxPool=10, timeout=10s, leak=60s)": {
+      "key": "KAN-598"
+    },
+    "07-security#HikariCP 풀 하드닝#api-collector 하드닝 미적용 (maxPool=5, timeout/leak 미설정)": {
+      "key": "KAN-599"
+    }
+  }
+}
