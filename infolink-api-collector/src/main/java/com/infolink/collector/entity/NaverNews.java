@@ -70,4 +70,10 @@ public class NaverNews {
     @Comment("등록일자")
     @ColumnDefault("to_char(now(), 'YYYYMMDD')")
     private String regYmd;
+
+    @Column(name = "link_status", length = 20)
+    @Comment("연계 상태 (PENDING/SUCCESS/FAILED)")
+    @ColumnDefault("'PENDING'")
+    @Builder.Default
+    private String linkStatus = "PENDING";
 }

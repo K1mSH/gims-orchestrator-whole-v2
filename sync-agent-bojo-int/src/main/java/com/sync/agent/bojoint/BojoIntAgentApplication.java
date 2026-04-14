@@ -27,7 +27,8 @@ import com.sync.agent.common.controller.DatasourceController;
         )
 )
 @EntityScan(basePackages = {
-        "com.sync.agent.common.entity"
+        "com.sync.agent.common.entity",
+        "com.sync.agent.bojoint.entity"
 })
 @EnableJpaRepositories(basePackages = {
         "com.sync.agent.common.repository"

@@ -1,0 +1,26 @@
+# ── Internal RCV — API Collector 데이터 수신 ──
+# DMZ IF_SND(PG) → 내부망 IF_RSV(Oracle) 적재
+# Proxy(8093) 경유로 DMZ IF_SND 읽기
+agent-code: internal-api-collect-rcv
+type: RCV
+
+steps:
+  - id: news-rcv
+    name: 뉴스 수신
+    factory-key: source-to-if
+    source-table: if_snd_tm_gd014001
+    target-table: if_rsv_tm_gd014001
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true
+
+  - id: nara-bid-rcv
+    name: 나라장터 수신
+    factory-key: source-to-if
+    source-table: if_snd_tm_gd014000
+    target-table: if_rsv_tm_gd014000
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true

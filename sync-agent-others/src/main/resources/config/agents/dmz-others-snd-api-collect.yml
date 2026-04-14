@@ -1,0 +1,24 @@
+# ── DMZ Others SND — API Collector 수집 데이터 (2테이블) ──
+# api-collector가 수집한 뉴스/나라장터 데이터를 IF_SND 테이블에 적재
+# 파이프라인 흐름: api_collector DB(source) → IF_SND(target)
+agent-code: dmz-others-snd-api-collect
+type: SND
+
+steps:
+  - id: news-snd
+    name: 뉴스 송신
+    factory-key: source-to-if
+    source-table: tm_gd014001
+    target-table: if_snd_tm_gd014001
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true
+
+  - id: nara-bid-snd
+    name: 나라장터 송신
+    factory-key: source-to-if
+    source-table: tm_gd014000
+    target-table: if_snd_tm_gd014000
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true

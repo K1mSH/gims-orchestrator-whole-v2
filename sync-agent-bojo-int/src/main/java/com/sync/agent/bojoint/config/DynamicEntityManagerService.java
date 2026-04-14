@@ -123,7 +123,7 @@ public class DynamicEntityManagerService {
         jpaProperties.put("hibernate.dialect", getHibernateDialect(info.getDbType()));
         jpaProperties.put("hibernate.show_sql", "true");
         jpaProperties.put("hibernate.format_sql", "true");
-        jpaProperties.put("hibernate.hbm2ddl.auto", "validate");
+        jpaProperties.put("hibernate.hbm2ddl.auto", "update");
         jpaProperties.put("hibernate.physical_naming_strategy", new CaseAwareNamingStrategy(useUpperCase));
         emfBean.setJpaProperties(jpaProperties);
 

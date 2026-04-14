@@ -6,6 +6,7 @@ import com.sync.agent.common.step.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -32,8 +33,8 @@ public class SourceToIfStepFactory implements StepFactory {
                 .stepId((String) config.get("id"))
                 .stepName((String) config.get("name"))
                 .extractType(ExtractType.SIMPLE_COPY)
-                .sourceTable((String) config.get("source-table"))
-                .targetIfTable((String) config.get("target-table"))
+                .sourceTable(toSingleString(config.get("source-table")))
+                .targetIfTable(toSingleString(config.get("target-table")))
                 .primaryKeyColumn((String) config.get("primary-key"))
                 .conflictKey((String) config.get("conflict-key"))
                 .fullCopy(Boolean.TRUE.equals(config.get("full-copy")))
@@ -45,6 +46,19 @@ public class SourceToIfStepFactory implements StepFactory {
         SourceToIfStep step = new SourceToIfStep(extractConfig, dataSourceProvider, syncLogRepository);
         step.setMappingName(deriveMappingName((String) config.get("id")));
         return step;
+    }
+
+    /**
+     * List 또는 String → 단일 String 변환 (AgentConfigLoader가 normalizeToList로 감싸는 경우 대응)
+     */
+    @SuppressWarnings("unchecked")
+    private static String toSingleString(Object value) {
+        if (value instanceof String) return (String) value;
+        if (value instanceof List) {
+            List<String> list = (List<String>) value;
+            return list.isEmpty() ? null : list.get(0);
+        }
+        return value != null ? value.toString() : null;
     }
 
     /**
