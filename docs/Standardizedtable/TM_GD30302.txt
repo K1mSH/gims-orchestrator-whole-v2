@@ -1,0 +1,3 @@
+TM_GD30302	TM_GD110302	수질측정망검사결과	수질측정망검사결과	QLTWTR_INSPCT_SN	WQ_INSP_SN	수질검사일련번호	수질검사일련번호	NUMBER	NUMBER	22	10	N	번호_N10	번호
+TM_GD30302	TM_GD110302	수질측정망검사결과	수질측정망검사결과	WLTTS_ID_CODE	WQ_INSP_ARTCL_CD	수질검사항목코드	수질검사항목코드	VARCHAR2	CHAR	4	4	N	수질검사항목코드_C4	분류
+TM_GD30302	TM_GD110302	수질측정망검사결과	수질측정망검사결과	RESULT_VALUE	RSLT_VL	결과값	결과값	VARCHAR2	VARCHAR2	100	20	Y	내용_V20	내용

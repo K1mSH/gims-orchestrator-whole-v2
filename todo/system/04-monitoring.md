@@ -102,3 +102,40 @@
 - [x] source_refs 기반 자동 매칭
 - [x] 추적 비대상 표시 (파생 데이터)
 - [x] Fallback 모드 감지 (실행 덮어쓰기 시)
+
+---
+
+## 관리 테이블 네이밍 정리 [운영]
+
+> 현행: orchestrator DB와 dev DB에 관리 테이블이 분산되어 있고 프리픽스 없이 범용 이름 사용.
+> 목표: 모듈별 프리픽스 부여하여 한 DB로 합쳐도 구분 가능하게 정리.
+> 배포 시: 보조망 PG에 관리용 스키마를 새로 파서 관리 테이블 통합.
+
+### 현행 → 변경 매핑
+
+**Agent 관리 (orchestrator DB)**
+- [ ] `agent` → `agt_agent`
+- [ ] `agent_table` → `agt_agent_table`
+- [ ] `schedule` → `agt_schedule`
+- [ ] `execution_history` → `agt_execution_history`
+- [ ] `execution_step_history` → `agt_execution_step_history`
+
+**공통 (orchestrator DB, 변경 없음)**
+- [x] `datasource` — 그대로
+- [x] `datasource_column` — 그대로
+- [x] `datasource_table` — 그대로
+- [x] `zone_config` — 그대로
+
+**API Collector 관리 (dev DB → orchestrator로 이전 예정)**
+- [ ] `api_endpoint` → `api_col_endpoint`
+- [ ] `api_param` → `api_col_param`
+- [ ] `api_field_mapping` → `api_col_field_mapping`
+- [ ] `api_schedule` → `api_col_schedule`
+- [ ] `api_execution_history` → `api_col_execution_history`
+
+**API Provider 관리 (신규, orchestrator DB)**
+- [ ] `api_prv_operation`
+- [ ] `api_prv_operation_column`
+- [ ] `api_prv_operation_param`
+- [ ] `api_prv_key_info`
+- [ ] `api_prv_call_history`

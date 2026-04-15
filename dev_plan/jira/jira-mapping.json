@@ -331,6 +331,11 @@
       "key": "KAN-589",
       "startDate": null,
       "endDate": null
+    },
+    "04-monitoring#관리 테이블 네이밍 정리": {
+      "key": "KAN-643",
+      "startDate": null,
+      "endDate": null
     }
   },
   "subtasks": {
@@ -1179,6 +1184,192 @@
     },
     "07-security#HikariCP 풀 하드닝#api-collector 하드닝 미적용 (maxPool=5, timeout/leak 미설정)": {
       "key": "KAN-599"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#대전 (PostgreSQL)": {
+      "key": "KAN-600"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#바이텍 (PostgreSQL)": {
+      "key": "KAN-601"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#충남 (PostgreSQL)": {
+      "key": "KAN-602"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#근산 (PostgreSQL, 대문자)": {
+      "key": "KAN-603"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#인포월드 로컬 (MySQL)": {
+      "key": "KAN-604"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#인포월드 서울 (MySQL)": {
+      "key": "KAN-605"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 아라 (MySQL)": {
+      "key": "KAN-606"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 IDC (MySQL)": {
+      "key": "KAN-607"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 경남 (MySQL)": {
+      "key": "KAN-608"
+    },
+    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 원주 (MySQL)": {
+      "key": "KAN-609"
+    },
+    "02-agent-pipeline#DMZ Loader 등록#보조관측 제원/관측 적재 (IF_RSV → sec_jewon, sec_obsvdata)": {
+      "key": "KAN-610"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#보조관측 제원/관측 2테이블 전송 (sec_jewon, sec_obsvdata)": {
+      "key": "KAN-611"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#새올 16테이블 전송 (LINK_PLAN 기반)": {
+      "key": "KAN-612"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#제주 제원/관측/이용시설 3테이블 전송": {
+      "key": "KAN-613"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#제주 허가신고/수질검사 3테이블 — 담당자 확인 후": {
+      "key": "KAN-614"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#이용량 3테이블 전송 (legacy, status, jejuday)": {
+      "key": "KAN-615"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#나라장터/네이버 뉴스 2테이블 전송 (tm_gd014000, tm_gd014001)": {
+      "key": "KAN-616"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#보조관측 2테이블 수신": {
+      "key": "KAN-617"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#새올 16테이블 수신": {
+      "key": "KAN-618"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#제주 3테이블 수신": {
+      "key": "KAN-619"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#이용량 3테이블 수신": {
+      "key": "KAN-620"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#나라장터/네이버 뉴스 2테이블 수신": {
+      "key": "KAN-621"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#보조관측 적재 (IF_RSV → PM_GD970201, TM_GD970101, TM_GD980002)": {
+      "key": "KAN-622"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#새올 16테이블 적재 (1:1 MERGE)": {
+      "key": "KAN-623"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#제주 적재 (3소스 → 7+ 타겟)": {
+      "key": "KAN-624"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#이용량 적재 (2소스 → 4타겟)": {
+      "key": "KAN-625"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#나라장터/네이버 뉴스 적재 (2소스 → TM_GD014000, TM_GD014001)": {
+      "key": "KAN-626"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 공사 입찰 (target: tm_gd014000)": {
+      "key": "KAN-627"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 용역 입찰 (target: tm_gd014000)": {
+      "key": "KAN-628"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 외자 입찰 (target: tm_gd014000)": {
+      "key": "KAN-629"
+    },
+    "03-api-collect#범용 실행기 등록#나라장터 물품 입찰 (target: tm_gd014000)": {
+      "key": "KAN-630"
+    },
+    "03-api-collect#범용 실행기 등록#네이버 뉴스 수집 (target: tm_gd014001)": {
+      "key": "KAN-631"
+    },
+    "03-api-collect#커스텀 실행기 등록#제주 관측점 제원 수집 (target: tb_jeju_jewon)": {
+      "key": "KAN-632"
+    },
+    "03-api-collect#커스텀 실행기 등록#제주 수위 관측 데이터 수집 (target: tb_jeju)": {
+      "key": "KAN-633"
+    },
+    "03-api-collect#커스텀 실행기 등록#제주 이용시설 수집 — 자동/수동 (target: rgetnpmms01, rgetstgms01)": {
+      "key": "KAN-634"
+    },
+    "03-api-collect#커스텀 실행기 등록#제주 수질검사 수집 (target: rgetnwavi05, rgetnwavi06)": {
+      "key": "KAN-635"
+    },
+    "03-api-collect#커스텀 실행기 등록#안양 이용량 수집 (target: anyang_api_fac, anyang_api_data, use_legacy_data)": {
+      "key": "KAN-636"
+    },
+    "03-api-collect#후속 파이프라인 연결#제주 제원 → 내부망 GIMS 적재 (TM_GD970001 외 5개)": {
+      "key": "KAN-637"
+    },
+    "03-api-collect#후속 파이프라인 연결#제주 수위 관측 → 내부망 GIMS 적재 (PM_GD970201, PM_GD970202)": {
+      "key": "KAN-638"
+    },
+    "03-api-collect#후속 파이프라인 연결#제주 이용시설 → 내부망 GIMS 적재 (TM_GD111010)": {
+      "key": "KAN-639"
+    },
+    "03-api-collect#후속 파이프라인 연결#이용량 데이터 → 내부망 GIMS 적재 (PM_GD111021/22, TM_GD111024/25)": {
+      "key": "KAN-640"
+    },
+    "03-api-collect#후속 파이프라인 연결#제주 일집계 → SND 전송": {
+      "key": "KAN-641"
+    },
+    "03-api-collect#후속 파이프라인 연결#나라장터/네이버 뉴스 → 내부망 GIMS 적재 (TM_GD014000, TM_GD014001)": {
+      "key": "KAN-642"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`agent` → `agt_agent`": {
+      "key": "KAN-644"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`agent_table` → `agt_agent_table`": {
+      "key": "KAN-645"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`schedule` → `agt_schedule`": {
+      "key": "KAN-646"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`execution_history` → `agt_execution_history`": {
+      "key": "KAN-647"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`execution_step_history` → `agt_execution_step_history`": {
+      "key": "KAN-648"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`datasource` — 그대로": {
+      "key": "KAN-649"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`datasource_column` — 그대로": {
+      "key": "KAN-650"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`datasource_table` — 그대로": {
+      "key": "KAN-651"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`zone_config` — 그대로": {
+      "key": "KAN-652"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_endpoint` → `api_col_endpoint`": {
+      "key": "KAN-653"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_param` → `api_col_param`": {
+      "key": "KAN-654"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_field_mapping` → `api_col_field_mapping`": {
+      "key": "KAN-655"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_schedule` → `api_col_schedule`": {
+      "key": "KAN-656"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_execution_history` → `api_col_execution_history`": {
+      "key": "KAN-657"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_prv_operation`": {
+      "key": "KAN-658"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_prv_operation_column`": {
+      "key": "KAN-659"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_prv_operation_param`": {
+      "key": "KAN-660"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_prv_key_info`": {
+      "key": "KAN-661"
+    },
+    "04-monitoring#관리 테이블 네이밍 정리#`api_prv_call_history`": {
+      "key": "KAN-662"
     }
   }
 }
