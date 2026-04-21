@@ -1,0 +1,17 @@
+# ──────────────────────────────────────
+# 패턴: 단순 복사 (Oracle EAV 원본 → PG 제공 테이블 1:1)
+# 소스: TM_GD110302 (수질측정망검사결과, 표준화, EAV 구조)
+# 타겟: api_prv_tm_gd110302
+# 레거시: MEGOKR selectNgw04 소스 테이블 (PIVOT 전 원본)
+# 비고: PIVOT 후 flat 테이블(api_prv_ngw04)은 별도 전처리 Step에서 생성
+# ──────────────────────────────────────
+agent-code: provide-tm-gd110302
+type: LOADER
+
+steps:
+  - id: provide-tm-gd110302
+    name: 수질측정망검사결과 복사
+    factory-key: provide-load
+    source-table: TM_GD110302
+    target-table: api_prv_tm_gd110302
+    merge-key: SN

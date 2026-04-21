@@ -80,41 +80,58 @@
 ---
 
 ## DMZ 수집 업체 등록 (RCV) [등록]
-- [x] 대전 (PostgreSQL, dmz-bojo-rcv-daejeon)
-- [x] 바이텍 (PostgreSQL, dmz-bojo-rcv-bytek)
-- [x] 충남 (PostgreSQL, dmz-bojo-rcv-chungnam)
-- [x] 근산 (PostgreSQL, dmz-bojo-rcv-keunsan, 대문자)
-- [x] 인포월드 로컬 (MySQL, dmz-bojo-rcv-infoworld-local)
-- [x] 인포월드 서울 (MySQL, dmz-bojo-rcv-infoworld-seoul)
-- [x] 하이드로넷 아라 (MySQL, dmz-bojo-rcv-hydronet-ara)
-- [x] 하이드로넷 IDC (MySQL, dmz-bojo-rcv-hydronet-idc)
-- [x] 하이드로넷 경남 (MySQL, dmz-bojo-rcv-hydronet-kyungnam)
-- [x] 하이드로넷 원주 (MySQL, dmz-bojo-rcv-hydronet-wonju)
+### 보조관측망
+- [x] 대전 (PostgreSQL)
+- [x] 바이텍 (PostgreSQL)
+- [x] 충남 (PostgreSQL)
+- [x] 근산 (PostgreSQL, 대문자)
+- [x] 인포월드 로컬 (MySQL)
+- [x] 인포월드 서울 (MySQL)
+- [x] 하이드로넷 아라 (MySQL)
+- [x] 하이드로넷 IDC (MySQL)
+- [x] 하이드로넷 경남 (MySQL)
+- [x] 하이드로넷 원주 (MySQL)
 
 ## DMZ Loader 등록 [등록]
-- [x] dmz-bojo-loader (if_rsv → sec_jewon, sec_obsvdata)
+### 보조관측망
+- [x] 보조관측 제원/관측 적재 (IF_RSV → sec_jewon, sec_obsvdata)
 
 ## DMZ 전송 등록 (SND) [등록]
-- [x] dmz-bojo-snd — 보조관측 2테이블 (sec_jewon, sec_obsvdata)
-- [x] dmz-others-snd-saeol — 새올 16테이블 (LINK_PLAN 기반)
-- [x] dmz-others-snd-jeju — 제주 3테이블 (jewon, obsv, stgms)
-- [x] dmz-others-snd-use — 이용량 3테이블 (legacy, status, jejuday)
-- [x] dmz-others-snd-api-collect — API수집 2테이블 (tm_gd014000, tm_gd014001)
-- [ ] 제주 보류 3테이블 (rgetnpmms01, rgetnwavi05, rgetnwavi06) — 담당자 확인 후
+### 보조관측망
+- [x] 보조관측 제원/관측 2테이블 전송 (sec_jewon, sec_obsvdata)
+### 새올
+- [x] 새올 16테이블 전송 (LINK_PLAN 기반)
+### 제주
+- [x] 제주 제원/관측/이용시설 3테이블 전송
+- [ ] 제주 허가신고/수질검사 3테이블 — 담당자 확인 후
+### 이용량
+- [x] 이용량 3테이블 전송 (legacy, status, jejuday)
+### API 수집
+- [x] 나라장터/네이버 뉴스 2테이블 전송 (tm_gd014000, tm_gd014001)
 
 ## 내부망 수신 등록 (RCV) [등록]
-- [x] internal-bojo-rcv — 보조관측 2테이블
-- [x] internal-saeol-rcv — 새올 16테이블
-- [x] internal-jeju-rcv — 제주 3테이블
-- [x] internal-use-rcv — 이용량 3테이블
-- [ ] internal-api-collect-rcv — API수집 2테이블 (tm_gd014000, tm_gd014001) **예정**
+### 보조관측망
+- [x] 보조관측 2테이블 수신
+### 새올
+- [x] 새올 16테이블 수신
+### 제주
+- [x] 제주 3테이블 수신
+### 이용량
+- [x] 이용량 3테이블 수신
+### API 수집
+- [x] 나라장터/네이버 뉴스 2테이블 수신
 
 ## 내부망 적재 등록 (Loader) [등록]
-- [x] internal-bojo-loader — 보조관측 (IF_RSV → PM_GD970201, TM_GD970101, TM_GD980002)
-- [x] internal-saeol-loader — 새올 16개 (1:1 MERGE)
-- [x] internal-jeju-loader — 제주 (3소스 → 7+ 타겟)
-- [x] internal-use-loader — 이용량 (2소스 → 4타겟)
-- [ ] internal-api-collect-loader — API수집 (2소스 → TM_GD014000, TM_GD014001) **예정**
+### 보조관측망
+- [x] 보조관측 적재 (IF_RSV → PM_GD970201, TM_GD970101, TM_GD980002)
+### 새올
+- [x] 새올 16테이블 적재 (1:1 MERGE)
+### 제주
+- [x] 제주 적재 (3소스 → 7+ 타겟)
+### 이용량
+- [x] 이용량 적재 (2소스 → 4타겟)
+### API 수집
+- [x] 나라장터/네이버 뉴스 적재 (2소스 → TM_GD014000, TM_GD014001)
 
 ## 파이프라인 전체 흐름 [참고]
 
@@ -123,5 +140,5 @@
 새올:     새올 Oracle →[SND]→ IF_SND(16) →[RCV]→ IF_RSV(16) →[Loader]→ GIMS(16)
 제주:     API Collector →[DMZ DB]→[SND]→ IF_SND(3) →[RCV]→ IF_RSV(3) →[Loader]→ GIMS(7+)
 이용량:   API Collector →[DMZ DB]→[SND]→ IF_SND(3) →[RCV]→ IF_RSV(3) →[Loader]→ GIMS(4)
-API수집:  API Collector →[DMZ DB]→[SND]→ IF_SND(2) →[RCV(예정)]→ IF_RSV →[Loader(예정)]→ GIMS(2)
+API수집:  API Collector →[DMZ DB]→[SND]→ IF_SND(2) →[RCV]→ IF_RSV →[Loader]→ GIMS(2)
 ```

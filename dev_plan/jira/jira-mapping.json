@@ -34,6 +34,11 @@
       "key": "KAN-560",
       "startDate": "2026-03-12",
       "endDate": null
+    },
+    "08-provide-agent": {
+      "key": "KAN-691",
+      "startDate": null,
+      "endDate": null
     }
   },
   "tasks": {
@@ -336,6 +341,41 @@
       "key": "KAN-643",
       "startDate": null,
       "endDate": null
+    },
+    "05-api-provide#인프라": {
+      "key": "KAN-682",
+      "startDate": null,
+      "endDate": null
+    },
+    "05-api-provide#E2E 검증": {
+      "key": "KAN-686",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#제공용 Agent 인프라": {
+      "key": "KAN-692",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#Type A 단순 복사 등록": {
+      "key": "KAN-702",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#Type B 전처리 Step 구현": {
+      "key": "KAN-712",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#개발 환경 DDL": {
+      "key": "KAN-719",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#E2E 검증": {
+      "key": "KAN-723",
+      "startDate": null,
+      "endDate": null
     }
   },
   "subtasks": {
@@ -594,87 +634,6 @@
     "02-agent-pipeline#DB 연결 프록시#Oracle 지원 (ojdbc8 의존성)": {
       "key": "KAN-355"
     },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#대전 (PostgreSQL, dmz-bojo-rcv-daejeon)": {
-      "key": "KAN-357"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#바이텍 (PostgreSQL, dmz-bojo-rcv-bytek)": {
-      "key": "KAN-358"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#충남 (PostgreSQL, dmz-bojo-rcv-chungnam)": {
-      "key": "KAN-359"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#근산 (PostgreSQL, dmz-bojo-rcv-keunsan, 대문자)": {
-      "key": "KAN-360"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#인포월드 로컬 (MySQL, dmz-bojo-rcv-infoworld-local)": {
-      "key": "KAN-361"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#인포월드 서울 (MySQL, dmz-bojo-rcv-infoworld-seoul)": {
-      "key": "KAN-362"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 아라 (MySQL, dmz-bojo-rcv-hydronet-ara)": {
-      "key": "KAN-363"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 IDC (MySQL, dmz-bojo-rcv-hydronet-idc)": {
-      "key": "KAN-364"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 경남 (MySQL, dmz-bojo-rcv-hydronet-kyungnam)": {
-      "key": "KAN-365"
-    },
-    "02-agent-pipeline#DMZ 수집 업체 등록 (RCV)#하이드로넷 원주 (MySQL, dmz-bojo-rcv-hydronet-wonju)": {
-      "key": "KAN-366"
-    },
-    "02-agent-pipeline#DMZ Loader 등록#dmz-bojo-loader (if_rsv → sec_jewon, sec_obsvdata)": {
-      "key": "KAN-368"
-    },
-    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-bojo-snd — 보조관측 2테이블 (sec_jewon, sec_obsvdata)": {
-      "key": "KAN-370"
-    },
-    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-saeol — 새올 16테이블 (LINK_PLAN 기반)": {
-      "key": "KAN-371"
-    },
-    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-jeju — 제주 3테이블 (jewon, obsv, stgms)": {
-      "key": "KAN-372"
-    },
-    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-use — 이용량 3테이블 (legacy, status, jejuday)": {
-      "key": "KAN-373"
-    },
-    "02-agent-pipeline#DMZ 전송 등록 (SND)#dmz-others-snd-api-collect — API수집 2테이블 (tm_gd014000, tm_gd014001)": {
-      "key": "KAN-374"
-    },
-    "02-agent-pipeline#DMZ 전송 등록 (SND)#제주 보류 3테이블 (rgetnpmms01, rgetnwavi05, rgetnwavi06) — 담당자 확인 후": {
-      "key": "KAN-375"
-    },
-    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-bojo-rcv — 보조관측 2테이블": {
-      "key": "KAN-377"
-    },
-    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-saeol-rcv — 새올 16테이블": {
-      "key": "KAN-378"
-    },
-    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-jeju-rcv — 제주 3테이블": {
-      "key": "KAN-379"
-    },
-    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-use-rcv — 이용량 3테이블": {
-      "key": "KAN-380"
-    },
-    "02-agent-pipeline#내부망 수신 등록 (RCV)#internal-api-collect-rcv — API수집 2테이블 (tm_gd014000, tm_gd014001) **예정**": {
-      "key": "KAN-381"
-    },
-    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-bojo-loader — 보조관측 (IF_RSV → PM_GD970201, TM_GD970101, TM_GD980002)": {
-      "key": "KAN-383"
-    },
-    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-saeol-loader — 새올 16개 (1:1 MERGE)": {
-      "key": "KAN-384"
-    },
-    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-jeju-loader — 제주 (3소스 → 7+ 타겟)": {
-      "key": "KAN-385"
-    },
-    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-use-loader — 이용량 (2소스 → 4타겟)": {
-      "key": "KAN-386"
-    },
-    "02-agent-pipeline#내부망 적재 등록 (Loader)#internal-api-collect-loader — API수집 (2소스 → TM_GD014000, TM_GD014001) **예정**": {
-      "key": "KAN-387"
-    },
     "03-api-collect#범용 실행기#API 등록 (URL, 인증, 파라미터)": {
       "key": "KAN-390"
     },
@@ -755,57 +714,6 @@
     },
     "03-api-collect#API 수집 관리 화면#Next.js proxy (/collector-api/* → localhost:8084)": {
       "key": "KAN-420"
-    },
-    "03-api-collect#범용 실행기 등록#나라장터 #1 공사 (ID:16, target: tm_gd014000)": {
-      "key": "KAN-422"
-    },
-    "03-api-collect#범용 실행기 등록#나라장터 #2 용역 (ID:18, target: tm_gd014000)": {
-      "key": "KAN-423"
-    },
-    "03-api-collect#범용 실행기 등록#나라장터 #3 외자 (ID:19, target: tm_gd014000)": {
-      "key": "KAN-424"
-    },
-    "03-api-collect#범용 실행기 등록#나라장터 #4 물품 (ID:20, target: tm_gd014000)": {
-      "key": "KAN-425"
-    },
-    "03-api-collect#범용 실행기 등록#네이버 뉴스 수집 (ID:15, target: tm_gd014001)": {
-      "key": "KAN-426"
-    },
-    "03-api-collect#커스텀 실행기 등록#D1 jeju-jewon — 제주 관측점 마스터 (ID:21, target: tb_jeju_jewon)": {
-      "key": "KAN-428"
-    },
-    "03-api-collect#커스텀 실행기 등록#D2 jeju-obsv-data — 제주 수위 관측 (ID:22, target: tb_jeju)": {
-      "key": "KAN-429"
-    },
-    "03-api-collect#커스텀 실행기 등록#D3 jeju-facility — 제주 이용시설 (ID:23, target: rgetstgms01)": {
-      "key": "KAN-430"
-    },
-    "03-api-collect#커스텀 실행기 등록#D3 jeju-facility 수동 — 별도 오퍼레이션 (ID:24, target: rgetstgms01)": {
-      "key": "KAN-431"
-    },
-    "03-api-collect#커스텀 실행기 등록#D4 jeju-water-quality — 제주 수질검사 (ID:25, target: rgetnwavi05/06)": {
-      "key": "KAN-432"
-    },
-    "03-api-collect#커스텀 실행기 등록#D5 anyang-usage — 안양 이용량 (ID:17, target: anyang_api_fac/data, use_legacy_data)": {
-      "key": "KAN-433"
-    },
-    "03-api-collect#후속 파이프라인 연결#tb_jeju_jewon → dmz-others-snd-jeju → TM_GD970001 외 5개": {
-      "key": "KAN-435"
-    },
-    "03-api-collect#후속 파이프라인 연결#tb_jeju → dmz-others-snd-jeju → PM_GD970201, PM_GD970202": {
-      "key": "KAN-436"
-    },
-    "03-api-collect#후속 파이프라인 연결#rgetstgms01 → dmz-others-snd-jeju → TM_GD111010": {
-      "key": "KAN-437"
-    },
-    "03-api-collect#후속 파이프라인 연결#use_legacy/status_data → dmz-others-snd-use → PM_GD111021/22, TM_GD111024/25": {
-      "key": "KAN-438"
-    },
-    "03-api-collect#후속 파이프라인 연결#use_jeju_day → dmz-others-snd-use → (외부 시스템 적재, SND만 담당)": {
-      "key": "KAN-439"
-    },
-    "03-api-collect#후속 파이프라인 연결#tm_gd014000/014001 → dmz-others-snd-api-collect → TM_GD014000/014001 **(RCV/Loader 예정)**": {
-      "key": "KAN-440"
     },
     "04-monitoring#Agent 관리 API#Agent CRUD (등록/수정/삭제/조회)": {
       "key": "KAN-443"
@@ -1013,9 +921,6 @@
     },
     "05-api-provide#오퍼레이션 관리#정렬/LIMIT 설정": {
       "key": "KAN-527"
-    },
-    "05-api-provide#오퍼레이션 관리#응답 포맷 선택 (JSON, XML 등)": {
-      "key": "KAN-528"
     },
     "05-api-provide#테스트 호출#등록한 오퍼레이션 미리보기 (실제 쿼리 실행 → 결과 샘플 표시)": {
       "key": "KAN-530"
@@ -1365,11 +1270,179 @@
     "04-monitoring#관리 테이블 네이밍 정리#`api_prv_operation_param`": {
       "key": "KAN-660"
     },
-    "04-monitoring#관리 테이블 네이밍 정리#`api_prv_key_info`": {
-      "key": "KAN-661"
-    },
     "04-monitoring#관리 테이블 네이밍 정리#`api_prv_call_history`": {
       "key": "KAN-662"
+    },
+    "05-api-provide#오퍼레이션 관리#응답 포맷 (JSON)": {
+      "key": "KAN-663"
+    },
+    "05-api-provide#오퍼레이션 관리#컬럼 가공 기능 (ROUND / DATE_FORMAT / COALESCE / SUBSTRING)": {
+      "key": "KAN-664"
+    },
+    "05-api-provide#오퍼레이션 관리#파라미터 옵션 (필수/숨김/기본값)": {
+      "key": "KAN-665"
+    },
+    "05-api-provide#오퍼레이션 관리#페이징 지원 (page/pageSize → LIMIT/OFFSET)": {
+      "key": "KAN-666"
+    },
+    "05-api-provide#테스트 호출#결과 확인 후 활성화 — 비활성 시 외부 노출 안 됨": {
+      "key": "KAN-667"
+    },
+    "05-api-provide#테스트 호출#활성/비활성 상태 관리": {
+      "key": "KAN-668"
+    },
+    "05-api-provide#테스트 호출#생성 SQL 하이라이팅 표시 (디버깅용)": {
+      "key": "KAN-669"
+    },
+    "05-api-provide#API 엔드포인트 생성#활성 오퍼레이션 → 동적 SELECT 쿼리 생성": {
+      "key": "KAN-670"
+    },
+    "05-api-provide#API 엔드포인트 생성#REST API 자동 노출 (오퍼레이션 ID 기반, `/api/provide/{operationId}`)": {
+      "key": "KAN-671"
+    },
+    "05-api-provide#API 엔드포인트 생성#동적 쿼리 보안 (화이트리스트 정규식 + PreparedStatement 바인딩)": {
+      "key": "KAN-672"
+    },
+    "05-api-provide#API 엔드포인트 생성#10종 WHERE 연산자 (=, >, >=, <, <=, LIKE 포함/시작/끝, IN, BETWEEN)": {
+      "key": "KAN-673"
+    },
+    "05-api-provide#API 엔드포인트 생성#Proxy 경유 DataSource 획득·캐싱 (ProviderDataSourceService, bojo-int 패턴)": {
+      "key": "KAN-674"
+    },
+    "05-api-provide#API 엔드포인트 생성#Mock API Key 검증기 (운영 시 외부 API URL만 교체하면 전환 가능)": {
+      "key": "KAN-675"
+    },
+    "05-api-provide#실행/모니터링#호출 이력 저장 (ApiPrvCallHistory)": {
+      "key": "KAN-676"
+    },
+    "05-api-provide#실행/모니터링#비활성 오퍼레이션 차단 (404 응답)": {
+      "key": "KAN-677"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#활성/비활성 토글": {
+      "key": "KAN-678"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#API 명세서 자동 생성 탭 (SpecTab)": {
+      "key": "KAN-679"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#호출 이력 탭 (HistoryTab, 페이징)": {
+      "key": "KAN-680"
+    },
+    "05-api-provide#오퍼레이션 관리 화면#상세 6탭 UI 통합 (기본정보/컬럼/파라미터/테스트/명세서/이력)": {
+      "key": "KAN-681"
+    },
+    "05-api-provide#인프라#DB 구조 전환 — Oracle 단일 → PG 전용 컨테이너 (api_provider, 29006)": {
+      "key": "KAN-683"
+    },
+    "05-api-provide#인프라#DB 컬럼 comment 관리 (comment.sql 기동 시 자동 실행)": {
+      "key": "KAN-684"
+    },
+    "05-api-provide#인프라#Jasypt 암호화 (민감정보 ENC() 래핑)": {
+      "key": "KAN-685"
+    },
+    "05-api-provide#E2E 검증#동적 SELECT 엔진 E2E 테스트 (오퍼레이션 등록 → 테스트 호출 → Gateway 호출 → 이력 저장)": {
+      "key": "KAN-687"
+    },
+    "05-api-provide#E2E 검증#호출 이력 저장 로직 검증 (ApiPrvCallHistory 기록 확인)": {
+      "key": "KAN-688"
+    },
+    "05-api-provide#E2E 검증#API Key 검증 외부화 시나리오 테스트 (Mock → 실제 검증 API 전환)": {
+      "key": "KAN-689"
+    },
+    "05-api-provide#E2E 검증#등록 플로우 브라우저 전체 재테스트": {
+      "key": "KAN-690"
+    },
+    "08-provide-agent#제공용 Agent 인프라#모듈 생성 (bojo-int 복제, port 8096, PG 29006, ddl-auto)": {
+      "key": "KAN-693"
+    },
+    "08-provide-agent#제공용 Agent 인프라#Proxy 경유 Oracle 소스 연결 (SyncDataSourceService)": {
+      "key": "KAN-694"
+    },
+    "08-provide-agent#제공용 Agent 인프라#DynamicEntityManagerService + CaseAwareNamingStrategy": {
+      "key": "KAN-695"
+    },
+    "08-provide-agent#제공용 Agent 인프라#SimpleLoadStepFactory 재사용 (Type A, 단순 복사)": {
+      "key": "KAN-696"
+    },
+    "08-provide-agent#제공용 Agent 인프라#PreprocessLoadStepFactory 신규 (Type B, 전처리)": {
+      "key": "KAN-697"
+    },
+    "08-provide-agent#제공용 Agent 인프라#YAML 구조 — 테이블별 개별 파일 (신규 추가 시 파일 하나만 추가)": {
+      "key": "KAN-698"
+    },
+    "08-provide-agent#제공용 Agent 인프라#원본 테이블 추적 컬럼 관리 (LINK_STATUS / EXECUTION_ID / SOURCE_REFS / EXTRACTED_AT / UPDATED_AT)": {
+      "key": "KAN-699"
+    },
+    "08-provide-agent#제공용 Agent 인프라#SyncLog·Execution 공유 PG 29006 (agent_id로 구분)": {
+      "key": "KAN-700"
+    },
+    "08-provide-agent#제공용 Agent 인프라#api-provider `entity/provide/` 4개 엔티티 이관 후 삭제": {
+      "key": "KAN-701"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A1 가뭄119 (SDE_NGWS.WT_DREAM_PERMWELL_PUBLIC_21033 → api_prv_wt_dream_permwell_public_21033)": {
+      "key": "KAN-703"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A2 MEGOKR NGW_03 (TM_GD30301 → api_prv_tm_gd30301)": {
+      "key": "KAN-704"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A3 MEGOKR NGW_08 (TM_GD00203 → api_prv_tm_gd00203)": {
+      "key": "KAN-705"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A4 MEGOKR NGW_09 (WT_DREAM_PERMWELL_PUBLIC → api_prv_wt_dream_permwell_public)": {
+      "key": "KAN-706"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A5 OPN 인허가관정 (RGETNPMMS01 → api_prv_rgetnpmms01)": {
+      "key": "KAN-707"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A6 OPN 관측망 기본 (TM_GD10001 → api_prv_tm_gd10001)": {
+      "key": "KAN-708"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A7 OPN 수질측정망 (VIEW_GTEST → api_prv_view_gtest)": {
+      "key": "KAN-709"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A8 OPN 영향조사 (TM_GD50001 → api_prv_tm_gd50001)": {
+      "key": "KAN-710"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A9 OPN 수질검사 항목 (TM_GD30310 → api_prv_tm_gd30310)": {
+      "key": "KAN-711"
+    },
+    "08-provide-agent#Type B 전처리 Step 구현#B1/B2 MEGOKR NGW_04 PIVOT 125컬럼 Step (TM_GD30302 +30301 +10001 → api_prv_tm_gd30302)": {
+      "key": "KAN-713"
+    },
+    "08-provide-agent#Type B 전처리 Step 구현#B3/B4 OPN waterQuality JOIN+CASE Step (TM_GD10001, 30301, 30302, TC_GD00002 → api_prv_water_quality)": {
+      "key": "KAN-714"
+    },
+    "08-provide-agent#Type B 전처리 Step 구현#B5 OPN general_105 5 LEFT JOIN Step (TM_GD10001, 60101, 60130, 60001, 60002, 70002 → api_prv_general_105)": {
+      "key": "KAN-715"
+    },
+    "08-provide-agent#Type B 전처리 Step 구현#B8/B9 OPN linkage_chart CTE+PIVOT+UNION Step (PM_GD60201, TM_GD60101, TM_GD10001 → api_prv_linkage_chart)": {
+      "key": "KAN-716"
+    },
+    "08-provide-agent#Type B 전처리 Step 구현#B6 OPN observation_station1 DBLINK Step (DBLINKUSR.DUBWLOBSIF 외 3개 → api_prv_observation) — DBLINK 담당자 협의 후": {
+      "key": "KAN-717"
+    },
+    "08-provide-agent#Type B 전처리 Step 구현#B7 OPN observation_station0 DBLINK Step (DUBRFOBSIF, DUBMMRF 외 1개 → api_prv_rainfall) — DBLINK 담당자 협의 후": {
+      "key": "KAN-718"
+    },
+    "08-provide-agent#개발 환경 DDL#누락 Oracle 테이블 DDL + 샘플 데이터 (15개: TM_GD10001, TM_GD30301/30302/30310, TM_GD00203, TM_GD50001, WT_DREAM_PERMWELL_PUBLIC, WT_DREAM_PERMWELL_PUBLIC_21033, VIEW_GTEST, TC_GD00002/00100, TM_GD60001/60002/60101/60130, TM_GD70002, PM_GD60201)": {
+      "key": "KAN-720"
+    },
+    "08-provide-agent#개발 환경 DDL#RGETNPMMS01 추적 컬럼 ALTER TABLE (LINK_STATUS 기본값 pending 포함)": {
+      "key": "KAN-721"
+    },
+    "08-provide-agent#개발 환경 DDL#DBLINKUSR.* 4개 — 수위/우량관측소 원본 접근 방식 담당자 협의 후": {
+      "key": "KAN-722"
+    },
+    "08-provide-agent#E2E 검증#A5 RGETNPMMS01 E2E 파일럿 (Oracle 29004 → PG 29006)": {
+      "key": "KAN-724"
+    },
+    "08-provide-agent#E2E 검증#api-provider 연동 검증 (제공 테이블 → 동적 SELECT → 외부 응답)": {
+      "key": "KAN-725"
+    },
+    "08-provide-agent#E2E 검증#Type A 9건 전체 E2E 검증": {
+      "key": "KAN-726"
+    },
+    "08-provide-agent#E2E 검증#Type B 전처리 결과 검증 (실서버 접근 확보 후)": {
+      "key": "KAN-727"
     }
   }
 }

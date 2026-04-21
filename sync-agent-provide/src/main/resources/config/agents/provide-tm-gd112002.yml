@@ -1,0 +1,16 @@
+# ──────────────────────────────────────
+# 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
+# 소스: TM_GD112002 (드림서비스 공공관정, 표준화)
+# 타겟: api_prv_tm_gd112002
+# 레거시: MEGOKR selectNgw09/09_01 (공공관정 상세), 가뭄119 selectdroght119
+# ──────────────────────────────────────
+agent-code: provide-tm-gd112002
+type: LOADER
+
+steps:
+  - id: provide-tm-gd112002
+    name: 드림서비스 공공관정 복사
+    factory-key: provide-load
+    source-table: TM_GD112002
+    target-table: api_prv_tm_gd112002
+    merge-key: PRMSN_DCLR_NO

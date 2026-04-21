@@ -1,0 +1,16 @@
+# ──────────────────────────────────────
+# 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
+# 소스: TM_GD120001 (관정, 표준화)
+# 타겟: api_prv_tm_gd120001
+# 레거시: OPN info_general (관측망 상세)
+# ──────────────────────────────────────
+agent-code: provide-tm-gd120001
+type: LOADER
+
+steps:
+  - id: provide-tm-gd120001
+    name: 관정 기본정보 복사
+    factory-key: provide-load
+    source-table: TM_GD120001
+    target-table: api_prv_tm_gd120001
+    merge-key: GWEL_NO

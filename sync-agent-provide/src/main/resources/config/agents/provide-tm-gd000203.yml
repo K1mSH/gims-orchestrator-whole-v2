@@ -1,0 +1,16 @@
+# ──────────────────────────────────────
+# 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
+# 소스: TM_GD000203 (공공관정 가뭄지원, 표준화)
+# 타겟: api_prv_tm_gd000203
+# 레거시: MEGOKR selectNgw08
+# ──────────────────────────────────────
+agent-code: provide-tm-gd000203
+type: LOADER
+
+steps:
+  - id: provide-tm-gd000203
+    name: 공공관정 가뭄지원 복사
+    factory-key: provide-load
+    source-table: TM_GD000203
+    target-table: api_prv_tm_gd000203
+    merge-key: SN

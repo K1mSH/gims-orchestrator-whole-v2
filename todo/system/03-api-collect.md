@@ -48,24 +48,23 @@
 ---
 
 ## 범용 실행기 등록 [등록]
-- [x] 나라장터 #1 공사 (ID:16, target: tm_gd014000)
-- [x] 나라장터 #2 용역 (ID:18, target: tm_gd014000)
-- [x] 나라장터 #3 외자 (ID:19, target: tm_gd014000)
-- [x] 나라장터 #4 물품 (ID:20, target: tm_gd014000)
-- [x] 네이버 뉴스 수집 (ID:15, target: tm_gd014001)
+- [x] 나라장터 공사 입찰 (target: tm_gd014000)
+- [x] 나라장터 용역 입찰 (target: tm_gd014000)
+- [x] 나라장터 외자 입찰 (target: tm_gd014000)
+- [x] 나라장터 물품 입찰 (target: tm_gd014000)
+- [x] 네이버 뉴스 수집 (target: tm_gd014001)
 
 ## 커스텀 실행기 등록 [등록]
-- [x] D1 jeju-jewon — 제주 관측점 마스터 (ID:21, target: tb_jeju_jewon)
-- [x] D2 jeju-obsv-data — 제주 수위 관측 (ID:22, target: tb_jeju)
-- [x] D3 jeju-facility — 제주 이용시설 (ID:23, target: rgetstgms01)
-- [x] D3 jeju-facility 수동 — 별도 오퍼레이션 (ID:24, target: rgetstgms01)
-- [x] D4 jeju-water-quality — 제주 수질검사 (ID:25, target: rgetnwavi05/06)
-- [x] D5 anyang-usage — 안양 이용량 (ID:17, target: anyang_api_fac/data, use_legacy_data)
+- [x] 제주 관측점 제원 수집 (target: tb_jeju_jewon)
+- [x] 제주 수위 관측 데이터 수집 (target: tb_jeju)
+- [x] 제주 이용시설 수집 — 자동/수동 (target: rgetnpmms01, rgetstgms01)
+- [x] 제주 수질검사 수집 (target: rgetnwavi05, rgetnwavi06)
+- [x] 안양 이용량 수집 (target: anyang_api_fac, anyang_api_data, use_legacy_data)
 
 ## 후속 파이프라인 연결 [등록]
-- [x] tb_jeju_jewon → dmz-others-snd-jeju → TM_GD970001 외 5개
-- [x] tb_jeju → dmz-others-snd-jeju → PM_GD970201, PM_GD970202
-- [x] rgetstgms01 → dmz-others-snd-jeju → TM_GD111010
-- [x] use_legacy/status_data → dmz-others-snd-use → PM_GD111021/22, TM_GD111024/25
-- [x] use_jeju_day → dmz-others-snd-use → (외부 시스템 적재, SND만 담당)
-- [ ] tm_gd014000/014001 → dmz-others-snd-api-collect → TM_GD014000/014001 **(RCV/Loader 예정)**
+- [x] 제주 제원 → 내부망 GIMS 적재 (TM_GD970001 외 5개)
+- [x] 제주 수위 관측 → 내부망 GIMS 적재 (PM_GD970201, PM_GD970202)
+- [x] 제주 이용시설 → 내부망 GIMS 적재 (TM_GD111010)
+- [x] 이용량 데이터 → 내부망 GIMS 적재 (PM_GD111021/22, TM_GD111024/25)
+- [x] 제주 일집계 → SND 전송
+- [x] 나라장터/네이버 뉴스 → 내부망 GIMS 적재 (TM_GD014000, TM_GD014001)

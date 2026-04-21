@@ -137,5 +137,4 @@
 - [ ] `api_prv_operation`
 - [ ] `api_prv_operation_column`
 - [ ] `api_prv_operation_param`
-- [ ] `api_prv_key_info`
 - [ ] `api_prv_call_history`

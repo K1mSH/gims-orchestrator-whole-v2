@@ -55,6 +55,7 @@ FILE_ORDER = [
     "05-api-provide.md",
     "06-procedure-mgmt.md",
     "07-security.md",
+    "08-provide-agent.md",
 ]
 
 
@@ -270,6 +271,80 @@ def delete_all_issues():
     print(f"  삭제 완료: {deleted}건")
 
 
+# === 고아 이슈 정리 (--cleanup-orphans) ===
+
+def cleanup_orphans(dry_run=False):
+    """mapping.json에 없는 Jira 이슈를 찾아 삭제"""
+    print("\n=== 고아 이슈 정리 ===")
+    mapping = load_mapping()
+    known_keys = set()
+    for v in mapping["epics"].values():
+        known_keys.add(v["key"])
+    for v in mapping["tasks"].values():
+        known_keys.add(v["key"])
+    for v in mapping["subtasks"].values():
+        known_keys.add(v["key"])
+    print(f"  매핑 보유 key: {len(known_keys)}개")
+
+    # Jira 전체 이슈 조회
+    all_issues = []
+    next_token = None
+    while True:
+        url = f"/search/jql?jql=project+%3D+{PROJECT_KEY}&maxResults=100&fields=summary,issuetype,status"
+        if next_token:
+            url += f"&nextPageToken={next_token}"
+        resp = jira_request("GET", url)
+        if not resp or resp.status_code != 200:
+            print(f"  조회 실패: {resp.status_code if resp else 'N/A'}")
+            return
+        data = resp.json()
+        issues = data.get("issues", [])
+        if not issues:
+            break
+        all_issues.extend(issues)
+        if data.get("isLast", True):
+            break
+        next_token = data.get("nextPageToken")
+
+    print(f"  Jira 전체 이슈: {len(all_issues)}건")
+
+    orphans = [i for i in all_issues if i["key"] not in known_keys]
+    print(f"  고아 이슈: {len(orphans)}건")
+
+    if not orphans:
+        print("  정리할 항목 없음.")
+        return
+
+    orphans.sort(key=lambda x: int(x["key"].split("-")[1]))
+
+    for i in orphans:
+        issue_type = i["fields"]["issuetype"]["name"]
+        status = i["fields"]["status"]["name"]
+        summary = i["fields"]["summary"]
+        print(f"    {i['key']:12} [{issue_type:8}] [{status}] {summary[:70]}")
+
+    if dry_run:
+        print("\n  [DRY RUN] 실제 삭제하지 않습니다.")
+        return
+
+    print(f"\n  실제 삭제 진행...")
+    deleted = 0
+    failed = 0
+    for issue in orphans:
+        key = issue["key"]
+        resp = jira_request("DELETE", f"/issue/{key}?deleteSubtasks=true")
+        if resp and resp.status_code in (204, 200):
+            deleted += 1
+            print(f"    삭제: {key}")
+        else:
+            failed += 1
+            code = resp.status_code if resp else 'N/A'
+            print(f"    실패: {key} ({code})")
+        time.sleep(0.1)
+
+    print(f"\n  삭제 완료: {deleted}건, 실패: {failed}건")
+
+
 # === 초기 생성 (--init) ===
 
 def init_create(epics, dry_run=False):
@@ -350,7 +425,7 @@ def init_create(epics, dry_run=False):
 
 # === 동기화 (--sync) ===
 
-def sync(epics, dry_run=False):
+def sync(epics, dry_run=False, cleanup=True):
     print("\n=== 동기화 ===")
     mapping = load_mapping()
     if not mapping["epics"]:
@@ -464,6 +539,9 @@ def sync(epics, dry_run=False):
     print(f"  상태 변경: {stats['updated']}건")
     print(f"  변경 없음: {stats['skipped']}건")
 
+    if cleanup:
+        cleanup_orphans(dry_run=dry_run)
+
 
 # === 메인 ===
 
@@ -473,10 +551,16 @@ def main():
     parser.add_argument("--sync", action="store_true", help="동기화 (매핑 기반 업데이트)")
     parser.add_argument("--dry-run", action="store_true", help="실제 호출 없이 미리보기")
     parser.add_argument("--delete-all", action="store_true", help="기존 이슈 전부 삭제만")
+    parser.add_argument("--cleanup-orphans", action="store_true", help="mapping에 없는 고아 이슈 삭제 (단독 실행)")
+    parser.add_argument("--no-cleanup", action="store_true", help="--sync 시 자동 고아 정리 비활성화")
     args = parser.parse_args()
 
-    if not any([args.init, args.sync, args.delete_all]):
+    if not any([args.init, args.sync, args.delete_all, args.cleanup_orphans]):
         parser.print_help()
+        return
+
+    if args.cleanup_orphans:
+        cleanup_orphans(dry_run=args.dry_run)
         return
 
     print("=== todo/system 파싱 ===")
@@ -498,7 +582,7 @@ def main():
         init_create(epics, dry_run=args.dry_run)
 
     if args.sync:
-        sync(epics, dry_run=args.dry_run)
+        sync(epics, dry_run=args.dry_run, cleanup=not args.no_cleanup)
 
 
 if __name__ == "__main__":
