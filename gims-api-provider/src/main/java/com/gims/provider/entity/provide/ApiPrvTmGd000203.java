@@ -5,10 +5,9 @@ import javax.persistence.*;
 
 /**
  * 공통가뭄상태 제공용 테이블
- * 원본: TM_GD00203 → 표준화: TM_GD000203
  */
 @Entity
-@Table(name = "API_PRV_TM_GD000203")
+@Table(name = "api_prv_tm_gd000203")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,39 +17,43 @@ public class ApiPrvTmGd000203 {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "SN")
     private Long sn;
 
-    @Column(name = "CTPV_NM", length = 40)
-    private String ctpvNm;
+    /** 시도명 */
+    @Column(length = 40)
+    private String ctpv_nm;
 
-    @Column(name = "SGG_NM", length = 40)
-    private String sggNm;
+    /** 시군구명 */
+    @Column(length = 40)
+    private String sgg_nm;
 
-    @Column(name = "EMD_NM", length = 30)
-    private String emdNm;
+    /** 읍면동명 */
+    @Column(length = 30)
+    private String emd_nm;
 
-    @Column(name = "LI_NM", length = 40)
-    private String liNm;
+    /** 리명 */
+    @Column(length = 40)
+    private String li_nm;
 
-    @Column(name = "PPLTN_CNT")
-    private Long ppltnCnt;
+    /** 인구수 */
+    private Long ppltn_cnt;
 
-    @Column(name = "LPCD_CN", length = 100)
-    private String lpcdCn;
+    /** 지역특성내용 */
+    @Column(length = 100)
+    private String lpcd_cn;
 
-    @Column(name = "DMD_QNT_VL")
-    private Long dmdQntVl;
+    /** 수요량값 */
+    private Long dmd_qnt_vl;
 
-    @Column(name = "SPLY_PSBLQY_VL")
-    private Long splyPsblqyVl;
+    /** 공급가능량값 */
+    private Long sply_psblqy_vl;
 
-    @Column(name = "OVSHRTS_QNT_VL")
-    private Long ovshrtsQntVl;
+    /** 부족량값 */
+    private Long ovshrts_qnt_vl;
 
-    @Column(name = "TOT_PUB_GWEL_CNT")
-    private Long totPubGwelCnt;
+    /** 총공공관정수 */
+    private Long tot_pub_gwel_cnt;
 
-    @Column(name = "USE_PUB_GWEL_CNT")
-    private Long usePubGwelCnt;
+    /** 가용공공관정수 */
+    private Long use_pub_gwel_cnt;
 }

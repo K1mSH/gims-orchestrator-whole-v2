@@ -5,10 +5,9 @@ import javax.persistence.*;
 
 /**
  * 드림서비스 공공관정 제공용 테이블
- * 원본: WT_DREAM_PERMWELL_PUBLIC → 표준화: TM_GD112002
  */
 @Entity
-@Table(name = "API_PRV_TM_GD112002")
+@Table(name = "api_prv_tm_gd112002")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,108 +17,132 @@ public class ApiPrvTmGd112002 {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "SN")
     private Long sn;
 
-    @Column(name = "LINK_TRSM_SGG_CD", length = 7)
-    private String linkTrsmSggCd;
+    /** 연계전송시군구코드 */
+    @Column(length = 7)
+    private String link_trsm_sgg_cd;
 
-    @Column(name = "PRMSN_DCLR_NO", length = 30)
-    private String prmsnDclrNo;
+    /** 허가신고번호 */
+    @Column(length = 30)
+    private String prmsn_dclr_no;
 
-    @Column(name = "PRMSN_DCLR_FRM_CD", length = 1)
-    private String prmsnDclrFrmCd;
+    /** 허가신고형태코드 */
+    @Column(length = 1)
+    private String prmsn_dclr_frm_cd;
 
-    @Column(name = "YR_SE", length = 4)
-    private String yrSe;
+    /** 연도구분 */
+    @Column(length = 4)
+    private String yr_se;
 
-    @Column(name = "RGN_CD", length = 10)
-    private String rgnCd;
+    /** 지역코드 */
+    @Column(length = 10)
+    private String rgn_cd;
 
-    @Column(name = "CTPV_NM", length = 40)
-    private String ctpvNm;
+    /** 시도명 */
+    @Column(length = 40)
+    private String ctpv_nm;
 
-    @Column(name = "SGG_NM", length = 40)
-    private String sggNm;
+    /** 시군구명 */
+    @Column(length = 40)
+    private String sgg_nm;
 
-    @Column(name = "EMD_NM", length = 30)
-    private String emdNm;
+    /** 읍면동명 */
+    @Column(length = 30)
+    private String emd_nm;
 
-    @Column(name = "LI_NM", length = 40)
-    private String liNm;
+    /** 리명 */
+    @Column(length = 40)
+    private String li_nm;
 
-    @Column(name = "MTN", length = 1)
+    /** 산 */
+    @Column(length = 1)
     private String mtn;
 
-    @Column(name = "BNJ", length = 20)
+    /** 번지 */
+    @Column(length = 20)
     private String bnj;
 
-    @Column(name = "HO", length = 10)
+    /** 호 */
+    @Column(length = 10)
     private String ho;
 
-    @Column(name = "UGWTR_USG", length = 20)
-    private String ugwtrUsg;
+    /** 지하수용도 */
+    @Column(length = 20)
+    private String ugwtr_usg;
 
-    @Column(name = "UGWTR_DTL_USG_CD", length = 2)
-    private String ugwtrDtlUsgCd;
+    /** 지하수상세용도코드 */
+    @Column(length = 2)
+    private String ugwtr_dtl_usg_cd;
 
-    @Column(name = "DKPP_YN", length = 1)
-    private String dkppYn;
+    /** 음용여부 */
+    @Column(length = 1)
+    private String dkpp_yn;
 
-    @Column(name = "LAT_DG", length = 20)
-    private String latDg;
+    /** 위도(도) */
+    @Column(length = 20)
+    private String lat_dg;
 
-    @Column(name = "LAT_MI", length = 20)
-    private String latMi;
+    /** 위도(분) */
+    @Column(length = 20)
+    private String lat_mi;
 
-    @Column(name = "LAT_SS", length = 20)
-    private String latSs;
+    /** 위도(초) */
+    @Column(length = 20)
+    private String lat_ss;
 
-    @Column(name = "LOT_DG", length = 20)
-    private String lotDg;
+    /** 경도(도) */
+    @Column(length = 20)
+    private String lot_dg;
 
-    @Column(name = "LOT_MI", length = 20)
-    private String lotMi;
+    /** 경도(분) */
+    @Column(length = 20)
+    private String lot_mi;
 
-    @Column(name = "LOT_SS", length = 20)
-    private String lotSs;
+    /** 경도(초) */
+    @Column(length = 20)
+    private String lot_ss;
 
-    @Column(name = "DPH_VL")
-    private Long dphVl;
+    /** 심도값 */
+    private Long dph_vl;
 
-    @Column(name = "DGG_CALBR")
-    private Long dggCalbr;
+    /** 굴착구경 */
+    private Long dgg_calbr;
 
-    @Column(name = "DELP_DIA")
-    private Long delpDia;
+    /** 케이싱구경 */
+    private Long delp_dia;
 
-    @Column(name = "PUMP_HRSPW")
-    private Long pumpHrspw;
+    /** 펌프마력 */
+    private Long pump_hrspw;
 
-    @Column(name = "WTRIT_PLAN_QTR")
-    private Long wtritPlanQtr;
+    /** 취수계획량 */
+    private Long wtrit_plan_qtr;
 
-    @Column(name = "WPMP_ABLT")
-    private Long wpmpAblt;
+    /** 양수능력 */
+    private Long wpmp_ablt;
 
-    @Column(name = "YR_USQTY")
-    private Long yrUsqty;
+    /** 연간사용량 */
+    private Long yr_usqty;
 
-    @Column(name = "PUB_PRVTEST_SE", length = 1)
-    private String pubPrvtestSe;
+    /** 공공민간구분 */
+    @Column(length = 1)
+    private String pub_prvtest_se;
 
-    @Column(name = "WQ_INSP_YMD", length = 8)
-    private String wqInspYmd;
+    /** 수질검사일자 */
+    @Column(length = 8)
+    private String wq_insp_ymd;
 
-    @Column(name = "WQ_INSP_RSLT", length = 100)
-    private String wqInspRslt;
+    /** 수질검사결과 */
+    @Column(length = 100)
+    private String wq_insp_rslt;
 
-    @Column(name = "PNU", length = 19)
+    /** 필지고유번호 */
+    @Column(length = 19)
     private String pnu;
 
-    @Column(name = "XCRD")
+    /** X좌표 */
     private Long xcrd;
 
-    @Column(name = "YCRD")
+    /** Y좌표 */
     private Long ycrd;
 }

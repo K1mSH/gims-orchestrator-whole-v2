@@ -6,10 +6,9 @@ import java.time.LocalDateTime;
 
 /**
  * 수질측정망검사개요 제공용 테이블
- * 원본: TM_GD30301 → 표준화: TM_GD110301
  */
 @Entity
-@Table(name = "API_PRV_TM_GD110301")
+@Table(name = "api_prv_tm_gd110301")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,72 +18,89 @@ public class ApiPrvTmGd110301 {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "SN")
     private Long sn;
 
-    @Column(name = "WQ_INSP_SN", nullable = false)
-    private Long wqInspSn;
+    /** 수질검사일련번호 */
+    @Column(nullable = false)
+    private Long wq_insp_sn;
 
-    @Column(name = "GWEL_NO", nullable = false)
-    private Long gwelNo;
+    /** 관정번호 */
+    @Column(nullable = false)
+    private Long gwel_no;
 
-    @Column(name = "EXMN_YR", length = 4)
-    private String exmnYr;
+    /** 검사년도 */
+    @Column(length = 4)
+    private String exmn_yr;
 
-    @Column(name = "CYCL")
+    /** 차수 */
     private Long cycl;
 
-    @Column(name = "DPH_CLSF_CD", length = 1)
-    private String dphClsfCd;
+    /** 심도구분코드 */
+    @Column(length = 1)
+    private String dph_clsf_cd;
 
-    @Column(name = "DPH_VL")
-    private Long dphVl;
+    /** 심도값 */
+    private Long dph_vl;
 
-    @Column(name = "WTSMP_YMD", length = 8)
-    private String wtSmpYmd;
+    /** 시료채취일자 */
+    @Column(length = 8)
+    private String wtsmp_ymd;
 
-    @Column(name = "WQ_INSP_YMD", length = 8)
-    private String wqInspYmd;
+    /** 수질검사일자 */
+    @Column(length = 8)
+    private String wq_insp_ymd;
 
-    @Column(name = "DATA_INPT_YMD", length = 8)
-    private String dataInptYmd;
+    /** 자료입력일자 */
+    @Column(length = 8)
+    private String data_inpt_ymd;
 
-    @Column(name = "CFMTN_YMD", length = 8)
-    private String cfmtnYmd;
+    /** 확인일자 */
+    @Column(length = 8)
+    private String cfmtn_ymd;
 
-    @Column(name = "FRST_REG_DT")
-    private LocalDateTime frstRegDt;
+    /** 최초등록일시 */
+    private LocalDateTime frst_reg_dt;
 
-    @Column(name = "LAST_CHG_DT")
-    private LocalDateTime lastChgDt;
+    /** 최종변경일시 */
+    private LocalDateTime last_chg_dt;
 
-    @Column(name = "UGWTR_USG_CD", length = 2)
-    private String ugwtrUsgCd;
+    /** 지하수용도코드 */
+    @Column(length = 2)
+    private String ugwtr_usg_cd;
 
-    @Column(name = "DKPP_YN", length = 1)
-    private String dkppYn;
+    /** 음용여부 */
+    @Column(length = 1)
+    private String dkpp_yn;
 
-    @Column(name = "UGWTR_WQMN_INPT_INST_CD", length = 5)
-    private String ugwtrWqmnInptInstCd;
+    /** 지하수수질측정망입력기관코드 */
+    @Column(length = 5)
+    private String ugwtr_wqmn_inpt_inst_cd;
 
-    @Column(name = "WQ_INSP_IMPS_RSN_CN", length = 4000)
-    private String wqInspImpsRsnCn;
+    /** 수질검사불가사유내용 */
+    @Column(length = 4000)
+    private String wq_insp_imps_rsn_cn;
 
-    @Column(name = "CTPV_NM", length = 40)
-    private String ctpvNm;
+    /** 시도명 */
+    @Column(length = 40)
+    private String ctpv_nm;
 
-    @Column(name = "SGG_NM", length = 30)
-    private String sggNm;
+    /** 시군구명 */
+    @Column(length = 30)
+    private String sgg_nm;
 
-    @Column(name = "EMD_NM", length = 30)
-    private String emdNm;
+    /** 읍면동명 */
+    @Column(length = 30)
+    private String emd_nm;
 
-    @Column(name = "LI_NM", length = 40)
-    private String liNm;
+    /** 리명 */
+    @Column(length = 40)
+    private String li_nm;
 
-    @Column(name = "ADDR", length = 250)
+    /** 주소 */
+    @Column(length = 250)
     private String addr;
 
-    @Column(name = "PUB_GWEL_YN", length = 1)
-    private String pubGwelYn;
+    /** 공공관정여부 */
+    @Column(length = 1)
+    private String pub_gwel_yn;
 }

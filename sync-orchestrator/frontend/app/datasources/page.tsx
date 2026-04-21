@@ -755,12 +755,17 @@ function TableManagementModal({
     if (!refreshTarget || refreshSelectedColumns.length === 0) return;
     setRefreshSaving(true);
     try {
+      // DB에서 테이블 remarks 조회 (tableAlias 갱신용)
+      const dbTables = await datasourceApi.searchTables(datasource.datasourceId, refreshTarget.tableName);
+      const dbTable = dbTables.find(t => t.tableName === refreshTarget.tableName);
+
       await datasourceApi.refreshTableColumns(datasource.datasourceId, refreshTarget.id, {
         tableName: refreshTarget.tableName,
-        tableAlias: refreshTarget.tableAlias || undefined,
-        description: refreshTarget.description || undefined,
+        tableAlias: dbTable?.remarks || refreshTarget.tableAlias || undefined,
+        description: dbTable?.remarks || refreshTarget.description || undefined,
         columns: refreshSelectedColumns.map(c => ({
           columnName: c.columnName,
+          columnAlias: c.remarks || undefined,
           dataType: c.dataType,
           isPrimaryKey: c.isPrimaryKey,
           isNullable: c.isNullable,
@@ -884,7 +889,7 @@ function TableManagementModal({
                     value={table.tableName}
                     disabled={isTableRegistered(table.tableName)}
                   >
-                    {table.tableName} ({table.tableType}){isTableRegistered(table.tableName) ? ' - 등록됨' : ''}
+                    {table.tableName}{table.remarks ? ` (${table.remarks})` : ` (${table.tableType})`}{isTableRegistered(table.tableName) ? ' - 등록됨' : ''}
                   </option>
                 ))}
               </select>

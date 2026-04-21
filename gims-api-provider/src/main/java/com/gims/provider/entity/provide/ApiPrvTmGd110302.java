@@ -5,10 +5,9 @@ import javax.persistence.*;
 
 /**
  * 수질측정망검사결과 제공용 테이블
- * 원본: TM_GD30302 → 표준화: TM_GD110302
  */
 @Entity
-@Table(name = "API_PRV_TM_GD110302")
+@Table(name = "api_prv_tm_gd110302")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,15 +17,17 @@ public class ApiPrvTmGd110302 {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "SN")
     private Long sn;
 
-    @Column(name = "WQ_INSP_SN", nullable = false)
-    private Long wqInspSn;
+    /** 수질검사일련번호 */
+    @Column(nullable = false)
+    private Long wq_insp_sn;
 
-    @Column(name = "WQ_INSP_ARTCL_CD", length = 4, nullable = false)
-    private String wqInspArtclCd;
+    /** 수질검사항목코드 */
+    @Column(length = 4, nullable = false)
+    private String wq_insp_artcl_cd;
 
-    @Column(name = "RSLT_VL", length = 20)
-    private String rsltVl;
+    /** 결과값 */
+    @Column(length = 20)
+    private String rslt_vl;
 }

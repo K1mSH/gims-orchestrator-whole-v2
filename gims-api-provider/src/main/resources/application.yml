@@ -5,14 +5,22 @@ spring:
   application:
     name: gims-api-provider
 
-  # 내부망 Oracle (관리 테이블 + 제공용 테이블 모두)
+  # 기본 DB: PG api_provider (전용 컨테이너 29006)
   datasource:
-    url: jdbc:oracle:thin:@localhost:29004/XEPDB1
+    url: jdbc:postgresql://localhost:29006/api_provider
     username: k1m
     password: 1111
-    driver-class-name: oracle.jdbc.OracleDriver
+    driver-class-name: org.postgresql.Driver
+    initialization-mode: always
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:db/comment.sql
+      continue-on-error: true
 
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
       naming:
@@ -21,9 +29,20 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.Oracle12cDialect
+        dialect: org.hibernate.dialect.PostgreSQL95Dialect
+
+# Proxy 경유 동적 DataSource
+app:
+  proxy:
+    url: http://localhost:8093
+    api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+
+# Jasypt 암호화 (Proxy 응답 복호화용)
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+    algorithm: PBEWithHMACSHA512AndAES_256
 
 logging:
   level:
     com.gims.provider: DEBUG
-    org.hibernate.SQL: DEBUG

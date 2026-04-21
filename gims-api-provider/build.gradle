@@ -29,9 +29,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-    // Database
-    runtimeOnly 'org.postgresql:postgresql'           // 관리 DB (orchestrator)
-    runtimeOnly 'com.oracle.database.jdbc:ojdbc11'    // 데이터 DB (내부망 Oracle, Proxy 경유)
+    // Database — PG 전용 (관리 + 동적 SELECT 대상 모두 PG)
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // HikariCP (동적 DataSource 생성용)
+    implementation 'com.zaxxer:HikariCP'
 
     // Jasypt (encrypted properties)
     implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.5'

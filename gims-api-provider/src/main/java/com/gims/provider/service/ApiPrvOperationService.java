@@ -38,6 +38,7 @@ public class ApiPrvOperationService {
 
     @Transactional
     public ApiPrvOperation create(ApiPrvOperation operation) {
+        trimOperation(operation);
         if (operationRepository.findByOperationId(operation.getOperationId()).isPresent()) {
             throw new IllegalArgumentException("이미 존재하는 오퍼레이션 ID입니다: " + operation.getOperationId());
         }
@@ -47,6 +48,7 @@ public class ApiPrvOperationService {
 
     @Transactional
     public ApiPrvOperation update(Long id, ApiPrvOperation updated) {
+        trimOperation(updated);
         ApiPrvOperation existing = findById(id);
         existing.setOperationName(updated.getOperationName());
         existing.setDescription(updated.getDescription());
@@ -73,7 +75,7 @@ public class ApiPrvOperationService {
     public ApiPrvOperation togglePublish(Long id) {
         ApiPrvOperation operation = findById(id);
         operation.setIsPublished(!operation.getIsPublished());
-        log.info("오퍼레이션 게시 상태 변경: {} → {}", operation.getOperationId(), operation.getIsPublished());
+        log.info("오퍼레이션 활성 상태 변경: {} → {}", operation.getOperationId(), operation.getIsPublished());
         return operationRepository.save(operation);
     }
 
@@ -82,6 +84,7 @@ public class ApiPrvOperationService {
         ApiPrvOperation operation = findById(operationId);
         operation.getColumns().clear();
         for (ApiPrvOperationColumn col : columns) {
+            trimColumn(col);
             col.setOperation(operation);
             operation.getColumns().add(col);
         }
@@ -94,10 +97,45 @@ public class ApiPrvOperationService {
         ApiPrvOperation operation = findById(operationId);
         operation.getParams().clear();
         for (ApiPrvOperationParam param : params) {
+            trimParam(param);
             param.setOperation(operation);
             operation.getParams().add(param);
         }
         operationRepository.save(operation);
         log.info("오퍼레이션 파라미터 저장: {} ({}개)", operation.getOperationId(), params.size());
+    }
+
+    // ========== trim 처리 ==========
+
+    private void trimOperation(ApiPrvOperation op) {
+        op.setOperationId(trim(op.getOperationId()));
+        op.setOperationName(trim(op.getOperationName()));
+        op.setDescription(trim(op.getDescription()));
+        op.setDatasourceId(trim(op.getDatasourceId()));
+        op.setTableName(trim(op.getTableName()));
+        op.setResponseFormat(trim(op.getResponseFormat()));
+        op.setOrderByColumn(trim(op.getOrderByColumn()));
+        op.setOrderByDirection(trim(op.getOrderByDirection()));
+    }
+
+    private void trimColumn(ApiPrvOperationColumn col) {
+        col.setColumnName(trim(col.getColumnName()));
+        col.setAliasName(trim(col.getAliasName()));
+        col.setTransformType(trim(col.getTransformType()));
+        col.setTransformParam(trim(col.getTransformParam()));
+    }
+
+    private void trimParam(ApiPrvOperationParam param) {
+        param.setParamName(trim(param.getParamName()));
+        param.setColumnName(trim(param.getColumnName()));
+        param.setOperator(trim(param.getOperator()));
+        param.setDefaultValue(trim(param.getDefaultValue()));
+        param.setDataType(trim(param.getDataType()));
+    }
+
+    private String trim(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

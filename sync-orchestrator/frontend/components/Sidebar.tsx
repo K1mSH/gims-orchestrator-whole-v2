@@ -8,6 +8,7 @@ const navItems = [
   { href: '/datasources', label: 'DB 관리', icon: '🗄️' },
   { href: '/agents', label: 'Agent 관리', icon: '🖥️' },
   { href: '/api-collect', label: 'API 수집 관리', icon: '🌐' },
+  { href: '/api-provide', label: 'API 제공 관리', icon: '📡' },
 ];
 
 export default function Sidebar() {
