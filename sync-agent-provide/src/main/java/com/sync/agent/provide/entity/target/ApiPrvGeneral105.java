@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_general_105")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_general_105", comment = "보조관측 제원 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,83 +24,86 @@ import java.time.LocalDateTime;
 @Builder
 public class ApiPrvGeneral105 {
 
-    /** 관정번호 (PK) — 레거시: GENNUM → GWEL_NO */
     @Id
     @Column(name = "gwel_no")
+    @Comment("관정번호")
     private Long gwelNo;
 
-    /** 지점명 — 레거시: OBSV_NAME(JIGUNAME) → BRNCH_NM */
     @Column(name = "brnch_nm", length = 100)
+    @Comment("지점명")
     private String brnchNm;
 
-    /** 관측소코드 — 레거시: OBSV_CODE → OBSVTR_ID */
     @Column(name = "obsvtr_id", length = 30)
+    @Comment("관측소코드")
     private String obsvtrId;
 
-    /** 인허가번호 — 레거시: INPERM_NO → PRMSN_DCLR_NO */
     @Column(name = "prmsn_dclr_no", length = 30)
+    @Comment("인허가번호")
     private String prmsnDclrNo;
 
-    /** 주소 — 레거시: SIDO || SIGUNGU || UPMYUNDO || RI 결합 */
     @Column(name = "addr", length = 500)
+    @Comment("주소")
     private String addr;
 
-    /** 표고값 — 레거시: PYOGO → ALTD_VL */
     @Column(name = "altd_vl", length = 20)
+    @Comment("표고값")
     private String altdVl;
 
-    /** 관리기관 — 레거시: MGR_ORG(SOUR_GOV) → MNG_INSTT_NM */
     @Column(name = "mng_instt_nm", length = 100)
+    @Comment("관리기관명")
     private String mngInsttNm;
 
-    /** 설치일자 — 레거시: INSDATE → INSTL_YMD */
     @Column(name = "instl_ymd", length = 8)
+    @Comment("설치일자")
     private String instlYmd;
 
-    /** 관측유형 — 레거시: OBSV_TYPE → GWEL_FRM_CD */
     @Column(name = "gwel_frm_cd", length = 1)
+    @Comment("관측유형")
     private String gwelFrmCd;
 
-    /** 관정형태코드 — 레거시: WELL → GWEL_FRM_CD (중복, well_stle_code) */
     @Column(name = "well_stle_cd", length = 1)
+    @Comment("관정형태코드")
     private String wellStleCd;
 
-    /** 케이싱높이 — 레거시: CASING_HEIGHT → CSNG_HG */
     @Column(name = "csng_hg", length = 20)
+    @Comment("케이싱높이")
     private String csngHg;
 
-    /** 굴착심도 — 레거시: GULDEP → INSTL_DPH_VL */
     @Column(name = "instl_dph_vl", length = 20)
+    @Comment("굴착심도")
     private String instlDphVl;
 
-    /** 굴착구경 — 레거시: GULDIA → SUPRR_DGG_CALBR */
     @Column(name = "suprr_dgg_calbr", length = 20)
+    @Comment("굴착구경")
     private String suprrDggCalbr;
 
-    /** 관측주기내용 — 레거시: GIGWANMETHOD → OBSR_CYCLE_CTNT */
     @Column(name = "obsr_cycle_ctnt", length = 100)
+    @Comment("관측주기내용")
     private String obsrCycleCtnt;
 
-    /** 관측항목명 — 레거시: GIGWANITEM → OBSR_IEM_NM */
     @Column(name = "obsr_iem_nm", length = 100)
+    @Comment("관측항목명")
     private String obsrIemNm;
 
-    /** 용도코드 — 레거시: YONGDO_CD(GROUNDUSE) → UGWTR_DTL_USG_CD */
     @Column(name = "ugwtr_dtl_usg_cd", length = 2)
+    @Comment("용도코드")
     private String ugwtrDtlUsgCd;
 
-    /** 음용여부 — 레거시: UMYONG(UWATER_POTA_YN) → DKPP_YN */
     @Column(name = "dkpp_yn", length = 1)
+    @Comment("음용여부")
     private String dkppYn;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_actual_use_dj")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_actual_use_dj", comment = "대전 이용실태 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,36 +26,40 @@ public class ApiPrvActualUseDj {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
     private Long sn;
 
-    /** 시군구 — 레거시: BRTC_NM || SIGUN_NM */
     @Column(name = "sigungu", length = 100)
+    @Comment("시군구")
     private String sigungu;
 
-    /** 기준연도 — 레거시: CRIT_YY */
     @Column(name = "year", length = 4)
+    @Comment("기준연도")
     private String year;
 
-    /** 담당부서 — 레거시: SF_TEAM_NM */
     @Column(name = "depart", length = 100)
+    @Comment("담당부서")
     private String depart;
 
-    /** 작업완료일 — 레거시: WRK_CMPT_YMD */
     @Column(name = "ymd", length = 8)
+    @Comment("작업완료일")
     private String ymd;
 
-    /** 완료여부 — 레거시: DECODE 결과 (완료/미완료) */
     @Column(name = "yn", length = 10)
+    @Comment("완료여부 (완료/미완료)")
     private String yn;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

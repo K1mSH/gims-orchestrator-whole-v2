@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_tm_gd110302")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd110302", comment = "수질측정망검사결과 제공 (EAV)")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,28 +28,32 @@ public class ApiPrvTmGd110302 {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
     private Long sn;
 
-    /** 수질검사일련번호 (레거시: QLTWTR_INSPCT_SN) */
     @Column(nullable = false)
+    @Comment("수질검사일련번호")
     private Long wq_insp_sn;
 
-    /** 수질검사항목코드 (레거시: WLTTS_ID_CODE) */
     @Column(length = 4, nullable = false)
+    @Comment("수질검사항목코드")
     private String wq_insp_artcl_cd;
 
-    /** 결과값 (레거시: RESULT_VALUE) */
     @Column(length = 20)
+    @Comment("결과값")
     private String rslt_vl;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

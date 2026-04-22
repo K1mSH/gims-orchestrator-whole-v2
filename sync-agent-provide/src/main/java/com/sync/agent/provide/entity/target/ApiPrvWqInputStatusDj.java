@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_wq_input_status_dj")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_wq_input_status_dj", comment = "대전 수질입력현황 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,46 +36,49 @@ public class ApiPrvWqInputStatusDj {
         private Integer cycl;
     }
 
-    /** 시도 — 레거시: sido → CTPV_NM */
     @Id
     @Column(name = "ctpv_nm", length = 40)
+    @Comment("시도")
     private String ctpvNm;
 
-    /** 시군구 — 레거시: sigungu → SGG_NM */
     @Id
     @Column(name = "sgg_nm", length = 40)
+    @Comment("시군구")
     private String sggNm;
 
-    /** 연도 — 레거시: year → EXMN_YR */
     @Id
     @Column(name = "exmn_yr", length = 4)
+    @Comment("연도")
     private String exmnYr;
 
-    /** 차수 — 레거시: odr → CYCL */
     @Id
     @Column(name = "cycl")
+    @Comment("차수")
     private Integer cycl;
 
-    /** 전체건수 — 레거시: total */
     @Column(name = "total")
+    @Comment("전체건수")
     private Integer total;
 
-    /** 완료건수 — 레거시: complt */
     @Column(name = "complt")
+    @Comment("완료건수")
     private Integer complt;
 
-    /** 미완료건수 — 레거시: ncomplt */
     @Column(name = "ncomplt")
+    @Comment("미완료건수")
     private Integer ncomplt;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

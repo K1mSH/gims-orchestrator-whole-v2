@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -9,10 +11,10 @@ import java.time.LocalDateTime;
  *
  * 레거시: OPN info_yhjs_info (영향조사 상세)
  * 원본: Oracle TM_GD50001 (레거시) → TM_GD130001 (표준화)
- * 표준화 전체 컬럼 복사
  */
 @Entity
 @Table(name = "api_prv_tm_gd130001")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd130001", comment = "영향조사보고서 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,64 +24,68 @@ public class ApiPrvTmGd130001 {
 
     @Id
     @Column(name = "isvr_no", length = 10)
+    @Comment("영향조사보고서번호")
     private String isvrNo;
 
-    /** 지자체코드 (레거시: SF_ASSCT_CODE) */
     @Column(name = "lclgv_cd", length = 7)
+    @Comment("자치단체코드")
     private String lclgvCd;
 
-    /** 영향조사보고서명 (레거시: ISVR_NM) */
     @Column(name = "isvr_nm", length = 200)
+    @Comment("영향조사보고서명")
     private String isvrNm;
 
-    /** 원시자료기관명 (레거시: SDTA_INSTT_NM) */
     @Column(name = "prmtv_data_inst_nm", length = 100)
+    @Comment("원시자료제공기관명")
     private String prmtvDataInstNm;
 
-    /** 자료기준연도 (레거시: DTA_STDR_YEAR) */
     @Column(name = "data_crtr_yr", length = 4)
+    @Comment("자료기준연도")
     private String dataCrtrYr;
 
-    /** 발행월 (레거시: ISU_MT) */
     @Column(name = "pblcn_mm", length = 2)
+    @Comment("발행월")
     private String pblcnMm;
 
-    /** 영향조사보고서분류코드 (레거시: ISVR_CCD) */
     @Column(name = "isvr_ccd", length = 1)
+    @Comment("영향조사보고서분류코드")
     private String isvrCcd;
 
-    /** 연장일련번호 (레거시: ET_SN) */
     @Column(name = "prlg_sn")
+    @Comment("부록일련번호")
     private Long prlgSn;
 
-    /** 영향조사보고서자료형태코드 (레거시: ISVR_DTA_STLE_CODE) */
     @Column(name = "isvr_data_frm_cd", length = 1)
+    @Comment("영향조사보고서자료형태코드")
     private String isvrDataFrmCd;
 
-    /** 수집기관명 (레거시: COLCT_INSTT_NM) */
     @Column(name = "clct_inst_nm", length = 100)
+    @Comment("수집기관명")
     private String clctInstNm;
 
-    /** 자료수집일자 (레거시: DTA_COLCT_DE) */
     @Column(name = "data_clct_ymd", length = 10)
+    @Comment("자료수집일자")
     private String dataClctYmd;
 
-    /** 자료입력일자 (레거시: DTA_INPUT_DE) */
     @Column(name = "data_inpt_ymd", length = 8)
+    @Comment("자료입력일자")
     private String dataInptYmd;
 
-    /** 자료등록자명 (레거시: DTA_REGISTER_NM) */
     @Column(name = "data_rgtr_nm", length = 50)
+    @Comment("자료등록자명")
     private String dataRgtrNm;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

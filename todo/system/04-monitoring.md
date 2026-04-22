@@ -34,7 +34,7 @@
 - [x] 실행 상세 + Step별 결과
 - [x] 테이블별 통계 (per-mapping readCount/writeCount/failedCount/skipCount)
 - [x] 테이블 레코드 조회 (페이징+검색) + 실패 레코드 조회
-- [x] 실행 데이터 조회 (SOURCE/TARGET_IF/TARGET 페이징+검색)
+- [x] 실행 데이터 조회 (SOURCE/TARGET 페이징+검색, target-if는 /target으로 통합 4/22)
 - [x] 정방향 추적 — Source PK → Target 데이터 흐름
 - [x] 역추적 — Target → Source 역방향
 - [x] 3단계 자동 분기 (RCV/Loader/SND)
@@ -50,6 +50,12 @@
 - [x] 보존기간 초과 데이터 자동 삭제
 - [x] 음수 방어 4계층 (프론트 min=1 → API 검증 → Controller 예외 → Service skip)
 - [x] targetDatasourceId body 필수 (Internal Agent cleanup)
+
+## 관리 테이블 DB 라우팅 [Backend, 4/22 추가]
+- [x] X-Manage-Datasource-Id 헤더 기반 라우팅 (DataSourceProvider 확장)
+- [x] Orchestrator ExecutionService → Proxy 호출 시 Agent.targetDatasourceId 자동 주입
+- [x] ExecutionDataController 조회 경로 JPA → JdbcTemplate 전환
+- [x] ExecutionDataReader 공통 조회 유틸 도입
 
 ## Agent 자동 관리 [Backend]
 - [x] auto-discover — pipeline/info 조회 → 파이프라인 구성 자동 등록
@@ -94,11 +100,11 @@
 
 ## 실행 상세 화면 [Frontend]
 - [x] 실행 정보 (상태, 소요시간, 건수, 트리거, 시작/종료)
-- [x] 테이블 스탯 — SOURCE/TARGET_IF/TARGET별 건수 요약
-- [x] 테이블 데이터 탭 — 3타입 전환, 검색, 필터, 정렬, 페이징
+- [x] 테이블 스탯 — SOURCE/TARGET별 건수 요약
+- [x] 테이블 데이터 탭 — 2타입 전환, 검색, 필터, 정렬, 페이징
 
 ## 데이터 추적 화면 [Frontend]
-- [x] 행 클릭 → SOURCE ↔ TARGET_IF ↔ TARGET 트레이싱
+- [x] 행 클릭 → SOURCE ↔ TARGET 트레이싱 (IF 없는 Agent도 커버, 4/22)
 - [x] source_refs 기반 자동 매칭
 - [x] 추적 비대상 표시 (파생 데이터)
 - [x] Fallback 모드 감지 (실행 덮어쓰기 시)

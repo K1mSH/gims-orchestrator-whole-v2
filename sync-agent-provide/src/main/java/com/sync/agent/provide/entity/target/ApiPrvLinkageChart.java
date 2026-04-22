@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_linkage_chart")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_linkage_chart", comment = "관측소연계 그래프 데이터 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,40 +34,43 @@ public class ApiPrvLinkageChart {
         private String ymd;
     }
 
-    /** 관정번호 — 레거시: GENNUM → GWEL_NO */
     @Id
     @Column(name = "gwel_no")
+    @Comment("관정번호")
     private Long gwelNo;
 
-    /** 관측일자 — 레거시: YMD (YYYYMMDD) */
     @Id
     @Column(name = "ymd", length = 8)
+    @Comment("관측일자 (YYYYMMDD)")
     private String ymd;
 
-    /** 수위(표고) — 레거시: ELEV ("5" PIVOT) */
     @Column(name = "elev", length = 20)
+    @Comment("수위(표고)")
     private String elev;
 
-    /** 수온 — 레거시: WTEMP ("163" PIVOT) */
     @Column(name = "wtemp", length = 20)
+    @Comment("수온")
     private String wtemp;
 
-    /** 지하수위(표고-수위) — 레거시: LEV (AL_VALUE - "5") */
     @Column(name = "lev", length = 20)
+    @Comment("지하수위(표고-수위)")
     private String lev;
 
-    /** 전기전도도 — 레거시: EC ("52" PIVOT) */
     @Column(name = "ec", length = 20)
+    @Comment("전기전도도")
     private String ec;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

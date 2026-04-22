@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_inspection")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_inspection", comment = "수질검사항목별기준 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,33 +35,36 @@ public class ApiPrvInspection {
         private String wqInspArtclCd;
     }
 
-    /** 지하수조사코드 — 레거시: JOSACODE → UGWTR_EXMN_CD */
     @Id
     @Column(name = "ugwtr_exmn_cd", length = 3)
+    @Comment("지하수조사코드")
     private String ugwtrExmnCd;
 
-    /** 자료기준연도 — 레거시: DTA_STDR_YEAR → DATA_CRTR_YR */
     @Id
     @Column(name = "data_crtr_yr", length = 4)
+    @Comment("자료기준연도")
     private String dataCrtrYr;
 
-    /** 수질검사항목코드 — 레거시: QLTWTR_INSPCT_IEM_CODE → WQ_INSP_ARTCL_CD */
     @Id
     @Column(name = "wq_insp_artcl_cd", length = 4)
+    @Comment("수질검사항목코드")
     private String wqInspArtclCd;
 
-    /** 항목명(코드내용) — 레거시: CODE_CTNT(remarkCtnt) */
     @Column(name = "code_cn", length = 200)
+    @Comment("항목명(코드내용)")
     private String codeCn;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

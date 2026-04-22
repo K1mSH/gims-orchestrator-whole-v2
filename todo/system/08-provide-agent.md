@@ -4,7 +4,7 @@
 > API Provider는 단순 SELECT만 지원하므로, 복잡 SQL은 전처리 Step이 제공 테이블(PG 29006)에 적재한다.
 > Oracle 29004 원본 → PG 29006 `api_prv_*` 제공 테이블로 복사(Type A) 또는 전처리(Type B) 적재.
 
-## 상태: 미개발
+## 상태: 인프라 완료 + A3 파일럿 완료
 
 ---
 
@@ -23,20 +23,20 @@
 | 제공 (PG 29006) | api_prv_tm_gd30301 | JPA 엔티티 (ddl-auto) | X |
 
 ## 제공용 Agent 인프라 [Provide-Agent:8096]
-- [ ] 모듈 생성 (bojo-int 복제, port 8096, PG 29006, ddl-auto)
-- [ ] Proxy 경유 Oracle 소스 연결 (SyncDataSourceService)
-- [ ] DynamicEntityManagerService + CaseAwareNamingStrategy
-- [ ] SimpleLoadStepFactory 재사용 (Type A, 단순 복사)
+- [x] 모듈 생성 (bojo-int 복제, port 8096, PG 29006, ddl-auto)
+- [x] Proxy 경유 Oracle 소스 연결 (SyncDataSourceService)
+- [x] DynamicEntityManagerService + CaseAwareNamingStrategy
+- [x] ProvideLoadStep 신규 (Type A 범용 복사, Oracle→PG UPSERT)
 - [ ] PreprocessLoadStepFactory 신규 (Type B, 전처리)
-- [ ] YAML 구조 — 테이블별 개별 파일 (신규 추가 시 파일 하나만 추가)
-- [ ] 원본 테이블 추적 컬럼 관리 (LINK_STATUS / EXECUTION_ID / SOURCE_REFS / EXTRACTED_AT / UPDATED_AT)
-- [ ] SyncLog·Execution 공유 PG 29006 (agent_id로 구분)
+- [x] YAML 구조 — 테이블별 개별 파일 (신규 추가 시 파일 하나만 추가)
+- [x] 원본 테이블 추적 컬럼 관리 (LINK_STATUS / EXECUTION_ID / SOURCE_REFS / EXTRACTED_AT / UPDATED_AT)
+- [x] SyncLog·Execution PG 29006 저장 + Proxy 헤더 라우팅 (X-Manage-Datasource-Id)
 - [ ] api-provider `entity/provide/` 4개 엔티티 이관 후 삭제
 
 ## Type A 단순 복사 등록 [등록]
 - [ ] A1 가뭄119 (SDE_NGWS.WT_DREAM_PERMWELL_PUBLIC_21033 → api_prv_wt_dream_permwell_public_21033)
 - [ ] A2 MEGOKR NGW_03 (TM_GD30301 → api_prv_tm_gd30301)
-- [ ] A3 MEGOKR NGW_08 (TM_GD00203 → api_prv_tm_gd00203)
+- [x] A3 MEGOKR NGW_08 (TM_GD000203 → api_prv_tm_gd000203) — 파일럿 완료
 - [ ] A4 MEGOKR NGW_09 (WT_DREAM_PERMWELL_PUBLIC → api_prv_wt_dream_permwell_public)
 - [ ] A5 OPN 인허가관정 (RGETNPMMS01 → api_prv_rgetnpmms01)
 - [ ] A6 OPN 관측망 기본 (TM_GD10001 → api_prv_tm_gd10001)
@@ -62,7 +62,8 @@
 - [ ] DBLINKUSR.* 4개 — 수위/우량관측소 원본 접근 방식 담당자 협의 후
 
 ## E2E 검증 [테스트]
-- [ ] A5 RGETNPMMS01 E2E 파일럿 (Oracle 29004 → PG 29006)
+- [x] A3 TM_GD000203 E2E 파일럿 (Oracle 29004 → PG 29006) — 4/22 완료
+- [x] Source 정방향 추적 / Target 역방향 추적 동작 검증 — 4/22 완료
 - [ ] api-provider 연동 검증 (제공 테이블 → 동적 SELECT → 외부 응답)
 - [ ] Type A 9건 전체 E2E 검증
 - [ ] Type B 전처리 결과 검증 (실서버 접근 확보 후)

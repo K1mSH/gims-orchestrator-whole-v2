@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_water_quality_mfds")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_water_quality_mfds", comment = "식약처 정기수질검사 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,123 +25,124 @@ import java.time.LocalDateTime;
 @Builder
 public class ApiPrvWaterQualityMfds {
 
-    /** 수질검사일련번호 (PK) — 레거시: QLTWTR_INSPCT_SN → WQ_INSP_SN */
     @Id
     @Column(name = "wq_insp_sn")
+    @Comment("수질검사일련번호")
     private Long wqInspSn;
 
-    /** 원수분류코드 — 레거시: ORGWATR_CL_CODE → ORGWT_CLSF_CD */
     @Column(name = "orgwt_clsf_cd", length = 1)
+    @Comment("원수분류코드")
     private String orgwtClsfCd;
 
-    /** 상호명 — 레거시: CMPNM_NM → CONM_NM */
     @Column(name = "conm_nm", length = 200)
+    @Comment("상호명")
     private String conmNm;
 
-    /** 시도명 — 레거시: BRTC_NM → CTPV_NM */
     @Column(name = "ctpv_nm", length = 40)
+    @Comment("시도명")
     private String ctpvNm;
 
-    /** 시군구명 — 레거시: SIGUN_NM → SGG_NM */
     @Column(name = "sgg_nm", length = 30)
+    @Comment("시군구명")
     private String sggNm;
 
-    /** 읍면동명 — 레거시: EMD_NM */
     @Column(name = "emd_nm", length = 30)
+    @Comment("읍면동명")
     private String emdNm;
 
-    /** 리명 — 레거시: LI_NM */
     @Column(name = "li_nm", length = 40)
+    @Comment("리명")
     private String liNm;
 
-    /** 관정주소 — 레거시: WELL_ADDR → GWEL_ADDR */
     @Column(name = "gwel_addr", length = 250)
+    @Comment("관정주소")
     private String gwelAddr;
 
-    /** 지하수용도코드 — 레거시: UGRWTR_PRPOS_CODE → UGWTR_USG_CD */
     @Column(name = "ugwtr_usg_cd", length = 2)
+    @Comment("지하수용도코드")
     private String ugwtrUsgCd;
 
-    /** 조사연도 — 레거시: INVSTG_YEAR (REQUST_DE 앞4자리) */
     @Column(name = "exmn_yr", length = 4)
+    @Comment("조사연도")
     private String exmnYr;
 
-    /** 차수 — 레거시: ODR (REQUST_DE 월 기반 계산) */
     @Column(name = "cycl")
+    @Comment("차수")
     private Integer cycl;
 
-    /** 결과통보일자 — 레거시: RESULT_DSPTH_DE → RSLT_NTFCTN_YMD */
     @Column(name = "rslt_ntfctn_ymd", length = 8)
+    @Comment("결과통보일자")
     private String rsltNtfctnYmd;
 
-    /** 수질검사일자 — 레거시: QLTWTR_INSPCT_DE → WQ_INSP_YMD */
     @Column(name = "wq_insp_ymd", length = 8)
+    @Comment("수질검사일자")
     private String wqInspYmd;
 
-    /** 요청일자 — 레거시: REQUST_DE → DMND_YMD */
     @Column(name = "dmnd_ymd", length = 8)
+    @Comment("요청일자")
     private String dmndYmd;
 
-    /** 수질기준용도코드 — 레거시: QLTWTR_STDR_PRPOS_CODE → WQ_CRTR_USG_CD */
     @Column(name = "wq_crtr_usg_cd", length = 2)
+    @Comment("수질기준용도코드")
     private String wqCrtrUsgCd;
 
-    /** 수질검사결과코드 — 레거시: QLTWTR_INSPCT_RESULT_CODE → WQ_INSP_RSLT_CD */
     @Column(name = "wq_insp_rslt_cd", length = 1)
+    @Comment("수질검사결과코드")
     private String wqInspRsltCd;
 
-    /** 수질검사기타내용 — 레거시: QLTWTR_INSPCT_ETC_CTNT → WQ_INSP_ETC_CN */
     @Column(name = "wq_insp_etc_cn", length = 100)
+    @Comment("수질검사기타내용")
     private String wqInspEtcCn;
 
-    /** 수질검사목적내용 — 레거시: QLTWTR_INSPCT_PURPS_CTNT → WQ_INSP_PRPS_CN */
     @Column(name = "wq_insp_prps_cn", length = 100)
+    @Comment("수질검사목적내용")
     private String wqInspPrpsCn;
 
-    /** 허가신고번호 — 레거시: PRMISN_DCLR_NO → PRMSN_DCLR_NO */
     @Column(name = "prmsn_dclr_no", length = 30)
+    @Comment("허가신고번호")
     private String prmsnDclrNo;
 
-    /** 사용자명 — 레거시: USR_NM */
     @Column(name = "usr_nm", length = 100)
+    @Comment("사용자명")
     private String usrNm;
 
-    // ── 동적 수질항목 (주요 항목만 — 추후 확장) ──
+    // ── 동적 수질항목 (주요 항목) ──
 
-    /** 수질항목 0001 */
     @Column(name = "c0001", length = 100)
+    @Comment("수질항목 0001")
     private String c0001;
 
-    /** 수질항목 0002 */
     @Column(name = "c0002", length = 100)
+    @Comment("수질항목 0002")
     private String c0002;
 
-    /** 수질항목 0005 */
     @Column(name = "c0005", length = 100)
+    @Comment("수질항목 0005")
     private String c0005;
 
-    /** 수질항목 0006 */
     @Column(name = "c0006", length = 100)
+    @Comment("수질항목 0006")
     private String c0006;
 
-    /** 수질항목 0009 */
     @Column(name = "c0009", length = 100)
+    @Comment("수질항목 0009")
     private String c0009;
 
-    /** 수질항목 0012 */
     @Column(name = "c0012", length = 100)
+    @Comment("수질항목 0012")
     private String c0012;
-
-    // TODO: 추가 수질항목 컬럼 — iterate 기반 동적 PIVOT이므로 요청 항목에 따라 확장
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }

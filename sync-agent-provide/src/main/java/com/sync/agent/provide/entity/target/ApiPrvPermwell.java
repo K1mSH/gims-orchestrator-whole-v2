@@ -1,6 +1,8 @@
 package com.sync.agent.provide.entity.target;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
+
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_permwell")
+@org.hibernate.annotations.Table(appliesTo = "api_prv_permwell", comment = "인허가관정 제공")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,76 +34,79 @@ public class ApiPrvPermwell {
         private String prmsnDclrNo;
     }
 
-    /** 연관전송시군구코드 — 레거시: REL_TRANS_CGG_CODE */
     @Id
     @Column(name = "rel_trsm_sgg_cd", length = 7)
+    @Comment("연관전송시군구코드")
     private String relTrsmSggCd;
 
-    /** 허가신고번호 — 레거시: PERM_NT_NO → PRMSN_DCLR_NO */
     @Id
     @Column(name = "prmsn_dclr_no", length = 30)
+    @Comment("허가신고번호")
     private String prmsnDclrNo;
 
-    /** 허가형태명 — 레거시: FN_GD_GET_GUBUN(PERM_NT_FORM_CODE, 1) 결과 */
     @Column(name = "prmsn_dclr_frm_nm", length = 100)
+    @Comment("허가형태명")
     private String prmsnDclrFrmNm;
 
-    /** 주소 — 레거시: BRTC_NM || SIGUN_NM || EMD_NM || LI_NM 결합 */
     @Column(name = "addr", length = 500)
+    @Comment("주소")
     private String addr;
 
-    /** 용도명 — 레거시: FN_GD_GET_CMMTNDCODE('NGW_0003', UWATER_SRV_CODE) 결과 */
     @Column(name = "ugwtr_usg_nm", length = 100)
+    @Comment("지하수용도명")
     private String ugwtrUsgNm;
 
-    /** 상세용도명 — 레거시: FN_GD_GET_CMMTNDCODE('NGW_0013', UWATER_DTL_SRV_CODE) 결과 */
     @Column(name = "ugwtr_dtl_usg_nm", length = 100)
+    @Comment("지하수상세용도명")
     private String ugwtrDtlUsgNm;
 
-    /** 음용여부 — 레거시: UWATER_POTA_YN */
     @Column(name = "dkpp_yn", length = 1)
+    @Comment("음용여부")
     private String dkppYn;
 
-    /** 굴착심도 — 레거시: DIG_DPH */
     @Column(name = "dgg_dph", length = 20)
+    @Comment("굴착심도")
     private String dggDph;
 
-    /** 굴착구경 — 레거시: DIG_DIAM → DGG_CALBR */
     @Column(name = "dgg_calbr", length = 20)
+    @Comment("굴착구경")
     private String dggCalbr;
 
-    /** 양수기심도 — 레거시: ESB_DPH */
     @Column(name = "esb_dph", length = 20)
+    @Comment("양수기심도")
     private String esbDph;
 
-    /** 수량 — 레거시: ND_QT → REQ_QTY */
     @Column(name = "req_qty", length = 20)
+    @Comment("수량")
     private String reqQty;
 
-    /** 계획양수량 — 레거시: FRW_PLN_QUA → WTRIT_PLNQTY */
     @Column(name = "wtrit_plnqty", length = 20)
+    @Comment("계획양수량")
     private String wtritPlnqty;
 
-    /** 양수능력 — 레거시: RWT_CAP → WPMP_ABLT */
     @Column(name = "wpmp_ablt", length = 20)
+    @Comment("양수능력")
     private String wpmpAblt;
 
-    /** 동수위마력 — 레거시: DYN_EQN_HRP (표준화 매핑 없음) */
     @Column(name = "dyn_eqn_hrp", length = 20)
+    @Comment("동수위마력")
     private String dynEqnHrp;
 
-    /** 관경 — 레거시: PIPE_DIAM → DELP_DIA */
     @Column(name = "delp_dia", length = 20)
+    @Comment("관경")
     private String delpDia;
 
     // ── 추적 컬럼 ──
 
     @Column(name = "execution_id", length = 100)
+    @Comment("실행 ID")
     private String executionId;
 
     @Column(name = "source_refs", length = 4000)
+    @Comment("소스 참조")
     private String sourceRefs;
 
     @Column(name = "updated_at")
+    @Comment("갱신 시각")
     private LocalDateTime updatedAt;
 }
