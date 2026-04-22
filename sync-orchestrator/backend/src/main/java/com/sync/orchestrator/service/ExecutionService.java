@@ -20,6 +20,9 @@ import com.sync.orchestrator.entity.ZoneConfig;
 import com.sync.orchestrator.repository.ZoneConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,7 +75,7 @@ public class ExecutionService {
             String url = proxyUrl + "/api/execution-data";
             log.info("프록시에서 실행 이력 조회 중: {}", url);
 
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), List.class);
             return response.getBody() != null ? response.getBody() : List.of();
         } catch (Exception e) {
             log.error("Agent {} 실행 이력 조회 실패: {}", agent.getAgentCode(), e);
@@ -119,7 +122,7 @@ public class ExecutionService {
             String url = proxyUrl + "/api/execution-data/" + executionId;
             log.info("프록시에서 실행 상세 조회 중: {}", url);
 
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), Map.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} 실행 상세 조회 실패: {}", agent.getAgentCode(), e);
@@ -155,7 +158,7 @@ public class ExecutionService {
             String url = proxyUrl + endpoint;
             log.info("프록시에서 실행 데이터 조회 중: {}", url);
 
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), Map.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} 실행 데이터 조회 실패: {}", agent.getAgentCode(), e);
@@ -175,7 +178,7 @@ public class ExecutionService {
             String url = proxyUrl + "/api/execution-data/" + executionId + "/tables";
             log.info("프록시에서 테이블 통계 조회 중: {}", url);
 
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), List.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} 테이블 통계 조회 실패: {}", agent.getAgentCode(), e);
@@ -195,7 +198,7 @@ public class ExecutionService {
             String url = proxyUrl + "/api/execution-data/" + executionId + "/tables/" + tableName;
             log.info("프록시에서 테이블 레코드 조회 중: {}", url);
 
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), Map.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} 테이블 레코드 조회 실패: {}", agent.getAgentCode(), e);
@@ -215,7 +218,7 @@ public class ExecutionService {
             String url = proxyUrl + "/api/execution-data/" + executionId + "/tables/" + tableName + "/failed";
             log.info("프록시에서 테이블 실패 레코드 조회 중: {}", url);
 
-            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), List.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} 테이블 실패 레코드 조회 실패: {}", agent.getAgentCode(), e);
@@ -269,7 +272,7 @@ public class ExecutionService {
             String url = builder.buildAndExpand(executionId).toUriString();
             log.info("Agent에서 데이터 추적 중: {}", url);
 
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), Map.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} 데이터 추적 실패: {}", agent.getAgentCode(), e);
@@ -298,7 +301,7 @@ public class ExecutionService {
             String url = builder.buildAndExpand(executionId).toUriString();
             log.info("Agent에서 Source 역추적 중: {}", url);
 
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), Map.class);
             return response.getBody();
         } catch (Exception e) {
             log.error("Agent {} Source 역추적 실패: {}", agent.getAgentCode(), e);
@@ -588,6 +591,21 @@ public class ExecutionService {
                 .map(ZoneConfig::getProxyAgentUrl)
                 .orElseThrow(() -> new IllegalStateException(
                         "해당 Zone에 프록시 Agent URL이 설정되지 않았습니다: " + agent.getZone()));
+    }
+
+    /**
+     * Proxy 경유 관리 테이블 조회용 헤더 빌더
+     * Agent의 target DB = 관리 DB 규약에 따라 targetDatasourceId를 헤더로 전달
+     * (feedback_agent_at_target.md 참조)
+     *
+     * 기존 Agent(target = Proxy 기본 DB)는 풀 중복이 생기지만 Proxy는 경량 조회라 실질 영향 없음
+     */
+    private HttpEntity<Void> buildHeaders(Agent agent) {
+        HttpHeaders headers = new HttpHeaders();
+        if (agent != null && agent.getTargetDatasourceId() != null) {
+            headers.set("X-Manage-Datasource-Id", agent.getTargetDatasourceId());
+        }
+        return new HttpEntity<>(headers);
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================

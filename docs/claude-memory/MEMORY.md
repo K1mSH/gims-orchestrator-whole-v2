@@ -14,6 +14,15 @@
 - [feedback_condition_query_common.md](feedback_condition_query_common.md) - 커스텀 Step 필수기능: 조건실행+Retention 공통 헬퍼 사용
 - [feedback_strategy_check_before_plan.md](feedback_strategy_check_before_plan.md) - 계획 문서 작성 전 ARCHITECTURE.md 전략 확인 필수
 - [feedback_entity_ownership.md](feedback_entity_ownership.md) - 내 DB=엔티티, 남의 DB=JDBC, 새 Agent 모듈에 entity/ 구조 필수
+- [feedback_no_guess_ask_first.md](feedback_no_guess_ask_first.md) - 컬럼명/데이터 등 불확실한 정보는 추측 금지, 먼저 질문
+- [feedback_no_scope_creep.md](feedback_no_scope_creep.md) - 요청 범위 밖 작업 절대 금지, 반드시 사전 확인
+- [feedback_jira_sync.md](feedback_jira_sync.md) - 작업 정리 시 dev_logs와 함께 Jira도 반드시 동기화
+- [project_dmz_loader_refactor.md](project_dmz_loader_refactor.md) - DMZ TargetRepositoryService 하드코딩 → common 범용 빌더로 리팩토링 예정
+- [feedback_agent_at_target.md](feedback_agent_at_target.md) - 파이프라인 Agent의 target DB = 자기 JPA 기본 datasource = 관리 DB 규약
+- [feedback_no_internal_exposure.md](feedback_no_internal_exposure.md) - 운영자 UI에 common 구조/관리 테이블 같은 내부 개념 노출 금지
+- [feedback_config_vs_registration.md](feedback_config_vs_registration.md) - yml에 DB 등록 ID 하드코딩 금지, Orchestrator DB 등록이 단일 진실원
+- [project_header_manage_routing.md](project_header_manage_routing.md) - Proxy 관리 DB 조회 라우팅 = X-Manage-Datasource-Id 헤더 + Agent.targetDatasourceId
+- [feedback_no_regression_organic.md](feedback_no_regression_organic.md) - 모든 수정은 기존 기능에 영향 없어야 함. 유기적 구조라 단일 케이스 땜질 금지, 전체 Agent 케이스 검토 필수
 
 ## 작업 규칙
 
@@ -43,6 +52,7 @@ orchestrator_v2/
 │   ├── backend/          # Spring Boot (port 8080)
 │   └── frontend/         # Next.js (port 3000)
 ├── infolink-api-collector/ # API 수집 모듈 (독립, port 8084/8094)
+├── gims-api-provider/    # API 제공 모듈 (내부망, port 8095)
 ├── docs/                 # ARCHITECTURE.md, UI_GUIDE.md, 클로드 작업 메뉴얼.txt
 │   └── claude-memory/    # troubleshooting.md (git 추적)
 ├── dev_logs/2026_MM/     # 작업 일지 (년월 디렉토리)
@@ -85,6 +95,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 | 외부 MySQL | MySQL | 29010 | infoworld_*,hydronet_* | 6개 (Docker) |
 | Internal Oracle | Oracle XE | 29004 | XEPDB1 | 내부망 GIMS 대체 |
 | **새올 Oracle** | Oracle XE | **29005** | XEPDB1 | 새올 DB 대체 (실서버=Tibero) |
+| **API Provider PG** | PostgreSQL | **29006** | api_provider | API Provider 전용 (컨테이너: gims_api_provider_pg) |
 - 전체 계정: `k1m` / `1111` (테스트용)
 - keunsan만 대문자 테이블/컬럼, 나머지 소문자
 - 새올 컨테이너: `gims_dmz_saeol_oracle`
@@ -100,6 +111,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 | Agent Internal (sync-agent-bojo-int) | 8092 |
 | Proxy Internal (sync-proxy-internal) | 8093 |
 | API Collector Internal | 8094 |
+| **API Provider (gims-api-provider)** | **8095** |
 | Frontend (Next.js) | 3000 |
 | 외부 PG | 29000 |
 | 내부 PG | 29001 |

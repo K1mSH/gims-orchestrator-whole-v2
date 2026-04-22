@@ -196,9 +196,6 @@ export const executionApi = {
   getSourceData: (executionId: string, params?: TableDataParams) =>
     api.get<TableData>(`/executions/${encodeURIComponent(executionId)}/data/source`, { params }).then((res) => res.data),
 
-  getTargetIfData: (executionId: string, params?: TableDataParams) =>
-    api.get<TableData>(`/executions/${encodeURIComponent(executionId)}/data/target-if`, { params }).then((res) => res.data),
-
   getTargetData: (executionId: string, params?: TableDataParams) =>
     api.get<TableData>(`/executions/${encodeURIComponent(executionId)}/data/target`, { params }).then((res) => res.data),
 

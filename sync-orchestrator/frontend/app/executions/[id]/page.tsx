@@ -146,15 +146,9 @@ export default function ExecutionDetailPage() {
         case 'SOURCE':
           data = await executionApi.getSourceData(executionId, params);
           break;
-        case 'TARGET_IF':
-          data = await executionApi.getTargetIfData(executionId, params);
-          break;
         case 'TARGET':
-          data = await executionApi.getTargetData(executionId, params);
-          break;
         default:
-          // 타입을 모르면 IF로 시도
-          data = await executionApi.getTargetIfData(executionId, params);
+          data = await executionApi.getTargetData(executionId, params);
       }
       // API가 error 응답을 반환한 경우 처리
       if ((data as unknown as { error?: string })?.error) {
@@ -178,8 +172,8 @@ export default function ExecutionDetailPage() {
   const handleRowClick = useCallback(async (row: Record<string, unknown>, rowIndex: number) => {
     const tableType = selectedTable?.tableType;
 
-    // SOURCE, TARGET_IF, TARGET 테이블에서 트레이싱 가능
-    if (!tableType || (tableType !== 'SOURCE' && tableType !== 'TARGET_IF' && tableType !== 'TARGET') || !tableData) return;
+    // SOURCE, TARGET 테이블에서 트레이싱 가능
+    if (!tableType || (tableType !== 'SOURCE' && tableType !== 'TARGET') || !tableData) return;
 
     // 행 식별용 키: 인덱스 기반 (복합PK 테이블에서 첫 컬럼 중복 방지)
     const rowId = String(rowIndex);
@@ -197,8 +191,8 @@ export default function ExecutionDetailPage() {
     setTraceLoading(true);
     setTraceResult(null);
 
-    // TARGET/TARGET_IF에서 source_refs가 null인 행은 추적 비대상 (파생 데이터: 집계/후처리)
-    // SOURCE(IF) 테이블은 source_refs 유무와 무관하게 PK 기반으로 Target 추적 가능
+    // TARGET에서 source_refs가 null인 행은 추적 비대상 (파생 데이터: 집계/후처리)
+    // SOURCE 테이블은 source_refs 유무와 무관하게 PK 기반으로 Target 추적 가능
     if (tableType !== 'SOURCE') {
       const sourceRefs = row.source_refs ?? row.SOURCE_REFS;
       if (sourceRefs === null || sourceRefs === undefined || sourceRefs === '') {
@@ -215,8 +209,8 @@ export default function ExecutionDetailPage() {
       let result;
 
       if (tableType === 'SOURCE') {
-        // SOURCE 행 클릭 → target-if의 source_refs 기반으로 추적
-        // 1. 대응 target-if 테이블 찾기 (SyncLog의 sourceTables↔targetTables 매핑)
+        // SOURCE 행 클릭 → target의 source_refs 기반으로 추적
+        // 1. 대응 target 테이블 찾기 (SyncLog의 sourceTables↔targetTables 매핑)
         const sourceTableName = tableData.tableName;
         const matchingStat = tableStats.find(s =>
           (s.sourceTables ?? []).some(t => t === sourceTableName)
@@ -226,8 +220,8 @@ export default function ExecutionDetailPage() {
         ] ?? matchingStat?.targetTables?.[0];
 
         if (ifTableName) {
-          // 2. target-if 테이블에서 이 실행의 데이터 조회 → source_refs에서 행 매칭
-          const ifData = await executionApi.getTargetIfData(executionId, {
+          // 2. target 테이블에서 이 실행의 데이터 조회 → source_refs에서 행 매칭
+          const ifData = await executionApi.getTargetData(executionId, {
             tableName: ifTableName, page: 0, size: 1000
           });
           // 3. 클릭한 source 행의 컬럼 값이 source_refs PK 부분에 모두 포함되는 행 찾기
@@ -245,7 +239,7 @@ export default function ExecutionDetailPage() {
           });
 
           if (matchedRow) {
-            // target-if 행을 직접 결과로 구성 (API 호출 불필요)
+            // target 행을 직접 결과로 구성 (API 호출 불필요)
             const sourceRefs = String(matchedRow.source_refs ?? matchedRow.SOURCE_REFS ?? '');
             result = {
               executionId,
@@ -262,13 +256,13 @@ export default function ExecutionDetailPage() {
             result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
           }
         } else {
-          // target-if 매핑 없음: 기존 방식
+          // target 매핑 없음: 기존 방식
           const pkCol = tableData.columns[0];
           const pkValue = String(row[pkCol] ?? '');
           result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
         }
       } else {
-        // TARGET_IF/TARGET 행 클릭 → Source 데이터 조회 (역추적)
+        // TARGET 행 클릭 → Source 데이터 조회 (역추적)
         const sourceRefs = row.sourceRefs as string || row.source_refs as string || row.SOURCE_REFS as string;
         if (!sourceRefs) {
           setTraceResult({ error: 'sourceRefs가 없습니다.' });
@@ -415,10 +409,9 @@ export default function ExecutionDetailPage() {
     ? flatTableStats.find(s => s.tableName === selectedTable.tableName && s.tableType === selectedTable.tableType)
     : null;
   const isSourceTable = selectedTable?.tableType === 'SOURCE';
-  const isIfTable = selectedTable?.tableType === 'TARGET_IF';
   const isTargetTable = selectedTable?.tableType === 'TARGET';
-  // SOURCE, IF, TARGET 테이블에서 행 클릭으로 추적 가능
-  const isTraceable = isSourceTable || isIfTable || isTargetTable;
+  // SOURCE, TARGET 테이블에서 행 클릭으로 추적 가능
+  const isTraceable = isSourceTable || isTargetTable;
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
@@ -535,14 +528,13 @@ export default function ExecutionDetailPage() {
                   ) : (
                     // SOURCE → TARGET 순서로 정렬
                     [...flatTableStats].sort((a, b) => {
-                      const typeOrder = { SOURCE: 0, TARGET_IF: 1, TARGET: 2 };
+                      const typeOrder = { SOURCE: 0, TARGET: 1 };
                       const orderA = typeOrder[a.tableType as keyof typeof typeOrder] ?? 99;
                       const orderB = typeOrder[b.tableType as keyof typeof typeOrder] ?? 99;
                       return orderA - orderB;
                     }).map((stat) => {
                       const typeConfigMap: Record<string, { label: string; bg: string; color: string; borderColor: string }> = {
                         SOURCE: { label: 'SOURCE', bg: 'var(--blue-100)', color: 'var(--blue-700)', borderColor: 'var(--blue-500)' },
-                        TARGET_IF: { label: 'IF', bg: 'var(--yellow-100)', color: 'var(--yellow-700)', borderColor: 'var(--yellow-500)' },
                         TARGET: { label: 'TARGET', bg: 'var(--green-100)', color: 'var(--green-700)', borderColor: 'var(--green-500)' },
                       };
                       const typeConfig = typeConfigMap[stat.tableType] ?? { label: stat.tableType, bg: 'var(--gray-100)', color: 'var(--gray-700)', borderColor: 'var(--gray-500)' };
@@ -644,7 +636,6 @@ export default function ExecutionDetailPage() {
             const { tableName, tableType } = selectedTable!;
             const typeConfig = {
               SOURCE: { label: 'SOURCE', bg: 'var(--blue-100)', color: 'var(--blue-700)' },
-              TARGET_IF: { label: 'IF', bg: 'var(--yellow-100)', color: 'var(--yellow-700)' },
               TARGET: { label: 'TARGET', bg: 'var(--green-100)', color: 'var(--green-700)' },
             }[tableType] ?? { label: tableType ?? 'UNKNOWN', bg: 'var(--gray-100)', color: 'var(--gray-700)' };
 
@@ -712,8 +703,8 @@ export default function ExecutionDetailPage() {
                 검색
               </button>
             </div>
-            {/* IF 또는 TARGET 테이블만 상태 필터 표시 */}
-            {(isIfTable || isTargetTable) && (
+            {/* TARGET 테이블만 상태 필터 표시 */}
+            {isTargetTable && (
               <select
                 value={statusFilter}
                 onChange={(e) => handleStatusFilterChange(e.target.value)}

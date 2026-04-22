@@ -3,8 +3,6 @@ package com.sync.agent.common.controller;
 import com.sync.agent.common.dto.TableStatsDto;
 import com.sync.agent.common.entity.Execution;
 import com.sync.agent.common.entity.SyncLog;
-import com.sync.agent.common.repository.SyncLogRepository;
-import com.sync.agent.common.service.ExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,8 +22,7 @@ import java.util.*;
  * GET /{executionId}          — 실행 상세 (상태, 시간, 오류)
  * GET /{executionId}/summary  — 실행 통계 (read/write/failed/skip)
  * GET /{executionId}/source   — Source 테이블 데이터 (페이징)
- * GET /{executionId}/target-if — IF 테이블 데이터
- * GET /{executionId}/target   — Target 테이블 데이터
+ * GET /{executionId}/target   — Target 테이블 데이터 (IF 포함 — 구 /target-if 통합)
  * GET /{executionId}/tables   — 매핑별 통계 (SyncLog 기반)
  * GET /{executionId}/trace    — Source PK → Target 추적 (forward)
  * GET /{executionId}/trace-source — Target → Source 역추적 (backward)
@@ -52,36 +49,21 @@ import java.util.*;
 public class ExecutionDataController {
 
     private final DataSourceProvider dataSourceProvider;
-    private final SyncLogRepository syncLogRepository;
-    private final ExecutionService executionService;
 
     /**
      * 실행 데이터 요약 (SyncLog 요약 기반)
      */
     @GetMapping("/{executionId}/summary")
-    public ResponseEntity<Map<String, Object>> getSummary(@PathVariable String executionId) {
-        // SyncLog에서 총 read/write/failed/skip 건수 합계
-        Object result = syncLogRepository.sumCountsByExecutionId(executionId);
+    public ResponseEntity<Map<String, Object>> getSummary(
+            @PathVariable String executionId,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
 
-        long readCount = 0L;
-        long writeCount = 0L;
-        long failedCount = 0L;
-        long skipCount = 0L;
-
-        if (result != null) {
-            Object[] sums;
-            if (result instanceof Object[] arr) {
-                if (arr.length > 0 && arr[0] instanceof Object[]) {
-                    sums = (Object[]) arr[0];
-                } else {
-                    sums = arr;
-                }
-                readCount = sums.length > 0 && sums[0] != null ? ((Number) sums[0]).longValue() : 0L;
-                writeCount = sums.length > 1 && sums[1] != null ? ((Number) sums[1]).longValue() : 0L;
-                failedCount = sums.length > 2 && sums[2] != null ? ((Number) sums[2]).longValue() : 0L;
-                skipCount = sums.length > 3 && sums[3] != null ? ((Number) sums[3]).longValue() : 0L;
-            }
-        }
+        long[] sums = ExecutionDataReader.sumCountsByExecutionId(mgmtJdbc, executionId);
+        long readCount = sums[0];
+        long writeCount = sums[1];
+        long failedCount = sums[2];
+        long skipCount = sums[3];
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("executionId", executionId);
@@ -99,8 +81,11 @@ public class ExecutionDataController {
      * 실행 상세 정보 조회
      */
     @GetMapping("/{executionId}")
-    public ResponseEntity<?> getExecution(@PathVariable String executionId) {
-        return executionService.getExecution(executionId)
+    public ResponseEntity<?> getExecution(
+            @PathVariable String executionId,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+        return ExecutionDataReader.findExecutionById(mgmtJdbc, executionId)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> {
                     log.warn("Execution not found in local DB: {}", executionId);
@@ -117,16 +102,20 @@ public class ExecutionDataController {
      * 최근 실행 목록 조회
      */
     @GetMapping("/recent")
-    public ResponseEntity<List<Execution>> getRecentExecutions() {
-        return ResponseEntity.ok(executionService.getRecentExecutions());
+    public ResponseEntity<List<Execution>> getRecentExecutions(
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+        return ResponseEntity.ok(ExecutionDataReader.findRecentExecutions(mgmtJdbc, 10));
     }
 
     /**
      * 전체 실행 목록 조회
      */
     @GetMapping("")
-    public ResponseEntity<List<Execution>> getAllExecutions() {
-        return ResponseEntity.ok(executionService.getAllExecutions());
+    public ResponseEntity<List<Execution>> getAllExecutions(
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+        return ResponseEntity.ok(ExecutionDataReader.findAllExecutions(mgmtJdbc));
     }
 
     /**
@@ -142,7 +131,8 @@ public class ExecutionDataController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String searchColumn,
             @RequestParam(required = false) String sortColumn,
-            @RequestParam(defaultValue = "asc") String sortDirection) {
+            @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
 
         try {
             // tableName 필수 체크
@@ -151,8 +141,10 @@ public class ExecutionDataController {
                         "테이블명이 지정되지 않았습니다. tableName 파라미터를 전달해주세요."));
             }
 
+            JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+
             // Execution에서 sourceDatasourceId 조회
-            Execution execution = executionService.getExecution(executionId).orElse(null);
+            Execution execution = ExecutionDataReader.findExecutionById(mgmtJdbc, executionId).orElse(null);
             if (execution == null) {
                 return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
                         "실행 정보를 찾을 수 없습니다: " + executionId));
@@ -202,7 +194,7 @@ public class ExecutionDataController {
 
             // target 테이블에서 이번 실행의 source_refs 수집 → source 필터링
             String targetDsId = execution.getTargetDatasourceId();
-            SourceFilterResult sourceFilter = buildSourceFilter(executionId, tableName, targetDsId, sourceJdbc, actualTableName, srcDbType);
+            SourceFilterResult sourceFilter = buildSourceFilter(mgmtJdbc, executionId, tableName, targetDsId, sourceJdbc, actualTableName, srcDbType);
 
             StringBuilder whereClause = new StringBuilder("1=1");
             List<Object> params = new ArrayList<>();
@@ -288,13 +280,13 @@ public class ExecutionDataController {
      *
      * @return 필터 결과. 매핑을 찾지 못하면 null (전체 데이터 fallback)
      */
-    private SourceFilterResult buildSourceFilter(String executionId, String sourceTableName,
+    private SourceFilterResult buildSourceFilter(JdbcTemplate mgmtJdbc, String executionId, String sourceTableName,
                                                   String targetDatasourceId,
                                                   JdbcTemplate sourceJdbc, String actualSourceTable,
                                                   String srcDbType) {
         try {
             // SyncLog에서 source_tables에 요청된 sourceTable이 포함된 매핑 찾기
-            List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
+            List<SyncLog> syncLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
             SyncLog matchedMapping = syncLogs.stream()
                     .filter(l -> l.containsSourceTable(sourceTableName))
                     .findFirst()
@@ -393,7 +385,7 @@ public class ExecutionDataController {
                 String pkColumn = qi(actualPkCol != null ? actualPkCol : "id", srcDbType);
 
                 // 같은 DB + 소량이면 서브쿼리, 그 외(대량 또는 cross-DB)는 배치 분할
-                Execution exec = executionService.getExecution(executionId).orElse(null);
+                Execution exec = ExecutionDataReader.findExecutionById(mgmtJdbc, executionId).orElse(null);
                 String execSourceDsId = (exec != null) ? exec.getSourceDatasourceId() : null;
                 String execTargetDsId = (exec != null) ? exec.getTargetDatasourceId() : targetDatasourceId;
                 boolean sameDb = execSourceDsId != null && execSourceDsId.equals(execTargetDsId);
@@ -542,105 +534,7 @@ public class ExecutionDataController {
     }
 
     /**
-     * Target IF 테이블 데이터 조회
-     */
-    @GetMapping("/{executionId}/target-if")
-    public ResponseEntity<Map<String, Object>> getTargetIfData(
-            @PathVariable String executionId,
-            @RequestParam(required = false) String tableName,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String searchColumn,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String sortColumn,
-            @RequestParam(defaultValue = "asc") String sortDirection) {
-
-        try {
-            // tableName 필수 체크
-            if (tableName == null || tableName.isBlank()) {
-                return ResponseEntity.ok(buildEmptyPageResultWithMessage("unknown", page, size,
-                        "테이블명이 지정되지 않았습니다. tableName 파라미터를 전달해주세요."));
-            }
-
-            // Execution에서 targetDatasourceId 조회 후 JdbcTemplate 획득
-            Execution execution = executionService.getExecution(executionId).orElse(null);
-            String datasourceId = (execution != null && execution.getTargetDatasourceId() != null)
-                    ? execution.getTargetDatasourceId()
-                    : null;
-
-            JdbcTemplate targetJdbc;
-            try {
-                targetJdbc = dataSourceProvider.getJdbcTemplate(
-                        datasourceId != null ? datasourceId : dataSourceProvider.getTargetDatasourceId());
-            } catch (Exception e) {
-                log.warn("DataSource '{}' not found, falling back to default target", datasourceId);
-                targetJdbc = dataSourceProvider.getJdbcTemplate(dataSourceProvider.getTargetDatasourceId());
-            }
-
-            // 테이블 존재 여부 확인
-            if (!tableExists(targetJdbc, tableName)) {
-                log.warn("Target IF table '{}' does not exist", tableName);
-                return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
-                        "IF 테이블이 존재하지 않습니다."));
-            }
-
-            // IF 테이블은 통합된 execution_id 컬럼 사용
-            String executionIdColumn = "execution_id";
-
-            StringBuilder whereClause = new StringBuilder(executionIdColumn + " = ?");
-            List<Object> params = new ArrayList<>();
-            params.add(executionId);
-
-            // 검색 조건 추가 (특정 컬럼 또는 전체 컬럼)
-            String searchClause = buildSearchClause(targetJdbc, tableName, search, searchColumn, params);
-            whereClause.append(searchClause);
-
-            // 상태 필터 적용
-            if (status != null && !status.isBlank()) {
-                whereClause.append(" AND link_status = ?");
-                params.add(status);
-            }
-
-            // 현재 조건(검색+상태 필터) 기반 성공/실패 건수
-            String currentWhere = whereClause.toString();
-            Object[] currentParams = params.toArray();
-            Integer successCount = targetJdbc.queryForObject(
-                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'SUCCESS'", tableName, currentWhere),
-                    Integer.class, currentParams);
-            Integer failedCount = targetJdbc.queryForObject(
-                    String.format("SELECT COUNT(*) FROM %s WHERE %s AND link_status = 'FAILED'", tableName, currentWhere),
-                    Integer.class, currentParams);
-
-            // 전체 건수 조회
-            String countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s", tableName, whereClause);
-            Integer totalCount = targetJdbc.queryForObject(countSql, Integer.class, params.toArray());
-            if (totalCount == null) totalCount = 0;
-
-            // 정렬 처리
-            String orderBy = buildOrderByClause(targetJdbc, tableName, sortColumn, sortDirection);
-
-            // 페이징된 데이터 조회
-            String tgtDbType = detectDbType(targetJdbc);
-            String baseSql = String.format("SELECT * FROM %s WHERE %s %s", tableName, whereClause, orderBy);
-            String dataSql = pagingSql(baseSql, tgtDbType, size, page * size);
-            List<Map<String, Object>> data = targetJdbc.queryForList(dataSql, params.toArray());
-
-            List<String> columns = data.isEmpty() ? getTableColumns(targetJdbc, tableName) : new ArrayList<>(data.get(0).keySet());
-
-            Map<String, Object> result = buildPageResult(tableName, columns, data, totalCount, page, size);
-            result.put("successCount", successCount != null ? successCount : 0);
-            result.put("failedCount", failedCount != null ? failedCount : 0);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Failed to get target IF data for execution: {}", executionId, e);
-            return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
-                    "IF 테이블 데이터를 조회할 수 없습니다: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * Target 최종 테이블 데이터 조회
+     * Target 테이블 데이터 조회 (구 /target-if와 통합)
      */
     @GetMapping("/{executionId}/target")
     public ResponseEntity<Map<String, Object>> getTargetData(
@@ -652,7 +546,8 @@ public class ExecutionDataController {
             @RequestParam(required = false) String searchColumn,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String sortColumn,
-            @RequestParam(defaultValue = "asc") String sortDirection) {
+            @RequestParam(defaultValue = "asc") String sortDirection,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
 
         try {
             // tableName 필수 체크
@@ -661,8 +556,10 @@ public class ExecutionDataController {
                         "테이블명이 지정되지 않았습니다. tableName 파라미터를 전달해주세요."));
             }
 
+            JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+
             // Execution에서 targetDatasourceId 조회
-            Execution execution = executionService.getExecution(executionId).orElse(null);
+            Execution execution = ExecutionDataReader.findExecutionById(mgmtJdbc, executionId).orElse(null);
             String datasourceId = (execution != null && execution.getTargetDatasourceId() != null)
                     ? execution.getTargetDatasourceId()
                     : dataSourceProvider.getTargetDatasourceId();  // 대체 값
@@ -741,8 +638,11 @@ public class ExecutionDataController {
      * 실패한 레코드 정보 (테이블별 실패 요약 + 실패 키 목록)
      */
     @GetMapping("/{executionId}/failed")
-    public ResponseEntity<List<Map<String, Object>>> getFailedRecords(@PathVariable String executionId) {
-        List<SyncLog> failedLogs = syncLogRepository.findFailedByExecutionId(executionId);
+    public ResponseEntity<List<Map<String, Object>>> getFailedRecords(
+            @PathVariable String executionId,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+        List<SyncLog> failedLogs = ExecutionDataReader.findFailedSyncLogsByExecutionId(mgmtJdbc, executionId);
 
         List<Map<String, Object>> result = failedLogs.stream()
                 .map(syncLog -> {
@@ -764,8 +664,11 @@ public class ExecutionDataController {
      * 매핑별 통계 조회 (SyncLog 매핑 단위)
      */
     @GetMapping("/{executionId}/tables")
-    public ResponseEntity<List<TableStatsDto>> getTableStats(@PathVariable String executionId) {
-        List<SyncLog> syncLogs = syncLogRepository.findByExecutionId(executionId);
+    public ResponseEntity<List<TableStatsDto>> getTableStats(
+            @PathVariable String executionId,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+        List<SyncLog> syncLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
 
         List<TableStatsDto> tableStats = new ArrayList<>();
         for (SyncLog syncLog : syncLogs) {
@@ -795,13 +698,15 @@ public class ExecutionDataController {
     @GetMapping("/{executionId}/tables/{name}")
     public ResponseEntity<SyncLog> getTableLog(
             @PathVariable String executionId,
-            @PathVariable String name) {
+            @PathVariable String name,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
         // 1차: mappingName 매칭
-        Optional<SyncLog> byMapping = syncLogRepository.findByExecutionIdAndMappingName(executionId, name);
+        Optional<SyncLog> byMapping = ExecutionDataReader.findByExecutionIdAndMappingName(mgmtJdbc, executionId, name);
         if (byMapping.isPresent()) return ResponseEntity.ok(byMapping.get());
 
         // 2차: sourceTables/targetTables JSON에서 테이블명 매칭
-        return syncLogRepository.findByExecutionId(executionId).stream()
+        return ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId).stream()
                 .filter(l -> containsTable(l, name))
                 .findFirst()
                 .map(ResponseEntity::ok)
@@ -815,12 +720,14 @@ public class ExecutionDataController {
     @GetMapping("/{executionId}/tables/{name}/failed")
     public ResponseEntity<Map<String, Object>> getTableFailedInfo(
             @PathVariable String executionId,
-            @PathVariable String name) {
+            @PathVariable String name,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
+        JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
         // 1차: mappingName 매칭
-        Optional<SyncLog> byMapping = syncLogRepository.findByExecutionIdAndMappingName(executionId, name);
+        Optional<SyncLog> byMapping = ExecutionDataReader.findByExecutionIdAndMappingName(mgmtJdbc, executionId, name);
         SyncLog syncLog = byMapping.orElseGet(() ->
                 // 2차: 테이블명 매칭
-                syncLogRepository.findByExecutionId(executionId).stream()
+                ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId).stream()
                         .filter(l -> containsTable(l, name))
                         .findFirst()
                         .orElse(null));
@@ -852,22 +759,25 @@ public class ExecutionDataController {
             @RequestParam String pkValue,
             @RequestParam(defaultValue = "id") String pkColumn,
             @RequestParam(required = false) String sourceTable,
-            @RequestParam(required = false) String ifTableName) {
+            @RequestParam(required = false) String ifTableName,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
 
         try {
             if (sourceTable == null || sourceTable.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "sourceTable 파라미터가 필요합니다."));
             }
 
+            JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+
             // Execution에서 targetDatasourceId 조회
-            Execution execution = executionService.getExecution(executionId).orElse(null);
+            Execution execution = ExecutionDataReader.findExecutionById(mgmtJdbc, executionId).orElse(null);
             String targetDsId = (execution != null && execution.getTargetDatasourceId() != null)
                     ? execution.getTargetDatasourceId()
                     : dataSourceProvider.getTargetDatasourceId();
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
 
             // SyncLog에서 모든 매핑의 target 테이블 목록 추출
-            List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
+            List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
             List<String> targetTables = allLogs.stream()
                     .map(SyncLog::getTargetTables)
                     .filter(Objects::nonNull)
@@ -1033,13 +943,16 @@ public class ExecutionDataController {
     public ResponseEntity<Map<String, Object>> traceToSource(
             @PathVariable String executionId,
             @RequestParam String sourceRefs,
-            @RequestParam(required = false) String sourceTable) {
+            @RequestParam(required = false) String sourceTable,
+            @RequestHeader(value = "X-Manage-Datasource-Id", required = false) String manageDsId) {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("executionId", executionId);
         result.put("sourceRefs", sourceRefs);
 
         try {
+            JdbcTemplate mgmtJdbc = dataSourceProvider.getJdbcTemplate(manageDsId);
+
             // sourceRefs 파싱: ["E:1:4:26"] 또는 ["D:1:4:26", "D:1:4:27"]
             List<String> pkValues = parseSourceRefsPks(sourceRefs);
             if (pkValues.isEmpty()) {
@@ -1064,7 +977,7 @@ public class ExecutionDataController {
                             .replaceFirst("^if_snd_", "");
 
                     // SyncLog에서 해당 base를 포함하는 SOURCE 테이블 찾기
-                    List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
+                    List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
                     String finalBaseName = baseName;
                     // 정확 매칭 우선, 없으면 contains 매칭
                     List<String> allSourceTables = allLogs.stream()
@@ -1081,24 +994,46 @@ public class ExecutionDataController {
                             .orElse(sourceTable);  // 못 찾으면 원본 유지
                     log.debug("Resolved sourceTable from IF table: {} -> {}", lowerTable, sourceTable);
                 } else {
-                    // Loader 대응: sourceTable이 TARGET 테이블(sec_jewon 등)인 경우
-                    // sync_log SOURCE에서 해당 base를 포함하는 테이블로 변환
-                    // sec_jewon → if_rsv_sec_jewon (SOURCE), source_refs로 매칭
-                    List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
-                    String resolvedSource = allLogs.stream()
-                            .map(SyncLog::getSourceTables)
-                            .filter(Objects::nonNull)
-                            .flatMap(json -> parseJsonArray(json).stream())
-                            .filter(t -> t.toLowerCase().contains(lowerTable))
-                            .findFirst()
-                            .orElse(null);
+                    // Loader TARGET 대응: sourceTable이 TARGET 테이블인 경우
+                    //   1순위: target_tables 정확 매칭 → 매핑의 source_tables 반환 (가장 의미 명확)
+                    //   2순위: 양방향 contains (bojo-int: source⊃target / provide: target⊃source)
+                    //   3순위: source_refs 파싱 fallback
+                    List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
+
+                    String resolvedSource = null;
+                    // 1순위: target_tables 정확 매칭
+                    for (SyncLog slog : allLogs) {
+                        List<String> targetTables = parseJsonArray(slog.getTargetTables());
+                        boolean matched = targetTables.stream()
+                                .anyMatch(t -> t.toLowerCase().equals(lowerTable));
+                        if (matched) {
+                            List<String> sourceTables = parseJsonArray(slog.getSourceTables());
+                            if (!sourceTables.isEmpty()) {
+                                resolvedSource = sourceTables.get(0);
+                                break;
+                            }
+                        }
+                    }
+                    // 2순위: 양방향 contains
+                    if (resolvedSource == null) {
+                        resolvedSource = allLogs.stream()
+                                .map(SyncLog::getSourceTables)
+                                .filter(Objects::nonNull)
+                                .flatMap(json -> parseJsonArray(json).stream())
+                                .filter(t -> {
+                                    String tLower = t.toLowerCase();
+                                    return tLower.contains(lowerTable) || lowerTable.contains(tLower);
+                                })
+                                .findFirst()
+                                .orElse(null);
+                    }
+
                     if (resolvedSource != null) {
                         log.debug("Loader trace: resolved TARGET {} -> SOURCE {}", sourceTable, resolvedSource);
                         sourceTable = resolvedSource;
                         isLoaderTarget = true;
                     } else {
-                        // 이름 매칭 실패 시 source_refs에서 직접 테이블명 추출
-                        // I:dsId:tableName:pk 형식 (Internal) → tableName 사용
+                        // 3순위: source_refs에서 직접 테이블명 추출 (I:dsId:tableName:pk)
                         String refsTable = parseSourceRefsTableName(sourceRefs);
                         if (refsTable != null) {
                             log.debug("Resolved sourceTable from source_refs: {} -> {}", sourceTable, refsTable);
@@ -1111,7 +1046,7 @@ public class ExecutionDataController {
 
             // sourceTable이 아직 없으면 syncLog에서 첫 번째 SOURCE 테이블 사용
             if (sourceTable == null || sourceTable.isBlank()) {
-                List<SyncLog> allLogs = syncLogRepository.findByExecutionId(executionId);
+                List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
                 sourceTable = allLogs.stream()
                         .map(SyncLog::getSourceTables)
                         .filter(Objects::nonNull)
@@ -1127,7 +1062,7 @@ public class ExecutionDataController {
             result.put("sourceTableName", sourceTable);
 
             // Execution에서 sourceDatasourceId 조회 (/source 엔드포인트와 동일한 방식)
-            Execution execution = executionService.getExecution(executionId).orElse(null);
+            Execution execution = ExecutionDataReader.findExecutionById(mgmtJdbc, executionId).orElse(null);
             if (execution == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "실행 정보를 찾을 수 없습니다: " + executionId));
             }

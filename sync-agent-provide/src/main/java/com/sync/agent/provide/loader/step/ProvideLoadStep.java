@@ -356,6 +356,7 @@ public class ProvideLoadStep implements StepExecutor {
                     .mappingName(stepId)
                     .sourceTables(sourceJson)
                     .targetTables(targetJson)
+                    .sourcePkColumn(mergeKey)
                     .readCount((long) readCount)
                     .writeCount((long) writeCount)
                     .failedCount((long) failedCount)
