@@ -10,7 +10,12 @@ type: LOADER
 steps:
   - id: provide-tm-gd130001
     name: 영향조사보고서 복사
-    factory-key: provide-load
+    factory-key: source-to-if
     source-table: TM_GD130001
     target-table: api_prv_tm_gd130001
-    merge-key: ISVR_NO
+    primary-key: ISVR_NO
+    conflict-key: source_refs
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at

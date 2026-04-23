@@ -4,7 +4,7 @@ package com.sync.agent.common.step;
  * 파이프라인 Step 실행 인터페이스
  *
  * PipelineRunner가 순차 실행하는 Step의 공통 계약.
- * 구현체: SourceToIfStep(RCV/SND copy), DefaultLoadStep(DMZ Loader),
+ * 구현체: SourceToTargetStep(RCV/SND/Internal RCV/Provide copy), DefaultLoadStep(DMZ Loader),
  *         InternalLoadStep(Internal Loader), LinkTableUpdateStep(Link 갱신)
  *
  * PipelineConfig에서 구현체를 생성하여 Runner의 steps 리스트에 담으면,

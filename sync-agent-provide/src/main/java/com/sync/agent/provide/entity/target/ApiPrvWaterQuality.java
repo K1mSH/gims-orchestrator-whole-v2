@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,30 +15,25 @@ import java.time.LocalDateTime;
  * 복합 PK: gwel_no + wq_insp_sn
  */
 @Entity
-@Table(name = "api_prv_water_quality")
+@Table(name = "api_prv_water_quality",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_water_quality_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_water_quality", comment = "수질정보 제공")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(ApiPrvWaterQuality.PK.class)
 public class ApiPrvWaterQuality {
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class PK implements Serializable {
-        private Long gwelNo;
-        private Long wqInspSn;
-    }
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "gwel_no")
     @Comment("관정번호")
     private Long gwelNo;
 
-    @Id
     @Column(name = "wq_insp_sn")
     @Comment("수질검사일련번호")
     private Long wqInspSn;

@@ -10,7 +10,12 @@ type: LOADER
 steps:
   - id: provide-tm-gd120001
     name: 관정 기본정보 복사
-    factory-key: provide-load
+    factory-key: source-to-if
     source-table: TM_GD120001
     target-table: api_prv_tm_gd120001
-    merge-key: GWEL_NO
+    primary-key: GWEL_NO
+    conflict-key: source_refs
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at

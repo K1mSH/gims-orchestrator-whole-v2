@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
  * PK: wq_insp_sn
  */
 @Entity
-@Table(name = "api_prv_water_quality_mfds")
+@Table(name = "api_prv_water_quality_mfds",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_water_quality_mfds_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_water_quality_mfds", comment = "식약처 정기수질검사 제공")
 @Getter
 @Setter
@@ -26,6 +27,10 @@ import java.time.LocalDateTime;
 public class ApiPrvWaterQualityMfds {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "wq_insp_sn")
     @Comment("수질검사일련번호")
     private Long wqInspSn;

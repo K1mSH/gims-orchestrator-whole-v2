@@ -1,0 +1,78 @@
+Pager usage is off.
+=== DMZ PG (bojo) 스냅샷 2026-04-23 통합 전 ===
+
+=== sec_jewon 최근 5건 ===
+  id   |     source_refs      | link_status |                     execution_id                     
+-------+----------------------+-------------+------------------------------------------------------
+ 51758 | ["D:1018:30:337228"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 51757 | ["D:1018:30:337227"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 51756 | ["D:1018:30:337226"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 51755 | ["D:1018:30:337225"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 51754 | ["D:1018:30:337224"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+(5 rows)
+
+=== sec_obsvdata 최근 5건 ===
+   id   |     source_refs      | link_status |                     execution_id                     
+--------+----------------------+-------------+------------------------------------------------------
+ 442729 | ["D:1018:31:624923"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 442728 | ["D:1018:31:624922"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 442727 | ["D:1018:31:624921"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 442726 | ["D:1018:31:624920"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+ 442725 | ["D:1018:31:624919"] | SUCCESS     | dmz-bojo-loader_7ae03396-3731-44e0-9fba-b6027a0c9139
+(5 rows)
+
+=== if_rsv_sec_jewon 최근 5건 ===
+   id   |  source_refs   | link_status |                       execution_id                        
+--------+----------------+-------------+-----------------------------------------------------------
+ 337228 | ["E:8:26:800"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 337227 | ["E:8:26:802"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 337226 | ["E:8:26:799"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 337225 | ["E:8:26:798"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 337224 | ["E:8:26:797"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+(5 rows)
+
+=== if_rsv_sec_obsvdata 최근 5건 ===
+   id   |   source_refs    | link_status |                       execution_id                        
+--------+------------------+-------------+-----------------------------------------------------------
+ 624923 | ["E:8:27:25603"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 624922 | ["E:8:27:25602"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 624921 | ["E:8:27:25601"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 624920 | ["E:8:27:25600"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+ 624919 | ["E:8:27:25599"] | SUCCESS     | dmz-bojo-rcv-daejeon_ff637705-7d0f-40fe-8152-b22a003ffffa
+(5 rows)
+
+=== if_snd_sec_jewon 최근 5건 ===
+   id   |     source_refs     | link_status |                   execution_id                    
+--------+---------------------+-------------+---------------------------------------------------
+ 117403 | ["D:1018:33:50562"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 117402 | ["D:1018:33:51758"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 117401 | ["D:1018:33:51757"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 117400 | ["D:1018:33:51756"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 117399 | ["D:1018:33:51755"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+(5 rows)
+
+=== if_snd_sec_obsvdata 최근 5건 ===
+   id   |     source_refs      | link_status |                   execution_id                    
+--------+----------------------+-------------+---------------------------------------------------
+ 440977 | ["D:1018:34:442729"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 440976 | ["D:1018:34:442728"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 440975 | ["D:1018:34:442727"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 440974 | ["D:1018:34:442726"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+ 440973 | ["D:1018:34:442725"] | SUCCESS     | dmz-bojo-snd_228c6e8e-8251-422f-8cd7-389fde1aab4f
+(5 rows)
+
+=== sync_log 최근 10건 ===
+  id  |                         exec_id                         | mapping_name |         src         |            tgt             | source_pk_column  | read_count | write_count 
+------+---------------------------------------------------------+--------------+---------------------+----------------------------+-------------------+------------+-------------
+ 1780 | dmz-others-snd-api-collect_8b1e6741-4318-4d84-a3f4-b27c | nara         | ["tm_gd014000"]     | ["if_snd_tm_gd014000"]     | sn                |      22204 |       22204
+ 1779 | dmz-others-snd-api-collect_8b1e6741-4318-4d84-a3f4-b27c | news         | ["tm_gd014001"]     | ["if_snd_tm_gd014001"]     | sn                |        381 |         381
+ 1778 | dmz-others-snd-jeju_1728c446-2cb7-4693-8ad8-61c5acc5253 | jeju         | ["rgetstgms01"]     | ["if_snd_rgetstgms01"]     | perm_nt_no        |         12 |          12
+ 1777 | dmz-others-snd-jeju_1728c446-2cb7-4693-8ad8-61c5acc5253 | jeju         | ["tb_jeju"]         | ["if_snd_tb_jeju"]         | rid               |         12 |          12
+ 1776 | dmz-others-snd-jeju_1728c446-2cb7-4693-8ad8-61c5acc5253 | jeju         | ["tb_jeju_jewon"]   | ["if_snd_tb_jeju_jewon"]   | obsrvt_id         |         12 |          12
+ 1775 | dmz-others-snd-use_edf43d79-6247-42d4-84a0-35f3b23c87a5 | use          | ["use_jeju_day"]    | ["if_snd_use_jeju_day"]    | obsrvt_id,obsr_de |          5 |           5
+ 1774 | dmz-others-snd-use_edf43d79-6247-42d4-84a0-35f3b23c87a5 | use          | ["use_status_data"] | ["if_snd_use_status_data"] | sn                |          5 |           5
+ 1773 | dmz-others-snd-use_edf43d79-6247-42d4-84a0-35f3b23c87a5 | use          | ["use_legacy_data"] | ["if_snd_use_legacy_data"] | sn                |         10 |          10
+ 1772 | dmz-others-snd-jeju_71a72a20-99b2-47e2-9a0f-1489b829b5a | jeju         | ["rgetstgms01"]     | ["if_snd_rgetstgms01"]     | perm_nt_no        |         12 |          12
+ 1771 | dmz-others-snd-jeju_71a72a20-99b2-47e2-9a0f-1489b829b5a | jeju         | ["tb_jeju"]         | ["if_snd_tb_jeju"]         | rid               |         12 |          12
+(10 rows)
+

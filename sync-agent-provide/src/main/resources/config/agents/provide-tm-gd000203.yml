@@ -10,7 +10,12 @@ type: LOADER
 steps:
   - id: provide-tm-gd000203
     name: 공공관정 가뭄지원 복사
-    factory-key: provide-load
+    factory-key: source-to-if
     source-table: TM_GD000203
     target-table: api_prv_tm_gd000203
-    merge-key: SN
+    primary-key: SN
+    conflict-key: source_refs
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at

@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
  * 전처리: 2중 서브쿼리 (TM_GD10001 JOSACODE 필터)
  */
 @Entity
-@Table(name = "api_prv_tm_gd110301")
+@Table(name = "api_prv_tm_gd110301",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_tm_gd110301_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd110301", comment = "수질측정망검사개요 제공")
 @Getter
 @Setter

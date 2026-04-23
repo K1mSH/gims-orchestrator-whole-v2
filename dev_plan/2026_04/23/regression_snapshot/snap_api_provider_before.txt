@@ -1,0 +1,60 @@
+Pager usage is off.
+=== API Provider PG 스냅샷 2026-04-23 통합 전 ===
+=== api_prv_tm_gd000203 ===
+ sn |    source_refs    |                      execution_id                       
+----+-------------------+---------------------------------------------------------
+  1 | ["IC:1019:244:1"] | provide-tm-gd000203_de650aaa-ee98-4352-b4f0-a5413a4a11a
+  2 | ["IC:1019:244:2"] | provide-tm-gd000203_de650aaa-ee98-4352-b4f0-a5413a4a11a
+  3 | ["IC:1019:244:3"] | provide-tm-gd000203_de650aaa-ee98-4352-b4f0-a5413a4a11a
+  4 | ["IC:1019:244:4"] | provide-tm-gd000203_de650aaa-ee98-4352-b4f0-a5413a4a11a
+  5 | ["IC:1019:244:5"] | provide-tm-gd000203_de650aaa-ee98-4352-b4f0-a5413a4a11a
+(5 rows)
+
+=== api_prv_tm_gd130001 ===
+ sn |  isvr_no   |        source_refs         |                      execution_id                       
+----+------------+----------------------------+---------------------------------------------------------
+  1 | 0000000001 | ["IC:1019:245:0000000001"] | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609
+  2 | 0000000002 | ["IC:1019:245:0000000002"] | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609
+  3 | 0000000003 | ["IC:1019:245:0000000003"] | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609
+  4 | Y-001      | ["IC:1019:245:Y-001"]      | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609
+  5 | Y-002      | ["IC:1019:245:Y-002"]      | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609
+  6 | Y-003      | ["IC:1019:245:Y-003"]      | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609
+(6 rows)
+
+=== api_prv_tm_gd112002 ===
+ sn | prmsn_dclr_no |          source_refs          |                      execution_id                       
+----+---------------+-------------------------------+---------------------------------------------------------
+  1 | PWD-2020-0003 | ["IC:1019:246:PWD-2020-0003"] | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81
+  2 | PWD-2020-0001 | ["IC:1019:246:PWD-2020-0001"] | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81
+  3 | PWD-2020-0002 | ["IC:1019:246:PWD-2020-0002"] | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81
+  6 | P-2024-001    | ["IC:1019:246:P-2024-001"]    | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81
+  7 | P-2024-002    | ["IC:1019:246:P-2024-002"]    | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81
+  8 | P-2024-003    | ["IC:1019:246:P-2024-003"]    | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81
+(6 rows)
+
+=== api_prv_tm_gd120001 ===
+ sn | gwel_no |      source_refs      |                      execution_id                       
+----+---------+-----------------------+---------------------------------------------------------
+  1 |       3 | ["IC:1019:218:3"]     | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b
+  2 |       4 | ["IC:1019:218:4"]     | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b
+  3 |   10004 | ["IC:1019:218:10004"] | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b
+  4 |   10001 | ["IC:1019:218:10001"] | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b
+  5 |   10002 | ["IC:1019:218:10002"] | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b
+  6 |   10003 | ["IC:1019:218:10003"] | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b
+(6 rows)
+
+=== sync_log provide 관련 최근 10건 ===
+ id |                         exec_id                         |    mapping_name     |       src       |           tgt           | source_pk_column | read_count | write_count 
+----+---------------------------------------------------------+---------------------+-----------------+-------------------------+------------------+------------+-------------
+ 17 | provide-tm-gd112002_51e3f73a-3da0-4afb-9911-555f000fc81 | provide-tm-gd112002 | ["TM_GD112002"] | ["api_prv_tm_gd112002"] | PRMSN_DCLR_NO    |          8 |           8
+ 16 | provide-tm-gd120001_a26dd40c-a84e-48a1-a404-207d637387b | provide-tm-gd120001 | ["TM_GD120001"] | ["api_prv_tm_gd120001"] | GWEL_NO          |          6 |           6
+ 15 | provide-tm-gd120001_11102f40-540b-46d0-b96b-f47a02d10f7 | provide-tm-gd120001 | ["TM_GD120001"] | ["api_prv_tm_gd120001"] | GWEL_NO          |          6 |           6
+ 14 | provide-tm-gd112002_aa11ace6-f82c-4705-a106-9f5921e64fe | provide-tm-gd112002 | ["TM_GD112002"] | ["api_prv_tm_gd112002"] | PRMSN_DCLR_NO    |          8 |           8
+ 13 | provide-tm-gd130001_ff2cd3ec-6c84-4569-bb96-b7a745f0609 | provide-tm-gd130001 | ["TM_GD130001"] | ["api_prv_tm_gd130001"] | ISVR_NO          |          6 |           6
+ 12 | provide-tm-gd000203_de650aaa-ee98-4352-b4f0-a5413a4a11a | provide-tm-gd000203 | ["TM_GD000203"] | ["api_prv_tm_gd000203"] | SN               |          5 |           5
+ 11 | provide-tm-gd130001_201f2ad2-f458-4760-92c2-084b08967cc | provide-tm-gd130001 | ["TM_GD130001"] | ["api_prv_tm_gd130001"] | ISVR_NO          |          6 |           6
+ 10 | provide-tm-gd000203_afdb00c1-1f09-4010-b1e2-ac7547bd0e2 | provide-tm-gd000203 | ["TM_GD000203"] | ["api_prv_tm_gd000203"] | SN               |          5 |           5
+  9 | provide-tm-gd000203_fcfad7bc-fdcb-4973-afb4-81a1847768a | provide-tm-gd000203 | ["TM_GD000203"] | ["api_prv_tm_gd000203"] | SN               |          5 |           5
+  8 | provide-tm-gd000203_778ccd2a-30b7-4514-8258-5ade7f3bce5 | provide-tm-gd000203 | ["TM_GD000203"] | ["api_prv_tm_gd000203"] |                  |          5 |           5
+(10 rows)
+

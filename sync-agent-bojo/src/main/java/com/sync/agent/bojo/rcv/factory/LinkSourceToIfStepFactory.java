@@ -2,7 +2,7 @@ package com.sync.agent.bojo.rcv.factory;
 
 import com.sync.agent.bojo.rcv.fetcher.LinkTableObsvDataFetcher;
 import com.sync.agent.common.controller.DataSourceProvider;
-import com.sync.agent.common.pipeline.SourceToIfStepFactory;
+import com.sync.agent.common.pipeline.SourceToTargetStepFactory;
 import com.sync.agent.common.pipeline.StepFactory;
 import com.sync.agent.common.repository.SyncLogRepository;
 import com.sync.agent.common.step.*;
@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * source-to-if-link Factory (bojo 전용)
  *
- * Link 테이블 기반 증분 추출을 사용하는 SourceToIfStep 생성.
+ * Link 테이블 기반 증분 추출을 사용하는 SourceToTargetStep 생성.
  * LinkTableObsvDataFetcher를 customDataFetcher로 주입한다.
  */
 @Component
@@ -30,6 +30,7 @@ public class LinkSourceToIfStepFactory implements StepFactory {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public StepExecutor create(Map<String, Object> config) {
         LinkTableObsvDataFetcher fetcher = new LinkTableObsvDataFetcher(
                 dataSourceProvider,
@@ -49,10 +50,12 @@ public class LinkSourceToIfStepFactory implements StepFactory {
                 .conflictKey((String) config.get("conflict-key"))
                 .dateColumn((String) config.get("date-column"))
                 .timeColumn((String) config.get("time-column"))
+                .excludeInsertColumns(config.get("exclude-insert-columns") instanceof java.util.List
+                        ? (java.util.List<String>) config.get("exclude-insert-columns") : null)
                 .build();
 
-        SourceToIfStep step = new SourceToIfStep(extractConfig, dataSourceProvider, syncLogRepository);
-        step.setMappingName(SourceToIfStepFactory.deriveMappingName((String) config.get("id")));
+        SourceToTargetStep step = new SourceToTargetStep(extractConfig, dataSourceProvider, syncLogRepository);
+        step.setMappingName(SourceToTargetStepFactory.deriveMappingName((String) config.get("id")));
         return step;
     }
 }

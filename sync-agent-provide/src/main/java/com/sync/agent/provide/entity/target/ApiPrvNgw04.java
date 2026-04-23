@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
  * 전처리: PIVOT — WLTTS_ID_CODE 기준 125개 항목 컬럼 변환
  */
 @Entity
-@Table(name = "api_prv_ngw04")
+@Table(name = "api_prv_ngw04",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_ngw04_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_ngw04", comment = "수질측정망검사결과 PIVOT 제공 (125항목)")
 @Getter
 @Setter
@@ -24,6 +25,10 @@ import java.time.LocalDateTime;
 public class ApiPrvNgw04 {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "wq_insp_sn")
     @Comment("수질검사일련번호")
     private Long wqInspSn;

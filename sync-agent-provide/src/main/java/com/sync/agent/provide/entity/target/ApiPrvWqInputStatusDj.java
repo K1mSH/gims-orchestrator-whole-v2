@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,42 +15,33 @@ import java.time.LocalDateTime;
  * 복합 PK: ctpv_nm + sgg_nm + exmn_yr + cycl
  */
 @Entity
-@Table(name = "api_prv_wq_input_status_dj")
+@Table(name = "api_prv_wq_input_status_dj",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_wq_input_status_dj_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_wq_input_status_dj", comment = "대전 수질입력현황 제공")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(ApiPrvWqInputStatusDj.PK.class)
 public class ApiPrvWqInputStatusDj {
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class PK implements Serializable {
-        private String ctpvNm;
-        private String sggNm;
-        private String exmnYr;
-        private Integer cycl;
-    }
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "ctpv_nm", length = 40)
     @Comment("시도")
     private String ctpvNm;
 
-    @Id
     @Column(name = "sgg_nm", length = 40)
     @Comment("시군구")
     private String sggNm;
 
-    @Id
     @Column(name = "exmn_yr", length = 4)
     @Comment("연도")
     private String exmnYr;
 
-    @Id
     @Column(name = "cycl")
     @Comment("차수")
     private Integer cycl;

@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,30 +15,25 @@ import java.time.LocalDateTime;
  * 복합 PK: ctpv_nm + sgg_nm
  */
 @Entity
-@Table(name = "api_prv_unregits_fcly")
+@Table(name = "api_prv_unregits_fcly",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_unregits_fcly_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_unregits_fcly", comment = "대전 미등록시설 요약 제공")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(ApiPrvUnregitsFcly.PK.class)
 public class ApiPrvUnregitsFcly {
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class PK implements Serializable {
-        private String ctpvNm;
-        private String sggNm;
-    }
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "ctpv_nm", length = 40)
     @Comment("시도")
     private String ctpvNm;
 
-    @Id
     @Column(name = "sgg_nm", length = 40)
     @Comment("시군구")
     private String sggNm;

@@ -19,51 +19,61 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Source → IF 테이블 동기화 Step (공통 copy 엔진)
+ * Source → Target 복사 Step — 모든 Agent의 기본 카피 클래스
  *
- * Source 테이블에서 데이터를 조회(Extract)하고 IF 테이블에 적재(Load)하는 통합 Step.
- * ETL에서 E+L을 하나의 Step으로 처리하며, IF 테이블에 UPSERT 방식으로 적재한다.
+ * Source 테이블에서 데이터를 조회(Extract)하여 Target 테이블에 적재(Load)하는 공통 Step.
+ * Agent 유형(RCV / SND / Internal RCV / Provide)과 무관하게
+ * "외부 DB에서 데이터 가져와 자체 관리 테이블로 옮기기" 패턴은 모두 이 Step 하나로 처리한다.
  *
  * ── 사용처 ──
- * RCV/SND/Internal RCV 파이프라인이 공통으로 사용하는 범용 데이터 복사 Step.
- * Loader(DefaultLoadStep/InternalLoadStep)만 별도 Step 클래스를 사용한다.
+ *  - RCV: 외부 업체 DB → IF_RSV (bojo/others)
+ *  - SND: Target → IF_SND (bojo)
+ *  - Internal RCV: IF_SND → 내부 IF_RSV (bojo-int)
+ *  - Provide: Oracle 원본 → PG 제공 테이블 (provide)
+ *  - 새 Agent 추가 시에도 이 Step을 재사용하는 것이 원칙
  *
- *   Agent 타입       | PipelineConfig           | extractType
- *   RCV (DMZ)        | RcvPipelineConfig        | jewon=SIMPLE_COPY, obsvdata=CUSTOM_STAGING(Link)
- *   SND (DMZ)        | SndPipelineConfig        | 전부 SIMPLE_COPY
- *   RCV (Internal)   | RcvPipelineConfig (int)  | 전부 SIMPLE_COPY
+ * 커스텀 변환·PIVOT·JOIN 등 복잡한 로직이 필요한 경우만 별도 Step 작성
+ * (예: JejuJewonLoadStep, LinkTableUpdateStep, DefaultLoadStep).
+ * 단순 1:1 복사는 반드시 이 Step 재사용.
  *
- * 각 PipelineConfig에서 ExtractStepConfig에 YAML 설정값(source-table, target-table, PK 등)을
- * 주입하여 new SourceToIfStep(config, ...)으로 생성한다.
- * 동일 클래스를 config만 바꿔서 재사용하는 구조.
+ * ── Factory 매핑 ──
+ *  - SourceToTargetStepFactory (factory-key: source-to-if) — SIMPLE_COPY 기본 생성
+ *  - LinkSourceToIfStepFactory (bojo) — CUSTOM_STAGING 모드 + LinkTableObsvDataFetcher
+ *  (※ factory-key="source-to-if"는 기존 YAML 호환을 위해 유지, 별도 이슈에서 "source-to-target"으로 마이그레이션 예정)
  *
  * ── 두 가지 모드 ──
  * 1. SIMPLE_COPY: 직접 SQL 조회 (fetchSimpleCopy)
  *    - 전체 복사 (fullCopy=true) 또는 link_status 기반 증분
  *    - 조건실행(conditions) / 시간범위(timeRange) 실행 시 강제 적용
  * 2. CUSTOM_STAGING: 커스텀 DataFetcher로 데이터 조회
- *    - Link 테이블(link_ngwis) 기반 증분 동기화 (RCV obsvdata에서 사용)
- *    - conditions/timeRange가 있으면 SIMPLE_COPY로 오버라이드됨
+ *    - Link 테이블(link_ngwis) 기반 증분 동기화 (RCV obsvdata)
+ *    - conditions/timeRange 있으면 SIMPLE_COPY로 오버라이드됨
+ *
+ * ── 타겟 메타 컬럼 처리 ──
+ * 타겟이 IF 테이블(bojo/bojo-int): source_refs, link_status, extracted_at, updated_at, execution_id (5종)
+ * 타겟이 제공 테이블(provide): source_refs, execution_id, updated_at (3종)
+ * ExtractStepConfig.targetMetaColumns 로 커스터마이징.
  *
  * ── 주요 기능 ──
  * - Source 데이터 조회 (위 두 모드 중 하나)
- * - IF 테이블에 배치 UPSERT (ON CONFLICT DO UPDATE, batchSize=1000)
- * - source_refs 추적 정보 자동 생성 (zone:dsDbId:tableId:pk 형식)
- * - link_status 관리 (PENDING/RESYNC/SUCCESS/FAILED)
+ * - Target 테이블에 배치 UPSERT (ON CONFLICT DO UPDATE / MERGE INTO, batchSize=1000)
+ * - source_refs 추적 정보 자동 생성 (zone:dsDbId:tableId:pk 형식, PK는 JDBC metadata로 탐지)
+ * - link_status 관리 (PENDING/RESYNC/SUCCESS/FAILED) — 타겟에 해당 컬럼 있을 때만
  * - Source 테이블 link_status 업데이트 (성공/실패)
  * - SyncLog 요약 저장 (매핑별 성공/실패 건수)
  */
 @Slf4j
-public class SourceToIfStep implements StepExecutor {
+public class SourceToTargetStep implements StepExecutor {
 
-    // IF 테이블 메타 컬럼 목록 (소스에서 제외해야 함)
-    private static final List<String> IF_META_COLUMNS = List.of(
+    // 타겟 메타 컬럼 기본값 (IF 표준) — Config.targetMetaColumns 로 오버라이드 가능
+    // 소스에서 추출한 비즈니스 컬럼에서 제외할 목록으로도 사용 (soure에 동일 컬럼명이 있어도 타겟 메타로 덮어쓰기)
+    private static final List<String> TARGET_META_COLUMNS_DEFAULT = List.of(
             "source_refs", "link_status", "extracted_at", "updated_at", "execution_id"
     );
 
-    // 소스 auto-increment PK 컬럼 (IF 테이블에도 동일 PK가 있으므로 제외해야 함)
-    // 소스의 PK 값은 source_refs에 이미 추적됨
-    private static final List<String> AUTO_INCREMENT_PK_COLUMNS = List.of("id");
+    // 제외 컬럼 기본값은 ExtractStepConfig.DEFAULT_EXCLUDE_INSERT_COLUMNS 사용 (["id", "sn"])
+    // 실제 제외는 "기본값(or YAML 명시) ∩ 타겟에 실제로 있는 컬럼" 교집합만.
+    // 이 로직은 SourceToTargetStep.resolveExcludeInsertColumns() 에서 처리.
 
     private static final int DEFAULT_BATCH_SIZE = 1000;
 
@@ -78,14 +88,14 @@ public class SourceToIfStep implements StepExecutor {
         this.mappingName = mappingName;
     }
 
-    public SourceToIfStep(
+    public SourceToTargetStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository) {
         this(config, dataSourceProvider, syncLogRepository, 0, DEFAULT_BATCH_SIZE);
     }
 
-    public SourceToIfStep(
+    public SourceToTargetStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
@@ -93,7 +103,7 @@ public class SourceToIfStep implements StepExecutor {
         this(config, dataSourceProvider, syncLogRepository, stepDelayMs, DEFAULT_BATCH_SIZE);
     }
 
-    public SourceToIfStep(
+    public SourceToTargetStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
@@ -101,7 +111,7 @@ public class SourceToIfStep implements StepExecutor {
         this(config, dataSourceProvider, syncLogRepository, 0, batchSize);
     }
 
-    public SourceToIfStep(
+    public SourceToTargetStep(
             ExtractStepConfig config,
             DataSourceProvider dataSourceProvider,
             SyncLogRepository syncLogRepository,
@@ -191,17 +201,21 @@ public class SourceToIfStep implements StepExecutor {
                 throw new IllegalStateException("No columns found for table: " + config.getSourceTable());
             }
 
-            // SELECT용 컬럼: IF 메타 컬럼만 제외 (id 포함 → source_refs PK 추출에 필요)
+            // SELECT용 컬럼: 타겟 메타 컬럼 제외 (id 포함 → source_refs PK 추출에 필요)
+            // 기본 제외: TARGET_META_COLUMNS_DEFAULT (IF 표준 5종) — 어떤 타겟이든 이 이름 컬럼은 메타로 취급
             List<String> selectColumns = allColumns.stream()
-                    .filter(c -> IF_META_COLUMNS.stream().noneMatch(meta -> meta.equalsIgnoreCase(c)))
+                    .filter(c -> TARGET_META_COLUMNS_DEFAULT.stream().noneMatch(meta -> meta.equalsIgnoreCase(c)))
                     .toList();
 
-            // INSERT용 컬럼: IF 메타 + auto-increment PK 추가 제외 (id 제외 → IF 테이블 PK 충돌 방지)
+            // INSERT용 컬럼: 제외 후보 ∩ 타겟 실제 컬럼 교집합만 제외
+            // (타겟에 없으면 애초에 INSERT에 들어가지도 않으므로 제외할 필요 없음;
+            //  타겟에 있을 때만 auto-increment 충돌 우려 → 제외)
+            List<String> excludeActual = resolveExcludeInsertColumns(context);
             List<String> columns = selectColumns.stream()
-                    .filter(c -> AUTO_INCREMENT_PK_COLUMNS.stream().noneMatch(pk -> pk.equalsIgnoreCase(c)))
+                    .filter(c -> excludeActual.stream().noneMatch(ex -> ex.equalsIgnoreCase(c)))
                     .toList();
-            log.info("[{}] Columns: all={}, select={}, insert={} (auto-increment PK excluded from INSERT only)",
-                    getStepId(), allColumns.size(), selectColumns.size(), columns.size());
+            log.info("[{}] Columns: all={}, select={}, insert={} (excluded from INSERT: {})",
+                    getStepId(), allColumns.size(), selectColumns.size(), columns.size(), excludeActual);
 
             // conditions 실행 시 link 테이블 갱신 스킵 플래그 설정
             ExecutionOptions execOptions = context.getExecutionOptions();
@@ -229,6 +243,9 @@ public class SourceToIfStep implements StepExecutor {
 
             readCount = records.size();
             log.info("[{}] Fetched {} records", getStepId(), readCount);
+
+            // 제외된 컬럼에 비즈니스 값이 있으면 경고 (auto-increment 아닐 수 있음)
+            warnIfExcludedColumnsHaveValues(records, excludeActual);
 
             // PK 기준 중복 제거 (Source VIEW의 JOIN으로 인한 중복 방지)
             List<String> pkCols = config.getPrimaryKeyColumnList();
@@ -264,7 +281,7 @@ public class SourceToIfStep implements StepExecutor {
                         .build();
             }
 
-            // 2. Target IF 테이블에 배치 UPSERT 적재
+            // 2. Target 테이블에 배치 UPSERT 적재
             String targetDsId = getTargetDatasourceId(context);
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
             String actualTargetIfTable = JdbcTableNameResolver.resolve(
@@ -291,6 +308,11 @@ public class SourceToIfStep implements StepExecutor {
             String sourceDsIdForPk = getSourceDatasourceId(context);
             List<String> sourceRefPkCols = detectSourcePrimaryKey(sourceDsIdForPk, config.getSourceTable());
             log.info("[{}] Source PK columns (sourceRef): {}", getStepId(), sourceRefPkCols);
+
+            // 타겟 메타 컬럼 리스트 (Config 기반, 기본값=IF 표준 5종)
+            List<String> metaColumnsLower = config.getTargetMetaColumnList().stream()
+                    .map(String::toLowerCase)
+                    .toList();
 
             // 성공/실패한 레코드 키 수집 (Source link_status 업데이트용)
             List<Object> successPkValues = new ArrayList<>();
@@ -319,9 +341,8 @@ public class SourceToIfStep implements StepExecutor {
                     sourceRef = SourceRefUtils.buildComposite(context, config.getSourceTable(), pkValues);
                 }
                 String sourceRefsJson = SourceRefUtils.toJsonSingle(sourceRef);
-                params.add(sourceRefsJson); // source_refs
 
-                // link_status 결정
+                // link_status 결정 (타겟에 없어도 변수만 계산 — 실제 INSERT 여부는 metaColumns 따라)
                 Object sourceLinkStatus = getRecordValue(record, "link_status");
                 String recordLinkStatus;
                 if (isResyncExecution) {
@@ -331,12 +352,32 @@ public class SourceToIfStep implements StepExecutor {
                 } else {
                     recordLinkStatus = "PENDING";
                 }
-                params.add(recordLinkStatus); // link_status
 
                 Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-                params.add(now); // extracted_at
-                params.add(now); // updated_at
-                params.add(context.getExecutionId()); // execution_id
+
+                // 메타 컬럼 값을 Config 순서대로 추가 (buildUpsertSql 의 allColumns 순서와 일치)
+                for (String meta : metaColumnsLower) {
+                    switch (meta) {
+                        case "source_refs":
+                            params.add(sourceRefsJson);
+                            break;
+                        case "link_status":
+                            params.add(recordLinkStatus);
+                            break;
+                        case "extracted_at":
+                            params.add(now);
+                            break;
+                        case "updated_at":
+                            params.add(now);
+                            break;
+                        case "execution_id":
+                            params.add(context.getExecutionId());
+                            break;
+                        default:
+                            log.warn("[{}] Unknown target meta column: {}", getStepId(), meta);
+                            params.add(null);
+                    }
+                }
 
                 allParams.add(params.toArray());
                 allRecordKeys.add(buildRecordKey(record));
@@ -413,7 +454,7 @@ public class SourceToIfStep implements StepExecutor {
                 }
             }
 
-            log.info("[{}] Loaded {} records to IF table '{}', {} skipped (batch size: {})",
+            log.info("[{}] Loaded {} records to target table '{}', {} skipped (batch size: {})",
                     getStepId(), writeCount, config.getTargetIfTable(), skipCount, batchSize);
 
             // 3. Source 테이블 link_status 업데이트
@@ -475,6 +516,93 @@ public class SourceToIfStep implements StepExecutor {
         }
     }
 
+    // ==================== INSERT 제외 컬럼 해석 ====================
+
+    /** 타겟 컬럼 메타 조회 결과 캐시 (Step 인스턴스 life-cycle 동안 1회만 조회) */
+    private volatile List<String> cachedTargetColumnsLower;
+
+    /**
+     * INSERT에서 제외할 컬럼 목록 결정
+     *
+     * 결정 로직:
+     *  1. Config 의 excludeInsertColumns (기본값 ["id","sn"]) 을 후보로
+     *  2. 타겟 테이블의 실제 컬럼 메타 조회
+     *  3. 후보 ∩ 타겟 컬럼 교집합만 최종 제외
+     *
+     * → 타겟에 없는 이름은 제외 불필요 (애초에 INSERT에 안 들어감),
+     *   타겟에 있을 때만 auto-increment 충돌 우려 → 제외 적용.
+     *   메타 조회 실패 시 안전하게 빈 리스트 반환 (아무것도 제외 안 함).
+     */
+    private List<String> resolveExcludeInsertColumns(StepContext context) {
+        List<String> candidates = config.getExcludeInsertColumnList();
+        String source = config.isExcludeInsertColumnsExplicit() ? "yaml" : "default";
+
+        if (candidates == null || candidates.isEmpty()) {
+            log.info("[{}] exclude-insert-columns: candidates=[] (source={}) → no exclusion",
+                    getStepId(), source);
+            return List.of();
+        }
+
+        List<String> targetCols = getTargetColumnsLower(context);
+        if (targetCols.isEmpty()) {
+            log.warn("[{}] exclude-insert-columns: target metadata unavailable, candidates={} (source={}) → skip exclusion (safe)",
+                    getStepId(), candidates, source);
+            return List.of();
+        }
+
+        List<String> actual = candidates.stream()
+                .filter(c -> targetCols.contains(c.toLowerCase()))
+                .toList();
+        log.info("[{}] exclude-insert-columns: candidates={} (source={}), target matches={} → final exclude={}",
+                getStepId(), candidates, source, actual, actual);
+        return actual;
+    }
+
+    /**
+     * 제외 컬럼이 실제 소스 레코드에 비즈니스 값을 가지고 있는지 샘플 체크
+     * (값이 있으면 auto-increment가 아닌 비즈니스 컬럼일 가능성 → 데이터 누락 의심)
+     * 첫 번째 non-null 값만 WARN 1회.
+     */
+    private void warnIfExcludedColumnsHaveValues(List<Map<String, Object>> records, List<String> excludeActual) {
+        if (records.isEmpty() || excludeActual.isEmpty()) return;
+        for (String ex : excludeActual) {
+            for (Map<String, Object> record : records) {
+                Object val = getRecordValue(record, ex);
+                if (val != null) {
+                    log.warn("[{}] Excluded column '{}' has non-null source value (sample={}). " +
+                             "If this is business data (not auto-increment), " +
+                             "set exclude-insert-columns: [] in YAML to include it.",
+                            getStepId(), ex, val);
+                    break;  // 컬럼당 WARN 1회
+                }
+            }
+        }
+    }
+
+    /** 타겟 테이블 컬럼명(lowercase) 목록 — Step 인스턴스 내부 캐시 */
+    private List<String> getTargetColumnsLower(StepContext context) {
+        if (cachedTargetColumnsLower != null) {
+            return cachedTargetColumnsLower;
+        }
+        synchronized (this) {
+            if (cachedTargetColumnsLower != null) {
+                return cachedTargetColumnsLower;
+            }
+            try {
+                String targetDsId = getTargetDatasourceId(context);
+                List<String> cols = fetchColumnsFromMetadata(targetDsId, config.getTargetIfTable());
+                cachedTargetColumnsLower = cols.stream()
+                        .map(String::toLowerCase)
+                        .toList();
+            } catch (Exception e) {
+                log.warn("[{}] Failed to fetch target columns for exclude check: {}",
+                        getStepId(), e.getMessage());
+                cachedTargetColumnsLower = List.of();
+            }
+            return cachedTargetColumnsLower;
+        }
+    }
+
     // ==================== 컬럼 해석 ====================
 
     /**
@@ -501,13 +629,18 @@ public class SourceToIfStep implements StepExecutor {
 
     /**
      * UPSERT/INSERT SQL 생성
-     * IF 테이블 메타 컬럼: source_refs, link_status, extracted_at, updated_at, execution_id
+     *
+     * 타겟 메타 컬럼은 Config.getTargetMetaColumnList() 에서 결정.
+     *  - 기본(IF): source_refs, link_status, extracted_at, updated_at, execution_id
+     *  - provide: source_refs, execution_id, updated_at (link_status/extracted_at 없음)
+     *
+     * UPDATE SET 대상은 extracted_at 제외 (최초 추출 시간 보존).
      *
      * @param useUpsert true: ON CONFLICT DO UPDATE (fullCopy 또는 RESYNC) - 전체 컬럼 갱신
      *                  false: 메타 경량 UPDATE (증분 동기화) - updated_at, execution_id만 갱신
      */
     private String buildUpsertSql(String actualTableName, List<String> columns, String dbType, boolean useUpsert) {
-        List<String> ifColumns = columns.stream()
+        List<String> bizColumns = columns.stream()
                 .map(String::toLowerCase)
                 .toList();
 
@@ -517,12 +650,21 @@ public class SourceToIfStep implements StepExecutor {
                 ? List.of(config.getConflictKey())
                 : pkCols;
 
+        // 타겟 메타 컬럼 (Config 기반, 기본값=IF 표준 5종)
+        List<String> metaColumns = config.getTargetMetaColumnList().stream()
+                .map(String::toLowerCase)
+                .toList();
+
         // 전체 컬럼 (데이터 + 메타)
-        List<String> allColumns = new java.util.ArrayList<>(ifColumns);
-        allColumns.addAll(List.of("source_refs", "link_status", "extracted_at", "updated_at", "execution_id"));
+        List<String> allColumns = new java.util.ArrayList<>(bizColumns);
+        for (String meta : metaColumns) {
+            if (!allColumns.contains(meta)) {
+                allColumns.add(meta);
+            }
+        }
 
         if (isOracle(dbType) && !conflictCols.isEmpty()) {
-            return buildOracleMergeSql(actualTableName, ifColumns, allColumns, conflictCols, useUpsert);
+            return buildOracleMergeSql(actualTableName, bizColumns, allColumns, metaColumns, conflictCols, useUpsert);
         }
 
         // PG / MySQL: INSERT 기반
@@ -541,11 +683,16 @@ public class SourceToIfStep implements StepExecutor {
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
 
+            // UPDATE 대상 메타 컬럼 — extracted_at 제외 (최초 추출 시간 보존)
+            List<String> metaUpdateCols = metaColumns.stream()
+                    .filter(m -> !"extracted_at".equalsIgnoreCase(m))
+                    .toList();
+
             if (isMysql(dbType)) {
                 sb.append(" ON DUPLICATE KEY UPDATE ");
 
                 if (useUpsert) {
-                    List<String> updateCols = ifColumns.stream()
+                    List<String> updateCols = bizColumns.stream()
                             .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
 
@@ -553,23 +700,30 @@ public class SourceToIfStep implements StepExecutor {
                     for (String col : updateCols) {
                         updateParts.add(col + " = VALUES(" + col + ")");
                     }
-                    if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
-                        updateParts.add("source_refs = VALUES(source_refs)");
+                    // 메타 업데이트 (conflict key 제외)
+                    for (String meta : metaUpdateCols) {
+                        if (conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(meta))) {
+                            updateParts.add(meta + " = VALUES(" + meta + ")");
+                        }
                     }
-                    updateParts.add("link_status = VALUES(link_status)");
-                    updateParts.add("updated_at = VALUES(updated_at)");
-                    updateParts.add("execution_id = VALUES(execution_id)");
 
                     sb.append(String.join(", ", updateParts));
                 } else {
-                    sb.append("updated_at = VALUES(updated_at), execution_id = VALUES(execution_id)");
+                    // 증분 경량: updated_at, execution_id 만 갱신
+                    List<String> lightParts = new java.util.ArrayList<>();
+                    for (String meta : List.of("updated_at", "execution_id")) {
+                        if (metaColumns.contains(meta)) {
+                            lightParts.add(meta + " = VALUES(" + meta + ")");
+                        }
+                    }
+                    sb.append(String.join(", ", lightParts));
                 }
             } else {
                 // PostgreSQL
                 sb.append(" ON CONFLICT (").append(conflictColList).append(") DO UPDATE SET ");
 
                 if (useUpsert) {
-                    List<String> updateCols = ifColumns.stream()
+                    List<String> updateCols = bizColumns.stream()
                             .filter(col -> conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col)))
                             .toList();
 
@@ -577,16 +731,23 @@ public class SourceToIfStep implements StepExecutor {
                     for (String col : updateCols) {
                         updateParts.add(col + " = EXCLUDED." + col);
                     }
-                    if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
-                        updateParts.add("source_refs = EXCLUDED.source_refs");
+                    // 메타 업데이트 (conflict key 제외)
+                    for (String meta : metaUpdateCols) {
+                        if (conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(meta))) {
+                            updateParts.add(meta + " = EXCLUDED." + meta);
+                        }
                     }
-                    updateParts.add("link_status = EXCLUDED.link_status");
-                    updateParts.add("updated_at = EXCLUDED.updated_at");
-                    updateParts.add("execution_id = EXCLUDED.execution_id");
 
                     sb.append(String.join(", ", updateParts));
                 } else {
-                    sb.append("updated_at = EXCLUDED.updated_at, execution_id = EXCLUDED.execution_id");
+                    // 증분 경량: updated_at, execution_id 만 갱신
+                    List<String> lightParts = new java.util.ArrayList<>();
+                    for (String meta : List.of("updated_at", "execution_id")) {
+                        if (metaColumns.contains(meta)) {
+                            lightParts.add(meta + " = EXCLUDED." + meta);
+                        }
+                    }
+                    sb.append(String.join(", ", lightParts));
                 }
             }
         }
@@ -605,8 +766,9 @@ public class SourceToIfStep implements StepExecutor {
      *
      * 파라미터 바인딩은 USING SELECT에서 한 번만 → INSERT/UPDATE 양쪽에서 별칭(s.col)으로 참조
      */
-    private String buildOracleMergeSql(String tableName, List<String> ifColumns,
-                                        List<String> allColumns, List<String> conflictCols, boolean useUpsert) {
+    private String buildOracleMergeSql(String tableName, List<String> bizColumns,
+                                        List<String> allColumns, List<String> metaColumns,
+                                        List<String> conflictCols, boolean useUpsert) {
         StringBuilder sb = new StringBuilder();
 
         // MERGE INTO table t
@@ -628,26 +790,36 @@ public class SourceToIfStep implements StepExecutor {
                 .orElse(""));
         sb.append(") ");
 
+        // UPDATE 대상 메타 컬럼 — extracted_at 제외 (최초 추출 시간 보존)
+        List<String> metaUpdateCols = metaColumns.stream()
+                .filter(m -> !"extracted_at".equalsIgnoreCase(m))
+                .toList();
+
         // WHEN MATCHED THEN UPDATE SET
         sb.append("WHEN MATCHED THEN UPDATE SET ");
         if (useUpsert) {
             // full UPSERT: 모든 데이터 컬럼 + 메타 컬럼 갱신
             List<String> updateParts = new java.util.ArrayList<>();
-            for (String col : ifColumns) {
+            for (String col : bizColumns) {
                 if (conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(col))) {
                     updateParts.add("t." + col + " = s." + col);
                 }
             }
-            if (conflictCols.stream().noneMatch(c -> c.equalsIgnoreCase("source_refs"))) {
-                updateParts.add("t.source_refs = s.source_refs");
+            for (String meta : metaUpdateCols) {
+                if (conflictCols.stream().noneMatch(ck -> ck.equalsIgnoreCase(meta))) {
+                    updateParts.add("t." + meta + " = s." + meta);
+                }
             }
-            updateParts.add("t.link_status = s.link_status");
-            updateParts.add("t.updated_at = s.updated_at");
-            updateParts.add("t.execution_id = s.execution_id");
             sb.append(String.join(", ", updateParts));
         } else {
-            // 증분: 메타 컬럼만 경량 UPDATE
-            sb.append("t.updated_at = s.updated_at, t.execution_id = s.execution_id");
+            // 증분: updated_at, execution_id 만 경량 UPDATE
+            List<String> lightParts = new java.util.ArrayList<>();
+            for (String meta : List.of("updated_at", "execution_id")) {
+                if (metaColumns.contains(meta)) {
+                    lightParts.add("t." + meta + " = s." + meta);
+                }
+            }
+            sb.append(String.join(", ", lightParts));
         }
 
         // WHEN NOT MATCHED THEN INSERT
@@ -889,29 +1061,38 @@ public class SourceToIfStep implements StepExecutor {
         List<String> pkColumns = new ArrayList<>();
         JdbcTemplate jdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
 
+        // "SCHEMA.TABLE" 지원 — schema 분리해서 metaData.getPrimaryKeys 에 전달
+        JdbcTableNameResolver.TableRef ref = JdbcTableNameResolver.parse(tableName);
+
         try {
             Connection conn = jdbc.getDataSource().getConnection();
             try {
                 DatabaseMetaData metaData = conn.getMetaData();
                 String catalog = conn.getCatalog();
-                String[] variants = {tableName, tableName.toLowerCase(), tableName.toUpperCase()};
+                String[] tableVariants = {ref.table, ref.table.toLowerCase(), ref.table.toUpperCase()};
+                String[] schemaVariants = (ref.schema != null)
+                        ? new String[]{ref.schema, ref.schema.toLowerCase(), ref.schema.toUpperCase()}
+                        : new String[]{null};
 
-                for (String variant : variants) {
-                    try (ResultSet rs = metaData.getPrimaryKeys(catalog, null, variant)) {
-                        while (rs.next()) {
-                            String colName = rs.getString("COLUMN_NAME");
-                            int keySeq = rs.getInt("KEY_SEQ");
-                            while (pkColumns.size() < keySeq) {
-                                pkColumns.add(null);
+                outer:
+                for (String schemaVar : schemaVariants) {
+                    for (String tableVar : tableVariants) {
+                        try (ResultSet rs = metaData.getPrimaryKeys(catalog, schemaVar, tableVar)) {
+                            while (rs.next()) {
+                                String colName = rs.getString("COLUMN_NAME");
+                                int keySeq = rs.getInt("KEY_SEQ");
+                                while (pkColumns.size() < keySeq) {
+                                    pkColumns.add(null);
+                                }
+                                pkColumns.set(keySeq - 1, colName);
                             }
-                            pkColumns.set(keySeq - 1, colName);
                         }
-                    }
-                    if (!pkColumns.isEmpty()) {
-                        pkColumns.removeIf(java.util.Objects::isNull);
-                        log.info("[{}] Detected source PK from metadata: {} (table: {})",
-                                getStepId(), pkColumns, variant);
-                        break;
+                        if (!pkColumns.isEmpty()) {
+                            pkColumns.removeIf(java.util.Objects::isNull);
+                            log.info("[{}] Detected source PK from metadata: {} (schema={}, table={})",
+                                    getStepId(), pkColumns, schemaVar, tableVar);
+                            break outer;
+                        }
                     }
                 }
             } finally {
@@ -937,25 +1118,34 @@ public class SourceToIfStep implements StepExecutor {
         JdbcTemplate jdbc = dataSourceProvider.getJdbcTemplate(datasourceId);
         String dbType = dataSourceProvider.getDbType(datasourceId);
 
+        // "SCHEMA.TABLE" 지원
+        JdbcTableNameResolver.TableRef ref = JdbcTableNameResolver.parse(tableName);
+
         try {
             Connection conn = jdbc.getDataSource().getConnection();
             try {
                 DatabaseMetaData metaData = conn.getMetaData();
                 String catalog = conn.getCatalog();
 
-                String[] variants = {tableName, tableName.toLowerCase(), tableName.toUpperCase()};
+                String[] tableVariants = {ref.table, ref.table.toLowerCase(), ref.table.toUpperCase()};
+                String[] schemaVariants = (ref.schema != null)
+                        ? new String[]{ref.schema, ref.schema.toLowerCase(), ref.schema.toUpperCase()}
+                        : new String[]{null};
 
-                for (String variant : variants) {
-                    try (ResultSet rs = metaData.getColumns(catalog, null, variant, null)) {
-                        while (rs.next()) {
-                            String columnName = rs.getString("COLUMN_NAME");
-                            columns.add(columnName);
+                outer:
+                for (String schemaVar : schemaVariants) {
+                    for (String tableVar : tableVariants) {
+                        try (ResultSet rs = metaData.getColumns(catalog, schemaVar, tableVar, null)) {
+                            while (rs.next()) {
+                                String columnName = rs.getString("COLUMN_NAME");
+                                columns.add(columnName);
+                            }
                         }
-                    }
-                    if (!columns.isEmpty()) {
-                        log.info("[{}] Auto-detected {} columns from table '{}': {}",
-                                getStepId(), columns.size(), tableName, columns);
-                        break;
+                        if (!columns.isEmpty()) {
+                            log.info("[{}] Auto-detected {} columns from table '{}' (schema={}, table={}): {}",
+                                    getStepId(), columns.size(), tableName, schemaVar, tableVar, columns);
+                            break outer;
+                        }
                     }
                 }
 

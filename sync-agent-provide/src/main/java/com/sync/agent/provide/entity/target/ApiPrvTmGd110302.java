@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
  * PIVOT 후 flat 테이블은 별도 엔티티(ApiPrvNgw04)로 정의 필요.
  */
 @Entity
-@Table(name = "api_prv_tm_gd110302")
+@Table(name = "api_prv_tm_gd110302",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_tm_gd110302_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd110302", comment = "수질측정망검사결과 제공 (EAV)")
 @Getter
 @Setter

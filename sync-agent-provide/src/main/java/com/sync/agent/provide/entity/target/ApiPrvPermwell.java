@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,30 +15,25 @@ import java.time.LocalDateTime;
  * 복합 PK: rel_trsm_sgg_cd + prmsn_dclr_no
  */
 @Entity
-@Table(name = "api_prv_permwell")
+@Table(name = "api_prv_permwell",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_permwell_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_permwell", comment = "인허가관정 제공")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(ApiPrvPermwell.PK.class)
 public class ApiPrvPermwell {
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class PK implements Serializable {
-        private String relTrsmSggCd;
-        private String prmsnDclrNo;
-    }
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "rel_trsm_sgg_cd", length = 7)
     @Comment("연관전송시군구코드")
     private String relTrsmSggCd;
 
-    @Id
     @Column(name = "prmsn_dclr_no", length = 30)
     @Comment("허가신고번호")
     private String prmsnDclrNo;

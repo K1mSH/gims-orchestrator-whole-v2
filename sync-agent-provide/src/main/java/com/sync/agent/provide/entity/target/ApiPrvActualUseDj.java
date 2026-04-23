@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
  * PK: 자동채번 sn (IDENTITY)
  */
 @Entity
-@Table(name = "api_prv_actual_use_dj")
+@Table(name = "api_prv_actual_use_dj",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_actual_use_dj_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_actual_use_dj", comment = "대전 이용실태 제공")
 @Getter
 @Setter

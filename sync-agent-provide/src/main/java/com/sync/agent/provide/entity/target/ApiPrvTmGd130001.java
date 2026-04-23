@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
  * 원본: Oracle TM_GD50001 (레거시) → TM_GD130001 (표준화)
  */
 @Entity
-@Table(name = "api_prv_tm_gd130001")
+@Table(name = "api_prv_tm_gd130001",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_tm_gd130001_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd130001", comment = "영향조사보고서 제공")
 @Getter
 @Setter
@@ -23,6 +24,10 @@ import java.time.LocalDateTime;
 public class ApiPrvTmGd130001 {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "isvr_no", length = 10)
     @Comment("영향조사보고서번호")
     private String isvrNo;

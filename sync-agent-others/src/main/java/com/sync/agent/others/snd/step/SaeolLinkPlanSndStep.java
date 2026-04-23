@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * 새올 LINK_PLAN 기반 SND Step
  *
  * LINK_PLAN(변경 로그) 조회 → deduplicate → 테이블별 배치 SELECT → IF_SND MERGE
- * SourceToIfStep을 수정하지 않고, Oracle 메타데이터 기반으로 MERGE SQL을 동적 생성한다.
+ * SourceToTargetStep을 수정하지 않고, Oracle 메타데이터 기반으로 MERGE SQL을 동적 생성한다.
  */
 @Slf4j
 public class SaeolLinkPlanSndStep implements StepExecutor {

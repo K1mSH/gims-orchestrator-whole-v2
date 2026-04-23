@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
  * PK: gwel_no (레거시: GENNUM)
  */
 @Entity
-@Table(name = "api_prv_general_105")
+@Table(name = "api_prv_general_105",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_general_105_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_general_105", comment = "보조관측 제원 제공")
 @Getter
 @Setter
@@ -25,6 +26,10 @@ import java.time.LocalDateTime;
 public class ApiPrvGeneral105 {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "gwel_no")
     @Comment("관정번호")
     private Long gwelNo;

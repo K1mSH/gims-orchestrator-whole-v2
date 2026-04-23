@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,30 +15,25 @@ import java.time.LocalDateTime;
  * 복합 PK: gwel_no + ymd
  */
 @Entity
-@Table(name = "api_prv_linkage_chart")
+@Table(name = "api_prv_linkage_chart",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_linkage_chart_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_linkage_chart", comment = "관측소연계 그래프 데이터 제공")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(ApiPrvLinkageChart.PK.class)
 public class ApiPrvLinkageChart {
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class PK implements Serializable {
-        private Long gwelNo;
-        private String ymd;
-    }
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "gwel_no")
     @Comment("관정번호")
     private Long gwelNo;
 
-    @Id
     @Column(name = "ymd", length = 8)
     @Comment("관측일자 (YYYYMMDD)")
     private String ymd;

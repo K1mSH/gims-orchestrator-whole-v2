@@ -1147,12 +1147,16 @@ public class ExecutionDataController {
                             sourceRecords.addAll(records);
                         }
                     } else {
-                        // 단일 PK
+                        // 단일 PK — 컬럼 실제 타입에 따라 typedValue 적용 여부 결정
+                        // (예: VARCHAR 컬럼에 "0000000001" 같은 zero-padded 문자열이 저장된 경우
+                        //  무조건 Long.parseLong 하면 leading zero 손실 → 매칭 실패)
+                        // 복합 PK 분기와 동일하게 isNumericPkColumn 으로 분기
                         String pkColumn = pkColumns.isEmpty() ? "id" : pkColumns.get(0);
-                        Object pkTyped = typedValue(pk);
+                        boolean isNumericPk = isNumericPkColumn(sourceJdbc, actualTableName, pkColumn, sourceDbType);
+                        Object pkTyped = isNumericPk ? typedValue(pk) : pk;
 
                         String sql = String.format("SELECT * FROM %s WHERE %s = ?", quotedTableName, qi(pkColumn, sourceDbType));
-                        log.debug("Executing trace-source query: {} with pk={}", sql, pkTyped);
+                        log.debug("Executing trace-source query: {} with pk={} (isNumericPk={})", sql, pkTyped, isNumericPk);
 
                         List<Map<String, Object>> records = sourceJdbc.queryForList(sql, pkTyped);
                         if (!records.isEmpty()) {
@@ -1368,7 +1372,7 @@ public class ExecutionDataController {
 
     /**
      * 테이블에서 PK 컬럼 목록 찾기 (JDBC DatabaseMetaData 활용)
-     * SourceToIfStep.detectSourcePrimaryKey() 패턴 재사용
+     * SourceToTargetStep.detectSourcePrimaryKey() 패턴 재사용
      * 복합 PK 지원: obsv_code, obsv_date, obsv_time 등
      */
     private List<String> findPkColumns(JdbcTemplate jdbcTemplate, String tableName, String dbType) {
@@ -1827,35 +1831,66 @@ public class ExecutionDataController {
      */
     private String findActualTableName(JdbcTemplate jdbcTemplate, String tableName) {
         String dbType = detectDbType(jdbcTemplate);
+
+        // "SCHEMA.TABLE" 지원 — 이 경우 카탈로그 쿼리에 schema 필터 추가
+        com.sync.agent.common.config.JdbcTableNameResolver.TableRef ref =
+                com.sync.agent.common.config.JdbcTableNameResolver.parse(tableName);
+
         try {
-            // 테이블 카탈로그에서 대소문자 무시하고 테이블 찾기
             String sql;
+            Object[] params;
             if (isOracle(dbType)) {
-                sql = "SELECT table_name FROM user_tables WHERE LOWER(table_name) = LOWER(?)";
-            } else {
-                String schemaFilter = isMysql(dbType)
-                        ? "TABLE_SCHEMA = DATABASE()"
-                        : "table_schema = 'public'";
-                sql = "SELECT table_name FROM information_schema.tables " +
-                        "WHERE " + schemaFilter + " AND LOWER(table_name) = LOWER(?)";
-            }
-            List<String> tables = jdbcTemplate.queryForList(sql, String.class, tableName);
-            if (!tables.isEmpty()) {
-                String actualName = tables.get(0);
-                if (!actualName.equals(tableName)) {
-                    log.debug("Table name case mismatch: requested='{}', actual='{}'", tableName, actualName);
+                if (ref.schema != null) {
+                    // cross-schema: ALL_TABLES 에서 owner+table_name 으로 조회
+                    sql = "SELECT owner, table_name FROM all_tables " +
+                          "WHERE LOWER(owner) = LOWER(?) AND LOWER(table_name) = LOWER(?)";
+                    params = new Object[]{ref.schema, ref.table};
+                } else {
+                    sql = "SELECT table_name FROM user_tables WHERE LOWER(table_name) = LOWER(?)";
+                    params = new Object[]{ref.table};
                 }
-                return actualName;
+            } else {
+                String schemaFilter;
+                if (ref.schema != null) {
+                    schemaFilter = "LOWER(table_schema) = LOWER(?)";
+                } else if (isMysql(dbType)) {
+                    schemaFilter = "TABLE_SCHEMA = DATABASE()";
+                } else {
+                    schemaFilter = "table_schema = 'public'";
+                }
+                sql = "SELECT " + (ref.schema != null ? "table_schema, " : "") + "table_name " +
+                      "FROM information_schema.tables WHERE " + schemaFilter + " AND LOWER(table_name) = LOWER(?)";
+                params = (ref.schema != null)
+                        ? new Object[]{ref.schema, ref.table}
+                        : new Object[]{ref.table};
+            }
+
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params);
+            if (!rows.isEmpty()) {
+                Map<String, Object> row = rows.get(0);
+                String actualTable = (String) row.getOrDefault("table_name",
+                        row.getOrDefault("TABLE_NAME", null));
+                String actualSchema = null;
+                if (ref.schema != null) {
+                    actualSchema = (String) row.getOrDefault("owner",
+                            row.getOrDefault("OWNER",
+                            row.getOrDefault("table_schema",
+                            row.getOrDefault("TABLE_SCHEMA", ref.schema))));
+                }
+                String result = (actualSchema != null) ? actualSchema + "." + actualTable : actualTable;
+                if (!result.equals(tableName)) {
+                    log.debug("Table name case mismatch: requested='{}', actual='{}'", tableName, result);
+                }
+                return result;
             }
         } catch (Exception e) {
             log.warn("Failed to find table name in information_schema: {}", e.getMessage());
-            // 대체: 직접 SELECT 시도
+            // 대체: 직접 SELECT 시도 (schema 포함한 이름 그대로)
             try {
                 String sql = limit1Sql(String.format("SELECT 1 FROM %s", qi(tableName, dbType)), dbType);
                 jdbcTemplate.queryForList(sql);
                 return tableName;
             } catch (Exception e2) {
-                // 대문자로도 시도
                 try {
                     String upperName = tableName.toUpperCase();
                     String sql = limit1Sql(String.format("SELECT 1 FROM %s", qi(upperName, dbType)), dbType);

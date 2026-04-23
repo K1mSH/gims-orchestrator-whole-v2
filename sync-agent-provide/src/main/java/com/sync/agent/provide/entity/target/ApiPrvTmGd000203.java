@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "api_prv_tm_gd000203", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"ctpv_nm", "sgg_nm", "emd_nm", "li_nm"})
+    @UniqueConstraint(name = "uk_api_prv_tm_gd000203_source_refs", columnNames = {"source_refs"}),
+    @UniqueConstraint(name = "uk_api_prv_tm_gd000203_region", columnNames = {"ctpv_nm", "sgg_nm", "emd_nm", "li_nm"})
 })
 @org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd000203", comment = "공통가뭄상태 제공")
 @Getter

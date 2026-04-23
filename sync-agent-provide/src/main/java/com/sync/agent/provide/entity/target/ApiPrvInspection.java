@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import javax.persistence.*;
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -16,36 +15,29 @@ import java.time.LocalDateTime;
  * 복합 PK: ugwtr_exmn_cd + data_crtr_yr + wq_insp_artcl_cd
  */
 @Entity
-@Table(name = "api_prv_inspection")
+@Table(name = "api_prv_inspection",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_inspection_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_inspection", comment = "수질검사항목별기준 제공")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(ApiPrvInspection.PK.class)
 public class ApiPrvInspection {
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class PK implements Serializable {
-        private String ugwtrExmnCd;
-        private String dataCrtrYr;
-        private String wqInspArtclCd;
-    }
-
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일련번호")
+    private Long sn;
+
     @Column(name = "ugwtr_exmn_cd", length = 3)
     @Comment("지하수조사코드")
     private String ugwtrExmnCd;
 
-    @Id
     @Column(name = "data_crtr_yr", length = 4)
     @Comment("자료기준연도")
     private String dataCrtrYr;
 
-    @Id
     @Column(name = "wq_insp_artcl_cd", length = 4)
     @Comment("수질검사항목코드")
     private String wqInspArtclCd;

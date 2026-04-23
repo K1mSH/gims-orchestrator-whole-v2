@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
  * SDE_NGWS.WT_DREAM_PERMWELL_PUBLIC_21033도 동일 구조 (OBJECTID 추가)
  */
 @Entity
-@Table(name = "api_prv_tm_gd112002")
+@Table(name = "api_prv_tm_gd112002",
+       uniqueConstraints = @UniqueConstraint(name = "uk_api_prv_tm_gd112002_source_refs", columnNames = {"source_refs"}))
 @org.hibernate.annotations.Table(appliesTo = "api_prv_tm_gd112002", comment = "드림서비스_공공관정 제공")
 @Getter
 @Setter

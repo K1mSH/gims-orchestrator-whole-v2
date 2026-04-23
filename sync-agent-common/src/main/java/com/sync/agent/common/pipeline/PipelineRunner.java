@@ -19,7 +19,7 @@ import java.util.UUID;
  * 파이프라인 실행기 — Step 체인을 순차 실행
  *
  * 등록된 Step들을 순서대로 step.execute(context) 호출한다.
- * Runner는 Step의 내부 구현(SourceToIfStep, DefaultLoadStep, LinkTableUpdateStep 등)을
+ * Runner는 Step의 내부 구현(SourceToTargetStep, DefaultLoadStep, LinkTableUpdateStep 등)을
  * 구분하지 않으며, StepExecutor 인터페이스만 알고 있다.
  * SIMPLE_COPY / CUSTOM_STAGING 등의 분기는 각 Step 내부에서 처리된다.
  *

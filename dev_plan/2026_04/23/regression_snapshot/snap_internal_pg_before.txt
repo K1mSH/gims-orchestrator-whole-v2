@@ -1,0 +1,46 @@
+Pager usage is off.
+=== Internal PG (bojo-int) 스냅샷 2026-04-23 통합 전 ===
+=== if_rsv_sec_jewon 최근 5건 ===
+   id   |     source_refs      | link_status |                      execution_id                      
+--------+----------------------+-------------+--------------------------------------------------------
+ 217625 | ["D:1018:51:109778"] | PENDING     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 217624 | ["D:1018:51:109777"] | PENDING     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 217623 | ["D:1018:51:109776"] | PENDING     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 217622 | ["D:1018:51:109775"] | PENDING     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 217621 | ["D:1018:51:109774"] | PENDING     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+(5 rows)
+
+=== if_rsv_sec_obsvdata 최근 5건 ===
+  id   |     source_refs      | link_status |                      execution_id                      
+-------+----------------------+-------------+--------------------------------------------------------
+ 74328 | ["D:1018:52:195665"] | SUCCESS     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 74327 | ["D:1018:52:195664"] | SUCCESS     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 74326 | ["D:1018:52:195663"] | SUCCESS     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 74325 | ["D:1018:52:195662"] | SUCCESS     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+ 74324 | ["D:1018:52:195661"] | SUCCESS     | internal-bojo-rcv_68f25c90-495c-4256-80b6-b601a67c6466
+(5 rows)
+
+=== tm_gd970101 최근 5건 ===
+ERROR:  column "rslt_dt" does not exist
+LINE 1: SELECT rslt_dt, obsrvn_artcl_id, execution_id FROM tm_gd9701...
+               ^
+=== sync_log 최근 15건 ===
+ id  |                         exec_id                         | mapping_name |           src           |           tgt           | source_pk_column | read_count | write_count 
+-----+---------------------------------------------------------+--------------+-------------------------+-------------------------+------------------+------------+-------------
+ 281 | internal-bojo-loader_cd466bc0-605a-47ab-8177-51ad9921f5 | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |         11 |          11
+ 280 | internal-bojo-loader_0a1fd3d9-68c6-4f0e-8a5b-3d71ace74a | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |          0 |           0
+ 279 | internal-bojo-loader_0a9ec4e4-c485-42c9-86e3-7e7089d71a | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |         11 |           0
+ 278 | internal-bojo-rcv_48a431f3-0a1d-455a-a546-1f8be1d4da56  | obsvdata     | ["if_snd_sec_obsvdata"] | ["if_rsv_sec_obsvdata"] | id               |         11 |          11
+ 277 | internal-bojo-rcv_48a431f3-0a1d-455a-a546-1f8be1d4da56  | jewon        | ["if_snd_sec_jewon"]    | ["if_rsv_sec_jewon"]    | id               |       1206 |        1206
+ 276 | internal-bojo-rcv_ab8e5985-20fb-42d3-801b-f22987ef83fa  | obsvdata     | ["if_snd_sec_obsvdata"] | ["if_rsv_sec_obsvdata"] | id               |        186 |         186
+ 275 | internal-bojo-rcv_ab8e5985-20fb-42d3-801b-f22987ef83fa  | jewon        | ["if_snd_sec_jewon"]    | ["if_rsv_sec_jewon"]    | id               |          9 |           9
+ 274 | internal-bojo-loader_dd9aeace-145f-4344-8096-c9d34c02f9 | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |          0 |           0
+ 273 | internal-bojo-loader_b8438fd9-1c19-464a-bc9d-4a8a30e7a9 | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |         10 |          10
+ 272 | internal-bojo-loader_660c88f9-042c-4636-bc63-e37ec42f32 | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |      47103 |       47103
+ 271 | internal-bojo-rcv_407dc2a3-8e28-47df-bcef-0ed4102e13d9  | obsvdata     | ["if_snd_sec_obsvdata"] | ["if_rsv_sec_obsvdata"] | id               |      47103 |       47103
+ 270 | internal-bojo-rcv_407dc2a3-8e28-47df-bcef-0ed4102e13d9  | jewon        | ["if_snd_sec_jewon"]    | ["if_rsv_sec_jewon"]    | id               |       1206 |        1206
+ 269 | internal-bojo-rcv_0c1d9b1c-517d-44aa-9231-a5c79fc7b23f  | obsvdata     | ["if_snd_sec_obsvdata"] | ["if_rsv_sec_obsvdata"] | id               |          0 |           0
+ 268 | internal-bojo-rcv_0c1d9b1c-517d-44aa-9231-a5c79fc7b23f  | jewon        | ["if_snd_sec_jewon"]    | ["if_rsv_sec_jewon"]    | id               |       1206 |        1206
+ 267 | internal-bojo-loader_578283dd-64d2-4d5b-aac8-48abdc02d3 | obsvdata     | ["if_rsv_sec_obsvdata"] | ["pm_gd970201"]         |                  |      47103 |           0
+(15 rows)
+

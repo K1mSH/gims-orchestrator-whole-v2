@@ -1,9 +1,9 @@
 # ──────────────────────────────────────
-# 패턴: 전처리 (Oracle 서브쿼리 → PG 제공 테이블)
-# 소스: TM_GD110301 (수질측정망검사개요, 표준화)
+# 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
+# 소스: TM_GD110301 (수질측정망검사개요)
 # 타겟: api_prv_tm_gd110301
-# 레거시: MEGOKR selectNgw03 (2중 서브쿼리 — TM_GD10001 JOSACODE 필터)
-# 비고: Type B이지만 표준화 후 서브쿼리 불필요할 수 있음 — 우선 단순 복사로 구현
+# 레거시: MEGOKR selectNgw03 (수질측정망검사 개요)
+# Note: Type B 전처리 대상이나 현재는 단순 카피 설정. 전처리 Step 구현 시 별도 factory-key로 전환 예정.
 # ──────────────────────────────────────
 agent-code: provide-tm-gd110301
 type: LOADER
@@ -11,7 +11,12 @@ type: LOADER
 steps:
   - id: provide-tm-gd110301
     name: 수질측정망검사개요 복사
-    factory-key: provide-load
+    factory-key: source-to-if
     source-table: TM_GD110301
     target-table: api_prv_tm_gd110301
-    merge-key: WQ_INSP_SN
+    primary-key: WQ_INSP_SN
+    conflict-key: source_refs
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at

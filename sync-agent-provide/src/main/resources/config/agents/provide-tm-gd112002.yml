@@ -10,7 +10,12 @@ type: LOADER
 steps:
   - id: provide-tm-gd112002
     name: 드림서비스 공공관정 복사
-    factory-key: provide-load
+    factory-key: source-to-if
     source-table: TM_GD112002
     target-table: api_prv_tm_gd112002
-    merge-key: PRMSN_DCLR_NO
+    primary-key: PRMSN_DCLR_NO
+    conflict-key: source_refs
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at

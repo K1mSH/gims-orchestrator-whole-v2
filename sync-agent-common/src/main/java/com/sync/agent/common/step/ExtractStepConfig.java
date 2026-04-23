@@ -6,24 +6,27 @@ import lombok.Getter;
 import java.util.List;
 
 /**
- * Source → IF 테이블 추출 Step 설정 — SourceToIfStep 전용
+ * Source → Target 복사 Step 설정 — SourceToTargetStep 전용
  *
- * 이 클래스는 SourceToIfStep에서만 사용하는 설정 객체다.
+ * 이 클래스는 SourceToTargetStep에서만 사용하는 설정 객체다.
  * 다른 StepExecutor 구현체(DmzBojoLoadStep, InternalBojoLoadStep, LinkTableUpdateStep)에서는 사용하지 않는다.
  *
- * StepFactory가 YAML 설정을 읽어 이 객체를 만들고, SourceToIfStep 생성자에 주입한다.
- * 동일한 SourceToIfStep 클래스를 config만 바꿔서 RCV/SND/Internal RCV에서 재사용.
+ * StepFactory가 YAML 설정을 읽어 이 객체를 만들고, SourceToTargetStep 생성자에 주입한다.
+ * 동일한 SourceToTargetStep 클래스를 config만 바꿔서 RCV/SND/Internal RCV/Provide 에서 재사용.
  *
  * 사용하는 Factory:
- * - SourceToIfStepFactory (common) — SIMPLE_COPY 모드
+ * - SourceToTargetStepFactory (common) — SIMPLE_COPY 모드 (factory-key: source-to-if, 기존 호환 유지)
  * - LinkSourceToIfStepFactory (bojo) — CUSTOM_STAGING 모드 + LinkTableObsvDataFetcher
  *
- * IF 테이블 메타 컬럼:
+ * 타겟 메타 컬럼 (targetMetaColumns 로 설정, 기본값=IF 표준 5종):
  * - source_refs: 출처 정보 JSON 배열 ["zone:dsId:tbId:pk", ...]
  * - link_status: 연계 상태 (PENDING → SUCCESS/FAILED)
  * - extracted_at: 최초 추출 시간
  * - updated_at: 마지막 수정 시간
  * - execution_id: 실행 ID
+ *
+ * provide 같은 외부 제공 테이블은 link_status/extracted_at 없으므로
+ * targetMetaColumns = [source_refs, execution_id, updated_at] 으로 지정.
  */
 @Getter
 @Builder
@@ -125,6 +128,75 @@ public class ExtractStepConfig {
      * DB 함수 사용 가능: "COALESCE(updated_at, created_at)"
      */
     private final String timeExpression;
+
+    /**
+     * 타겟 메타 컬럼 목록 (선택적)
+     *
+     * null이면 IF 표준 메타 5종 사용: [source_refs, link_status, extracted_at, updated_at, execution_id]
+     * 지정 시 해당 컬럼만 INSERT/UPDATE 대상으로 취급.
+     *
+     * 용도:
+     * - IF 타겟 (bojo/bojo-int/others): null (기본 5종)
+     * - 외부 제공 테이블 (provide): [source_refs, execution_id, updated_at] — link_status/extracted_at 없음
+     *
+     * 주의: source_refs 는 이 리스트에 없어도 INSERT에 포함됨 (추적 필수 메타).
+     */
+    private final List<String> targetMetaColumns;
+
+    /**
+     * INSERT 제외 컬럼 목록 (타겟의 auto-increment PK 회피용)
+     *
+     * 기본값: ["id", "sn"] — 대부분의 경우 관례 일치.
+     * YAML 에서 명시 시 해당 값 사용 (예: ["seq"], 또는 빈 리스트로 제외 없음).
+     *
+     * 주의: 이 목록의 컬럼이 타겟에 실제 있을 때만 제외됨 (이름 매칭의 엉뚱한 동작 방지).
+     * 검증 로직은 SourceToTargetStep 에서 처리 — getTargetColumnNames() 와 교집합.
+     */
+    private final List<String> excludeInsertColumns;
+
+    /** 기본 제외 컬럼 — YAML 미지정 시 사용 */
+    public static final List<String> DEFAULT_EXCLUDE_INSERT_COLUMNS = List.of("id", "sn");
+
+    /**
+     * INSERT 제외 컬럼 목록 반환 (null이면 DEFAULT_EXCLUDE_INSERT_COLUMNS)
+     */
+    public List<String> getExcludeInsertColumnList() {
+        return excludeInsertColumns != null ? excludeInsertColumns : DEFAULT_EXCLUDE_INSERT_COLUMNS;
+    }
+
+    /**
+     * YAML 에 exclude-insert-columns 가 명시되어 있는지 (로그용)
+     */
+    public boolean isExcludeInsertColumnsExplicit() {
+        return excludeInsertColumns != null;
+    }
+
+    /**
+     * 타겟 메타 컬럼 목록 반환 (null이면 IF 표준 메타 5종)
+     */
+    public List<String> getTargetMetaColumnList() {
+        if (targetMetaColumns != null && !targetMetaColumns.isEmpty()) {
+            return targetMetaColumns;
+        }
+        return List.of("source_refs", "link_status", "extracted_at", "updated_at", "execution_id");
+    }
+
+    /**
+     * 타겟에 link_status 컬럼이 있는지
+     * (getTargetMetaColumnList() 에 포함되어 있는지 여부로 판단)
+     */
+    public boolean hasTargetLinkStatus() {
+        return getTargetMetaColumnList().stream()
+                .anyMatch(c -> "link_status".equalsIgnoreCase(c));
+    }
+
+    /**
+     * 타겟에 extracted_at 컬럼이 있는지
+     */
+    public boolean hasTargetExtractedAt() {
+        return getTargetMetaColumnList().stream()
+                .anyMatch(c -> "extracted_at".equalsIgnoreCase(c));
+    }
 
     /**
      * Primary Key 컬럼 목록 반환 (호환성 유지)
