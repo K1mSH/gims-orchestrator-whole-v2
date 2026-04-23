@@ -1,0 +1,28 @@
+# ──────────────────────────────────────
+# 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
+# 소스: NGW.TMP_MEGOKR_API (149컬럼, 이미 PIVOT 완료된 임시 테이블)
+# 타겟: api_prv_tmp_megokr_api (149 + 추적 3)
+# 레거시: MEGOKR selectNgw04_01 (수질검사결과 TMP)
+#
+# Note:
+#  - 표준화 매핑 없어 이전 이름 유지 (케이스 B)
+#  - Oracle 자연키 "SN" 이름과 provide 통일 PK 필드명 충돌 회피를 위해
+#    본 Agent 엔티티만 @Id id IDENTITY 사용. Oracle SN 값은 일반 sn 컬럼에 보존.
+#  - exclude-insert-columns: ["id"] — 기본 [id, sn] 오버라이드하여 sn 을 INSERT 대상에 포함
+# ──────────────────────────────────────
+agent-code: provide-tmp-megokr-api
+type: LOADER
+
+steps:
+  - id: provide-tmp-megokr-api
+    name: MEGOKR 수질검사결과 TMP 복사
+    factory-key: source-to-if
+    source-table: TMP_MEGOKR_API
+    target-table: api_prv_tmp_megokr_api
+    primary-key: SN
+    conflict-key: source_refs
+    exclude-insert-columns: ["id"]
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at
