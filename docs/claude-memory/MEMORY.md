@@ -23,6 +23,11 @@
 - [feedback_config_vs_registration.md](feedback_config_vs_registration.md) - yml에 DB 등록 ID 하드코딩 금지, Orchestrator DB 등록이 단일 진실원
 - [project_header_manage_routing.md](project_header_manage_routing.md) - Proxy 관리 DB 조회 라우팅 = X-Manage-Datasource-Id 헤더 + Agent.targetDatasourceId
 - [feedback_no_regression_organic.md](feedback_no_regression_organic.md) - 모든 수정은 기존 기능에 영향 없어야 함. 유기적 구조라 단일 케이스 땜질 금지, 전체 Agent 케이스 검토 필수
+- [feedback_provide_layer_upsert.md](feedback_provide_layer_upsert.md) - provide Loader는 RCV와 다른 전략 — 항상 UPSERT + UK (외부 제공 안정성 우선)
+- [feedback_provide_target_per_api.md](feedback_provide_target_per_api.md) - provide 타겟 테이블은 레거시 API endpoint 단위로 분리 (컬럼/소스 공유해도 타겟 공유 금지)
+- [project_verify_system.md](project_verify_system.md) - verify/ 검증 세션 체계. _invariants+deployment+checklists+issues/tasks 로 회귀 감시 + 배포 게이트 누적
+- [feedback_config_replacement_sync.md](feedback_config_replacement_sync.md) - 새 서비스/DB/외부 의존 추가 시 verify/deployment/config-replacement.md 즉시 갱신
+- [feedback_verify_session_trigger.md](feedback_verify_session_trigger.md) - "검증 전담 세션 준비해줘" 트리거 → verify/ 체계 읽고 verifier 모드로 진입
 
 ## 작업 규칙
 
