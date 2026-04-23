@@ -1,0 +1,22 @@
+# ──────────────────────────────────────
+# 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
+# 소스: SDE_NGWS.WT_DREAM_PERMWELL_PUBLIC_21033 (가뭄119 SDE 스냅샷)
+# 타겟: api_prv_wt_dream_permwell_public_21033
+# 레거시: OPN selectdroght119 (가뭄119 인허가관정)
+# Note: 표준화 매핑 없음 → 이전 이름 유지. 112002 와 유사 구조 + OBJECTID 추가.
+# ──────────────────────────────────────
+agent-code: provide-wt-dream-permwell-public-21033
+type: LOADER
+
+steps:
+  - id: provide-wt-dream-permwell-public-21033
+    name: 가뭄119 인허가관정 복사
+    factory-key: source-to-if
+    source-table: SDE_NGWS.WT_DREAM_PERMWELL_PUBLIC_21033
+    target-table: api_prv_wt_dream_permwell_public_21033
+    primary-key: OBJECTID
+    conflict-key: source_refs
+    target-meta-columns:
+      - source_refs
+      - execution_id
+      - updated_at
