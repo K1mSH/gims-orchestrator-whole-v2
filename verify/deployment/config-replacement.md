@@ -84,22 +84,52 @@
 | F3 | JVM 인코딩 | OS 기본 | 기동 스크립트 | `-Dfile.encoding=UTF-8` | | | |
 | F4 | `ddl-auto` | `update` (provide/일부) | JPA 설정 | `validate` | `validate` | | |
 
+## G. CORS / Frontend 빌드 설정
+
+> 2026-04-23 grep 스캔에서 추가 발견된 치환 대상. 코드 내 평문 하드코딩 / 환경변수 치환 지점 미적용.
+
+| # | 항목 | 현재 dev 값 | 위치 | 치환 방법 | 실배포 값 | 확인자 | 확인일 |
+|:-:|------|-----------|------|---------|----------|-------|-------|
+| G1 | Collector CORS allowedOrigins | `http://localhost:3000` | `infolink-api-collector/.../config/WebConfig.java:13` | 환경변수 신설 + `@Value` 치환 | | | |
+| G2 | Orchestrator CORS allowedOrigins | `http://localhost:3000`, `http://localhost:5173` | `sync-orchestrator/backend/.../config/WebConfig.java:24` | 환경변수 신설 + `@Value` 치환 | | | |
+| G3 | Next.js proxy → collector-api | `http://localhost:8084` | `sync-orchestrator/frontend/next.config.js:7` | `process.env.*` 치환 지점 신설 | | | |
+| G4 | Next.js proxy → provider-api | `http://localhost:8095` | `sync-orchestrator/frontend/next.config.js:11` | `process.env.*` 치환 지점 신설 | | | |
+| G5 | Next.js proxy → orchestrator | `http://localhost:8080` | `sync-orchestrator/frontend/next.config.js:15` | `process.env.*` 치환 지점 신설 | | | |
+| G6 | Frontend SpecTab API host | `http://localhost:8095` (코드 내 평문) | `sync-orchestrator/frontend/components/api-provide/SpecTab.tsx:48` | `process.env.NEXT_PUBLIC_*` 치환 지점 신설 (**VER-003 후보**) | | | |
+
+## H. Java `@Value` 환경변수 키 (이미 외부화됨 — 참고)
+
+> 코드 내에 `@Value("${key:default}")` 로 **이미 외부화된** 키 목록. 실배포 시 환경변수 주입만 하면 전환 가능.
+> 이 표는 "새로 치환해야 할 대상" 이 아니라 "주입할 환경변수 키 레퍼런스".
+
+| # | 환경변수 키 | 기본값 (dev) | 사용처 |
+|:-:|------------|-----------|--------|
+| H1 | `agent.orchestrator-url` | `http://localhost:8080` | 전 Agent (bojo, bojo-int, others, provide) + Proxy DMZ/Internal — `SyncDataSourceService` / `ProxyDataSourceService` / `ConnectionInfoController` |
+| H2 | `orchestrator.url` | `http://localhost:8080` | api-collector `OrchestratorClient.java:24` |
+| H3 | `lookup.common-code-url` | `http://localhost:8084/mock/common/select/{groupCode}` | api-collector `application.yml:36` — **Mock fallback (VER-002 연관)** |
+| H4 | `lookup.api-key-url` | `http://localhost:8084/mock/api-keys` | api-collector `application.yml:37` — **Mock fallback (VER-002 연관)** |
+| H5 | `app.api-key-validation.url` | `http://localhost:8095/api/mock/api-key/validate` | api-provider `ApiKeyValidationService.java:22` — **Mock fallback** |
+| H6 | `anyang.api.fac-url` | `http://localhost:8084/mock/anyang/fac` | api-collector `AnyangUsageExecutor.java:39` — **Mock fallback** |
+| H7 | `anyang.api.data-url` | `http://localhost:8084/mock/anyang/data` | api-collector `AnyangUsageExecutor.java:42` — **Mock fallback** |
+| H8 | `JASYPT_PASSWORD` | `sync-pipeline-secret-key-2024` | 전 모듈 (ENC 복호화 마스터 키 — `credentials-rotation.md` 연관) |
+| H9 | `SPRING_PROFILES_ACTIVE` | (미설정 → default) | 전 모듈 — 실배포 `prod` |
+
 ---
 
-## G. 미확인 — 추가 grep 스캔 필요
+## I. grep 스캔 내역 (verifier 주기 재실행용)
 
-> verifier 세션이 실제 코드베이스 grep 으로 채울 항목. 현재 내가 기억만으로 나열한 것이라 누락 가능.
+> 최초 실행 2026-04-23. 새 커밋 반영 시 주기적으로 재실행 → 신규 하드코딩 탐지 + 이 문서 표 갱신.
 
-- [ ] `grep -rn "localhost" --include="*.yml"` — 전체 yml 하드코딩 전수
-- [ ] `grep -rn "localhost" --include="*.java"` — 자바 코드 하드코딩
-- [ ] `grep -rn "localhost" --include="*.properties"` — properties 파일
-- [ ] `grep -rn "localhost" --include="*.ts" --include="*.tsx"` — 프론트엔드 호출
-- [ ] `grep -rn "29001\|29000\|29010\|29004\|29005\|29006" --include="*"` — dev 포트 하드코딩
-- [ ] `grep -rn "D:/\|D:\\\\\|C:/" --include="*"` — Windows 경로
-- [ ] `grep -rn "k1m\|1111" --include="*"` — dev 계정 하드코딩
-- [ ] globals.properties 전수 검토
+- [x] `rg localhost --glob "*.yml"` — 2026-04-23: gims-api-provider(A7) + api-collector 의 lookup URL(H3~H4) 평문, 나머지 yml 은 ENC / 주석
+- [x] `rg localhost --glob "*.java"` — 2026-04-23: 13건 중 11건 `@Value` 외부화 완료(H1~H7), CORS 2건 하드코딩(G1~G2)
+- [x] `rg localhost --glob "*.{ts,tsx,js}"` — 2026-04-23: Next.js 프록시 3건(G3~G5) + SpecTab 1건(G6) + UI placeholder 1건(무해)
+- [x] `rg localhost --glob "*.properties"` — 2026-04-23: 매치 없음
+- [x] `rg "29000|29001|29004|29005|29006|29010"` — 2026-04-23: yml/java 내 매치 전부 주석. 외부 원본 DB dev 포트(B1~B7)는 Orchestrator DataSource 등록으로 관리됨
+- [x] `rg "\\bk1m\\b|password:\\s*1111"` — 2026-04-23: `gims-api-provider/application.yml:11-12` 단 1곳 (**VER-001**)
+- [x] `rg "[DC]:[\\\\/]"` — 2026-04-23: 0건
+- [x] globals.properties — 2026-04-23: orchestrator_v2 에는 존재하지 않음 (newgims_v2 전용)
 
-각 스캔 결과 → 위 A~F 표에 반영 + 정당한 치환 대상인지 판단.
+각 스캔 결과 → 위 A~H 표에 반영 완료. 새 항목 발견 시 즉시 해당 표에 행 추가.
 
 ---
 
