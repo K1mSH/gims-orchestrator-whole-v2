@@ -124,7 +124,8 @@ public class DynamicQueryService {
                     String alias = col.getAliasName();
                     if (alias != null && !alias.isEmpty()) {
                         validateIdentifier(alias, "별칭");
-                        return expr + " AS " + alias;
+                        // 쌍따옴표로 감싸서 대소문자 보존 (PG가 unquoted identifier를 lowercase로 정규화하는 것을 방지)
+                        return expr + " AS \"" + alias + "\"";
                     }
                     // 가공 적용 시 원본 컬럼명을 alias로 유지
                     if (!expr.equals(col.getColumnName())) {

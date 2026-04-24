@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +21,9 @@ import java.util.Optional;
  * 외부 제공 API Gateway
  * GET /api/provide/{operationId}?param1=value1&page=1&pageSize=100
  * Header: X-API-Key: {발급받은 키}
+ *
+ * operationId 는 슬래시(/) 포함 가능 — 레거시 URL 그대로 재현 위해
+ *  예: /api/provide/megokrApi/ngw08 → operationId = "megokrApi/ngw08"
  */
 @Slf4j
 @RestController
@@ -26,16 +31,23 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ApiGatewayController {
 
+    private static final String BASE_PREFIX = "/api/provide/";
+
     private final ApiPrvOperationRepository operationRepository;
     private final DynamicQueryService dynamicQueryService;
     private final ApiKeyValidationService apiKeyValidationService;
 
-    @GetMapping("/{operationId}")
-    public ResponseEntity<?> provide(@PathVariable String operationId,
-                                      @RequestParam(defaultValue = "1") int page,
+    @GetMapping("/**")
+    public ResponseEntity<?> provide(@RequestParam(defaultValue = "1") int page,
                                       @RequestParam(required = false) Integer pageSize,
                                       @RequestParam(value = "apiKey", required = false) String apiKey,
                                       HttpServletRequest request) {
+        // 0. operationId 추출 (슬래시 포함 지원)
+        String operationId = extractOperationId(request);
+        if (operationId == null || operationId.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "operationId 가 필요합니다"));
+        }
+
         // 1. 오퍼레이션 조회
         Optional<ApiPrvOperation> optOp = operationRepository.findByOperationId(operationId);
         if (optOp.isEmpty()) {
@@ -82,6 +94,24 @@ public class ApiGatewayController {
         } catch (Exception e) {
             log.error("[Gateway] 실행 오류: {} — {}", operationId, e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of("error", "서버 오류가 발생했습니다"));
+        }
+    }
+
+    /**
+     * 요청 URI 에서 operationId 추출 (슬래시 포함 허용)
+     * /api/provide/megokrApi/ngw08 → "megokrApi/ngw08"
+     */
+    private String extractOperationId(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        if (uri == null || !uri.startsWith(BASE_PREFIX) || uri.length() <= BASE_PREFIX.length()) {
+            return null;
+        }
+        String raw = uri.substring(BASE_PREFIX.length());
+        try {
+            return URLDecoder.decode(raw, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.warn("[Gateway] operationId URL 디코딩 실패: {}", raw);
+            return raw;
         }
     }
 }
