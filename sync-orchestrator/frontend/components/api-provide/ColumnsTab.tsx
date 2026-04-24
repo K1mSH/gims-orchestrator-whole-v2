@@ -21,7 +21,9 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const defaultCfg = (): ColConfig => ({ alias: '', transformType: 'NONE', transformParam: '' });
+  // 기본 설정 생성 — alias 는 기본적으로 컬럼명 대문자 (레거시 호환 관례)
+  // 수동 편집 가능하며, 빈 문자열로 저장하면 엔진이 원본 컬럼명 그대로 사용
+  const defaultCfg = (alias: string = ''): ColConfig => ({ alias, transformType: 'NONE', transformParam: '' });
 
   useEffect(() => {
     const load = async () => {
@@ -38,7 +40,8 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
           }));
           setSelectedColumns(map);
         } else {
-          setSelectedColumns(new Map(cols.map(c => [c.columnName, defaultCfg()])));
+          // 신규: 전체 선택 + alias 대문자 자동 채움
+          setSelectedColumns(new Map(cols.map(c => [c.columnName, defaultCfg(c.columnName.toUpperCase())])));
         }
       } catch (e) {
         console.error('컬럼 조회 실패:', e);
@@ -52,7 +55,8 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
   const toggleColumn = (colName: string) => {
     setSelectedColumns(prev => {
       const next = new Map(prev);
-      next.has(colName) ? next.delete(colName) : next.set(colName, defaultCfg());
+      // 체크 → alias 에 대문자 자동 채움 / 해제 → 제거
+      next.has(colName) ? next.delete(colName) : next.set(colName, defaultCfg(colName.toUpperCase()));
       return next;
     });
   };
@@ -107,8 +111,19 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn btn-sm" onClick={() => setSelectedColumns(new Map(dbColumns.map(c => [c.columnName, defaultCfg()])))}>전체 선택</button>
+          <button className="btn btn-sm" onClick={() => setSelectedColumns(new Map(dbColumns.map(c => [c.columnName, defaultCfg(c.columnName.toUpperCase())])))}>전체 선택</button>
           <button className="btn btn-sm" onClick={() => setSelectedColumns(new Map())}>전체 해제</button>
+          <button
+            className="btn btn-sm"
+            onClick={() => setSelectedColumns(prev => {
+              const next = new Map<string, ColConfig>();
+              prev.forEach((cfg, colName) => next.set(colName, { ...cfg, alias: colName.toUpperCase() }));
+              return next;
+            })}
+            title="선택된 컬럼의 응답필드명을 일괄 대문자로 채웁니다"
+          >
+            응답필드명 자동(대문자)
+          </button>
           <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
             {saving ? '저장 중...' : '저장'}
           </button>

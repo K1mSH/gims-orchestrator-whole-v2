@@ -64,9 +64,8 @@ export default function ApiProvidePage() {
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>오퍼레이션 ID</th>
                 <th>이름</th>
+                <th>오퍼레이션 ID</th>
                 <th>테이블</th>
                 <th>Datasource</th>
                 <th>활성</th>
@@ -75,11 +74,12 @@ export default function ApiProvidePage() {
               </tr>
             </thead>
             <tbody>
-              {operations.map(op => (
+              {[...operations]
+                .sort((a, b) => (a.operationName ?? '').localeCompare(b.operationName ?? '', 'ko'))
+                .map(op => (
                 <tr key={op.id} onClick={() => router.push(`/api-provide/${op.id}`)} style={{ cursor: 'pointer' }}>
-                  <td>{op.id}</td>
-                  <td><code style={{ fontSize: '0.8rem' }}>{op.operationId}</code></td>
                   <td>{op.operationName}</td>
+                  <td><code style={{ fontSize: '0.8rem' }}>{op.operationId}</code></td>
                   <td><code style={{ fontSize: '0.8rem' }}>{op.tableName}</code></td>
                   <td>{op.datasourceId}</td>
                   <td>
