@@ -29,8 +29,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-    // Database — PG 전용 (관리 + 동적 SELECT 대상 모두 PG)
+    // Database — 관리 PG + 외부 GIMS Oracle (Type B 커스텀 핸들러용)
     runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc8'   // CUSTOM 핸들러가 datasource_id="internal" 통해 외부 Oracle 직결
 
     // HikariCP (동적 DataSource 생성용)
     implementation 'com.zaxxer:HikariCP'

@@ -51,32 +51,6 @@ export default function AgentsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
-    try {
-      await agentApi.delete(id);
-      fetchAgents();
-    } catch (error) {
-      console.error('Agent 삭제 실패:', error);
-    }
-  };
-
-  const handleHealthCheck = async (id: number) => {
-    try {
-      const result = await agentApi.healthCheck(id);
-      const statusLabels: Record<string, string> = {
-        ONLINE: '온라인',
-        OFFLINE: '오프라인',
-        RUNNING: '실행중',
-      };
-      alert(`상태확인 결과: ${statusLabels[result.status] || result.status}`);
-      fetchAgents();
-    } catch (error) {
-      console.error('상태확인 실패:', error);
-      alert('상태확인 실패');
-    }
-  };
-
   const toggleGroup = (type: AgentType) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
@@ -166,13 +140,12 @@ export default function AgentsPage() {
                     <th>상태</th>
                     <th>마지막 실행</th>
                     <th>실행 결과</th>
-                    <th>작업</th>
                   </tr>
                 </thead>
                 <tbody>
                   {groupAgents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="empty-state">
+                      <td colSpan={6} className="empty-state">
                         등록된 {AGENT_TYPE_LABELS[type]} Agent가 없습니다
                       </td>
                     </tr>
@@ -200,26 +173,6 @@ export default function AgentsPage() {
                           {agent.lastExecutionStatus ? (
                             <StatusBadge status={agent.lastExecutionStatus as 'SUCCESS' | 'FAILED' | 'RUNNING'} />
                           ) : '-'}
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => handleHealthCheck(agent.id)}
-                            style={{ marginRight: '0.5rem' }}
-                          >
-                            상태확인
-                          </button>
-                          <Link href={`/agents/${agent.id}`}>
-                            <button className="btn btn-secondary btn-sm" style={{ marginRight: '0.5rem' }}>
-                              상세
-                            </button>
-                          </Link>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDelete(agent.id)}
-                          >
-                            삭제
-                          </button>
                         </td>
                       </tr>
                     ))

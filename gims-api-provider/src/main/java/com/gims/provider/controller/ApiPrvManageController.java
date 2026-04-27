@@ -1,5 +1,7 @@
 package com.gims.provider.controller;
 
+import com.gims.provider.custom.CustomHandlerRegistry;
+import com.gims.provider.custom.CustomOperationHandler;
 import com.gims.provider.dto.DynamicQueryResult;
 import com.gims.provider.entity.ApiPrvOperation;
 import com.gims.provider.entity.ApiPrvOperationColumn;
@@ -32,6 +34,7 @@ public class ApiPrvManageController {
     private final ApiPrvCallHistoryRepository callHistoryRepository;
     private final DynamicQueryService dynamicQueryService;
     private final ProviderDataSourceService dataSourceService;
+    private final CustomHandlerRegistry customHandlerRegistry;
 
     // ========== 오퍼레이션 ==========
 
@@ -99,7 +102,17 @@ public class ApiPrvManageController {
             int pageSize = body != null && body.containsKey("pageSize")
                     ? Math.min(((Number) body.get("pageSize")).intValue(), maxPageSize) : operation.getPageSize();
 
-            DynamicQueryResult result = dynamicQueryService.execute(operation, params, page, pageSize);
+            DynamicQueryResult result;
+            if ("CUSTOM".equals(operation.getOperationType())) {
+                String handlerKey = operation.getHandlerKey();
+                CustomOperationHandler handler = handlerKey != null ? customHandlerRegistry.get(handlerKey) : null;
+                if (handler == null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "내장 핸들러가 등록되지 않았습니다: " + handlerKey));
+                }
+                result = handler.handle(params, page, pageSize);
+            } else {
+                result = dynamicQueryService.execute(operation, params, page, pageSize);
+            }
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("[Provider] 테스트 호출 실패: {}", e.getMessage());

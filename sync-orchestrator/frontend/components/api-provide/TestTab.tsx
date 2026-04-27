@@ -131,25 +131,31 @@ export default function TestTab({ operation }: Props) {
       {/* 결과 */}
       {result && (
         <>
-          {/* SQL 미리보기 */}
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>실행된 SQL</div>
-            </div>
-            <div style={{ padding: '0.75rem 1rem' }}>
-              <pre style={{ fontSize: '0.8rem', background: '#1e1e2e', color: '#cdd6f4', padding: '1rem', borderRadius: '6px', overflow: 'auto', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontFamily: "'Consolas', 'Monaco', monospace" }}>
-                {formatSql(result.executedSql).map((part, i) => (
-                  <span key={i} style={{
-                    color: part.isKeyword ? '#89b4fa' : part.isString ? '#a6e3a1' : part.isNumber ? '#fab387' : '#cdd6f4',
-                    fontWeight: part.isKeyword ? 700 : 400,
-                  }}>{part.text}</span>
-                ))}
-              </pre>
-              <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)', marginTop: '0.5rem' }}>
-                총 {result.pagination.totalCount}건 / {result.durationMs}ms
+          {/* SQL 미리보기 (executedSql 이 있을 때만) */}
+          {result.executedSql ? (
+            <div className="card" style={{ marginBottom: '1rem' }}>
+              <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>실행된 SQL</div>
+              </div>
+              <div style={{ padding: '0.75rem 1rem' }}>
+                <pre style={{ fontSize: '0.8rem', background: '#1e1e2e', color: '#cdd6f4', padding: '1rem', borderRadius: '6px', overflow: 'auto', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontFamily: "'Consolas', 'Monaco', monospace" }}>
+                  {formatSql(result.executedSql).map((part, i) => (
+                    <span key={i} style={{
+                      color: part.isKeyword ? '#89b4fa' : part.isString ? '#a6e3a1' : part.isNumber ? '#fab387' : '#cdd6f4',
+                      fontWeight: part.isKeyword ? 700 : 400,
+                    }}>{part.text}</span>
+                  ))}
+                </pre>
+                <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)', marginTop: '0.5rem' }}>
+                  총 {result.pagination.totalCount}건 / {result.durationMs}ms
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="card" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+              총 {result.pagination.totalCount}건 / {result.durationMs}ms
+            </div>
+          )}
 
           {/* 데이터 테이블 */}
           <div className="card">

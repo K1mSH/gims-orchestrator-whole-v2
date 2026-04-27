@@ -99,7 +99,7 @@ public class ProviderDataSourceService {
         config.setMinimumIdle(1);
         config.setConnectionTimeout(10_000);
         config.setMaxLifetime(600_000);
-        config.setConnectionTestQuery("SELECT 1");
+        // connectionTestQuery 미설정 — driver 의 isValid() 사용 (Oracle 의 SELECT 1 FROM DUAL 호환 이슈 회피)
         config.setLeakDetectionThreshold(60_000);
 
         HikariDataSource ds = new HikariDataSource(config);

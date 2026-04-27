@@ -10,6 +10,8 @@ public interface ApiPrvOperationRepository extends JpaRepository<ApiPrvOperation
 
     Optional<ApiPrvOperation> findByOperationId(String operationId);
 
+    Optional<ApiPrvOperation> findByHandlerKey(String handlerKey);
+
     List<ApiPrvOperation> findByIsActiveTrue();
 
     List<ApiPrvOperation> findByIsPublishedTrueAndIsActiveTrue();

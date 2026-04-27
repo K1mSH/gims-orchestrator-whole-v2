@@ -32,6 +32,41 @@ export const operationApi = {
     providerApi.put<ApiPrvOperation>(`/manage/operations/${id}/publish`).then(r => r.data),
 };
 
+// --- Custom Handler Catalog (Type B 핸들러) ---
+
+export interface CustomHandlerCatalogEntry {
+  operationId: string;
+  operationName: string;
+  registered: boolean;
+}
+
+export interface CustomHandlerMetadata {
+  operationId: string;
+  operationName: string;
+  description: string | null;
+  datasourceId: string;
+  tableName: string;
+  pageSize: number;
+  maxPageSize: number;
+  columns: { columnName: string; aliasName: string | null; displayOrder: number; transformType: string; transformParam: string | null }[];
+  params: { paramName: string; columnName: string; operator: string; required: boolean; defaultValue: string | null; dataType: string; hidden: boolean }[];
+}
+
+export const customHandlerApi = {
+  getCatalog: () =>
+    providerApi.get<CustomHandlerCatalogEntry[]>('/manage/custom-handlers/catalog').then(r => r.data),
+
+  preview: (operationId: string) =>
+    providerApi.post<CustomHandlerMetadata>('/manage/custom-handlers/preview', { operationId }).then(r => r.data),
+
+  register: (operationId: string, customOperationId?: string, customOperationName?: string) =>
+    providerApi.post<ApiPrvOperation>('/manage/custom-handlers/register', {
+      operationId,
+      customOperationId,
+      customOperationName,
+    }).then(r => r.data),
+};
+
 // --- Columns & Params ---
 
 export const columnApi = {

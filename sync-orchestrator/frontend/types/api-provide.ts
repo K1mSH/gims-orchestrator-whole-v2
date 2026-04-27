@@ -14,6 +14,10 @@ export interface ApiPrvOperation {
   orderByDirection: string;
   isPublished: boolean;
   isActive: boolean;
+  /** META=메타등록형 / CUSTOM=내장 핸들러형 */
+  operationType: 'META' | 'CUSTOM';
+  /** 잠금 (CUSTOM 핸들러는 부팅 자동 등록 후 운영자 수정/삭제 차단) */
+  isLocked: boolean;
   columns: ApiPrvOperationColumn[];
   params: ApiPrvOperationParam[];
   createdAt: string;

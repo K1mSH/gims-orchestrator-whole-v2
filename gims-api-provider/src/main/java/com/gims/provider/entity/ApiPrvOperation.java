@@ -82,6 +82,20 @@ public class ApiPrvOperation {
     @Builder.Default
     private Boolean isActive = true;
 
+    /** 오퍼레이션 타입 (META=메타등록형, CUSTOM=내장 핸들러형) */
+    @Column(name = "operation_type", length = 10, nullable = false)
+    @Builder.Default
+    private String operationType = "META";
+
+    /** 잠금 여부 (CUSTOM 핸들러는 운영자 등록 후 수정/삭제 차단 — 단 operationId/operationName 은 변경 허용) */
+    @Column(name = "is_locked", nullable = false)
+    @Builder.Default
+    private Boolean isLocked = false;
+
+    /** 핸들러 매칭 키 (CUSTOM 전용) — 운영자가 operationId 변경해도 매칭 보존. 핸들러 metadata 의 hardcode operationId */
+    @Column(name = "handler_key", length = 200)
+    private String handlerKey;
+
     @OneToMany(mappedBy = "operation", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ApiPrvOperationColumn> columns = new ArrayList<>();

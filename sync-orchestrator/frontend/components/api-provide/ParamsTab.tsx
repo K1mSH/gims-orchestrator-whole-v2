@@ -95,6 +95,55 @@ export default function ParamsTab({ operation, onUpdate }: Props) {
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>컬럼 불러오는 중...</div>;
 
+  const locked = operation.isLocked;
+
+  if (locked) {
+    return (
+      <div className="card">
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', fontSize: '0.85rem', fontWeight: 600 }}>
+          🔒 WHERE 파라미터 (읽기 전용 — {operation.params.length}개)
+        </div>
+        <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+          시스템 내장 핸들러가 자동 등록한 메타입니다. 수정 불가.
+        </div>
+        {operation.params.length === 0 ? (
+          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.85rem' }}>
+            파라미터 없음
+          </div>
+        ) : (
+          <div style={{ padding: '0 1rem 1rem' }}>
+            <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--gray-100)', textAlign: 'left', color: 'var(--gray-500)' }}>
+                  <th style={{ padding: '0.4rem' }}>파라미터명</th>
+                  <th style={{ padding: '0.4rem' }}>DB 컬럼</th>
+                  <th style={{ padding: '0.4rem' }}>연산자</th>
+                  <th style={{ padding: '0.4rem' }}>타입</th>
+                  <th style={{ padding: '0.4rem', textAlign: 'center' }}>필수</th>
+                  <th style={{ padding: '0.4rem', textAlign: 'center' }}>숨김</th>
+                  <th style={{ padding: '0.4rem' }}>기본값</th>
+                </tr>
+              </thead>
+              <tbody>
+                {operation.params.map((p, i) => (
+                  <tr key={p.id ?? i} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                    <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>{p.paramName}</td>
+                    <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>{p.columnName}</td>
+                    <td style={{ padding: '0.4rem' }}>{p.operator}</td>
+                    <td style={{ padding: '0.4rem' }}>{p.dataType}</td>
+                    <td style={{ padding: '0.4rem', textAlign: 'center' }}>{p.isRequired ? '✓' : '-'}</td>
+                    <td style={{ padding: '0.4rem', textAlign: 'center' }}>{p.isHidden ? '✓' : '-'}</td>
+                    <td style={{ padding: '0.4rem', color: 'var(--gray-500)' }}>{p.defaultValue || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="card">
       <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

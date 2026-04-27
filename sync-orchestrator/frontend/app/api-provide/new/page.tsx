@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { datasourceApi } from '@/lib/api';
-import { operationApi, columnApi, paramApi } from '@/lib/providerApi';
+import { operationApi, columnApi, paramApi, customHandlerApi, CustomHandlerCatalogEntry } from '@/lib/providerApi';
 import { DatasourceSimple, DatasourceTable, ColumnSearchResult } from '@/types/index';
 
 const sectionStyle = { padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' };
@@ -12,6 +12,14 @@ const fieldLabel: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--gray
 export default function NewOperationPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+
+  // 등록 타입 — META(직접 등록) / CUSTOM(내장 핸들러 선택)
+  const [mode, setMode] = useState<'META' | 'CUSTOM'>('META');
+  const isCustom = mode === 'CUSTOM';
+
+  // CUSTOM 모드: 핸들러 카탈로그
+  const [catalog, setCatalog] = useState<CustomHandlerCatalogEntry[]>([]);
+  const [selectedHandlerId, setSelectedHandlerId] = useState('');
 
   // 기본 정보
   const [form, setForm] = useState({
@@ -49,6 +57,62 @@ export default function NewOperationPage() {
   useEffect(() => {
     datasourceApi.getSimple().then(setDatasources).catch(() => {});
   }, []);
+
+  // CUSTOM 모드 → 카탈로그 로드 (미등록만)
+  useEffect(() => {
+    if (mode === 'CUSTOM') {
+      customHandlerApi.getCatalog()
+        .then(list => setCatalog(list.filter(e => !e.registered)))
+        .catch(() => setCatalog([]));
+    } else {
+      setCatalog([]);
+      setSelectedHandlerId('');
+    }
+  }, [mode]);
+
+  // CUSTOM 핸들러 선택 → preview 호출 → form 자동 채움 (readonly)
+  useEffect(() => {
+    if (mode !== 'CUSTOM' || !selectedHandlerId) return;
+    customHandlerApi.preview(selectedHandlerId).then(meta => {
+      setForm({
+        operationId: meta.operationId,
+        operationName: meta.operationName,
+        description: meta.description || '',
+        responseFormat: 'JSON',
+        pageSize: meta.pageSize,
+        maxPageSize: meta.maxPageSize,
+      });
+      setSelectedDatasourceId(meta.datasourceId);
+      setSelectedTable(meta.tableName);
+      // 컬럼: metadata.columns 그대로 표시 (DB 컬럼 자동 로드 안 씀)
+      const colMap = new Map<string, ColConfig>();
+      for (const c of meta.columns) {
+        colMap.set(c.columnName, {
+          alias: c.aliasName || '',
+          transformType: c.transformType || 'NONE',
+          transformParam: c.transformParam || '',
+        });
+      }
+      setSelectedColumns(colMap);
+      setDbColumns(meta.columns.map(c => ({
+        columnName: c.columnName,
+        dataType: '-',
+        isNullable: 'Y',
+        isPrimaryKey: false,
+        remarks: c.aliasName ? `→ ${c.aliasName}` : '',
+      })) as any);
+      // 파라미터
+      setWhereParams(meta.params.map(p => ({
+        columnName: p.columnName,
+        paramName: p.paramName,
+        operator: p.operator,
+        isRequired: p.required,
+        defaultValue: p.defaultValue || '',
+        dataType: p.dataType,
+        isHidden: p.hidden,
+      })));
+    }).catch(e => alert('핸들러 metadata 로드 실패: ' + e.message));
+  }, [mode, selectedHandlerId]);
 
   // 2. Datasource 변경 → 테이블 로드
   const onDatasourceChange = useCallback((dsId: string) => {
@@ -132,6 +196,28 @@ export default function NewOperationPage() {
 
   // 등록
   const handleSubmit = async () => {
+    // CUSTOM 모드 — 핸들러 register 호출. 운영자가 변경한 operationId/이름은 customOperationId/Name 로 전송
+    if (isCustom) {
+      if (!selectedHandlerId) {
+        alert('등록할 핸들러를 선택하세요');
+        return;
+      }
+      if (!form.operationId || !form.operationName) {
+        alert('오퍼레이션 ID와 이름을 입력하세요');
+        return;
+      }
+      setSaving(true);
+      try {
+        await customHandlerApi.register(selectedHandlerId, form.operationId, form.operationName);
+        router.push('/api-provide');
+      } catch (e: any) {
+        alert('등록 실패: ' + (e.response?.data?.error || e.message));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     if (!form.operationId || !form.operationName) {
       alert('오퍼레이션 ID와 이름을 입력하세요');
       return;
@@ -223,22 +309,72 @@ export default function NewOperationPage() {
     }
   };
 
+  const submitDisabled = saving || (isCustom ? !selectedHandlerId : !selectedTable);
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>오퍼레이션 등록</h1>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn" onClick={() => router.back()}>취소</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving || !selectedTable}>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitDisabled}>
             {saving ? '저장 중...' : '등록'}
           </button>
         </div>
       </div>
 
-      {/* 1. 기본 정보 */}
+      {/* 0. 등록 타입 */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={sectionStyle}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>기본 정보</div>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>등록 타입</div>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <label style={{ fontSize: '0.85rem', cursor: 'pointer' }}>
+              <input type="radio" checked={mode === 'META'} onChange={() => setMode('META')} /> 직접 등록 (META)
+            </label>
+            <label style={{ fontSize: '0.85rem', cursor: 'pointer' }}>
+              <input type="radio" checked={mode === 'CUSTOM'} onChange={() => setMode('CUSTOM')} /> 내장 핸들러 선택 (CUSTOM)
+            </label>
+          </div>
+          {isCustom && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <div style={fieldLabel}>핸들러 (이름 + 엔드포인트)</div>
+              <select className="form-input" value={selectedHandlerId}
+                onChange={e => setSelectedHandlerId(e.target.value)}>
+                <option value="">-- 선택 --</option>
+                {catalog.map(h => (
+                  <option key={h.operationId} value={h.operationId}>
+                    {h.operationName} — {h.operationId}
+                  </option>
+                ))}
+              </select>
+              {catalog.length === 0 && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)', marginTop: '0.25rem' }}>
+                  등록 가능한 핸들러가 없습니다 (이미 모두 등록됨).
+                </div>
+              )}
+              {selectedHandlerId && (
+                <div style={{
+                  marginTop: '0.75rem', padding: '0.5rem 0.75rem',
+                  background: '#fffbeb', border: '1px solid #fcd34d',
+                  borderRadius: '4px', fontSize: '0.8rem', color: '#78350f',
+                }}>
+                  🔒 시스템 내장 핸들러 — 아래 정보는 코드에 박혀있어 수정 불가. 그대로 등록됩니다.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 1. 기본 정보 — CUSTOM 시에도 operationId/operationName 만 변경 가능 (description 은 disabled) */}
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div style={sectionStyle}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+            기본 정보
+            {isCustom && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 400 }}>
+              (오퍼레이션 ID/이름은 운영자 직관성 위해 변경 가능)
+            </span>}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
               <div style={fieldLabel}>오퍼레이션 ID *</div>
@@ -256,11 +392,14 @@ export default function NewOperationPage() {
           </div>
           <div style={{ marginTop: '0.5rem' }}>
             <div style={fieldLabel}>설명</div>
-            <input className="form-input" placeholder="오퍼레이션 설명" value={form.description}
+            <input className="form-input" placeholder="오퍼레이션 설명" value={form.description} disabled={isCustom}
               onChange={e => setForm({ ...form, description: e.target.value })} />
           </div>
         </div>
       </div>
+
+      {/* 아래 폼 — CUSTOM 모드에서는 fieldset 으로 일괄 disabled */}
+      <fieldset disabled={isCustom} style={{ border: 'none', padding: 0, margin: 0 }}>
 
       {/* 2. Datasource + Table 선택 */}
       <div className="card" style={{ marginBottom: '1rem' }}>
@@ -477,6 +616,8 @@ export default function NewOperationPage() {
           </div>
         </div>
       )}
+
+      </fieldset>
     </div>
   );
 }

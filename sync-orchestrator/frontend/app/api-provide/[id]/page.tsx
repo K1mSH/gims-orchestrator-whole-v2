@@ -64,6 +64,9 @@ export default function OperationDetailPage() {
     }
   };
 
+  const isCustom = operation.operationType === 'CUSTOM';
+  const isLocked = operation.isLocked;
+
   return (
     <div>
       {/* 헤더 */}
@@ -78,6 +81,15 @@ export default function OperationDetailPage() {
             }}>
               {operation.isPublished ? '활성' : '비활성'}
             </span>
+            {isCustom && (
+              <span style={{
+                padding: '2px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                background: '#fef3c7', color: '#92400e',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+              }}>
+                <span aria-hidden>🔒</span> CUSTOM
+              </span>
+            )}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--gray-400)', marginTop: '0.25rem' }}>
             <code>{operation.operationId}</code> / {operation.tableName} / {operation.datasourceId}
@@ -88,9 +100,32 @@ export default function OperationDetailPage() {
           <button className="btn" onClick={handleTogglePublish}>
             {operation.isPublished ? '비활성화' : '활성화'}
           </button>
-          <button className="btn btn-danger" onClick={handleDelete}>삭제</button>
+          {!isLocked && (
+            <button className="btn btn-danger" onClick={handleDelete}>삭제</button>
+          )}
         </div>
       </div>
+
+      {/* CUSTOM 핸들러 안내 배너 */}
+      {isCustom && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.75rem 1rem',
+          background: '#fffbeb',
+          border: '1px solid #fcd34d',
+          borderRadius: '6px',
+          fontSize: '0.85rem',
+          color: '#78350f',
+          lineHeight: 1.5,
+        }}>
+          <strong>시스템 내장 핸들러</strong> — 원본 GIMS Oracle 직접 조회. 적재되지 않는 데이터입니다.
+          이름·컬럼·파라미터는 코드에 박혀있어 수정/삭제 불가 (활성/비활성 토글만 가능).
+          <br/>
+          <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+            관련 테이블 등 상세는 아래 탭의 설명·컬럼 참조.
+          </span>
+        </div>
+      )}
 
       {/* 탭 */}
       <TabButton

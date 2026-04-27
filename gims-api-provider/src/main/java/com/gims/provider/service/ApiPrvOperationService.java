@@ -42,6 +42,9 @@ public class ApiPrvOperationService {
         if (operationRepository.findByOperationId(operation.getOperationId()).isPresent()) {
             throw new IllegalArgumentException("이미 존재하는 오퍼레이션 ID입니다: " + operation.getOperationId());
         }
+        // 운영자가 직접 등록하는 신규는 무조건 META + 잠금해제 (CUSTOM 은 부팅 시 핸들러로만 등록됨)
+        operation.setOperationType("META");
+        operation.setIsLocked(false);
         log.info("오퍼레이션 생성: {}", operation.getOperationId());
         return operationRepository.save(operation);
     }
@@ -50,6 +53,25 @@ public class ApiPrvOperationService {
     public ApiPrvOperation update(Long id, ApiPrvOperation updated) {
         trimOperation(updated);
         ApiPrvOperation existing = findById(id);
+        boolean locked = Boolean.TRUE.equals(existing.getIsLocked());
+
+        // 잠금 (CUSTOM 핸들러) 이면 운영자 직관성 위해 operationId/operationName 만 변경 허용
+        if (locked) {
+            if (updated.getOperationId() != null && !updated.getOperationId().equals(existing.getOperationId())) {
+                operationRepository.findByOperationId(updated.getOperationId()).ifPresent(other -> {
+                    if (!other.getId().equals(existing.getId())) {
+                        throw new IllegalStateException("이미 사용 중인 operationId 입니다: " + updated.getOperationId());
+                    }
+                });
+                existing.setOperationId(updated.getOperationId());
+            }
+            if (updated.getOperationName() != null) {
+                existing.setOperationName(updated.getOperationName());
+            }
+            log.info("오퍼레이션 부분 수정 (잠금): {} (operationId/이름)", existing.getOperationId());
+            return operationRepository.save(existing);
+        }
+
         existing.setOperationName(updated.getOperationName());
         existing.setDescription(updated.getDescription());
         existing.setDatasourceId(updated.getDatasourceId());
@@ -67,6 +89,7 @@ public class ApiPrvOperationService {
     @Transactional
     public void delete(Long id) {
         ApiPrvOperation operation = findById(id);
+        requireUnlocked(operation, "삭제");
         log.info("오퍼레이션 삭제: {}", operation.getOperationId());
         operationRepository.delete(operation);
     }
@@ -82,6 +105,7 @@ public class ApiPrvOperationService {
     @Transactional
     public void saveColumns(Long operationId, List<ApiPrvOperationColumn> columns) {
         ApiPrvOperation operation = findById(operationId);
+        requireUnlocked(operation, "컬럼 수정");
         operation.getColumns().clear();
         for (ApiPrvOperationColumn col : columns) {
             trimColumn(col);
@@ -95,6 +119,7 @@ public class ApiPrvOperationService {
     @Transactional
     public void saveParams(Long operationId, List<ApiPrvOperationParam> params) {
         ApiPrvOperation operation = findById(operationId);
+        requireUnlocked(operation, "파라미터 수정");
         operation.getParams().clear();
         for (ApiPrvOperationParam param : params) {
             trimParam(param);
@@ -103,6 +128,15 @@ public class ApiPrvOperationService {
         }
         operationRepository.save(operation);
         log.info("오퍼레이션 파라미터 저장: {} ({}개)", operation.getOperationId(), params.size());
+    }
+
+    // ========== 잠금 보호 ==========
+
+    private void requireUnlocked(ApiPrvOperation op, String action) {
+        if (Boolean.TRUE.equals(op.getIsLocked())) {
+            throw new IllegalStateException(
+                    "잠금된 오퍼레이션입니다. 시스템 내장 핸들러는 " + action + "할 수 없습니다: " + op.getOperationId());
+        }
     }
 
     // ========== trim 처리 ==========
