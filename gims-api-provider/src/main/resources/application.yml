@@ -7,9 +7,9 @@ spring:
 
   # 기본 DB: PG api_provider (전용 컨테이너 29006)
   datasource:
-    url: jdbc:postgresql://localhost:29006/api_provider
-    username: k1m
-    password: 1111
+    url: ENC(o/qziGzIw8araL6vR2YoZLwS8KBEMlU1Rn8APxxPjRs3esmUCrBUD8+wssZEsS7L245AkNKlHGLn5vxVj0nao60ebb96ehFQkiYjUn7+CCk=)
+    username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
+    password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
     driver-class-name: org.postgresql.Driver
     initialization-mode: always
 
@@ -34,7 +34,7 @@ spring:
 # Proxy 경유 동적 DataSource
 app:
   proxy:
-    url: http://localhost:8093
+    url: ENC(k3/EmYLK5qyNyPbGmVrWhqy9/w/Axnzgi/IVbs3pWpgy/K6/4rcN/10m2bwrFLaEU/VFuU6IB7nmJf7sGLUgfQ==)
     api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
 
 # Jasypt 암호화 (Proxy 응답 복호화용)
@@ -42,6 +42,7 @@ jasypt:
   encryptor:
     password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
     algorithm: PBEWithHMACSHA512AndAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
 logging:
   level:
