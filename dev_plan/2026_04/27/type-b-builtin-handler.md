@@ -373,7 +373,7 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 
 ### 진행 상태 요약 (2026-04-28 EOD)
 
-| 단계 | 상태 | 핸들러 (누적 14종) |
+| 단계 | 상태 | 핸들러 (누적 16종) |
 |---|:---:|---|
 | Phase 0 인프라 | ✅ | — |
 | Phase 1 파일럿 | ✅ | B14 |
@@ -381,12 +381,10 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 | Phase 3 상 | ✅ | B18, B9, B10, B13 |
 | Phase 4 최상 | ✅ | B11, B12-DJ, B12-KB |
 | Phase 5 UI/통합 | 진행 중 | UI/jeju 일부 |
-| Phase 6 DBLINK (B7/B8) | 보류 | — |
+| Phase 6 DBLINK | ✅ | B7, B8 (DBLINKUSR 스키마 흉내) |
 
-**남은 핸들러 3종**:
+**남은 핸들러 1종**:
 - **B4** WellInfoHandler — Oracle 함수 3종 자료 대기 (`oracle_fn_for_b4.txt` 깨진 파일)
-- **B7** WaterLevelObservationHandler — DBLINK
-- **B8** RainfallObservationHandler — DBLINK
 
 **별도 작업**: Type A 12종 응답 alias 점검 (모두 대문자 — v3 호환 점검 필요)
 
@@ -508,8 +506,8 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 - ~~`LegacyOracleConfig`~~ 폐기 (ProviderDataSourceService 재사용)
 - [x] `ApiGatewayController` 분기 + `ApiPrvManageController.testOperation` 분기 + `ApiPrvCallHistory` finally 기록 + 분기 로그 (`[Gateway] CUSTOM/META 분기`)
 - [x] `ApiPrvOperationService` 보호 (`is_locked`)
-- [ ] 핸들러 **17종** (`handler/*.java`) — 진행 (현재 14종 완료: B14/B15/B6/B17/B16-DJ/B16-KB/B5/B18/B9/B10/B13/B11/B12-DJ/B12-KB — 4/28 EOD)
-  - 잔여: B4 (자료 대기), B7/B8 (DBLINK)
+- [ ] 핸들러 **17종** (`handler/*.java`) — 16/17 완료 (B14/B15/B6/B17/B16-DJ/B16-KB/B5/B18/B9/B10/B13/B11/B12-DJ/B12-KB/B7/B8 — 4/28 EOD)
+  - 잔여: **B4** (자료 대기) 만
 - [x] **공통화 헬퍼 없음** (1:1 원칙 — SQL 중복 허용)
 
 ### 8.2 DDL
