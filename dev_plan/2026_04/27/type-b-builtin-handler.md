@@ -373,19 +373,22 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 
 ### 진행 상태 요약 (2026-04-28 EOD)
 
-| 단계 | 상태 | 핸들러 (누적 10종) |
+| 단계 | 상태 | 핸들러 (누적 14종) |
 |---|:---:|---|
 | Phase 0 인프라 | ✅ | — |
 | Phase 1 파일럿 | ✅ | B14 |
 | Phase 2 저~중 (B4 보류) | 거의 완료 | B15, B6, B17, B16-DJ, B16-KB, B5 |
-| Phase 3 상 (B13 잔여) | **3/4 완료** | **B18, B9, B10** |
-| Phase 4 최상 (B11→B12) | 대기 | — |
+| Phase 3 상 | ✅ | B18, B9, B10, B13 |
+| Phase 4 최상 | ✅ | B11, B12-DJ, B12-KB |
 | Phase 5 UI/통합 | 진행 중 | UI/jeju 일부 |
 | Phase 6 DBLINK (B7/B8) | 보류 | — |
 
-**4/29 시작점**: **B13** (동적 PIVOT 패턴 확립 — 신규 DDL 3종 + helper SQL fallback + Java SQL 조립). B13 완료 후 Phase 4 (B11/B12) 는 같은 패턴 활용 가능.
+**남은 핸들러 3종**:
+- **B4** WellInfoHandler — Oracle 함수 3종 자료 대기 (`oracle_fn_for_b4.txt` 깨진 파일)
+- **B7** WaterLevelObservationHandler — DBLINK
+- **B8** RainfallObservationHandler — DBLINK
 
-**B4** (`copySource/oracle_fn/oracle_fn_for_b4.txt` 도착) — B13 과 별개 진행 가능.
+**별도 작업**: Type A 12종 응답 alias 점검 (모두 대문자 — v3 호환 점검 필요)
 
 
 
@@ -450,20 +453,13 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
   - **동적 PIVOT 패턴 확립 시점** — B11/B12 의 사전 검증
   - 예상 작업: 신규 DDL 3종 + helper SQL (searchInspection/searchMaxDtaStdrYear) + 동적 PIVOT 컬럼 풀 추출 + Java SQL 조립 + 샘플
 
-### Phase 4: 최상 난이도 (B11 → B12)
+### Phase 4: 최상 난이도 (B11 → B12) — ✅ 완료 (2026-04-28)
 
-> Phase 3 의 B13 에서 동적 PIVOT 패턴 확립 후 진행 — 같은 구조 활용
-
-- [ ] **B11** `WaterQualityInfoHandler` — `waterQualityInfo` (범용)
-  - source: TM_GD120001 + TM_GD110301 + TM_GD110302 + TC_GD00002 (NGW_0026 — B14 에서 INSERT 한 NGW_0026 5건 재활용 가능)
-  - 14 고정컬럼 + 동적 C0001~C00xx (검사항목 코드 동적)
-  - inspection fallback + 코드풀 추출 + Java SQL 조립
-
-- [ ] **B12-DJ** `WaterQualityInfoDjHandler` — brtcNm='대전광역시'
-- [ ] **B12-KB** `WaterQualityInfoKbHandler` — brtcNm='경상북도'
-  - DJ/KB 별도 핸들러 (1:1 원칙) — SQL 동일 + brtcNm 만 다름
-  - B11 과 거의 동일 SQL + brtcNm 필터 추가
-  - 12 고정컬럼 (B11 의 14컬럼 중 2개 제외)
+- [x] **B11** `WaterQualityInfoHandler` — 14 고정 + 동적 c{code}, address 결합 + ugrwtrPrposCode CASE + usrNM 스칼라 (NGW_0028)
+- [x] **B12-DJ** `WaterQualityInfoDjHandler` — brtcNm='대전광역시', 12 고정, searchDt BETWEEN, registDt YYYY-MM-DD
+- [x] **B12-KB** `WaterQualityInfoKbHandler` — DJ executeDj 재사용 + brtcNm='경상북도'
+- [x] 검증: B11 (1행 유성), B12-DJ (5행 대전), B12-KB (1행 안동)
+- [x] TIMESTAMP → String TO_CHAR 변환 (Jackson 직렬화 이슈 fix)
 
 ### Phase 5: UI 마감 + 통합 검증
 
@@ -512,7 +508,8 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 - ~~`LegacyOracleConfig`~~ 폐기 (ProviderDataSourceService 재사용)
 - [x] `ApiGatewayController` 분기 + `ApiPrvManageController.testOperation` 분기 + `ApiPrvCallHistory` finally 기록 + 분기 로그 (`[Gateway] CUSTOM/META 분기`)
 - [x] `ApiPrvOperationService` 보호 (`is_locked`)
-- [ ] 핸들러 **17종** (`handler/*.java`) — 진행 (현재 10종 완료: B14/B15/B6/B17/B16-DJ/B16-KB/B5/B18/B9/B10 — 4/28 EOD)
+- [ ] 핸들러 **17종** (`handler/*.java`) — 진행 (현재 14종 완료: B14/B15/B6/B17/B16-DJ/B16-KB/B5/B18/B9/B10/B13/B11/B12-DJ/B12-KB — 4/28 EOD)
+  - 잔여: B4 (자료 대기), B7/B8 (DBLINK)
 - [x] **공통화 헬퍼 없음** (1:1 원칙 — SQL 중복 허용)
 
 ### 8.2 DDL
