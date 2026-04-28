@@ -371,6 +371,24 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 
 ## 6. Phase 별 마일스톤
 
+### 진행 상태 요약 (2026-04-28 EOD)
+
+| 단계 | 상태 | 핸들러 (누적 10종) |
+|---|:---:|---|
+| Phase 0 인프라 | ✅ | — |
+| Phase 1 파일럿 | ✅ | B14 |
+| Phase 2 저~중 (B4 보류) | 거의 완료 | B15, B6, B17, B16-DJ, B16-KB, B5 |
+| Phase 3 상 (B13 잔여) | **3/4 완료** | **B18, B9, B10** |
+| Phase 4 최상 (B11→B12) | 대기 | — |
+| Phase 5 UI/통합 | 진행 중 | UI/jeju 일부 |
+| Phase 6 DBLINK (B7/B8) | 보류 | — |
+
+**4/29 시작점**: **B13** (동적 PIVOT 패턴 확립 — 신규 DDL 3종 + helper SQL fallback + Java SQL 조립). B13 완료 후 Phase 4 (B11/B12) 는 같은 패턴 활용 가능.
+
+**B4** (`copySource/oracle_fn/oracle_fn_for_b4.txt` 도착) — B13 과 별개 진행 가능.
+
+
+
 ### Phase 0: 인프라 구축 — ✅ 완료
 
 - [x] `CustomOperationHandler` 인터페이스 + `CustomOperationMetadata` POJO 정의
@@ -393,27 +411,59 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 - [x] **핸들러 템플릿 확정** — 이후 핸들러가 이 뼈대 따라감
 - [x] 문법 검증 (LEFT JOIN edge case + WHERE 필터 + ORDER BY + OFFSET/FETCH + totalCount + Direct SQL 일치)
 
-### Phase 2: 저~중 난이도 (B15 → B6 → B17 → B16 → B4 → B5) — 진행 중
+### Phase 2: 저~중 난이도 (B15 → B6 → B17 → B16 → B4 → B5) — **거의 완료** (B4 만 보류)
 
-- [x] **B15 InspectionDistinctHandler** — B14 와 source 동일, 별도 SQL 박음 (1:1 원칙 검증) — DISTINCT 효과 확인 완료 (B14 7건 vs B15 6건)
+- [x] **B15 InspectionDistinctHandler** — DISTINCT 효과 확인 완료 (B14 7건 vs B15 6건)
 - [x] B6 `GroundwaterQualityHandler` (+ VIEW_GTEST DDL)
-- [x] B17 `UnregitsFclySmrizeHandler` (+ TM_GD023001 DDL) — 합계/시군구별/모순카운트 검증 완료
-- [ ] B16 `ActualUseDetailDjHandler` + `ActualUseDetailKbHandler` (+ TM_GD010930 DDL) — DJ/KB 별도 핸들러, brtcNm 만 다름 (controller 분기 패턴)
-- [ ] B4 `WellInfoHandler` (+ Oracle 함수 3개 재현 DDL — `FN_GD_GET_GUBUN`/`FN_GD_GET_CMMTNDCODE`)
-- [ ] B5 `SupplementaryGroundwaterHandler` (5-way JOIN, TM_GD970001 등 신규 DDL)
+- [x] B17 `UnregitsFclySmrizeHandler` (+ TM_GD023001 DDL) — 합계/시군구별/모순카운트 검증
+- [x] B16 `ActualUseDetailDjHandler` + `ActualUseDetailKbHandler` (+ TM_GD010930 + RGETNTGMS02 ALTER) — DJ 5건/KB 3건
+- [ ] **B4 `WellInfoHandler`** — ⏸ **보류**: 운영 Oracle 함수 정의 (`FN_GD_GET_GUBUN`/`FN_GD_GET_CMMTNDCODE`) 미확보. 사용자가 운영 PL/SQL 빼올 예정 (`copySource/oracle_fn/oracle_fn_for_b4.txt` 받기 대기)
+- [x] B5 `SupplementaryGroundwaterHandler` (5-way LEFT JOIN, 6 테이블 컬럼 매핑 정합화 완료)
 - [x] **공통화 없음** — 1:1 원칙 유지, SQL 중복 허용
 
-### Phase 3: 상 난이도 4종 (B13 → B18 → B9 → B10)
+### Phase 3: 상 난이도 4종 (3/4 완료 — B18/B9/B10 ✅, B13 잔여)
 
-- [ ] B13 `WaterQualityMfdsHandler` (+ TM_GD110350/110351/010910 DDL) — **동적 PIVOT + inspection fallback** (`searchInspection` + `searchMaxDtaStdrYear`)
-- [ ] B18 `WqInputStatusDjHandler` (UNION + 3중 서브)
-- [ ] B9 `LinkageChartDailyHandler` (일 단위) + 사전 helper SQL `linkage_analy_chart_general` 의 fallback 패턴 확인 필요
-- [ ] B10 `ObservationStationTimeHandler` (시 단위, datatype 분기)
+> **공통 사전 작업** — 각 핸들러 시작 전 `awk -F'\t' '$2=="<v3 테이블명>"' standardized_detail.tsv` 로 컬럼 매핑 확보 (B5 처럼)
+
+- [x] **B18** `WqInputStatusDjHandler` — `gnlwtqltinfo_inputsittn` (대전 한정)
+  - source: TM_GD120001 + TM_GD110301 + TM_GD110302 (Type A 적재본 있어 컬럼 익숙)
+  - 구조: UNION ALL (총계 + 시군구별) + 3중 서브 + LEFT JOIN
+  - 필터: `JOSACODE=215`, `STDG_CD like '30%'`, `INVSTG_YEAR=현재연도`
+  - 응답 7컬럼: SIDO/SIGUNGU/YEAR/ODR/TOTAL/COMPLT/NCOMPLT
+  - 예상 작업: 컬럼 매핑 (TM_GD30301/30302 → 110301/110302) + SQL 변환 + 샘플 (대전 시군구 + 검사 데이터)
+
+- [x] **B9** `LinkageChartDailyHandler` — `linkage_analy_chart_general` (일 단위 PIVOT)
+  - source: PM_GD970201(관측자료) + TM_GD970101(ODM결과) + TM_GD120001
+  - 구조: CTE + UNION + **PIVOT** (`OBSR_IEM_ID IN (5, 163, 52, 333)` 정적) + 스칼라서브쿼리 + GENNUM 단건
+  - 응답 6컬럼: GENNUM/YMD(YYYYMMDD)/ELEV/WTEMP/LEV/EC
+  - 예상 작업: PM_GD970201 컬럼 매핑 (OBSR_DTA_VALUE/OBSR_IEM_ID 등 → 표준화) + SQL 변환 + PIVOT 데이터 샘플
+
+- [x] **B10** `ObservationStationTimeHandler` — `observationStationTimeService` (시 단위)
+  - source: B9 와 동일 (PM_GD970201/970101/120001) + datatype 파라미터 분기
+  - 구조: PIVOT + 스칼라 + `TRUNC(2)`/`TRUNC(1)` + datatype('raw'/'avg' 등)
+  - 응답 6컬럼: GENNUM/YMD(YYYYMMDDHH24)/ELEV/WTEMP/LEV/EC
+  - B9 와 코드 90% 유사 — 1:1 원칙으로 별도 핸들러
+
+- [ ] **B13** `WaterQualityMfdsHandler` — `waterQualityMfdsInfo` (식약처 수질)
+  - source: TM_GD110350/110351/010910 (모두 신규 DDL — internal 에 없음)
+  - 구조: **동적 PIVOT** (`searchInspection` + `searchMaxDtaStdrYear` fallback) + 2JOIN + 스칼라
+  - **동적 PIVOT 패턴 확립 시점** — B11/B12 의 사전 검증
+  - 예상 작업: 신규 DDL 3종 + helper SQL (searchInspection/searchMaxDtaStdrYear) + 동적 PIVOT 컬럼 풀 추출 + Java SQL 조립 + 샘플
 
 ### Phase 4: 최상 난이도 (B11 → B12)
 
-- [ ] B11 `WaterQualityInfoHandler` (동적 PIVOT 범용) — **inspection fallback** + 코드풀 추출 + 동적 SQL 조립
-- [ ] B12 `WaterQualityInfoDjHandler` + `WaterQualityInfoKbHandler` — **DJ/KB 별도 핸들러**, brtcNm 분기 (controller 패턴)
+> Phase 3 의 B13 에서 동적 PIVOT 패턴 확립 후 진행 — 같은 구조 활용
+
+- [ ] **B11** `WaterQualityInfoHandler` — `waterQualityInfo` (범용)
+  - source: TM_GD120001 + TM_GD110301 + TM_GD110302 + TC_GD00002 (NGW_0026 — B14 에서 INSERT 한 NGW_0026 5건 재활용 가능)
+  - 14 고정컬럼 + 동적 C0001~C00xx (검사항목 코드 동적)
+  - inspection fallback + 코드풀 추출 + Java SQL 조립
+
+- [ ] **B12-DJ** `WaterQualityInfoDjHandler` — brtcNm='대전광역시'
+- [ ] **B12-KB** `WaterQualityInfoKbHandler` — brtcNm='경상북도'
+  - DJ/KB 별도 핸들러 (1:1 원칙) — SQL 동일 + brtcNm 만 다름
+  - B11 과 거의 동일 SQL + brtcNm 필터 추가
+  - 12 고정컬럼 (B11 의 14컬럼 중 2개 제외)
 
 ### Phase 5: UI 마감 + 통합 검증
 
@@ -462,7 +512,7 @@ WellInfoHandler (B4) 가 Oracle 함수 호출:
 - ~~`LegacyOracleConfig`~~ 폐기 (ProviderDataSourceService 재사용)
 - [x] `ApiGatewayController` 분기 + `ApiPrvManageController.testOperation` 분기 + `ApiPrvCallHistory` finally 기록 + 분기 로그 (`[Gateway] CUSTOM/META 분기`)
 - [x] `ApiPrvOperationService` 보호 (`is_locked`)
-- [ ] 핸들러 **17종** (`handler/*.java`) — 진행 (현재 4종 완료: B14/B15/B6/B17)
+- [ ] 핸들러 **17종** (`handler/*.java`) — 진행 (현재 10종 완료: B14/B15/B6/B17/B16-DJ/B16-KB/B5/B18/B9/B10 — 4/28 EOD)
 - [x] **공통화 헬퍼 없음** (1:1 원칙 — SQL 중복 허용)
 
 ### 8.2 DDL
