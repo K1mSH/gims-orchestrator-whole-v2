@@ -97,12 +97,12 @@ public class LinkageChartDailyHandler implements CustomOperationHandler {
                 .tableName("PM_GD970201")
                 .pageSize(100)
                 .maxPageSize(1000)
-                .column(CustomColumnSpec.builder().columnName("GENNUM").aliasName("GENNUM").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("YMD").aliasName("YMD").displayOrder(2).build())
-                .column(CustomColumnSpec.builder().columnName("ELEV").aliasName("ELEV").displayOrder(3).build())
-                .column(CustomColumnSpec.builder().columnName("WTEMP").aliasName("WTEMP").displayOrder(4).build())
-                .column(CustomColumnSpec.builder().columnName("LEV").aliasName("LEV").displayOrder(5).build())
-                .column(CustomColumnSpec.builder().columnName("EC").aliasName("EC").displayOrder(6).build())
+                .column(CustomColumnSpec.builder().columnName("gennum").aliasName("gennum").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("ymd").aliasName("ymd").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("elev").aliasName("elev").displayOrder(3).build())
+                .column(CustomColumnSpec.builder().columnName("wtemp").aliasName("wtemp").displayOrder(4).build())
+                .column(CustomColumnSpec.builder().columnName("lev").aliasName("lev").displayOrder(5).build())
+                .column(CustomColumnSpec.builder().columnName("ec").aliasName("ec").displayOrder(6).build())
                 .param(CustomParamSpec.builder()
                         .paramName("gennum").columnName("TAG_CN").operator("EQ")
                         .required(true).dataType("STRING").build())
@@ -152,12 +152,12 @@ public class LinkageChartDailyHandler implements CustomOperationHandler {
                 },
                 (rs, rowNum) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("GENNUM", rs.getString("GENNUM"));
-                    row.put("YMD",    rs.getString("YMD"));
-                    row.put("ELEV",   rs.getString("ELEV"));
-                    row.put("WTEMP",  rs.getString("WTEMP"));
-                    row.put("LEV",    rs.getObject("LEV"));
-                    row.put("EC",     rs.getString("EC"));
+                    row.put("gennum", rs.getString("GENNUM"));
+                    row.put("ymd",    rs.getString("YMD"));
+                    row.put("elev",   rs.getString("ELEV"));
+                    row.put("wtemp",  rs.getString("WTEMP"));
+                    row.put("lev",    rs.getObject("LEV"));
+                    row.put("ec",     rs.getString("EC"));
                     return row;
                 });
 

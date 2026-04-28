@@ -85,16 +85,16 @@ public class UnregitsFclySmrizeHandler implements CustomOperationHandler {
                 .tableName("TM_GD023001")
                 .pageSize(10)
                 .maxPageSize(50)
-                .column(CustomColumnSpec.builder().columnName("SIDO").aliasName("SIDO").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("SIGUNGU").aliasName("SIGUNGU").displayOrder(2).build())
-                .column(CustomColumnSpec.builder().columnName("TOTAL").aliasName("TOTAL").displayOrder(3).build())
-                .column(CustomColumnSpec.builder().columnName("USED").aliasName("USED").displayOrder(4).build())
-                .column(CustomColumnSpec.builder().columnName("UNUSED").aliasName("UNUSED").displayOrder(5).build())
-                .column(CustomColumnSpec.builder().columnName("UNDEFINED").aliasName("UNDEFINED").displayOrder(6).build())
-                .column(CustomColumnSpec.builder().columnName("PERMISSION").aliasName("PERMISSION").displayOrder(7).build())
-                .column(CustomColumnSpec.builder().columnName("REGISTER").aliasName("REGISTER").displayOrder(8).build())
-                .column(CustomColumnSpec.builder().columnName("RESTORE").aliasName("RESTORE").displayOrder(9).build())
-                .column(CustomColumnSpec.builder().columnName("NONE").aliasName("NONE").displayOrder(10).build())
+                .column(CustomColumnSpec.builder().columnName("sido").aliasName("sido").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("sigungu").aliasName("sigungu").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("total").aliasName("total").displayOrder(3).build())
+                .column(CustomColumnSpec.builder().columnName("used").aliasName("used").displayOrder(4).build())
+                .column(CustomColumnSpec.builder().columnName("unused").aliasName("unused").displayOrder(5).build())
+                .column(CustomColumnSpec.builder().columnName("undefined").aliasName("undefined").displayOrder(6).build())
+                .column(CustomColumnSpec.builder().columnName("permission").aliasName("permission").displayOrder(7).build())
+                .column(CustomColumnSpec.builder().columnName("register").aliasName("register").displayOrder(8).build())
+                .column(CustomColumnSpec.builder().columnName("restore").aliasName("restore").displayOrder(9).build())
+                .column(CustomColumnSpec.builder().columnName("none").aliasName("none").displayOrder(10).build())
                 .build();
     }
 
@@ -105,16 +105,16 @@ public class UnregitsFclySmrizeHandler implements CustomOperationHandler {
 
         List<Map<String, Object>> rows = jdbc.query(SQL, (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("SIDO",       rs.getString("SIDO"));
-            row.put("SIGUNGU",    rs.getString("SIGUNGU"));
-            row.put("TOTAL",      rs.getLong("TOTAL"));
-            row.put("USED",       rs.getLong("USED"));
-            row.put("UNUSED",     rs.getLong("UNUSED"));
-            row.put("UNDEFINED",  rs.getLong("UNDEFINED"));
-            row.put("PERMISSION", rs.getLong("PERMISSION"));
-            row.put("REGISTER",   rs.getLong("REGISTER"));
-            row.put("RESTORE",    rs.getLong("RESTORE"));
-            row.put("NONE",       rs.getLong("NONE"));
+            row.put("sido",       rs.getString("SIDO"));
+            row.put("sigungu",    rs.getString("SIGUNGU"));
+            row.put("total",      rs.getLong("TOTAL"));
+            row.put("used",       rs.getLong("USED"));
+            row.put("unused",     rs.getLong("UNUSED"));
+            row.put("undefined",  rs.getLong("UNDEFINED"));
+            row.put("permission", rs.getLong("PERMISSION"));
+            row.put("register",   rs.getLong("REGISTER"));
+            row.put("restore",    rs.getLong("RESTORE"));
+            row.put("none",       rs.getLong("NONE"));
             return row;
         });
 

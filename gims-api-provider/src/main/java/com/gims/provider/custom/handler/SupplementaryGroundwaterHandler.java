@@ -114,23 +114,23 @@ public class SupplementaryGroundwaterHandler implements CustomOperationHandler {
                 .tableName("TM_GD120001")
                 .pageSize(1)
                 .maxPageSize(1)
-                .column(CustomColumnSpec.builder().columnName("GENNUM").aliasName("GENNUM").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("JIGUNAME").aliasName("JIGUNAME").displayOrder(2).build())
-                .column(CustomColumnSpec.builder().columnName("OBSV_CODE").aliasName("OBSV_CODE").displayOrder(3).build())
-                .column(CustomColumnSpec.builder().columnName("INPERM_NO").aliasName("INPERM_NO").displayOrder(4).build())
-                .column(CustomColumnSpec.builder().columnName("ADDR").aliasName("ADDR").displayOrder(5).build())
-                .column(CustomColumnSpec.builder().columnName("PYOGO").aliasName("PYOGO").displayOrder(6).build())
-                .column(CustomColumnSpec.builder().columnName("SOUR_GOV").aliasName("SOUR_GOV").displayOrder(7).build())
-                .column(CustomColumnSpec.builder().columnName("INSDATE").aliasName("INSDATE").displayOrder(8).build())
-                .column(CustomColumnSpec.builder().columnName("OBSV_TYPE").aliasName("OBSV_TYPE").displayOrder(9).build())
-                .column(CustomColumnSpec.builder().columnName("WELL").aliasName("WELL").displayOrder(10).build())
-                .column(CustomColumnSpec.builder().columnName("CASING_HEIGHT").aliasName("CASING_HEIGHT").displayOrder(11).build())
-                .column(CustomColumnSpec.builder().columnName("GULDEP").aliasName("GULDEP").displayOrder(12).build())
-                .column(CustomColumnSpec.builder().columnName("GULDIA").aliasName("GULDIA").displayOrder(13).build())
-                .column(CustomColumnSpec.builder().columnName("GIGWANMETHOD").aliasName("GIGWANMETHOD").displayOrder(14).build())
-                .column(CustomColumnSpec.builder().columnName("GIGWANITEM").aliasName("GIGWANITEM").displayOrder(15).build())
-                .column(CustomColumnSpec.builder().columnName("GROUNDUSE").aliasName("GROUNDUSE").displayOrder(16).build())
-                .column(CustomColumnSpec.builder().columnName("UWATER_POTA_YN").aliasName("UWATER_POTA_YN").displayOrder(17).build())
+                .column(CustomColumnSpec.builder().columnName("gennum").aliasName("gennum").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("jiguname").aliasName("jiguname").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("obsv_code").aliasName("obsv_code").displayOrder(3).build())
+                .column(CustomColumnSpec.builder().columnName("inperm_no").aliasName("inperm_no").displayOrder(4).build())
+                .column(CustomColumnSpec.builder().columnName("addr").aliasName("addr").displayOrder(5).build())
+                .column(CustomColumnSpec.builder().columnName("pyogo").aliasName("pyogo").displayOrder(6).build())
+                .column(CustomColumnSpec.builder().columnName("sour_gov").aliasName("sour_gov").displayOrder(7).build())
+                .column(CustomColumnSpec.builder().columnName("insdate").aliasName("insdate").displayOrder(8).build())
+                .column(CustomColumnSpec.builder().columnName("obsv_type").aliasName("obsv_type").displayOrder(9).build())
+                .column(CustomColumnSpec.builder().columnName("well").aliasName("well").displayOrder(10).build())
+                .column(CustomColumnSpec.builder().columnName("casing_height").aliasName("casing_height").displayOrder(11).build())
+                .column(CustomColumnSpec.builder().columnName("guldep").aliasName("guldep").displayOrder(12).build())
+                .column(CustomColumnSpec.builder().columnName("guldia").aliasName("guldia").displayOrder(13).build())
+                .column(CustomColumnSpec.builder().columnName("gigwanmethod").aliasName("gigwanmethod").displayOrder(14).build())
+                .column(CustomColumnSpec.builder().columnName("gigwanitem").aliasName("gigwanitem").displayOrder(15).build())
+                .column(CustomColumnSpec.builder().columnName("grounduse").aliasName("grounduse").displayOrder(16).build())
+                .column(CustomColumnSpec.builder().columnName("uwater_pota_yn").aliasName("uwater_pota_yn").displayOrder(17).build())
                 .param(CustomParamSpec.builder()
                         .paramName("gennum").columnName("GWEL_NO").operator("EQ")
                         .required(true).dataType("NUMBER").build())
@@ -157,23 +157,23 @@ public class SupplementaryGroundwaterHandler implements CustomOperationHandler {
                 ps -> ps.setLong(1, gennum),
                 (rs, rowNum) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("GENNUM",         rs.getObject("GENNUM"));
-                    row.put("JIGUNAME",       rs.getString("JIGUNAME"));
-                    row.put("OBSV_CODE",      rs.getString("OBSV_CODE"));
-                    row.put("INPERM_NO",      rs.getString("INPERM_NO"));
-                    row.put("ADDR",           rs.getString("ADDR"));
-                    row.put("PYOGO",          rs.getObject("PYOGO"));
-                    row.put("SOUR_GOV",       rs.getString("SOUR_GOV"));
-                    row.put("INSDATE",        rs.getString("INSDATE"));
-                    row.put("OBSV_TYPE",      rs.getString("OBSV_TYPE"));
-                    row.put("WELL",           rs.getString("WELL"));
-                    row.put("CASING_HEIGHT",  rs.getObject("CASING_HEIGHT"));
-                    row.put("GULDEP",         rs.getObject("GULDEP"));
-                    row.put("GULDIA",         rs.getObject("GULDIA"));
-                    row.put("GIGWANMETHOD",   rs.getString("GIGWANMETHOD"));
-                    row.put("GIGWANITEM",     rs.getString("GIGWANITEM"));
-                    row.put("GROUNDUSE",      rs.getString("GROUNDUSE"));
-                    row.put("UWATER_POTA_YN", rs.getString("UWATER_POTA_YN"));
+                    row.put("gennum",         rs.getObject("GENNUM"));
+                    row.put("jiguname",       rs.getString("JIGUNAME"));
+                    row.put("obsv_code",      rs.getString("OBSV_CODE"));
+                    row.put("inperm_no",      rs.getString("INPERM_NO"));
+                    row.put("addr",           rs.getString("ADDR"));
+                    row.put("pyogo",          rs.getObject("PYOGO"));
+                    row.put("sour_gov",       rs.getString("SOUR_GOV"));
+                    row.put("insdate",        rs.getString("INSDATE"));
+                    row.put("obsv_type",      rs.getString("OBSV_TYPE"));
+                    row.put("well",           rs.getString("WELL"));
+                    row.put("casing_height",  rs.getObject("CASING_HEIGHT"));
+                    row.put("guldep",         rs.getObject("GULDEP"));
+                    row.put("guldia",         rs.getObject("GULDIA"));
+                    row.put("gigwanmethod",   rs.getString("GIGWANMETHOD"));
+                    row.put("gigwanitem",     rs.getString("GIGWANITEM"));
+                    row.put("grounduse",      rs.getString("GROUNDUSE"));
+                    row.put("uwater_pota_yn", rs.getString("UWATER_POTA_YN"));
                     return row;
                 });
 

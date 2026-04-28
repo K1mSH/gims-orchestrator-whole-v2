@@ -72,10 +72,10 @@ public class ActualUseDetailKbHandler implements CustomOperationHandler {
                 .tableName("RGETNTGMS02")
                 .pageSize(50)
                 .maxPageSize(200)
-                .column(CustomColumnSpec.builder().columnName("SIGUNGU").aliasName("SIGUNGU").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("YEAR").aliasName("YEAR").displayOrder(2).build())
-                .column(CustomColumnSpec.builder().columnName("DEPART").aliasName("DEPART").displayOrder(3).build())
-                .column(CustomColumnSpec.builder().columnName("YMD").aliasName("YMD").displayOrder(4).build())
+                .column(CustomColumnSpec.builder().columnName("sigungu").aliasName("sigungu").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("year").aliasName("year").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("depart").aliasName("depart").displayOrder(3).build())
+                .column(CustomColumnSpec.builder().columnName("ymd").aliasName("ymd").displayOrder(4).build())
                 .column(CustomColumnSpec.builder().columnName("YN").aliasName("YN").displayOrder(5).build())
                 .build();
     }
@@ -89,10 +89,10 @@ public class ActualUseDetailKbHandler implements CustomOperationHandler {
                 ps -> ps.setString(1, BRTC_NM),
                 (rs, rowNum) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("SIGUNGU", rs.getString("SIGUNGU"));
-                    row.put("YEAR",    rs.getString("YEAR"));
-                    row.put("DEPART",  rs.getString("DEPART"));
-                    row.put("YMD",     rs.getString("YMD"));
+                    row.put("sigungu", rs.getString("SIGUNGU"));
+                    row.put("year",    rs.getString("YEAR"));
+                    row.put("depart",  rs.getString("DEPART"));
+                    row.put("ymd",     rs.getString("YMD"));
                     row.put("YN",      rs.getString("YN"));
                     return row;
                 });

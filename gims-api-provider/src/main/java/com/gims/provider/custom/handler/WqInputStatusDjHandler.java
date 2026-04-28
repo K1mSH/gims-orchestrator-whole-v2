@@ -99,13 +99,13 @@ public class WqInputStatusDjHandler implements CustomOperationHandler {
                 .tableName("TM_GD120001")
                 .pageSize(10)
                 .maxPageSize(50)
-                .column(CustomColumnSpec.builder().columnName("SIDO").aliasName("SIDO").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("SIGUNGU").aliasName("SIGUNGU").displayOrder(2).build())
-                .column(CustomColumnSpec.builder().columnName("YEAR").aliasName("YEAR").displayOrder(3).build())
-                .column(CustomColumnSpec.builder().columnName("ODR").aliasName("ODR").displayOrder(4).build())
-                .column(CustomColumnSpec.builder().columnName("TOTAL").aliasName("TOTAL").displayOrder(5).build())
-                .column(CustomColumnSpec.builder().columnName("COMPLT").aliasName("COMPLT").displayOrder(6).build())
-                .column(CustomColumnSpec.builder().columnName("NCOMPLT").aliasName("NCOMPLT").displayOrder(7).build())
+                .column(CustomColumnSpec.builder().columnName("sido").aliasName("sido").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("sigungu").aliasName("sigungu").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("year").aliasName("year").displayOrder(3).build())
+                .column(CustomColumnSpec.builder().columnName("odr").aliasName("odr").displayOrder(4).build())
+                .column(CustomColumnSpec.builder().columnName("total").aliasName("total").displayOrder(5).build())
+                .column(CustomColumnSpec.builder().columnName("complt").aliasName("complt").displayOrder(6).build())
+                .column(CustomColumnSpec.builder().columnName("ncomplt").aliasName("ncomplt").displayOrder(7).build())
                 .build();
     }
 
@@ -116,13 +116,13 @@ public class WqInputStatusDjHandler implements CustomOperationHandler {
 
         List<Map<String, Object>> rows = jdbc.query(SQL, (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("SIDO",    rs.getString("SIDO"));
-            row.put("SIGUNGU", rs.getString("SIGUNGU"));
-            row.put("YEAR",    rs.getString("YEAR"));
-            row.put("ODR",     rs.getLong("ODR"));
-            row.put("TOTAL",   rs.getLong("TOTAL"));
-            row.put("COMPLT",  rs.getLong("COMPLT"));
-            row.put("NCOMPLT", rs.getLong("NCOMPLT"));
+            row.put("sido",    rs.getString("SIDO"));
+            row.put("sigungu", rs.getString("SIGUNGU"));
+            row.put("year",    rs.getString("YEAR"));
+            row.put("odr",     rs.getLong("ODR"));
+            row.put("total",   rs.getLong("TOTAL"));
+            row.put("complt",  rs.getLong("COMPLT"));
+            row.put("ncomplt", rs.getLong("NCOMPLT"));
             return row;
         });
 

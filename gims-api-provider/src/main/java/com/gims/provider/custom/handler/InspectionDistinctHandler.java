@@ -72,8 +72,8 @@ public class InspectionDistinctHandler implements CustomOperationHandler {
                 .tableName("TM_GD110310")
                 .pageSize(100)
                 .maxPageSize(1000)
-                .column(CustomColumnSpec.builder().columnName("QLTWTR_INSPCT_IEM_CODE").aliasName("QLTWTR_INSPCT_IEM_CODE").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("CD_CN").aliasName("REMARK_CTNT").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("qltwtrInspctIemCode").aliasName("qltwtrInspctIemCode").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("remarkCtnt").aliasName("remarkCtnt").displayOrder(2).build())
                 .build();
     }
 
@@ -90,8 +90,8 @@ public class InspectionDistinctHandler implements CustomOperationHandler {
             ps.setInt(2, pageSize);
         }, (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("QLTWTR_INSPCT_IEM_CODE", rs.getString("QLTWTR_INSPCT_IEM_CODE"));
-            row.put("REMARK_CTNT", rs.getString("REMARK_CTNT"));
+            row.put("qltwtrInspctIemCode", rs.getString("QLTWTR_INSPCT_IEM_CODE"));
+            row.put("remarkCtnt", rs.getString("REMARK_CTNT"));
             return row;
         });
 

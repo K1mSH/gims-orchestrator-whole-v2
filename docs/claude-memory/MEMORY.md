@@ -1,5 +1,5 @@
 # GIMS Orchestrator v2 - 작업 메모리
-<!-- 최종 동기화: 2026-03-24 -->
+<!-- 최종 동기화: 2026-04-28 -->
 
 - [feedback_run_without_jar.md](feedback_run_without_jar.md) - JAR 대신 gradlew bootRun으로 실행
 - [feedback_module_specific_stays.md](feedback_module_specific_stays.md) - 모듈 전용 로직은 common으로 올리지 않기
@@ -28,6 +28,7 @@
 - [project_verify_system.md](project_verify_system.md) - verify/ 검증 세션 체계. _invariants+deployment+checklists+issues/tasks 로 회귀 감시 + 배포 게이트 누적
 - [feedback_config_replacement_sync.md](feedback_config_replacement_sync.md) - 새 서비스/DB/외부 의존 추가 시 verify/deployment/config-replacement.md 즉시 갱신
 - [feedback_verify_session_trigger.md](feedback_verify_session_trigger.md) - "검증 전담 세션 준비해줘" 트리거 → verify/ 체계 읽고 verifier 모드로 진입
+- [feedback_provide_response_v3_compat.md](feedback_provide_response_v3_compat.md) - provide 응답 키 = v3 레거시 alias 유지 (외부 호환). 내부 DB 만 표준화
 
 ## 작업 규칙
 

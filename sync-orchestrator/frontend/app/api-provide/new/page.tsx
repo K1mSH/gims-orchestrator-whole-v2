@@ -129,8 +129,9 @@ export default function NewOperationPage() {
     }
   }, []);
 
-  // 3. 테이블 변경 → 컬럼 로드
+  // 3. 테이블 변경 → 컬럼 로드 (CUSTOM 모드에선 metadata 의 columns 만 사용 — 덮어쓰기 금지)
   useEffect(() => {
+    if (isCustom) return;
     if (selectedTable && selectedDatasourceId) {
       datasourceApi.searchColumns(selectedDatasourceId, selectedTable)
         .then(cols => {
@@ -142,7 +143,7 @@ export default function NewOperationPage() {
       setDbColumns([]);
       setSelectedColumns(new Map());
     }
-  }, [selectedTable, selectedDatasourceId]);
+  }, [selectedTable, selectedDatasourceId, isCustom]);
 
   const defaultColConfig = (): ColConfig => ({ alias: '', transformType: 'NONE', transformParam: '' });
 

@@ -64,12 +64,12 @@ public class GroundwaterQualityHandler implements CustomOperationHandler {
                 .tableName("VIEW_GTEST")
                 .pageSize(1)
                 .maxPageSize(1)
-                .column(CustomColumnSpec.builder().columnName("ADDR").aliasName("ADDR").displayOrder(1).build())
-                .column(CustomColumnSpec.builder().columnName("JIGUNAME").aliasName("JIGUNAME").displayOrder(2).build())
-                .column(CustomColumnSpec.builder().columnName("WELLNUM").aliasName("WELLNUM").displayOrder(3).build())
-                .column(CustomColumnSpec.builder().columnName("GROUNDUSE").aliasName("GROUNDUSE").displayOrder(4).build())
-                .column(CustomColumnSpec.builder().columnName("DRINKOX").aliasName("DRINKOX").displayOrder(5).build())
-                .column(CustomColumnSpec.builder().columnName("GUBUN").aliasName("GUBUN").displayOrder(6).build())
+                .column(CustomColumnSpec.builder().columnName("addr").aliasName("addr").displayOrder(1).build())
+                .column(CustomColumnSpec.builder().columnName("jiguname").aliasName("jiguname").displayOrder(2).build())
+                .column(CustomColumnSpec.builder().columnName("wellnum").aliasName("wellnum").displayOrder(3).build())
+                .column(CustomColumnSpec.builder().columnName("grounduse").aliasName("grounduse").displayOrder(4).build())
+                .column(CustomColumnSpec.builder().columnName("drinkox").aliasName("drinkox").displayOrder(5).build())
+                .column(CustomColumnSpec.builder().columnName("gubun").aliasName("gubun").displayOrder(6).build())
                 .param(CustomParamSpec.builder()
                         .paramName("gennum").columnName("GENNUM").operator("EQ")
                         .required(true).dataType("NUMBER").build())
@@ -94,12 +94,12 @@ public class GroundwaterQualityHandler implements CustomOperationHandler {
 
         List<Map<String, Object>> rows = jdbc.query(SQL, ps -> ps.setLong(1, gennum), (rs, rowNum) -> {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("ADDR", rs.getString("ADDR"));
-            row.put("JIGUNAME", rs.getString("JIGUNAME"));
-            row.put("WELLNUM", rs.getString("WELLNUM"));
-            row.put("GROUNDUSE", rs.getString("GROUNDUSE"));
-            row.put("DRINKOX", rs.getString("DRINKOX"));
-            row.put("GUBUN", rs.getString("GUBUN"));
+            row.put("addr", rs.getString("ADDR"));
+            row.put("jiguname", rs.getString("JIGUNAME"));
+            row.put("wellnum", rs.getString("WELLNUM"));
+            row.put("grounduse", rs.getString("GROUNDUSE"));
+            row.put("drinkox", rs.getString("DRINKOX"));
+            row.put("gubun", rs.getString("GUBUN"));
             return row;
         });
 
