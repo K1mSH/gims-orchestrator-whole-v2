@@ -68,7 +68,7 @@ export default function OperationDetailPage() {
   const isLocked = operation.isLocked;
 
   return (
-    <div>
+    <div style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>

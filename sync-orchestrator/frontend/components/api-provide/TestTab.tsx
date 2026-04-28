@@ -76,7 +76,7 @@ export default function TestTab({ operation }: Props) {
   };
 
   return (
-    <div>
+    <div style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
       {/* 파라미터 입력 */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
@@ -158,7 +158,7 @@ export default function TestTab({ operation }: Props) {
           )}
 
           {/* 데이터 테이블 */}
-          <div className="card">
+          <div className="card" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
             <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                 결과 ({result.data.length}건)
@@ -179,8 +179,8 @@ export default function TestTab({ operation }: Props) {
             {result.data.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>데이터 없음</div>
             ) : (
-              <div style={{ overflow: 'auto', maxHeight: '500px' }}>
-                <table>
+              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', width: '100%' }}>
+                <table style={{ minWidth: 'max-content' }}>
                   <thead>
                     <tr>
                       {Object.keys(result.data[0]).map(key => (
