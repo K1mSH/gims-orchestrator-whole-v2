@@ -1,0 +1,25 @@
+# ── Internal RCV — 약수터 데이터 수신 ──
+# DMZ IF_SND(PG) → Internal IF_RSV(Oracle), Proxy(8093) 경유
+agent-code: internal-yaksoter-rcv
+type: RCV
+
+steps:
+  - id: yaksoter-jewon-rcv
+    name: 약수터 제원 수신
+    factory-key: source-to-if
+    source-table: if_snd_tm_gd010310
+    target-table: if_rsv_tm_gd010310
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true
+
+  - id: yaksoter-wq-rcv
+    name: 약수터 수질 수신
+    factory-key: source-to-if
+    source-table: if_snd_td_gd010310
+    target-table: if_rsv_td_gd010310
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true
+    skip-source-status-update: true

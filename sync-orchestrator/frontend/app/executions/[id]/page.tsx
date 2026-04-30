@@ -209,58 +209,12 @@ export default function ExecutionDetailPage() {
       let result;
 
       if (tableType === 'SOURCE') {
-        // SOURCE 행 클릭 → target의 source_refs 기반으로 추적
-        // 1. 대응 target 테이블 찾기 (SyncLog의 sourceTables↔targetTables 매핑)
+        // SOURCE 행 클릭 → backend trace API 로 정확한 매칭 target 1건 조회
+        // (이전: target 1000건 fetch + frontend Object.values.some 매칭 — 컬럼 무관 false positive)
         const sourceTableName = tableData.tableName;
-        const matchingStat = tableStats.find(s =>
-          (s.sourceTables ?? []).some(t => t === sourceTableName)
-        );
-        const ifTableName = matchingStat?.targetTables?.[
-          (matchingStat.sourceTables ?? []).indexOf(sourceTableName)
-        ] ?? matchingStat?.targetTables?.[0];
-
-        if (ifTableName) {
-          // 2. target 테이블에서 이 실행의 데이터 조회 → source_refs에서 행 매칭
-          const ifData = await executionApi.getTargetData(executionId, {
-            tableName: ifTableName, page: 0, size: 1000
-          });
-          // 3. 클릭한 source 행의 컬럼 값이 source_refs PK 부분에 모두 포함되는 행 찾기
-          // source_refs 형식: ["D:dsId:tableIdx:pk1|pk2"]
-          const matchedRow = ifData.data?.find((ifRow: Record<string, unknown>) => {
-            const refs = String(ifRow.source_refs ?? ifRow.SOURCE_REFS ?? '');
-            // source_refs에서 PK 부분 추출 (마지막 ":" 이후)
-            const pkMatch = refs.match(/:([^:"\]]+)"\]/);
-            if (!pkMatch) return false;
-            const pkParts = pkMatch[1].split('|');
-            // source 행의 비시스템 컬럼 값들과 매칭
-            return pkParts.every(part =>
-              Object.values(row).some(v => String(v) === part)
-            );
-          });
-
-          if (matchedRow) {
-            // target 행을 직접 결과로 구성 (API 호출 불필요)
-            const sourceRefs = String(matchedRow.source_refs ?? matchedRow.SOURCE_REFS ?? '');
-            result = {
-              executionId,
-              sourceRefs,
-              traceStatus: 'SYNCED' as const,
-              targetTableName: ifTableName,
-              targetRecords: [matchedRow],
-              targetCount: 1,
-            };
-          } else {
-            // fallback: 기존 pkValue 방식
-            const pkCol = tableData.columns[0];
-            const pkValue = String(row[pkCol] ?? '');
-            result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
-          }
-        } else {
-          // target 매핑 없음: 기존 방식
-          const pkCol = tableData.columns[0];
-          const pkValue = String(row[pkCol] ?? '');
-          result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
-        }
+        const pkCol = tableData.columns[0];
+        const pkValue = String(row[pkCol] ?? '');
+        result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
       } else {
         // TARGET 행 클릭 → Source 데이터 조회 (역추적)
         const sourceRefs = row.sourceRefs as string || row.source_refs as string || row.SOURCE_REFS as string;

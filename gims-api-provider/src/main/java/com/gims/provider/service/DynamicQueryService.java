@@ -27,6 +27,13 @@ public class DynamicQueryService {
     // 테이블명/컬럼명 화이트리스트: 영문, 숫자, 밑줄, 점(스키마.테이블)만 허용
     private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("^[A-Za-z0-9_.]+$");
 
+    // v3 레거시 호환 — 응답 첫 키로 RNUM(결과 row 위치 1부터) 부착이 필요한 op
+    // 근거: v3 sql_megokrapi.xml 외부 SELECT 의 ROWNUM AS RNUM 흉내
+    private static final Set<String> ROWNUM_PREPEND_OPS = Set.of(
+            "megokrApi/ngw04_01",   // A7
+            "megokrApi/ngw03_01"    // B2
+    );
+
     /**
      * 동적 쿼리 실행
      */
@@ -43,6 +50,11 @@ public class DynamicQueryService {
         // 3. 데이터 쿼리 실행
         List<Map<String, Object>> data = jdbc.queryForList(
                 sqlResult.dataSql, sqlResult.dataParams.toArray());
+
+        // 3.1 v3 호환 — RNUM 첫 키로 부착 (해당 op 만)
+        if (ROWNUM_PREPEND_OPS.contains(operation.getOperationId())) {
+            data = prependRownum(data);
+        }
 
         // 4. COUNT 쿼리 실행
         Long totalCount = jdbc.queryForObject(
@@ -305,6 +317,21 @@ public class DynamicQueryService {
         if (identifier == null || !IDENTIFIER_PATTERN.matcher(identifier).matches()) {
             throw new IllegalArgumentException("유효하지 않은 " + label + ": " + identifier);
         }
+    }
+
+    /**
+     * v3 레거시 호환 — 응답 row 에 RNUM 첫 키로 부착 (1부터 결과셋 위치 순번)
+     * v3 SQL의 SELECT ROWNUM AS RNUM, TB1.* 흉내. 컬럼 값 의존 없이 List 인덱스만 사용.
+     */
+    private List<Map<String, Object>> prependRownum(List<Map<String, Object>> rows) {
+        List<Map<String, Object>> result = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> ordered = new LinkedHashMap<>();
+            ordered.put("RNUM", i + 1);
+            ordered.putAll(rows.get(i));
+            result.add(ordered);
+        }
+        return result;
     }
 
     // ========== 내부 DTO ==========

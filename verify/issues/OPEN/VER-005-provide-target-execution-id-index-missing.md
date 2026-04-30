@@ -22,13 +22,17 @@ grep "@Index|indexes" sync-agent-provide/**/entity/**/*.java
 → 0 건
 ```
 
-대상 엔티티 (16):
+대상 엔티티 (18 — 2026-04-28 재검증 시 16 → 18 갱신, A4/A7 추가):
 - ApiPrvTmGd000203 (A3 파일럿)
 - ApiPrvTmGd110301, ApiPrvTmGd110302
 - ApiPrvTmGd112002, ApiPrvTmGd120001, ApiPrvTmGd130001
 - ApiPrvNgw04, ApiPrvPermwell, ApiPrvGeneral105
 - ApiPrvLinkageChart, ApiPrvWaterQuality, ApiPrvWaterQualityMfds
 - ApiPrvInspection, ApiPrvActualUseDj, ApiPrvUnregitsFcly, ApiPrvWqInputStatusDj
+- **ApiPrvWtDreamPermwellPublic21033** (A4, 2026-04-23 추가)
+- **ApiPrvTmpMegokrApi** (A7, 2026-04-23 추가)
+
+> 2026-04-28 재검증: 18 엔티티 모두 `@Index` 0건 그대로. source_refs UK 만 18 엔티티 100% 적용 (4-23 fd077f1 refactor). 인덱스는 미진척.
 
 ## 영향
 

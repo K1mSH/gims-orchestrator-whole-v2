@@ -101,9 +101,7 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
         contentType: form.contentType?.trim(),
         authConfig: form.authConfig?.trim(),
         description: form.description?.trim(),
-        dataRootPath: endpoint.dataRootPath?.trim() || undefined,
         targetDatasourceId: targetDsId.trim() || undefined,
-        targetTableName: endpoint.targetTableName?.trim() || undefined,
         executorType: executorType || undefined,
       };
       await endpointApi.update(endpoint.id, trimmed);
@@ -290,13 +288,18 @@ export default function InfoTab({ endpoint, onUpdate }: InfoTabProps) {
 
         {/* 기타 */}
         <div style={{ ...sectionStyle, borderBottom: 'none' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.75rem', alignItems: 'end' }}>
             <div>
               <div style={labelStyle}>설명</div>
               <input className="form-input" value={form.description || ''}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 placeholder="API 설명 (선택)" />
             </div>
+            <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', paddingBottom: '0.5rem' }}>
+              <input type="checkbox" checked={form.isActive ?? true}
+                onChange={e => setForm({ ...form, isActive: e.target.checked })} />
+              활성 (실행 가능)
+            </label>
             <button className="btn btn-primary" onClick={handleSaveInfo} disabled={saving}>
               {saving ? '저장 중...' : '기본정보 저장'}
             </button>

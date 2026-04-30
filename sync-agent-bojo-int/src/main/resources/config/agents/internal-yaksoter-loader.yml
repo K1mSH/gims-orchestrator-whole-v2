@@ -1,0 +1,20 @@
+# ── Internal Loader — 약수터 데이터 적재 ──
+# IF_RSV(Oracle) → Target(Oracle) MERGE 적재
+# B-1: 자연키 UK + DO UPDATE (수질값/시설명 변경 시 최신값 갱신)
+agent-code: internal-yaksoter-loader
+type: LOADER
+
+steps:
+  - id: yaksoter-jewon-load
+    name: 약수터 제원 적재
+    factory-key: simple-load
+    source-table: IF_RSV_TM_GD010310
+    target-table: TM_GD010310
+    merge-key: [BRNCH_NO, BRNCH_STD_CD]
+
+  - id: yaksoter-wq-load
+    name: 약수터 수질 적재
+    factory-key: simple-load
+    source-table: IF_RSV_TD_GD010310
+    target-table: TD_GD010310
+    merge-key: [BRNCH_NO, YR, QTR, WTSMP_YMD]

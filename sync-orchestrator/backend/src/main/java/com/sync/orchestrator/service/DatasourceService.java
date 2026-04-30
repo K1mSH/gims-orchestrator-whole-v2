@@ -642,6 +642,9 @@ public class DatasourceService {
 
     /**
      * 테이블 등록 (컬럼 포함)
+     *
+     * request.columns 가 비어있으면 datasource 의 DB 메타에서 자체 introspection 으로 채움 (fallback).
+     * → 자동화 스크립트 / 직접 INSERT 등 우회 진입점에서도 컬럼 누락 방지.
      */
     @Transactional
     public DatasourceDto.TableResponse registerTable(String datasourceId, DatasourceDto.TableCreateRequest request) {
@@ -657,28 +660,34 @@ public class DatasourceService {
                 .description(request.getDescription())
                 .build();
 
-        // 컬럼 추가
-        if (request.getColumns() != null) {
-            for (DatasourceDto.ColumnCreateRequest colReq : request.getColumns()) {
-                DatasourceColumn column = DatasourceColumn.builder()
-                        .columnName(colReq.getColumnName())
-                        .columnAlias(colReq.getColumnAlias())
-                        .dataType(colReq.getDataType())
-                        .isPrimaryKey(colReq.getIsPrimaryKey() != null ? colReq.getIsPrimaryKey() : false)
-                        .isNullable(colReq.getIsNullable() != null ? colReq.getIsNullable() : true)
-                        .description(colReq.getDescription())
-                        .build();
-                table.addColumn(column);
-            }
+        // 컬럼 결정: request.columns 있으면 그대로, 없으면 DB introspection
+        List<DatasourceDto.ColumnCreateRequest> columns = (request.getColumns() != null && !request.getColumns().isEmpty())
+                ? request.getColumns()
+                : introspectColumns(datasourceId, request.getTableName());
+
+        for (DatasourceDto.ColumnCreateRequest colReq : columns) {
+            DatasourceColumn column = DatasourceColumn.builder()
+                    .columnName(colReq.getColumnName())
+                    .columnAlias(colReq.getColumnAlias())
+                    .dataType(colReq.getDataType())
+                    .isPrimaryKey(colReq.getIsPrimaryKey() != null ? colReq.getIsPrimaryKey() : false)
+                    .isNullable(colReq.getIsNullable() != null ? colReq.getIsNullable() : true)
+                    .description(colReq.getDescription())
+                    .build();
+            table.addColumn(column);
         }
 
         DatasourceTable saved = tableRepository.save(table);
-        log.info("Table registered: {} for datasource {}", request.getTableName(), datasourceId);
+        log.info("Table registered: {} for datasource {} ({}개 컬럼)",
+                request.getTableName(), datasourceId, saved.getColumns().size());
         return DatasourceDto.TableResponse.from(saved);
     }
 
     /**
      * 테이블 컬럼 갱신 (기존 컬럼 교체, 테이블 ID 유지)
+     *
+     * 의미: "재수집" = DB 메타 ↔ datasource_column 강제 동기화.
+     * request.columns 무시하고 항상 DB introspection 결과로 갱신.
      */
     @Transactional
     public DatasourceDto.TableResponse refreshTableColumns(String datasourceId, Long tableId, DatasourceDto.TableCreateRequest request) {
@@ -692,24 +701,39 @@ public class DatasourceService {
         // 기존 컬럼 전부 제거 (orphanRemoval=true로 자동 DELETE)
         table.getColumns().clear();
 
-        // 새 컬럼 추가
-        if (request.getColumns() != null) {
-            for (DatasourceDto.ColumnCreateRequest colReq : request.getColumns()) {
-                DatasourceColumn column = DatasourceColumn.builder()
-                        .columnName(colReq.getColumnName())
-                        .columnAlias(colReq.getColumnAlias())
-                        .dataType(colReq.getDataType())
-                        .isPrimaryKey(colReq.getIsPrimaryKey() != null ? colReq.getIsPrimaryKey() : false)
-                        .isNullable(colReq.getIsNullable() != null ? colReq.getIsNullable() : true)
-                        .description(colReq.getDescription())
-                        .build();
-                table.addColumn(column);
-            }
+        // 항상 DB introspection 으로 새로 채움
+        List<DatasourceDto.ColumnCreateRequest> columns = introspectColumns(datasourceId, table.getTableName());
+        for (DatasourceDto.ColumnCreateRequest colReq : columns) {
+            DatasourceColumn column = DatasourceColumn.builder()
+                    .columnName(colReq.getColumnName())
+                    .columnAlias(colReq.getColumnAlias())
+                    .dataType(colReq.getDataType())
+                    .isPrimaryKey(colReq.getIsPrimaryKey() != null ? colReq.getIsPrimaryKey() : false)
+                    .isNullable(colReq.getIsNullable() != null ? colReq.getIsNullable() : true)
+                    .description(colReq.getDescription())
+                    .build();
+            table.addColumn(column);
         }
 
         DatasourceTable saved = tableRepository.save(table);
-        log.info("테이블 컬럼 갱신: {} ({}개 컬럼)", table.getTableName(), saved.getColumns().size());
+        log.info("테이블 컬럼 갱신 (DB introspection): {} ({}개 컬럼)", table.getTableName(), saved.getColumns().size());
         return DatasourceDto.TableResponse.from(saved);
+    }
+
+    /**
+     * datasource 의 DB 에서 테이블 컬럼 메타를 introspection 하여 ColumnCreateRequest list 로 반환.
+     * 기존 searchColumns() 의 zone 라우팅 + DB 메타 조회 로직 재사용.
+     */
+    private List<DatasourceDto.ColumnCreateRequest> introspectColumns(String datasourceId, String tableName) {
+        return searchColumns(datasourceId, tableName, null).stream()
+                .map(c -> DatasourceDto.ColumnCreateRequest.builder()
+                        .columnName(c.getColumnName())
+                        .dataType(c.getDataType())
+                        .isPrimaryKey(c.getIsPrimaryKey())
+                        .isNullable(c.getIsNullable())
+                        .description(c.getRemarks())
+                        .build())
+                .toList();
     }
 
     /**

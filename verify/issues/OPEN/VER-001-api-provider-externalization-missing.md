@@ -21,7 +21,7 @@ related: []
 
 ## 기대 vs 실제
 
-### 기대 (다른 모듈 표준 패턴)
+### 기대 (TASK-002 결정 — dev 값 default 금지 반영)
 ```yaml
 spring:
   datasource:
@@ -30,11 +30,13 @@ spring:
     password: ENC(...)
 jasypt:
   encryptor:
-    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+    password: ${JASYPT_PASSWORD}      # ← default 없음 (환경변수 미주입 시 기동 실패)
 # 기타 URL (있다면)
 something:
-  url: ${PROXY_INTERNAL_URL:http://localhost:8093}
+  url: ${PROXY_INTERNAL_URL}          # ← default 없음
 ```
+
+> 2026-04-28 갱신: 본 이슈 4-23 작성 시 권장 패턴이 `${KEY:dev-default}` 사용이었으나, TASK-002 옵션 B 채택에 따라 **dev 값 default 금지**.
 
 ### 실제
 ```yaml
@@ -57,11 +59,11 @@ spring:
 ## 수정 범위 제안
 
 `gims-api-provider/src/main/resources/application.yml`:
-- line 10 — DB URL → 다른 모듈처럼 `ENC(...)` 로 암호화 또는 `${DB_URL:...}` 환경변수 패턴
+- line 10 — DB URL → `ENC(...)` 또는 `${DB_URL}` (default 없음)
 - line 11 — username → `ENC(...)`
 - line 12 — password → `ENC(...)`
-- line 37 — Proxy Internal URL → `${PROXY_INTERNAL_URL:http://localhost:8093}`
-- Jasypt encryptor 설정 블록 존재 확인 / 추가 (다른 모듈 패턴 참조)
+- line 37 — Proxy Internal URL → `${PROXY_INTERNAL_URL}` (default 없음)
+- Jasypt encryptor 설정 블록은 이미 존재 (line 41-44) — `password: ${JASYPT_PASSWORD}` 로 default 제거 동시 처리 (TASK-002)
 
 ## 회귀 확인 방법
 - 재기동 후 `/actuator/health` 200 응답 확인

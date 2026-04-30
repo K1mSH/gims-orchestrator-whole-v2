@@ -881,6 +881,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
                               <span style={{ fontWeight: 500 }}>{table}</span>
                               {tableInfo?.description && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tableInfo.description}</span>}
+                              {tableInfo?.columns && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({tableInfo.columns.length}컬럼)</span>}
                               {!found && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>(미등록)</span>}
                             </div>
                           </div>
@@ -929,6 +930,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                               <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
                               <span style={{ fontWeight: 500 }}>{table}</span>
                               {tableInfo?.description && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tableInfo.description}</span>}
+                              {tableInfo?.columns && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({tableInfo.columns.length}컬럼)</span>}
                               {!found && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>(미등록)</span>}
                             </div>
                           </div>

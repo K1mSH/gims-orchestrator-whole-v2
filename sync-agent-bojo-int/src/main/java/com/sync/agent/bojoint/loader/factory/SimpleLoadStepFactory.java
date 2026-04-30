@@ -38,7 +38,7 @@ public class SimpleLoadStepFactory implements StepFactory {
     public StepExecutor create(Map<String, Object> config) {
         String stepId = (String) config.get("id");
         String stepName = (String) config.get("name");
-        String mergeKey = (String) config.get("merge-key");
+        List<String> mergeKeys = toList(config.get("merge-key"));
 
         Object sourceTableRaw = config.get("source-table");
         Object targetTableRaw = config.get("target-table");
@@ -51,7 +51,7 @@ public class SimpleLoadStepFactory implements StepFactory {
 
         return new SimpleLoadStep(
                 stepId, stepName,
-                ifTable, targetTable, mergeKey,
+                ifTable, targetTable, mergeKeys,
                 sourceTables, targetTables,
                 dataSourceProvider, syncLogRepository, ifTableService,
                 dynamicEmService

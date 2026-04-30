@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 public class IfSndTmGd010310 {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "sn")
     @Comment("일련번호 (PK)")
     private Long sn;
@@ -39,19 +40,19 @@ public class IfSndTmGd010310 {
     @Comment("순번")
     private String seq;
 
-    @Column(name = "brnch_no", length = 10, nullable = false)
+    @Column(name = "brnch_no", length = 10)
     @Comment("지점번호")
     private String brnchNo;
 
-    @Column(name = "brnch_nm", length = 100, nullable = false)
+    @Column(name = "brnch_nm", length = 100)
     @Comment("지점명")
     private String brnchNm;
 
-    @Column(name = "brnch_std_cd", length = 20, nullable = false)
+    @Column(name = "brnch_std_cd", length = 20)
     @Comment("지점표준코드")
     private String brnchStdCd;
 
-    @Column(name = "info_crt_inst_nm", length = 50, nullable = false)
+    @Column(name = "info_crt_inst_nm", length = 50)
     @Comment("정보생성기관명")
     private String infoCrtInstNm;
 
@@ -71,11 +72,11 @@ public class IfSndTmGd010310 {
     @Comment("시군구명")
     private String sggNm;
 
-    @Column(name = "addr", length = 500, nullable = false)
+    @Column(name = "addr", length = 500)
     @Comment("주소")
     private String addr;
 
-    @Column(name = "stdg_cd", length = 10, nullable = false)
+    @Column(name = "stdg_cd", length = 10)
     @Comment("법정동코드")
     private String stdgCd;
 
@@ -87,7 +88,7 @@ public class IfSndTmGd010310 {
     @Comment("Y좌표")
     private String ycrd;
 
-    @Column(name = "abl_yn", length = 4, nullable = false)
+    @Column(name = "abl_yn", length = 4)
     @Comment("폐지여부")
     private String ablYn;
 
@@ -95,7 +96,7 @@ public class IfSndTmGd010310 {
     @Comment("폐지일자")
     private String ablYmd;
 
-    @Column(name = "day01_avg_usr_cnt", length = 10, nullable = false)
+    @Column(name = "day01_avg_usr_cnt", length = 10)
     @Comment("1일평균이용자수")
     private String day01AvgUsrCnt;
 
@@ -103,19 +104,19 @@ public class IfSndTmGd010310 {
     @Comment("담당자")
     private String pic;
 
-    @Column(name = "instl_ymd", length = 10, nullable = false)
+    @Column(name = "instl_ymd", length = 10)
     @Comment("설치일자")
     private String instlYmd;
 
-    @Column(name = "del_yn", length = 4, nullable = false)
+    @Column(name = "del_yn", length = 4)
     @Comment("삭제여부")
     private String delYn;
 
-    @Column(name = "pic_nm", length = 60, nullable = false)
+    @Column(name = "pic_nm", length = 60)
     @Comment("담당자명")
     private String picNm;
 
-    @Column(name = "pic_cnpl", length = 50, nullable = false)
+    @Column(name = "pic_cnpl", length = 50)
     @Comment("담당자연락처")
     private String picCnpl;
 

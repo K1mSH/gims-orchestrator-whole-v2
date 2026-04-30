@@ -29,6 +29,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
   const [tables, setTables] = useState<{ tableName: string; tableType: string; remarks?: string | null }[]>([]);
   const [targetTable, setTargetTable] = useState<string>(endpoint.targetTableName || '');
   const [targetColumns, setTargetColumns] = useState<ColumnSearchResult[]>([]);
+  const [upsertEnabled, setUpsertEnabled] = useState<boolean>(endpoint.upsertEnabled ?? true);
   const [savingLoadSettings, setSavingLoadSettings] = useState(false);
 
   // 1:1 매핑 행
@@ -164,6 +165,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
     dataRootPath: endpoint.dataRootPath || undefined,
     targetDatasourceId: endpoint.targetDatasourceId || undefined,
     targetTableName: endpoint.targetTableName || undefined,
+    upsertEnabled: endpoint.upsertEnabled,
     description: endpoint.description || '',
   });
 
@@ -209,6 +211,7 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
         ...baseUpdateFields(),
         targetDatasourceId: selectedDatasourceId || undefined,
         targetTableName: targetTable || undefined,
+        upsertEnabled,
       });
       onUpdate();
     } catch (e: any) {
@@ -417,6 +420,14 @@ export default function MappingTab({ endpoint, onUpdate }: MappingTabProps) {
                 <option value="">-- 테이블 선택 --</option>
                 {tables.map(t => <option key={t.tableName} value={t.tableName}>{t.tableName}{t.remarks ? ` (${t.remarks})` : ''}</option>)}
               </select>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <label className="form-label" style={{ minWidth: '100px', margin: 0 }}>UPSERT</label>
+              <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={upsertEnabled}
+                  onChange={e => setUpsertEnabled(e.target.checked)} />
+                중복키 충돌 시 갱신 (UPDATE)
+              </label>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn btn-primary btn-sm" onClick={handleSaveLoadSettings} disabled={savingLoadSettings}>

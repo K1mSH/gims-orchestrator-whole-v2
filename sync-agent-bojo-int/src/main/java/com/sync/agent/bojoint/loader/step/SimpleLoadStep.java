@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
  *
  * IF_RSV → Target MERGE (변환 없이 컬럼 직접 복사)
  * merge-key 기준으로 MATCHED → UPDATE, NOT MATCHED → INSERT
+ *   — 단일 키: ON (t.K = s.K)
+ *   — 복수 키: ON (t.K1 = s.K1 AND t.K2 = s.K2 ...)
  * SN은 Target에서 IDENTITY 자동 채번이므로 INSERT 시 제외
  * Target에 SOURCE_REFS, EXECUTION_ID 추가 (추적용)
  */
@@ -33,7 +35,7 @@ public class SimpleLoadStep implements StepExecutor {
     private final String stepName;
     private final String ifTable;
     private final String targetTable;
-    private final String mergeKey;
+    private final List<String> mergeKeys;
     private final List<String> configSourceTables;
     private final List<String> configTargetTables;
     private final DataSourceProvider dataSourceProvider;
@@ -47,7 +49,7 @@ public class SimpleLoadStep implements StepExecutor {
     );
 
     public SimpleLoadStep(String stepId, String stepName,
-                          String ifTable, String targetTable, String mergeKey,
+                          String ifTable, String targetTable, List<String> mergeKeys,
                           List<String> configSourceTables, List<String> configTargetTables,
                           DataSourceProvider dataSourceProvider,
                           SyncLogRepository syncLogRepository,
@@ -57,7 +59,7 @@ public class SimpleLoadStep implements StepExecutor {
         this.stepName = stepName;
         this.ifTable = ifTable;
         this.targetTable = targetTable;
-        this.mergeKey = mergeKey;
+        this.mergeKeys = mergeKeys;
         this.configSourceTables = configSourceTables;
         this.configTargetTables = configTargetTables;
         this.dataSourceProvider = dataSourceProvider;
@@ -133,10 +135,11 @@ public class SimpleLoadStep implements StepExecutor {
                     .filter(c -> !"SN".equalsIgnoreCase(c))
                     .collect(Collectors.toList());
 
-            log.info("[{}] 비즈니스 컬럼: {}, INSERT 컬럼: {}", stepId, bizColumns, insertColumns);
+            log.info("[{}] 비즈니스 컬럼: {}, INSERT 컬럼: {}, merge-key: {}",
+                    stepId, bizColumns, insertColumns, mergeKeys);
 
             // MERGE SQL 생성 (SOURCE_REFS, EXECUTION_ID 포함)
-            String mergeSql = buildMergeSql(targetTable, mergeKey, bizColumns, insertColumns);
+            String mergeSql = buildMergeSql(targetTable, mergeKeys, bizColumns, insertColumns);
             log.debug("[{}] MERGE SQL: {}", stepId, mergeSql);
 
             List<Object> successIds = new ArrayList<>();
@@ -145,19 +148,21 @@ public class SimpleLoadStep implements StepExecutor {
             // 3. 건별 MERGE
             for (Map<String, Object> row : pendingRows) {
                 Object ifId = getVal(row, "ID");
-                String keyValue = getStr(row, mergeKey);
+                String keyValue = mergeKeys.stream()
+                        .map(k -> k + "=" + getStr(row, k))
+                        .collect(Collectors.joining(","));
                 try {
                     String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifTable, ifId);
                     Object[] mergeParams = buildMergeParams(
-                            row, bizColumns, insertColumns, mergeKey, sourceRef, executionId);
+                            row, bizColumns, insertColumns, mergeKeys, sourceRef, executionId);
                     targetJdbc.update(mergeSql, mergeParams);
                     successIds.add(ifId);
                     writeCount++;
                 } catch (Exception e) {
-                    log.error("[{}] MERGE 실패: {}={}", stepId, mergeKey, keyValue, e);
+                    log.error("[{}] MERGE 실패: {}", stepId, keyValue, e);
                     failedCount++;
                     failedIds.add(ifId);
-                    failedKeys.add(keyValue != null ? keyValue : "unknown");
+                    failedKeys.add(keyValue);
                     if (firstError == null) firstError = e.getMessage();
                 }
             }
@@ -197,22 +202,30 @@ public class SimpleLoadStep implements StepExecutor {
     // ==================== MERGE SQL ====================
 
     /**
-     * Oracle MERGE SQL 생성
+     * Oracle MERGE SQL 생성 (단일/복수 merge-key 모두 지원)
      *
      * 파라미터 순서:
-     *   ON절: [merge-key]
-     *   UPDATE: [bizCols(SN,merge-key 제외)] + [SOURCE_REFS, EXECUTION_ID]
+     *   ON절(USING SELECT): [mergeKeys]
+     *   UPDATE: [bizCols(SN, mergeKeys 제외)] + [SOURCE_REFS, EXECUTION_ID]
      *   INSERT: [insertCols] + [SOURCE_REFS, EXECUTION_ID]
      */
-    private String buildMergeSql(String table, String mk, List<String> bizCols, List<String> insertCols) {
+    private String buildMergeSql(String table, List<String> mks, List<String> bizCols, List<String> insertCols) {
+        Set<String> mkSet = mks.stream().map(String::toUpperCase).collect(Collectors.toSet());
+
         StringBuilder sb = new StringBuilder();
         sb.append("MERGE INTO ").append(table).append(" t ");
-        sb.append("USING (SELECT ? AS ").append(mk).append(" FROM DUAL) s ");
-        sb.append("ON (t.").append(mk).append(" = s.").append(mk).append(") ");
+        // USING (SELECT ? AS K1, ? AS K2, ... FROM DUAL)
+        sb.append("USING (SELECT ");
+        sb.append(mks.stream().map(k -> "? AS " + k).collect(Collectors.joining(", ")));
+        sb.append(" FROM DUAL) s ");
+        // ON (t.K1 = s.K1 AND t.K2 = s.K2 ...)
+        sb.append("ON (");
+        sb.append(mks.stream().map(k -> "t." + k + " = s." + k).collect(Collectors.joining(" AND ")));
+        sb.append(") ");
 
-        // UPDATE: 비즈니스(SN, merge-key 제외) + SOURCE_REFS, EXECUTION_ID
+        // UPDATE: 비즈니스(SN, mergeKeys 전부 제외) + SOURCE_REFS, EXECUTION_ID
         List<String> updateCols = bizCols.stream()
-                .filter(c -> !c.equalsIgnoreCase(mk) && !c.equalsIgnoreCase("SN"))
+                .filter(c -> !mkSet.contains(c.toUpperCase()) && !"SN".equalsIgnoreCase(c))
                 .collect(Collectors.toList());
         sb.append("WHEN MATCHED THEN UPDATE SET ");
         sb.append(updateCols.stream().map(c -> "t." + c + " = ?").collect(Collectors.joining(", ")));
@@ -229,22 +242,25 @@ public class SimpleLoadStep implements StepExecutor {
     }
 
     /**
-     * MERGE 파라미터 바인딩
+     * MERGE 파라미터 바인딩 (단일/복수 merge-key 모두 지원)
      *
-     * 순서: [merge-key] + [UPDATE bizCols] + [sourceRef, executionId]
-     *                    + [INSERT insertCols] + [sourceRef, executionId]
+     * 순서: [mergeKeys] + [UPDATE bizCols] + [sourceRef, executionId]
+     *                  + [INSERT insertCols] + [sourceRef, executionId]
      */
     private Object[] buildMergeParams(Map<String, Object> row,
                                        List<String> bizCols, List<String> insertCols,
-                                       String mk, String sourceRef, String executionId) {
+                                       List<String> mks, String sourceRef, String executionId) {
+        Set<String> mkSet = mks.stream().map(String::toUpperCase).collect(Collectors.toSet());
         List<Object> params = new ArrayList<>();
 
-        // ON: merge-key
-        params.add(getVal(row, mk));
+        // ON: 각 merge-key 컬럼 값
+        for (String mk : mks) {
+            params.add(getVal(row, mk));
+        }
 
-        // UPDATE: 비즈니스(SN, merge-key 제외)
+        // UPDATE: 비즈니스(SN, mergeKeys 전부 제외)
         for (String col : bizCols) {
-            if (!col.equalsIgnoreCase(mk) && !col.equalsIgnoreCase("SN")) {
+            if (!mkSet.contains(col.toUpperCase()) && !"SN".equalsIgnoreCase(col)) {
                 params.add(getVal(row, col));
             }
         }

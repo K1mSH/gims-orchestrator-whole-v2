@@ -393,6 +393,7 @@ B2 = {
         ("li_nm", "LI_NM"),
         ("addr", "ADDR"),
         ("pubwell_at", "PUBWELL_AT"),
+        ("josacode", "JOSACODE"),  # v3 selectNgw03_01 내부 SELECT의 JOSACODE (4/29 호환 보정)
     ],
     "params": [
         {"paramName": "sn", "columnName": "sn", "operator": "GTE",

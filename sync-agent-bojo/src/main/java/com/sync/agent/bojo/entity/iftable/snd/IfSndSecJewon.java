@@ -33,8 +33,9 @@ import java.time.LocalDateTime;
 public class IfSndSecJewon {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    @Comment("Source ID 그대로 사용 (PK)")
+    @Comment("자동증분 PK")
     private Integer id;
 
     // ========== 비즈니스 컬럼 ==========

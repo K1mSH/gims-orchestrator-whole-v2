@@ -1,0 +1,23 @@
+# ── DMZ Others SND — 약수터 ──
+# dmz dev (tm_gd010310, td_gd010310 — api-collector 적재) → IF_SND
+agent-code: dmz-others-snd-yaksoter
+type: SND
+
+steps:
+  - id: yaksoter-jewon-snd
+    name: 약수터 제원 송신
+    factory-key: source-to-if
+    source-table: tm_gd010310
+    target-table: if_snd_tm_gd010310
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true
+
+  - id: yaksoter-wq-snd
+    name: 약수터 수질 송신
+    factory-key: source-to-if
+    source-table: td_gd010310
+    target-table: if_snd_td_gd010310
+    primary-key: sn
+    conflict-key: source_refs
+    full-copy: true

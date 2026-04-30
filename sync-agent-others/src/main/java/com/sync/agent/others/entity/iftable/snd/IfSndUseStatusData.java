@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 public class IfSndUseStatusData {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "sn")
     @Comment("일련번호 (PK)")
     private Long sn;

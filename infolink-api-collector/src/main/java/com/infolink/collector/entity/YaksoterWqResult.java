@@ -7,9 +7,9 @@ import org.hibernate.annotations.Comment;
 import javax.persistence.*;
 
 /**
- * 약수터 수질검사결과 수집 API 적재 테이블
- * 테이블명: td_gd010310
- * UK: brnch_no + yr + qtr + wtsmp_ymd (UPSERT conflict key)
+ * 약수터 수질검사결과 수집 API 적재 테이블 (td_gd010310).
+ * UK = (brnch_no, yr, qtr, wtsmp_ymd) — 자연키 4키 (B-1 정책, 4/29 정정).
+ * 같은 채수일자 재호출 시 ON CONFLICT DO UPDATE 로 최신값 갱신 (변경 이력 누적 안 함).
  */
 @Entity
 @Table(name = "td_gd010310", uniqueConstraints = {
@@ -30,11 +30,11 @@ public class YaksoterWqResult {
 
     // ========== 기본 정보 ==========
 
-    @Column(name = "brnch_no", length = 10, nullable = false)
+    @Column(name = "brnch_no", length = 10)
     @Comment("지점번호")
     private String brnchNo;
 
-    @Column(name = "brnch_std_cd", length = 20, nullable = false)
+    @Column(name = "brnch_std_cd", length = 20)
     @Comment("지점표준코드")
     private String brnchStdCd;
 
@@ -42,15 +42,15 @@ public class YaksoterWqResult {
     @Comment("연도")
     private String yr;
 
-    @Column(name = "qtr", length = 10, nullable = false)
+    @Column(name = "qtr", length = 10)
     @Comment("분기")
     private String qtr;
 
-    @Column(name = "insp_yn", length = 20, nullable = false)
+    @Column(name = "insp_yn", length = 20)
     @Comment("검사여부")
     private String inspYn;
 
-    @Column(name = "un_insp_rsn", length = 500, nullable = false)
+    @Column(name = "un_insp_rsn", length = 500)
     @Comment("미검사사유")
     private String unInspRsn;
 
@@ -58,17 +58,17 @@ public class YaksoterWqResult {
     @Comment("적합여부")
     private String stbltYn;
 
-    @Column(name = "stblt", length = 10, nullable = false)
+    @Column(name = "stblt", length = 10)
     @Comment("적합")
     private String stblt;
 
-    @Column(name = "icpt", length = 10, nullable = false)
+    @Column(name = "icpt", length = 10)
     @Comment("부적합")
     private String icpt;
 
     // ========== 세균류 (11개) ==========
 
-    @Column(name = "gnrl_germ_lowtmp", length = 20, nullable = false)
+    @Column(name = "gnrl_germ_lowtmp", length = 20)
     @Comment("일반세균저온")
     private String gnrlGermLowtmp;
 
@@ -200,7 +200,7 @@ public class YaksoterWqResult {
     @Comment("디클로로메탄")
     private String dcmt;
 
-    @Column(name = "bnzn", length = 20, nullable = false)
+    @Column(name = "bnzn", length = 20)
     @Comment("벤젠")
     private String bnzn;
 
@@ -296,15 +296,15 @@ public class YaksoterWqResult {
 
     // ========== 결과 정보 ==========
 
-    @Column(name = "icpt_artcl", length = 100)
+    @Column(name = "icpt_artcl", length = 500)
     @Comment("부적합항목")
     private String icptArtcl;
 
-    @Column(name = "icpt_actn_mttr", length = 100)
+    @Column(name = "icpt_actn_mttr", length = 500)
     @Comment("부적합조치사항")
     private String icptActnMttr;
 
-    @Column(name = "wtsmp_ymd", length = 10, nullable = false)
+    @Column(name = "wtsmp_ymd", length = 10)
     @Comment("채수일자")
     private String wtSmpYmd;
 

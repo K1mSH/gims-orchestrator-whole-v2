@@ -25,7 +25,7 @@
 | A4 | Agent IF DB URL (bojo-int) | `jdbc:postgresql://localhost:29001/dev` | `sync-agent-bojo-int/.../application.yml` | 환경변수 | | | |
 | A5 | Agent IF DB URL (others) | `jdbc:postgresql://localhost:29001/dev` | `sync-agent-others/.../application.yml` | 환경변수 | | | |
 | A6 | API Collector DB URL | `jdbc:postgresql://localhost:29001/api_collector` | `infolink-api-collector/.../application.yml` | 환경변수 | | | |
-| A7 | API Provider DB URL | `jdbc:postgresql://localhost:29006/api_provider` | `gims-api-provider/.../application.yml` / `sync-agent-provide/.../application.yml` | 환경변수 | | | |
+| A7 | API Provider DB URL | `jdbc:postgresql://localhost:29006/api_provider` | `gims-api-provider/.../application.yml` / `sync-agent-provide/.../application.yml` | `SPRING_DATASOURCE_URL` 환경변수 (PoC 검증) | (PoC) `host.docker.internal:29006` 으로 override 작동 확인 | docker-poc | 2026-04-29 |
 
 ## B. 외부 원본 DB (Orchestrator DB 등록으로 관리)
 
@@ -48,7 +48,7 @@
 |:-:|------|-----------|------|---------|----------|-------|-------|
 | C1 | Orchestrator URL | `http://localhost:8080` | Frontend `.env` / Agent yml | 환경변수 | | | |
 | C2 | Proxy DMZ URL | `http://localhost:8083` | Orchestrator 설정 / Agent DMZ 호출 | 환경변수 | | | |
-| C3 | Proxy Internal URL | `http://localhost:8093` | Orchestrator 설정 / Agent Internal 호출 | 환경변수 | | | |
+| C3 | Proxy Internal URL | `http://localhost:8093` | Orchestrator 설정 / Agent Internal 호출 | `APP_PROXY_URL` 환경변수 (api-provider 측, PoC 검증) | (PoC) `http://sync-proxy-internal:8093` 컨테이너 service name 으로 override 작동 확인 | docker-poc | 2026-04-29 |
 | C4 | Agent DMZ (bojo) URL | `http://localhost:8082` | Proxy DMZ 설정 | 환경변수 | | | |
 | C5 | Agent Others URL | `http://localhost:8085` | Proxy DMZ 설정 | 환경변수 | | | |
 | C6 | Agent Internal (bojo-int) URL | `http://localhost:8092` | Proxy Internal 설정 | 환경변수 | | | |
@@ -111,7 +111,7 @@
 | H5 | `app.api-key-validation.url` | `http://localhost:8095/api/mock/api-key/validate` | api-provider `ApiKeyValidationService.java:22` — **Mock fallback** |
 | H6 | `anyang.api.fac-url` | `http://localhost:8084/mock/anyang/fac` | api-collector `AnyangUsageExecutor.java:39` — **Mock fallback** |
 | H7 | `anyang.api.data-url` | `http://localhost:8084/mock/anyang/data` | api-collector `AnyangUsageExecutor.java:42` — **Mock fallback** |
-| H8 | `JASYPT_PASSWORD` | `sync-pipeline-secret-key-2024` | 전 모듈 (ENC 복호화 마스터 키 — `credentials-rotation.md` 연관) |
+| H8 | `JASYPT_PASSWORD` | `sync-pipeline-secret-key-2024` | 전 모듈 (ENC 복호화 마스터 키 — `credentials-rotation.md` 연관) — **PoC(2026-04-29) 검증**: 환경변수 주입 시 ENC 정상 복호화 / 미주입 시 fail fast(`Failed to bind 'spring.datasource.password'`) / 모듈간 불일치 시 startup failure → 8 모듈 동일값 강제됨 |
 | H9 | `SPRING_PROFILES_ACTIVE` | (미설정 → default) | 전 모듈 — 실배포 `prod` |
 
 ---

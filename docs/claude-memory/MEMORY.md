@@ -29,6 +29,11 @@
 - [feedback_config_replacement_sync.md](feedback_config_replacement_sync.md) - 새 서비스/DB/외부 의존 추가 시 verify/deployment/config-replacement.md 즉시 갱신
 - [feedback_verify_session_trigger.md](feedback_verify_session_trigger.md) - "검증 전담 세션 준비해줘" 트리거 → verify/ 체계 읽고 verifier 모드로 진입
 - [feedback_provide_response_v3_compat.md](feedback_provide_response_v3_compat.md) - provide 응답 키 = v3 레거시 alias 유지 (외부 호환). 내부 DB 만 표준화
+- [project_api_collector_db.md](project_api_collector_db.md) - API Collector DB = dev 통합 (api_collector 별도 DB 폐기). Endpoint 등록 시 Datasource = dmz
+- [feedback_external_api_table_policy.md](feedback_external_api_table_policy.md) - 외부 API 적재 테이블엔 표준화 자료의 NULL/길이 단축 권장 거스름 (응답 그대로 받기)
+- [project_yaksoter_pipeline.md](project_yaksoter_pipeline.md) - 약수터 = B-1 (자연키 UK + DO UPDATE / 4키 dedup / SimpleLoadStep / Target UK 없음)
+- [project_api_collector_paging_limit.md](project_api_collector_paging_limit.md) - api-collector 범용 endpoint 자동 페이징 미지원 (커스텀 Executor 만). 사용자 결정 = 그냥 둠
+- [feedback_form_consistency_register_edit.md](feedback_form_consistency_register_edit.md) - 등록/수정 화면 양식 일관성 — 같은 항목은 같은 위치/그룹
 
 ## 작업 규칙
 
@@ -95,8 +100,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 | 용도 | 타입 | 포트 | DB명 | 비고 |
 |------|------|------|------|------|
 | Orchestrator | PostgreSQL | 29001 | orchestrator | 중앙 관리 |
-| Agent IF | PostgreSQL | 29001 | dev | IF 테이블, link_ngwis |
-| API Collector | PostgreSQL | 29001 | api_collector | 독립 DB |
+| Agent IF + API Collector | PostgreSQL | 29001 | dev | IF 테이블, link_ngwis, **API Collector 소스 테이블** (4/29 통합 확인 — `api_collector` 별도 DB 폐기) |
 | 외부 PG | PostgreSQL | 29000 | daejeon,bytek,chungnam,keunsan | 4개 |
 | 외부 MySQL | MySQL | 29010 | infoworld_*,hydronet_* | 6개 (Docker) |
 | Internal Oracle | Oracle XE | 29004 | XEPDB1 | 내부망 GIMS 대체 |
@@ -196,7 +200,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - **TransformType**: NONE, DATE_FORMAT, NUMBER, SUBSTRING, TRIM, REPLACE, DEFAULT_VALUE, LOOKUP
 - **MockApiController**: 뉴스 API + 공통코드 API(NGW_0118 언론사 65건) 시뮬레이션
 - **프론트**: `/api-collect` 경로, Next.js proxy `/collector-api/*` → `localhost:8084/api/*`
-- **DB**: api_collector (PG 29001), 기존 소스에 영향 없음
+- **DB**: **dev** (PG 29001) — `api_collector` 별도 DB 폐기, dev 통합 (4/29 사용자 확인). Endpoint 등록 시 Target Datasource = `dmz` (id=1018)
 
 ## 모듈 간 일관성 규칙 (3/24 확정)
 - **로그 언어**: 전체 한글 통일 (프리픽스 `[Bojo]`/`[BojoInt]`는 유지)
