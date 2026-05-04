@@ -1,0 +1,63 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.12'
+    id 'io.spring.dependency-management' version '1.1.0'
+}
+
+group = 'com.gims'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // ⚠️ Spring OAuth2 starter 미사용 — Boot 2.7.12 호환 한계
+    // (oauth2-authorization-server 1.x = Boot 3.x 필요)
+    // jjwt + Nimbus 자체 구현으로 대체
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    implementation 'com.nimbusds:nimbus-jose-jwt:9.37'
+
+    // Jasypt
+    implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.5'
+
+    // PostgreSQL
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// UserGeneratorCli — 별도 main 으로 fat jar 생성 (Step 9 에서 사용)
+task createUser(type: JavaExec) {
+    group = 'application'
+    description = '신규 사용자 발급 (최초 1명 / 비상 진입로). args: <username> <password> <name>'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.gims.auth.tools.UserGeneratorCli'
+    standardInput = System.in
+}

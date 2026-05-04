@@ -52,9 +52,22 @@ dependencies {
     // SLF4J
     implementation 'org.slf4j:slf4j-api:1.7.36'
 
+    // JWT — JwtCookieAuthFilter / JwksClient (검증자 모듈에서 사용)
+    api 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    api 'com.nimbusds:nimbus-jose-jwt:9.37'
+
+    // Spring Security (검증자 모듈에서 SecurityContext / OncePerRequestFilter 등 사용)
+    compileOnly 'org.springframework.security:spring-security-web:5.7.10'
+    compileOnly 'org.springframework.security:spring-security-core:5.7.10'
+
     // Test
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core:5.7.0'
+    testImplementation 'org.springframework.security:spring-security-web:5.7.10'
+    testImplementation 'org.springframework.security:spring-security-core:5.7.10'
 }
 
 tasks.withType(JavaCompile) {
