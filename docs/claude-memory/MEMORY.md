@@ -35,6 +35,7 @@
 - [project_api_collector_paging_limit.md](project_api_collector_paging_limit.md) - api-collector 범용 endpoint 자동 페이징 미지원 (커스텀 Executor 만). 사용자 결정 = 그냥 둠
 - [feedback_form_consistency_register_edit.md](feedback_form_consistency_register_edit.md) - 등록/수정 화면 양식 일관성 — 같은 항목은 같은 위치/그룹
 - [feedback_test_plan_baseline_tag.md](feedback_test_plan_baseline_tag.md) - 정식 기능 테스트 (test_plan/) = baseline tag 동반 + 통과 시 신규 stable tag + GitHub Release
+- [project_auth_system.md](project_auth_system.md) - Auth 시스템 (8096) — Phase 1+1.5 완료 (jjwt+Nimbus, Peer Multiplication, 토글 비활성)
 
 ## 작업 규칙
 
@@ -57,25 +58,34 @@
 ## 프로젝트 구조
 ```
 orchestrator_v2/
-├── sync-agent-common/    # 공통 모듈 (JAR 라이브러리)
-├── sync-agent-bojo/      # 통합 Agent (12개 논리적 Agent)
-├── sync-agent-bojo-int/  # Internal Agent
+├── sync-agent-common/        # 공통 모듈 (JAR 라이브러리, ApiKeyFilter / JwksClient / JwtCookieAuthFilter)
+├── sync-agent-bojo/          # DMZ Agent (12개 논리적 Agent, port 8082)
+├── sync-agent-bojo-int/      # Internal Agent (port 8092)
+├── sync-agent-others/        # Others DMZ Agent (yaksoter/nara/news/use 등, port 8085)
+├── sync-agent-provide/       # Provide Agent
+├── sync-proxy-dmz/           # DMZ Proxy (port 8083)
+├── sync-proxy-internal/      # Internal Proxy (port 8093)
 ├── sync-orchestrator/
-│   ├── backend/          # Spring Boot (port 8080)
-│   └── frontend/         # Next.js (port 3000)
-├── infolink-api-collector/ # API 수집 모듈 (독립, port 8084/8094)
-├── gims-api-provider/    # API 제공 모듈 (내부망, port 8095)
-├── docs/                 # ARCHITECTURE.md, UI_GUIDE.md, 클로드 작업 메뉴얼.txt
-│   └── claude-memory/    # troubleshooting.md (git 추적)
-├── dev_logs/2026_MM/     # 작업 일지 (년월 디렉토리)
-├── dev_plan/2026_MM/DD/  # 계획 문서 (년월/일 디렉토리)
-├── test_plan/            # 기능별 테스트 문서 (재사용)
+│   ├── backend/              # Spring Boot (port 8080)
+│   └── frontend/             # Next.js (port 3000)
+├── sync-orchestrator-auth/   # Auth 모듈 (port 8096, JWT RS256, 2026-05-04 신규)
+├── infolink-api-collector/   # API 수집 모듈 (DMZ 8084 / Internal 8094)
+├── gims-api-provider/        # API 제공 모듈 (port 8095)
+├── docs/                     # ARCHITECTURE / UI_GUIDE / AUTH_DESIGN / AUTH_FLOW / 클로드 작업 메뉴얼
+│   └── claude-memory/        # 메모리 양쪽 동기화 (git 추적)
+├── verify/                   # 검증 세션 체계 (_invariants/deployment/checklists/issues/tasks/runs/map)
+├── todo/                     # 작업 추적 (todo/system/ 영역별 7개)
+├── dev_logs/2026_MM/         # 작업 일지 (년월 디렉토리)
+├── dev_plan/                 # 계획 문서
+│   ├── 2026_MM/DD/           # 일자별 계획
+│   └── jira/                 # Jira 동기화 (별 트랙)
+├── test_plan/                # 기능별 테스트 문서 (재사용, baseline tag 동반)
 └── scripts/
-    ├── ddl/              # 배포용 DDL (DB별 분리)
+    ├── ddl/                  # 배포용 DDL (DB별 분리)
     │   ├── saeol-tibero/     # 새올 Tibero (DBA 전달)
     │   ├── internal-oracle/  # 내부 Oracle
     │   └── dmz-pg/           # DMZ PG (JPA 관리, 참고용)
-    └── *.sh, *.py 등     # 유틸리티
+    └── *.sh, *.py 등         # 유틸리티
 ```
 
 ## 빌드 명령어
@@ -123,6 +133,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 | Proxy Internal (sync-proxy-internal) | 8093 |
 | API Collector Internal | 8094 |
 | **API Provider (gims-api-provider)** | **8095** |
+| **Auth 모듈 (sync-orchestrator-auth)** | **8096** |
 | Frontend (Next.js) | 3000 |
 | 외부 PG | 29000 |
 | 내부 PG | 29001 |
