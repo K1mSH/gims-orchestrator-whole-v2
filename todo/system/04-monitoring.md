@@ -63,6 +63,8 @@
 - [x] agent_table 자동 동기화 — OFFLINE→ONLINE 시 테이블 목록 갱신
 - [x] 수동 테이블 갱신 버튼
 - [x] Agent 등록 시 zone 드롭다운 + 필수 검증
+- [x] DatasourceService introspection fallback (4/30, registerTable request.columns 비면 자체 introspection / refreshTableColumns 항상 자체)
+- [x] datasource_table 소문자 중복 정리 + Loader zone 정정 (4/30, INTERNAL → INTERNAL_COMMON)
 
 ## 대시보드 화면 [Frontend]
 - [x] 통계 카드 — Agent 전체/온라인/오프라인, 실행 중, 오늘 실행/실패
@@ -108,6 +110,7 @@
 - [x] source_refs 기반 자동 매칭
 - [x] 추적 비대상 표시 (파생 데이터)
 - [x] Fallback 모드 감지 (실행 덮어쓰기 시)
+- [x] 매칭 false positive fix (4/30, Object.values.some 대체 → backend traceBySourcePk API 호출, 50줄 → 7줄)
 
 ---
 

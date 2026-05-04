@@ -9,12 +9,15 @@
 ---
 
 ## 파이프라인 엔진 [Common]
-- [x] SourceToIfStep — 소스 DB → IF 테이블 추출 공통 Step
+- [x] SourceToIfStep → SourceToTargetStep 개명·중립화 (IF 전제 제거, 4/23)
 - [x] PipelineRegistry — (agentCode, modeId) 복합키 라우팅
 - [x] LoaderStepHelper — Loader 공통 로직 (processJewon, processObsvdata, saveSyncLog)
 - [x] StepFactory 다중 factory-key 지원
+- [x] SimpleLoadStep merge-key List 확장 (4/30, 자연키 복수 컬럼 지원, 후방 호환)
 - [x] YAML 기반 설정 — 코드 변경 없이 YAML만으로 파이프라인 추가
 - [x] AgentConfigLoader — select-tables/table-mappings Step에서 자동 수집 (config 일원화)
+- [x] IF entity 자동채번 표준 정합 (4/30, 8 entity @GeneratedValue(IDENTITY) + PG 6 테이블 sequence)
+- [x] 룰 명문화 — Target IF entity PK = 자동채번 명시 기본, exclude-insert-columns 로 조정
 
 ## 조건실행/증분실행 [Common]
 - [x] ConditionBuilder — 동적 WHERE 조건 생성 (날짜 캐스팅, Oracle/PG 호환)
@@ -63,7 +66,10 @@
 - [x] I2 JejuObsvdataLoadStep — 관측 (MSN 분기 S11/S2X, EAV, BRNCH_ID 캐싱)
 - [x] I3 JejuFacilityLoadStep — 이용시설 (JPA+MERGE+SyncLog)
 - [x] I5 UseLoadStep — 이용량 (Legacy+Status 2소스→4타겟, 일집계 후처리, 음수→0 변환)
+- [x] **약수터 Loader (4/30)** — 제원 1026 + 수질 1000 row, SimpleLoadStep merge-key 자연키 4키 dedup
 - [x] 내부망 RCV 파이프라인 (6개 IF_RSV 테이블)
+- [x] WTSMP_YMD length 8→10 정합 (4/30, bojo-int IF_RSV_TD + TD entity + Oracle DROP/recreate)
+- [x] bojo-int 4 entity @org.hibernate.annotations.Table 제거 (4/30, NamingStrategy 충돌 해소)
 
 ## Entity 전환 [Bojo-Int:8092]
 - [x] gen_entities.py — DDL→Entity 55개 자동 생성
@@ -108,6 +114,8 @@
 - [x] 이용량 3테이블 전송 (legacy, status, jejuday)
 ### API 수집
 - [x] 나라장터/네이버 뉴스 2테이블 전송 (tm_gd014000, tm_gd014001)
+### 약수터
+- [x] 약수터 제원/수질 2테이블 전송 (tm_gd010310, td_gd010310, 4/30)
 
 ## 내부망 수신 등록 (RCV) [등록]
 ### 보조관측망
@@ -120,6 +128,8 @@
 - [x] 이용량 3테이블 수신
 ### API 수집
 - [x] 나라장터/네이버 뉴스 2테이블 수신
+### 약수터
+- [x] 약수터 제원/수질 2테이블 수신 (4/30)
 
 ## 내부망 적재 등록 (Loader) [등록]
 ### 보조관측망
@@ -132,6 +142,8 @@
 - [x] 이용량 적재 (2소스 → 4타겟)
 ### API 수집
 - [x] 나라장터/네이버 뉴스 적재 (2소스 → TM_GD014000, TM_GD014001)
+### 약수터
+- [x] 약수터 제원/수질 적재 (4/30, 자연키 UK + DO UPDATE / 4키 dedup)
 
 ## 파이프라인 전체 흐름 [참고]
 

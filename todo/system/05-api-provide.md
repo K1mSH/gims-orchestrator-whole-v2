@@ -39,6 +39,12 @@
 - [x] 10종 WHERE 연산자 (=, >, >=, <, <=, LIKE 포함/시작/끝, IN, BETWEEN)
 - [x] Proxy 경유 DataSource 획득·캐싱 (ProviderDataSourceService, bojo-int 패턴)
 - [x] Mock API Key 검증기 (운영 시 외부 API URL만 교체하면 전환 가능)
+- [x] 슬래시 operationId 지원 (4/24, `megokrApi/ngw08` 레거시 URL 그대로 재현)
+- [x] 응답 alias 대소문자 보존 (4/24, PG identifier lowercase 회피, 쌍따옴표 alias)
+- [x] 응답 alias v3 호환 정렬 (4/28, 11종 핸들러 일괄 + frontend fix)
+- [x] PRV 응답 키 = v3 레거시 alias 유지 메모리 룰 박힘 (`feedback_provide_response_v3_compat.md`)
+- [x] A7 RNUM + B2 RNUM/JOSACODE 자바 후처리 (4/29, DynamicQueryService 화이트리스트, ROWNUM_PREPEND_OPS)
+- [x] B2 josacode column 1행 INSERT (display_order=22) — v3 환경 등록 정합 (4/29)
 
 ## 실행/모니터링 [Backend]
 - [x] 호출 이력 저장 (ApiPrvCallHistory)
@@ -62,7 +68,9 @@
 - [x] Jasypt 암호화 (민감정보 ENC() 래핑)
 
 ## E2E 검증 [테스트]
-- [ ] 동적 SELECT 엔진 E2E 테스트 (오퍼레이션 등록 → 테스트 호출 → Gateway 호출 → 이력 저장)
-- [ ] 호출 이력 저장 로직 검증 (ApiPrvCallHistory 기록 확인)
+- [x] 동적 SELECT 엔진 E2E 테스트 — Type A 12종 200 OK (4/24, Python 일괄 등록 + 호출 검증)
+- [x] alias 변경 전후 회귀 검증 (4/28, 2회 Type A 12종 200 OK)
+- [x] 호출 이력 저장 로직 검증 (ApiPrvCallHistory finally 패턴, 외부 호출만 / test 제외)
+- [x] RNUM/JOSACODE 후처리 회귀 검증 (4/29, 다른 10종 응답 키 변화 없음)
 - [ ] API Key 검증 외부화 시나리오 테스트 (Mock → 실제 검증 API 전환)
 - [ ] 등록 플로우 브라우저 전체 재테스트

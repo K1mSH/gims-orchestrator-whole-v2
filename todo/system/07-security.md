@@ -3,7 +3,7 @@
 > **요구사항**: 다수의 DB 자격증명과 서비스 간 통신을 안전하게 보호하고,
 > 관리 화면 접근을 인가된 사용자로 제한한다.
 
-## 상태: 부분 완료 (로그인 미개발)
+## 상태: 로그인 Phase 1 + 1.5 완료 (Phase 2~5 별 세션 대기)
 
 ---
 
@@ -41,7 +41,25 @@
 - [ ] api-collector 하드닝 미적용 (maxPool=5, timeout/leak 미설정)
 
 ## 로그인/인가 [Orchestrator]
-- [ ] 사용자 로그인 기능 (ID/PW 인증)
-- [ ] 세션 또는 JWT 기반 인증 유지
-- [ ] 권한 체계 (관리자/운영자/조회자 등)
-- [ ] 미인증 접근 차단 (프론트 + 백엔드)
+- [x] 사용자 로그인 기능 (ID/PW 인증) — sync-orchestrator-auth:8096 모듈 신설 (5/4)
+- [x] 세션 또는 JWT 기반 인증 유지 — JWT RS256 + JWKS + Cookie HttpOnly+SameSite=Strict
+- [x] 권한 체계 — peer multiplication 동급 1롤 결정 (역할 분리 없음)
+- [ ] 미인증 접근 차단 (프론트 + 백엔드) — Phase 2~5 한 묶음 배포 영역
+- [x] auth 모듈 신설 (Spring Boot 2.7.12 + jjwt 0.11.5 + Nimbus 9.37 + jasypt + JPA)
+- [x] AuthUser / AuthRefreshToken / AuthRsaKey 엔티티 + Repository (ddl-auto 자동 생성)
+- [x] KeyService — RSA 2048 페어 자동 생성 + 회전 + JWKS 응답 + InitialKeyLoader
+- [x] TokenService — RS256 발급/검증 + SigningKeyResolverAdapter (kid 자동 lookup)
+- [x] UserService — peer multiplication CRUD + BCrypt(round 12) + 마지막 1명 차단
+- [x] AuthService — 로그인/refresh/로그아웃 + 5회 잠금(30min) + 1회용 회전 + timing-safe
+- [x] AuthController/UserController/JwksController + SecurityConfig (401 AUTH_REQUIRED EntryPoint)
+- [x] AuthCookieFilter — accessToken cookie → SecurityContext (auth 자체 검증)
+- [x] KeyRotationJob (자정 cron `0 0 0 * * ?`)
+- [x] UserGeneratorCli (초기 1명 발급, Spring context 미기동 단독 실행)
+- [x] 단위/통합 테스트 31/31 PASS (TokenService 7 + UserService 10 + AuthService 10 + KeyRotation 4)
+- [x] Phase 1.5 sync-agent-common 검증자 자산 — JwksClient + JwtCookieAuthFilter + 헬퍼 + 단위 5/5 PASS + JAR 8 모듈 복사 + 회귀 OK
+- [x] Step 11 통합 검증 — 17 시나리오 모두 PASS (auth 모듈 E2E)
+- [x] 첫 사용자 발급 (admin) — UserGeneratorCli + UNIQUE 충돌 검증 OK
+- [ ] Phase 2 backend 검증자 적용 (별 세션 — `/api/callback/**` permitAll 정책 포함)
+- [ ] Phase 3 api-provider 검증자 적용 (별 세션 — provide/manage/mock 3-way path 분리)
+- [ ] Phase 4 api-collector 검증자 적용 (별 세션 — DMZ/Internal 양쪽 yml + NGW_0118 LOOKUP 영향 검증)
+- [ ] Phase 5 frontend 로그인 화면 + 사용자 관리 (별 세션 — 가장 큰 작업 5~6h)

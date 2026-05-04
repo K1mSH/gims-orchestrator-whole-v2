@@ -34,6 +34,7 @@
 - [project_yaksoter_pipeline.md](project_yaksoter_pipeline.md) - 약수터 = B-1 (자연키 UK + DO UPDATE / 4키 dedup / SimpleLoadStep / Target UK 없음)
 - [project_api_collector_paging_limit.md](project_api_collector_paging_limit.md) - api-collector 범용 endpoint 자동 페이징 미지원 (커스텀 Executor 만). 사용자 결정 = 그냥 둠
 - [feedback_form_consistency_register_edit.md](feedback_form_consistency_register_edit.md) - 등록/수정 화면 양식 일관성 — 같은 항목은 같은 위치/그룹
+- [feedback_test_plan_baseline_tag.md](feedback_test_plan_baseline_tag.md) - 정식 기능 테스트 (test_plan/) = baseline tag 동반 + 통과 시 신규 stable tag + GitHub Release
 
 ## 작업 규칙
 

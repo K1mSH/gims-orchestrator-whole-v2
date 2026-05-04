@@ -376,6 +376,26 @@
       "key": "KAN-723",
       "startDate": null,
       "endDate": null
+    },
+    "04-monitoring#관리 테이블 DB 라우팅": {
+      "key": "KAN-745",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라": {
+      "key": "KAN-800",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)": {
+      "key": "KAN-810",
+      "startDate": null,
+      "endDate": null
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증": {
+      "key": "KAN-828",
+      "startDate": null,
+      "endDate": null
     }
   },
   "subtasks": {
@@ -1443,6 +1463,372 @@
     },
     "08-provide-agent#E2E 검증#Type B 전처리 결과 검증 (실서버 접근 확보 후)": {
       "key": "KAN-727"
+    },
+    "02-agent-pipeline#파이프라인 엔진#SourceToIfStep → SourceToTargetStep 개명·중립화 (IF 전제 제거, 4/23)": {
+      "key": "KAN-728"
+    },
+    "02-agent-pipeline#파이프라인 엔진#SimpleLoadStep merge-key List 확장 (4/30, 자연키 복수 컬럼 지원, 후방 호환)": {
+      "key": "KAN-729"
+    },
+    "02-agent-pipeline#파이프라인 엔진#IF entity 자동채번 표준 정합 (4/30, 8 entity @GeneratedValue(IDENTITY) + PG 6 테이블 sequence)": {
+      "key": "KAN-730"
+    },
+    "02-agent-pipeline#파이프라인 엔진#룰 명문화 — Target IF entity PK = 자동채번 명시 기본, exclude-insert-columns 로 조정": {
+      "key": "KAN-731"
+    },
+    "02-agent-pipeline#내부망 Loader Step#**약수터 Loader (4/30)** — 제원 1026 + 수질 1000 row, SimpleLoadStep merge-key 자연키 4키 dedup": {
+      "key": "KAN-732"
+    },
+    "02-agent-pipeline#내부망 Loader Step#WTSMP_YMD length 8→10 정합 (4/30, bojo-int IF_RSV_TD + TD entity + Oracle DROP/recreate)": {
+      "key": "KAN-733"
+    },
+    "02-agent-pipeline#내부망 Loader Step#bojo-int 4 entity @org.hibernate.annotations.Table 제거 (4/30, NamingStrategy 충돌 해소)": {
+      "key": "KAN-734"
+    },
+    "02-agent-pipeline#DMZ 전송 등록 (SND)#약수터 제원/수질 2테이블 전송 (tm_gd010310, td_gd010310, 4/30)": {
+      "key": "KAN-735"
+    },
+    "02-agent-pipeline#내부망 수신 등록 (RCV)#약수터 제원/수질 2테이블 수신 (4/30)": {
+      "key": "KAN-736"
+    },
+    "02-agent-pipeline#내부망 적재 등록 (Loader)#약수터 제원/수질 적재 (4/30, 자연키 UK + DO UPDATE / 4키 dedup)": {
+      "key": "KAN-737"
+    },
+    "03-api-collect#API 수집 관리 화면#InfoTab — 적재 설정 섹션 제거 + isActive 토글 (4/29)": {
+      "key": "KAN-738"
+    },
+    "03-api-collect#API 수집 관리 화면#MappingTab — UPSERT 토글 통합 (등록 화면과 양식 일관, 4/29)": {
+      "key": "KAN-739"
+    },
+    "03-api-collect#API 수집 관리 화면#InfoTab ✓/✗ 분기 컬럼 수 표시 — 처음 렌더 시 보였다가 덮임 패턴 fix (4/30)": {
+      "key": "KAN-740"
+    },
+    "03-api-collect#커스텀 실행기 등록#약수터 제원 수집 (4/29, target: tm_gd010310, B-1 자연키 UK + DO UPDATE)": {
+      "key": "KAN-741"
+    },
+    "03-api-collect#커스텀 실행기 등록#약수터 수질 수집 (4/29, target: td_gd010310, 67 매핑 자동 등록, 4키 dedup)": {
+      "key": "KAN-742"
+    },
+    "03-api-collect#후속 파이프라인 연결#약수터 → 내부망 GIMS 적재 (4/30, TM_GD010310, TD_GD010310 — 제원 1026 + 수질 1000 row E2E)": {
+      "key": "KAN-743"
+    },
+    "04-monitoring#실행 상세/추적 API#실행 데이터 조회 (SOURCE/TARGET 페이징+검색, target-if는 /target으로 통합 4/22)": {
+      "key": "KAN-744"
+    },
+    "04-monitoring#관리 테이블 DB 라우팅#X-Manage-Datasource-Id 헤더 기반 라우팅 (DataSourceProvider 확장)": {
+      "key": "KAN-746"
+    },
+    "04-monitoring#관리 테이블 DB 라우팅#Orchestrator ExecutionService → Proxy 호출 시 Agent.targetDatasourceId 자동 주입": {
+      "key": "KAN-747"
+    },
+    "04-monitoring#관리 테이블 DB 라우팅#ExecutionDataController 조회 경로 JPA → JdbcTemplate 전환": {
+      "key": "KAN-748"
+    },
+    "04-monitoring#관리 테이블 DB 라우팅#ExecutionDataReader 공통 조회 유틸 도입": {
+      "key": "KAN-749"
+    },
+    "04-monitoring#Agent 자동 관리#DatasourceService introspection fallback (4/30, registerTable request.columns 비면 자체 introspection / refreshTableColumns 항상 자체)": {
+      "key": "KAN-750"
+    },
+    "04-monitoring#Agent 자동 관리#datasource_table 소문자 중복 정리 + Loader zone 정정 (4/30, INTERNAL → INTERNAL_COMMON)": {
+      "key": "KAN-751"
+    },
+    "04-monitoring#실행 상세 화면#테이블 스탯 — SOURCE/TARGET별 건수 요약": {
+      "key": "KAN-752"
+    },
+    "04-monitoring#실행 상세 화면#테이블 데이터 탭 — 2타입 전환, 검색, 필터, 정렬, 페이징": {
+      "key": "KAN-753"
+    },
+    "04-monitoring#데이터 추적 화면#행 클릭 → SOURCE ↔ TARGET 트레이싱 (IF 없는 Agent도 커버, 4/22)": {
+      "key": "KAN-754"
+    },
+    "04-monitoring#데이터 추적 화면#매칭 false positive fix (4/30, Object.values.some 대체 → backend traceBySourcePk API 호출, 50줄 → 7줄)": {
+      "key": "KAN-755"
+    },
+    "05-api-provide#API 엔드포인트 생성#슬래시 operationId 지원 (4/24, `megokrApi/ngw08` 레거시 URL 그대로 재현)": {
+      "key": "KAN-756"
+    },
+    "05-api-provide#API 엔드포인트 생성#응답 alias 대소문자 보존 (4/24, PG identifier lowercase 회피, 쌍따옴표 alias)": {
+      "key": "KAN-757"
+    },
+    "05-api-provide#API 엔드포인트 생성#응답 alias v3 호환 정렬 (4/28, 11종 핸들러 일괄 + frontend fix)": {
+      "key": "KAN-758"
+    },
+    "05-api-provide#API 엔드포인트 생성#PRV 응답 키 = v3 레거시 alias 유지 메모리 룰 박힘 (`feedback_provide_response_v3_compat.md`)": {
+      "key": "KAN-759"
+    },
+    "05-api-provide#API 엔드포인트 생성#A7 RNUM + B2 RNUM/JOSACODE 자바 후처리 (4/29, DynamicQueryService 화이트리스트, ROWNUM_PREPEND_OPS)": {
+      "key": "KAN-760"
+    },
+    "05-api-provide#API 엔드포인트 생성#B2 josacode column 1행 INSERT (display_order=22) — v3 환경 등록 정합 (4/29)": {
+      "key": "KAN-761"
+    },
+    "05-api-provide#E2E 검증#동적 SELECT 엔진 E2E 테스트 — Type A 12종 200 OK (4/24, Python 일괄 등록 + 호출 검증)": {
+      "key": "KAN-762"
+    },
+    "05-api-provide#E2E 검증#alias 변경 전후 회귀 검증 (4/28, 2회 Type A 12종 200 OK)": {
+      "key": "KAN-763"
+    },
+    "05-api-provide#E2E 검증#호출 이력 저장 로직 검증 (ApiPrvCallHistory finally 패턴, 외부 호출만 / test 제외)": {
+      "key": "KAN-764"
+    },
+    "05-api-provide#E2E 검증#RNUM/JOSACODE 후처리 회귀 검증 (4/29, 다른 10종 응답 키 변화 없음)": {
+      "key": "KAN-765"
+    },
+    "07-security#로그인/인가#사용자 로그인 기능 (ID/PW 인증) — sync-orchestrator-auth:8096 모듈 신설 (5/4)": {
+      "key": "KAN-766"
+    },
+    "07-security#로그인/인가#세션 또는 JWT 기반 인증 유지 — JWT RS256 + JWKS + Cookie HttpOnly+SameSite=Strict": {
+      "key": "KAN-767"
+    },
+    "07-security#로그인/인가#권한 체계 — peer multiplication 동급 1롤 결정 (역할 분리 없음)": {
+      "key": "KAN-768"
+    },
+    "07-security#로그인/인가#미인증 접근 차단 (프론트 + 백엔드) — Phase 2~5 한 묶음 배포 영역": {
+      "key": "KAN-769"
+    },
+    "07-security#로그인/인가#auth 모듈 신설 (Spring Boot 2.7.12 + jjwt 0.11.5 + Nimbus 9.37 + jasypt + JPA)": {
+      "key": "KAN-770"
+    },
+    "07-security#로그인/인가#AuthUser / AuthRefreshToken / AuthRsaKey 엔티티 + Repository (ddl-auto 자동 생성)": {
+      "key": "KAN-771"
+    },
+    "07-security#로그인/인가#KeyService — RSA 2048 페어 자동 생성 + 회전 + JWKS 응답 + InitialKeyLoader": {
+      "key": "KAN-772"
+    },
+    "07-security#로그인/인가#TokenService — RS256 발급/검증 + SigningKeyResolverAdapter (kid 자동 lookup)": {
+      "key": "KAN-773"
+    },
+    "07-security#로그인/인가#UserService — peer multiplication CRUD + BCrypt(round 12) + 마지막 1명 차단": {
+      "key": "KAN-774"
+    },
+    "07-security#로그인/인가#AuthService — 로그인/refresh/로그아웃 + 5회 잠금(30min) + 1회용 회전 + timing-safe": {
+      "key": "KAN-775"
+    },
+    "07-security#로그인/인가#AuthController/UserController/JwksController + SecurityConfig (401 AUTH_REQUIRED EntryPoint)": {
+      "key": "KAN-776"
+    },
+    "07-security#로그인/인가#AuthCookieFilter — accessToken cookie → SecurityContext (auth 자체 검증)": {
+      "key": "KAN-777"
+    },
+    "07-security#로그인/인가#KeyRotationJob (자정 cron `0 0 0 * * ?`)": {
+      "key": "KAN-778"
+    },
+    "07-security#로그인/인가#UserGeneratorCli (초기 1명 발급, Spring context 미기동 단독 실행)": {
+      "key": "KAN-779"
+    },
+    "07-security#로그인/인가#단위/통합 테스트 31/31 PASS (TokenService 7 + UserService 10 + AuthService 10 + KeyRotation 4)": {
+      "key": "KAN-780"
+    },
+    "07-security#로그인/인가#Phase 1.5 sync-agent-common 검증자 자산 — JwksClient + JwtCookieAuthFilter + 헬퍼 + 단위 5/5 PASS + JAR 8 모듈 복사 + 회귀 OK": {
+      "key": "KAN-781"
+    },
+    "07-security#로그인/인가#Step 11 통합 검증 — 17 시나리오 모두 PASS (auth 모듈 E2E)": {
+      "key": "KAN-782"
+    },
+    "07-security#로그인/인가#첫 사용자 발급 (admin) — UserGeneratorCli + UNIQUE 충돌 검증 OK": {
+      "key": "KAN-783"
+    },
+    "07-security#로그인/인가#Phase 2 backend 검증자 적용 (별 세션 — `/api/callback/**` permitAll 정책 포함)": {
+      "key": "KAN-784"
+    },
+    "07-security#로그인/인가#Phase 3 api-provider 검증자 적용 (별 세션 — provide/manage/mock 3-way path 분리)": {
+      "key": "KAN-785"
+    },
+    "07-security#로그인/인가#Phase 4 api-collector 검증자 적용 (별 세션 — DMZ/Internal 양쪽 yml + NGW_0118 LOOKUP 영향 검증)": {
+      "key": "KAN-786"
+    },
+    "07-security#로그인/인가#Phase 5 frontend 로그인 화면 + 사용자 관리 (별 세션 — 가장 큰 작업 5~6h)": {
+      "key": "KAN-787"
+    },
+    "08-provide-agent#제공용 Agent 인프라#ProvideLoadStep 폐기 → SourceToIfStep 통합 (4/23 — 모든 Agent 단일 카피 Step 재사용)": {
+      "key": "KAN-788"
+    },
+    "08-provide-agent#제공용 Agent 인프라#SourceToIfStep → SourceToTargetStep 개명·중립화 (IF 전제 제거, 4/23)": {
+      "key": "KAN-789"
+    },
+    "08-provide-agent#제공용 Agent 인프라#SyncLog·Execution PG 29006 저장 + Proxy 헤더 라우팅 (X-Manage-Datasource-Id, 4/22)": {
+      "key": "KAN-790"
+    },
+    "08-provide-agent#제공용 Agent 인프라#16 엔티티 UK 통일 (@Id=sn IDENTITY + @UniqueConstraint(source_refs), 4/23)": {
+      "key": "KAN-791"
+    },
+    "08-provide-agent#제공용 Agent 인프라#JdbcTableNameResolver cross-schema 지원 (TableRef.parse + schemaPattern, 4/23 A4 부수)": {
+      "key": "KAN-792"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A1 가뭄119 (SDE_NGWS.WT_DREAM_PERMWELL_PUBLIC_21033 → api_prv_wt_dream_permwell_public_21033) — cross-schema 4/23": {
+      "key": "KAN-793"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A3 MEGOKR NGW_08 (TM_GD000203 → api_prv_tm_gd000203) — 파일럿 4/22": {
+      "key": "KAN-794"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A6 OPN 관측망 기본 (TM_GD120001 → api_prv_tm_gd120001) — 4/23 (TM_GD10001 의 표준화 후 테이블)": {
+      "key": "KAN-795"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#A7 OPN TMP_MEGOKR_API (149컬럼, 특이 케이스 @Id=id IDENTITY + sn 일반컬럼) — 4/23 → B1/B2/B3 재활용": {
+      "key": "KAN-796"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#TM_GD112002 — 4/23 이식 + DDL + Agent 등록 + E2E": {
+      "key": "KAN-797"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#TM_GD120001 — 4/23 이식 + DDL + 샘플": {
+      "key": "KAN-798"
+    },
+    "08-provide-agent#Type A 단순 복사 등록#TM_GD130001 — 4/23 (VARCHAR leading-zero 픽스 부수)": {
+      "key": "KAN-799"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#CustomOperationHandler 인터페이스 + CustomOperationMetadata POJO": {
+      "key": "KAN-801"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#CustomColumnSpec / CustomParamSpec (운영자 화면 메타)": {
+      "key": "KAN-802"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#CustomHandlerRegistry (Spring Bean 자동 수집)": {
+      "key": "KAN-803"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#ApiPrvOperation ALTER (operation_type, is_locked) + 기존 12건 META 백필": {
+      "key": "KAN-804"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#ApiGatewayController + ApiPrvManageController.testOperation CUSTOM/META 분기": {
+      "key": "KAN-805"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#ApiPrvCallHistory finally 패턴 기록 (외부 호출만 / test 제외)": {
+      "key": "KAN-806"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#handler_key 분리 — operationId/Name 운영자 변경 가능 + 핸들러 매칭 보존": {
+      "key": "KAN-807"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#잠금 보호 (ApiPrvOperationService)": {
+      "key": "KAN-808"
+    },
+    "08-provide-agent#Type B 커스텀 핸들러 인프라#Oracle JDBC driver 의존성 + Hikari connectionTestQuery 제거 (driver isValid)": {
+      "key": "KAN-809"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B14** InspectionListHandler — 파일럿 (TM_GD110310 + LEFT JOIN/필터/정렬/페이징, 4/27)": {
+      "key": "KAN-811"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B15** InspectionDistinctHandler — DISTINCT GROUP BY (4/27)": {
+      "key": "KAN-812"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B6** LinkageChartDailyHandler (4/27)": {
+      "key": "KAN-813"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B17** UnregitsFclySmrizeHandler (TM_GD023001 신규 DDL + ALTER, 4/27)": {
+      "key": "KAN-814"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B16-DJ** ActualUseDetailDjHandler (CTE 2 + 3JOIN + ROW_NUMBER + DECODE, 4/27)": {
+      "key": "KAN-815"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B16-KB** ActualUseDetailKbHandler (DJ SQL + brtcNm='경상북도' 분기, 4/27)": {
+      "key": "KAN-816"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B5** SupplementaryGroundwaterHandler (5-way LEFT JOIN, 6 테이블 컬럼 정합화, 4/27)": {
+      "key": "KAN-817"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B18** WqInputStatusDjHandler (UNION ALL + 3중 서브 + 대전 시군구 6행, 4/28)": {
+      "key": "KAN-818"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B9** ObservationStationTimeHandler (B9 파일과 명명 충돌 정리 후 — 정적 PIVOT 일 단위, 4/28)": {
+      "key": "KAN-819"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B10** GroundwaterQualityHandler (정적 PIVOT 시 단위, 4/28)": {
+      "key": "KAN-820"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B13** WaterQualityMfdsHandler (동적 PIVOT 패턴 확립 + helper fallback, 4/28)": {
+      "key": "KAN-821"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B11** WaterQualityInfoHandler (동적 PIVOT, 4/29 Phase 4)": {
+      "key": "KAN-822"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B12-DJ** WaterQualityInfoDjHandler (B11 + brtcNm 필터, 4/29)": {
+      "key": "KAN-823"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B12-KB** WaterQualityInfoKbHandler (4/29)": {
+      "key": "KAN-824"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B7** WaterLevelObservationHandler (DBLINKUSR DUBWLOBSIF, 4/30 Phase 6)": {
+      "key": "KAN-825"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B8** RainfallObservationHandler (DBLINKUSR DUBRFOBSIF, 4/30)": {
+      "key": "KAN-826"
+    },
+    "08-provide-agent#Type B 핸들러 구현 (Phase 1~6)#**B4** WellInfoHandler (info_permwell, RGETNPMMS01 + TC_GD00100 JOIN + 함수 3종)": {
+      "key": "KAN-827"
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증#12건 operation 전수 등록 + 호출 검증 (Python 일괄 등록, 12/12 200 OK, 4/24)": {
+      "key": "KAN-829"
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증#슬래시 operationId 지원 (`megokrApi/ngw08` 레거시 URL 그대로 재현, 4/24)": {
+      "key": "KAN-830"
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증#응답 alias 대소문자 보존 (PG identifier lowercase 회피, 쌍따옴표 alias, 4/24)": {
+      "key": "KAN-831"
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증#응답 alias v3 호환 정렬 (11종 핸들러 일괄 수정 + frontend fix + 메모리, 4/28)": {
+      "key": "KAN-832"
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증#PRV 응답 키 = v3 레거시 alias 유지 메모리 룰 (`feedback_provide_response_v3_compat.md`)": {
+      "key": "KAN-833"
+    },
+    "08-provide-agent#Operation 등록 + 호출 검증#A7 RNUM + B2 RNUM/JOSACODE 자바 후처리 (DynamicQueryService 화이트리스트, 4/29)": {
+      "key": "KAN-834"
+    },
+    "08-provide-agent#개발 환경 DDL#00_create_schemas.sql — SDE_NGWS / DBLINKUSR 스키마 생성 정책": {
+      "key": "KAN-835"
+    },
+    "08-provide-agent#개발 환경 DDL#WT_DREAM_PERMWELL_PUBLIC_21033.sql (A4 cross-schema, 4/23)": {
+      "key": "KAN-836"
+    },
+    "08-provide-agent#개발 환경 DDL#TM_GD112002.sql / TM_GD120001.sql / TM_GD130001.sql / TMP_MEGOKR_API.sql (Type A 4/23)": {
+      "key": "KAN-837"
+    },
+    "08-provide-agent#개발 환경 DDL#TM_GD110310.sql (B14, 4/27)": {
+      "key": "KAN-838"
+    },
+    "08-provide-agent#개발 환경 DDL#TM_GD023001.sql (B17 신규)": {
+      "key": "KAN-839"
+    },
+    "08-provide-agent#개발 환경 DDL#VIEW_GTEST.sql (B 영역)": {
+      "key": "KAN-840"
+    },
+    "08-provide-agent#개발 환경 DDL#B5_setup.sql / B7_B8_setup.sql / B9_setup.sql / B10_setup.sql / B11_setup.sql / B13_setup.sql / B16_setup.sql / B18_setup.sql (Type B 샘플 데이터)": {
+      "key": "KAN-841"
+    },
+    "08-provide-agent#개발 환경 DDL#**B4_functions.sql** — Oracle 함수 2종 사전 배치 (5/4)": {
+      "key": "KAN-842"
+    },
+    "08-provide-agent#개발 환경 DDL#TC_GD00002 컬럼명 정합 (4/27 — UGRWTR_CMMN_CODE → UGWTR_COM_CD/CD_CN/GROUP_CD_SN)": {
+      "key": "KAN-843"
+    },
+    "08-provide-agent#개발 환경 DDL#누락 Oracle 테이블 잔여 — 사용자 자료 필요 시 추가": {
+      "key": "KAN-844"
+    },
+    "08-provide-agent#개발 환경 DDL#RGETNPMMS01 추적 컬럼 ALTER TABLE (LINK_STATUS 기본값 pending) — A5 본 이식 시점": {
+      "key": "KAN-845"
+    },
+    "08-provide-agent#개발 환경 DDL#DBLINKUSR.* 외부 스키마 핸들러 — 로컬 재현 패턴으로 B7/B8 처리 (4/30)": {
+      "key": "KAN-846"
+    },
+    "08-provide-agent#E2E 검증#A3 TM_GD000203 E2E 파일럿 (Oracle 29004 → PG 29006) — 4/22": {
+      "key": "KAN-847"
+    },
+    "08-provide-agent#E2E 검증#Source 정방향 추적 / Target 역방향 추적 동작 검증 — 4/22": {
+      "key": "KAN-848"
+    },
+    "08-provide-agent#E2E 검증#api-provider 연동 검증 (제공 테이블 → 동적 SELECT → 외부 응답) — Type A 12종 200 OK, 4/24": {
+      "key": "KAN-849"
+    },
+    "08-provide-agent#E2E 검증#/trace-source 분기 3 개선 (target_tables 1순위 + 양방향 2순위, 4/22)": {
+      "key": "KAN-850"
+    },
+    "08-provide-agent#E2E 검증#Type B 회귀 검증 (alias 변경 전후 2회 200 OK, 4/28)": {
+      "key": "KAN-851"
+    },
+    "08-provide-agent#E2E 검증#Type A 9건 전체 E2E 검증 (잔여 A4/A5/A8/A9)": {
+      "key": "KAN-852"
+    },
+    "08-provide-agent#E2E 검증#Type B B4 본 구현 후 E2E 검증": {
+      "key": "KAN-853"
     }
   }
 }
