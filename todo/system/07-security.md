@@ -3,7 +3,7 @@
 > **요구사항**: 다수의 DB 자격증명과 서비스 간 통신을 안전하게 보호하고,
 > 관리 화면 접근을 인가된 사용자로 제한한다.
 
-## 상태: 로그인 Phase 1 + 1.5 완료 (Phase 2~5 별 세션 대기)
+## 상태: 로그인 Phase 1~5 모두 완료 (5/6, 9개 모듈 통합 운영 가능)
 
 ---
 
@@ -59,7 +59,12 @@
 - [x] Phase 1.5 sync-agent-common 검증자 자산 — JwksClient + JwtCookieAuthFilter + 헬퍼 + 단위 5/5 PASS + JAR 8 모듈 복사 + 회귀 OK
 - [x] Step 11 통합 검증 — 17 시나리오 모두 PASS (auth 모듈 E2E)
 - [x] 첫 사용자 발급 (admin) — UserGeneratorCli + UNIQUE 충돌 검증 OK
-- [ ] Phase 2 backend 검증자 적용 (별 세션 — `/api/callback/**` permitAll 정책 포함)
-- [ ] Phase 3 api-provider 검증자 적용 (별 세션 — provide/manage/mock 3-way path 분리)
-- [ ] Phase 4 api-collector 검증자 적용 (별 세션 — DMZ/Internal 양쪽 yml + NGW_0118 LOOKUP 영향 검증)
-- [ ] Phase 5 frontend 로그인 화면 + 사용자 관리 (별 세션 — 가장 큰 작업 5~6h)
+- [x] Phase 2 backend 검증자 적용 (5/6 — `/api/callback/**` permitAll, 그 외 JWT)
+- [x] Phase 3 api-provider 검증자 적용 (5/6 — `/api/provide` permit / `/api/manage` JWT / `/api/mock` permit. Mock 정책: 개발 자기호출 흐름 의존 발견 → matchIfMissing=true + permitAll, 운영 차단은 yml 단일 토글)
+- [x] Phase 4 api-collector 검증자 적용 (5/6 — `/api/**` JWT, `/mock/**` permit. LOOKUP 자기호출 흐름 살아있음 검증 OK)
+- [x] Phase 5 frontend 로그인 + 사용자 관리 (5/6 — login/users/users-me 페이지 + AppHeader/AppShell + middleware + axios 401·503 interceptor + next.config /auth/* rewrite. 폐쇄망 npm 부담 회피로 SWR/toast 등 추가 패키지 0건)
+- [x] sync-agent-common AutoConfiguration 통합 (5/6 — 검증자 모듈 yml 토글만으로 자동 등록)
+- [x] 첫 로그인 후 헤더 stale fix (5/6 — useCurrentUser mutate() 호출, 모듈 캐시 stale 회피)
+- [x] 통합 E2E 검증 37/37 PASS (5/6 — Health · JWKS · 인증 정합 · LOOKUP 회귀 회피 · peer multi · 마지막 1명 차단 · Frontend middleware/proxy)
+- [ ] **후속 1**: 단위 테스트 환경 격리 — `UserServiceTest.deleteMe_blocked_when_only_one_user` 가 실 DB admin 살아있을 때 count=2 가 되어 차단 안 걸림. `@Sql` cleanup 또는 transactional isolation 강제로 fix 필요. (현재 영향: 테스트 1건 실패. curl E2E 17 로 동등 검증 됨)
+- [ ] **후속 3**: 폐쇄망 운영 yml override 패턴 정립 — `mock.api.enabled=false` (api-collector), `mock.api-key.enabled=false` (api-provider), JWKS URL (외부 host), `auth.issuer/audience` 등. profile 분리 또는 환경변수 가이드 작성
