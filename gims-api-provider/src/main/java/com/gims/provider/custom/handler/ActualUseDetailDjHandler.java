@@ -18,7 +18,7 @@ import java.util.Map;
  * B16-DJ — 대전광역시 이용실태 상세 (actualUseDetailDJ)
  *
  * 레거시 v3: opn.actualUseDetailDJ — controller 가 brtcNm='대전광역시' set
- * source: TC_GD00100 + TM_GD010930 + RGETNTGMS02 (CTE 2개 + LEFT JOIN + ROW_NUMBER + DECODE)
+ * source: TC_GD000100 + TM_GD010930 + RGETNTGMS02 (CTE 2개 + LEFT JOIN + ROW_NUMBER + DECODE)
  * 컬럼명 표준화: BRTC_NM→CTPV_NM, SIGUN_NM→SGG_NM, LEGALDONG_CODE→STDG_CD, SF_ASSCT_CODE→LCLGV_CD, DELETE_DE→DEL_YMD
  *
  * KB 핸들러와 SQL 동일 (1:1 원칙) — brtcNm 만 다름
@@ -37,7 +37,7 @@ public class ActualUseDetailDjHandler implements CustomOperationHandler {
             "  SELECT CTPV_NM, " +
             "         DECODE(CTPV_NM, '세종특별자치시', CTPV_NM, SGG_NM) SGG_NM, " +
             "         EMD_NM, A.STDG_CD, LCLGV_CD " +
-            "  FROM TC_GD00100 A JOIN TM_GD010930 B ON A.STDG_CD = B.STDG_CD " +
+            "  FROM TC_GD000100 A JOIN TM_GD010930 B ON A.STDG_CD = B.STDG_CD " +
             "  WHERE A.DEL_YMD IS NULL AND EMD_NM IS NULL" +
             "), " +
             "RST AS (" +
@@ -68,7 +68,7 @@ public class ActualUseDetailDjHandler implements CustomOperationHandler {
                 .operationId(OPERATION_ID)
                 .operationName("B16 대전 이용실태 상세")
                 .description(
-                        "관련 테이블: TC_GD00100, TM_GD010930, RGETNTGMS02 (대전광역시 한정)\n" +
+                        "관련 테이블: TC_GD000100, TM_GD010930, RGETNTGMS02 (대전광역시 한정)\n" +
                         "변환: CTE 2개 + LEFT JOIN + ROW_NUMBER + DECODE (작년 데이터 기준)"
                 )
                 .datasourceId(DATASOURCE_ID)

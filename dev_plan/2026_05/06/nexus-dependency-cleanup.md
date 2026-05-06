@@ -35,13 +35,13 @@
 - Java 17에서 ojdbc8 정상 동작 (Oracle 공식 호환 매트릭스)
 - 자바 코드는 `java.sql.*`/`javax.sql.*` 표준 API만 사용 — 패키지 import 변경 없음
 
-### B. Oracle JDBC 버전 강제 (7 모듈, BOM property override)
+### B. Oracle JDBC 버전 강제 (7 모듈, 직접 명시 ⇐ 실제 적용)
 
-Boot 2.7.12 BOM의 `oracle-database.version` 기본값(21.5.0.0) → 사내 보유 버전(19.3.0.0)으로 override.
+**최초 계획**: `ext['oracle-database.version'] = '19.3.0.0'` BOM property override.
+**실제 적용**: 직접 명시. 이유 — Oracle은 19.3.0.0에 ojdbc-bom을 배포하지 않음 (ojdbc-bom은 21.x부터). Boot BOM이 ojdbc-bom 의존하므로 override 시 빌드 실패.
 
-각 모듈 build.gradle 상단(plugin 블록 다음, dependencies 블록 전)에 추가:
 ```gradle
-ext['oracle-database.version'] = '19.3.0.0'
+runtimeOnly 'com.oracle.database.jdbc:ojdbc8:19.3.0.0'
 ```
 
 대상 모듈 (Oracle JDBC 사용 7개):
@@ -146,15 +146,16 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
 
 ---
 
-## 6. 작업 순서
+## 6. 작업 순서 (완료)
 
-1. (완료) **본 계획 사용자 승인**
-2. C 작업 — 전 11 모듈 gradle wrapper 8.13으로 변경
-3. A 작업 — 3 모듈 ojdbc11 → ojdbc8
-4. B 작업 — 7 모듈 `ext['oracle-database.version'] = '19.3.0.0'` 추가
-5. D 작업 — sync-agent-common BOM 적용 + 버전 떼기 + 검증
-6. 빌드 테스트 — 모든 모듈
-7. dev_logs 작성 + nexus-dependencies.md 갱신 + 커밋
+1. ✅ 본 계획 사용자 승인
+2. ✅ C 작업 — 전 11 모듈 gradle wrapper 8.13으로 변경
+3. ✅ A 작업 — 3 모듈 ojdbc11 → ojdbc8
+4. ✅ B 작업 — 7 모듈 `ojdbc8:19.3.0.0` 직접 명시 (BOM property override 폐기)
+5. ✅ D 작업 — sync-agent-common BOM 적용 + 버전 떼기 + 검증
+6. ✅ 빌드 테스트 — 11/11 모듈 BUILD SUCCESSFUL
+7. ✅ dev_logs / nexus-dependencies.md 갱신
+8. (다음) 메모리 동기화(`docs/claude-memory/`) + 커밋
 
 ---
 

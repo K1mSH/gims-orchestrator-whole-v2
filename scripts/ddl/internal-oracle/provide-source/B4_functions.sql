@@ -6,7 +6,7 @@
 -- 계획 문서: dev_plan/2026_05/04/b4-oracle-functions-ddl.md
 --
 -- 변환 매트릭스:
---   FN_GD_GET_CMMTNDCODE — 테이블 동일(TC_GD00002), 컬럼 3개만 표준화 이름으로 치환
+--   FN_GD_GET_CMMTNDCODE — 테이블 동일(TC_GD000002), 컬럼 3개만 표준화 이름으로 치환
 --     UGRWTR_CMMN_GRP_CODE → GROUP_CD_SN  (실측 VARCHAR2(20))
 --     UGRWTR_CMMN_CODE     → UGWTR_COM_CD (CHAR(50))
 --     CODE_CTNT            → CD_CN        (VARCHAR2(500))
@@ -25,13 +25,13 @@ PROMPT [1/4] FN_GD_GET_CMMTNDCODE 생성
 PROMPT ============================================================
 
 CREATE OR REPLACE FUNCTION FN_GD_GET_CMMTNDCODE(
-  in_code_id IN TC_GD00002.GROUP_CD_SN%TYPE,
-  in_code    IN TC_GD00002.UGWTR_COM_CD%TYPE
+  in_code_id IN TC_GD000002.GROUP_CD_SN%TYPE,
+  in_code    IN TC_GD000002.UGWTR_COM_CD%TYPE
 ) RETURN VARCHAR2 IS
   RESULT VARCHAR2(500);
 BEGIN
   SELECT CD_CN INTO RESULT
-    FROM TC_GD00002
+    FROM TC_GD000002
    WHERE GROUP_CD_SN  = in_code_id
      AND UGWTR_COM_CD = in_code;
   RETURN RESULT;

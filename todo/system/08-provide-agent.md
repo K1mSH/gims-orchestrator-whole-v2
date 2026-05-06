@@ -79,9 +79,11 @@
 - [x] **B12-KB** WaterQualityInfoKbHandler (4/29)
 - [x] **B7** WaterLevelObservationHandler (DBLINKUSR DUBWLOBSIF, 4/30 Phase 6)
 - [x] **B8** RainfallObservationHandler (DBLINKUSR DUBRFOBSIF, 4/30)
-- [ ] **B4** WellInfoHandler (info_permwell, RGETNPMMS01 + TC_GD00100 JOIN + 함수 3종)
-  - [x] B4 의존 Oracle 함수 사전 배치 (FN_GD_GET_CMMTNDCODE / FN_GD_GET_GUBUN, internal-oracle 5/4 적용 + 7/7 검증 PASS)
-  - [ ] B4 핸들러 본 구현 (Java)
+- [x] **B4** WellInfoHandler (info_permwell, RGETNPMMS01 + TC_GD000100 JOIN + 함수 3종) — 5/6 오후 완료
+  - [x] B4 의존 Oracle 함수 사전 배치 (FN_GD_GET_CMMTNDCODE / FN_GD_GET_GUBUN, internal-oracle 5/4 적용 + 7/7 검증 PASS, 5/6 표준화 후 재배치)
+  - [x] B4 핸들러 본 구현 (Java) — 5/6 오후 (operationId=`opnService/getWellInfo`, custom-handlers/register endpoint 로 메타 자동 sync, id=36)
+  - [x] B4_setup.sql — 대전 5 + 경북 3 시군구 9 row 샘플 데이터
+  - [x] E2E 검증: 운영자 cookie + 외부 사용자 (apiKey 쿼리) + Frontend rewrite + 메타 sync (columns 13 + params 2) 모두 PASS
 
 ## Operation 등록 + 호출 검증 [등록]
 - [x] 12건 operation 전수 등록 + 호출 검증 (Python 일괄 등록, 12/12 200 OK, 4/24)

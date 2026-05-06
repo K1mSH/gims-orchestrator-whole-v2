@@ -22,7 +22,7 @@ import java.util.TreeSet;
  *
  * 레거시: opn.waterQualityMfdsInfo
  * - source: TM_GD110350 (메인) + TM_GD110351 (결과) + TM_GD010910 (사용자, 스칼라)
- * - helper: TM_GD110310 + TC_GD00002 (NGW_0026) — 동적 PIVOT 컬럼풀 추출
+ * - helper: TM_GD110310 + TC_GD000002 (NGW_0026) — 동적 PIVOT 컬럼풀 추출
  * - 구조: GROUP BY + 동적 PIVOT (CASE WHEN per inspection_iem_code) + outer NVL
  * - 응답: 19 고정 컬럼 + N 동적 (`C{code}`)
  *
@@ -63,7 +63,7 @@ public class WaterQualityMfdsHandler implements CustomOperationHandler {
                 .operationId(OPERATION_ID)
                 .operationName("B13 식약처 정기수질검사")
                 .description(
-                        "관련 테이블: TM_GD110350, TM_GD110351, TM_GD010910 + helper TM_GD110310/TC_GD00002\n" +
+                        "관련 테이블: TM_GD110350, TM_GD110351, TM_GD010910 + helper TM_GD110310/TC_GD000002\n" +
                         "변환: 동적 PIVOT (inspection 코드풀 + searchMaxDtaStdrYear fallback) + 2JOIN + 스칼라"
                 )
                 .datasourceId(DATASOURCE_ID)

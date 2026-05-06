@@ -2,6 +2,9 @@ package com.sync.proxy.internal.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -33,6 +36,9 @@ public class ConnectionInfoController {
     @Value("${agent.orchestrator-url}")
     private String orchestratorUrl;
 
+    @Value("${agent.api-key:}")
+    private String apiKey;
+
     @SuppressWarnings("unchecked")
     @GetMapping("/{datasourceId}/connection-info")
     public ResponseEntity<Map<String, Object>> getConnectionInfo(
@@ -42,7 +48,12 @@ public class ConnectionInfoController {
 
         try {
             RestTemplate restTemplate = new RestTemplate();
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            HttpHeaders headers = new HttpHeaders();
+            if (apiKey != null && !apiKey.isEmpty()) {
+                headers.set("X-API-Key", apiKey);   // Backend ApiKeyFilter 통과용
+            }
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            Map<String, Object> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class).getBody();
 
             if (response == null || response.isEmpty()) {
                 log.warn("[Proxy] Empty response from Orchestrator for datasource: {}", datasourceId);

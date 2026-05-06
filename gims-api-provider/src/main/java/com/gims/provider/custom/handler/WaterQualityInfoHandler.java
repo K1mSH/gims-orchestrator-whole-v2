@@ -21,8 +21,8 @@ import java.util.TreeSet;
  * B11 — 수질측정망 정보 (waterQualityInfo, 범용)
  *
  * 레거시: opn.waterQualityInfo
- * - source: TM_GD120001 + TM_GD110301 + TM_GD110302 + TC_GD00002 (NGW_0028 스칼라)
- * - helper: TM_GD110310 + TC_GD00002 (NGW_0026) — 동적 PIVOT 컬럼풀
+ * - source: TM_GD120001 + TM_GD110301 + TM_GD110302 + TC_GD000002 (NGW_0028 스칼라)
+ * - helper: TM_GD110310 + TC_GD000002 (NGW_0026) — 동적 PIVOT 컬럼풀
  * - 구조: GROUP BY 2단 + 동적 PIVOT (CASE WHEN per inspection_iem_code) + outer NVL
  * - 응답: 14 고정 + N 동적 (`c{code}`)
  *
@@ -63,7 +63,7 @@ public class WaterQualityInfoHandler implements CustomOperationHandler {
                 .operationId(OPERATION_ID)
                 .operationName("B11 수질측정망 정보 (범용)")
                 .description(
-                        "관련 테이블: TM_GD120001, TM_GD110301, TM_GD110302, TC_GD00002 + helper TM_GD110310\n" +
+                        "관련 테이블: TM_GD120001, TM_GD110301, TM_GD110302, TC_GD000002 + helper TM_GD110310\n" +
                         "변환: 동적 PIVOT (inspection 코드풀 + searchMaxDtaStdrYear fallback) + 2JOIN + 스칼라 (NGW_0028 입력기관)"
                 )
                 .datasourceId(DATASOURCE_ID)
@@ -239,7 +239,7 @@ public class WaterQualityInfoHandler implements CustomOperationHandler {
                "         T3.WQ_INSP_YMD AS qltwtrInspctDe, " +
                "         TO_CHAR(T3.FRST_REG_DT, 'YYYY-MM-DD HH24:MI:SS') AS registDt, " +
                "         TO_CHAR(T3.LAST_CHG_DT, 'YYYY-MM-DD HH24:MI:SS') AS changeDt, " +
-               "         (SELECT TRIM(B.CD_CN) FROM TC_GD00002 B " +
+               "         (SELECT TRIM(B.CD_CN) FROM TC_GD000002 B " +
                "          WHERE B.GROUP_CD_SN = 'NGW_0028' AND TRIM(B.UGWTR_COM_CD) = T3.UGWTR_WQMN_INPT_INST_CD) AS usrNM, " +
                "         T32.WQ_INSP_ARTCL_CD, T32.RSLT_VL " +
                "  FROM   TM_GD120001 T1 " +

@@ -22,12 +22,12 @@ import java.util.Map;
  *   SELECT A.JOSACODE, A.DTA_STDR_YEAR, A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN AS REMARK_CTNT
  *   FROM   TM_GD110310 A
  *   LEFT JOIN (SELECT TRIM(UGWTR_COM_CD) AS UGWTR_COM_CD, CD_CN
- *              FROM   TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0026') B
+ *              FROM   TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0026') B
  *     ON A.QLTWTR_INSPCT_IEM_CODE = B.UGWTR_COM_CD
  *   ORDER BY A.JOSACODE, A.DTA_STDR_YEAR, A.QLTWTR_INSPCT_IEM_CODE
  *
  * - 외부 GIMS Oracle 직접 쿼리 (datasourceId="internal")
- * - TC_GD00002.UGWTR_COM_CD 가 CHAR(50) 패딩이라 TRIM 필수
+ * - TC_GD000002.UGWTR_COM_CD 가 CHAR(50) 패딩이라 TRIM 필수
  * - 응답 키는 대문자 (레거시 호환)
  */
 @Slf4j
@@ -42,7 +42,7 @@ public class InspectionListHandler implements CustomOperationHandler {
             "SELECT A.JOSACODE, A.DTA_STDR_YEAR, A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN AS REMARK_CTNT " +
             "FROM   TM_GD110310 A " +
             "LEFT JOIN (SELECT TRIM(UGWTR_COM_CD) AS UGWTR_COM_CD, CD_CN " +
-            "           FROM   TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0026') B " +
+            "           FROM   TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0026') B " +
             "  ON A.QLTWTR_INSPCT_IEM_CODE = B.UGWTR_COM_CD " +
             "ORDER BY A.JOSACODE, A.DTA_STDR_YEAR, A.QLTWTR_INSPCT_IEM_CODE " +
             "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
@@ -57,7 +57,7 @@ public class InspectionListHandler implements CustomOperationHandler {
                 .operationId(OPERATION_ID)
                 .operationName("B14 수질검사항목 목록")
                 .description(
-                        "관련 테이블: TM_GD110310, TC_GD00002\n" +
+                        "관련 테이블: TM_GD110310, TC_GD000002\n" +
                         "변환: LEFT JOIN (NGW_0026 공통코드 매핑)"
                 )
                 .datasourceId(DATASOURCE_ID)

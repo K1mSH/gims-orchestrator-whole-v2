@@ -35,8 +35,10 @@
 - [project_api_collector_paging_limit.md](project_api_collector_paging_limit.md) - api-collector 범용 endpoint 자동 페이징 미지원 (커스텀 Executor 만). 사용자 결정 = 그냥 둠
 - [feedback_form_consistency_register_edit.md](feedback_form_consistency_register_edit.md) - 등록/수정 화면 양식 일관성 — 같은 항목은 같은 위치/그룹
 - [feedback_test_plan_baseline_tag.md](feedback_test_plan_baseline_tag.md) - 정식 기능 테스트 (test_plan/) = baseline tag 동반 + 통과 시 신규 stable tag + GitHub Release
-- [project_auth_system.md](project_auth_system.md) - Auth 시스템 (8096) — Phase 1+1.5 완료 (jjwt+Nimbus, Peer Multiplication, 토글 비활성)
+- [project_auth_system.md](project_auth_system.md) - Auth 시스템 (8096) — Phase 1~5 완료 + 시스템 간 X-API-Key 통합 모델 + ApiKeyFilter soft-mode
 - [feedback_dependency_consistency.md](feedback_dependency_consistency.md) - 우리 시스템 모듈끼리는 같은 의존성 사용, 모듈별 GAV/버전 차이 금지
+- [feedback_custom_handler_registration.md](feedback_custom_handler_registration.md) - Type B 핸들러 등록 = `POST /api/manage/custom-handlers/register` (메타 자동 sync). 직접 operations POST 금지
+- [feedback_standardization_legacy_unmapped.md](feedback_standardization_legacy_unmapped.md) - 표준화 자료 매핑 없는 테이블 = 레거시 이름 그대로. 추측 X. TSV $4=표준화 후 11자리
 
 ## 작업 규칙
 

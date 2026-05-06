@@ -68,3 +68,6 @@
 - [x] 통합 E2E 검증 37/37 PASS (5/6 — Health · JWKS · 인증 정합 · LOOKUP 회귀 회피 · peer multi · 마지막 1명 차단 · Frontend middleware/proxy)
 - [ ] **후속 1**: 단위 테스트 환경 격리 — `UserServiceTest.deleteMe_blocked_when_only_one_user` 가 실 DB admin 살아있을 때 count=2 가 되어 차단 안 걸림. `@Sql` cleanup 또는 transactional isolation 강제로 fix 필요. (현재 영향: 테스트 1건 실패. curl E2E 17 로 동등 검증 됨)
 - [ ] **후속 3**: 폐쇄망 운영 yml override 패턴 정립 — `mock.api.enabled=false` (api-collector), `mock.api-key.enabled=false` (api-provider), JWKS URL (외부 host), `auth.issuer/audience` 등. profile 분리 또는 환경변수 가이드 작성
+- [x] **5/4 §9.3.1 이슈 1 보완 — Backend 시스템 간 인증** (5/6 오후 완료) — Backend `/api/datasources/*/connection-info` 자격증명 endpoint 가 처음부터 무인증이었던 비대칭 발견 + 보완. ApiKeyFilter soft-mode 토글 도입 + Backend SecurityFilterChain 통합 + Proxy ConnectionInfoController X-API-Key 헤더 박음. `dev_plan/2026_05/06/auth-integration-matrix.md` 매트릭스 정립
+- [ ] **5/4 §9.3.1 이슈 1 — `/api/callback/**` X-API-Key 강화** (별 사이클) — Agent → Backend callback path 도 시스템 간 인증 적용 (현재 permitAll, body 만 = 자격증명 X 라 우선순위 낮음)
+- [ ] 인증 매트릭스 정식화 — `dev_plan/2026_05/06/auth-integration-matrix.md` 결정 후 `docs/AUTH_DESIGN.md` §섹션 반영

@@ -34,7 +34,7 @@ public class ActualUseDetailKbHandler implements CustomOperationHandler {
             "  SELECT CTPV_NM, " +
             "         DECODE(CTPV_NM, '세종특별자치시', CTPV_NM, SGG_NM) SGG_NM, " +
             "         EMD_NM, A.STDG_CD, LCLGV_CD " +
-            "  FROM TC_GD00100 A JOIN TM_GD010930 B ON A.STDG_CD = B.STDG_CD " +
+            "  FROM TC_GD000100 A JOIN TM_GD010930 B ON A.STDG_CD = B.STDG_CD " +
             "  WHERE A.DEL_YMD IS NULL AND EMD_NM IS NULL" +
             "), " +
             "RST AS (" +
@@ -65,7 +65,7 @@ public class ActualUseDetailKbHandler implements CustomOperationHandler {
                 .operationId(OPERATION_ID)
                 .operationName("B16 경북 이용실태 상세")
                 .description(
-                        "관련 테이블: TC_GD00100, TM_GD010930, RGETNTGMS02 (경상북도 한정)\n" +
+                        "관련 테이블: TC_GD000100, TM_GD010930, RGETNTGMS02 (경상북도 한정)\n" +
                         "변환: CTE 2개 + LEFT JOIN + ROW_NUMBER + DECODE (작년 데이터 기준)"
                 )
                 .datasourceId(DATASOURCE_ID)

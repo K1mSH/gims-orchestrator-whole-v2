@@ -44,4 +44,5 @@ public class AuthVerifierAutoConfiguration {
                                                    @Value("${auth.audience:orchestrator}") String audience) {
         return new JwtCookieAuthFilter(client, issuer, audience);
     }
+
 }

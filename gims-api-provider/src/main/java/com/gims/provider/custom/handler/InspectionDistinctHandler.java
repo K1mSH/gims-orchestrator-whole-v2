@@ -21,7 +21,7 @@ import java.util.Map;
  *   SELECT A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN AS REMARK_CTNT
  *   FROM   TM_GD110310 A
  *   LEFT JOIN (SELECT TRIM(UGWTR_COM_CD) AS UGWTR_COM_CD, CD_CN
- *              FROM   TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0026') B
+ *              FROM   TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0026') B
  *     ON A.QLTWTR_INSPCT_IEM_CODE = B.UGWTR_COM_CD
  *   GROUP BY A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN
  *   ORDER BY A.QLTWTR_INSPCT_IEM_CODE
@@ -41,7 +41,7 @@ public class InspectionDistinctHandler implements CustomOperationHandler {
             "SELECT A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN AS REMARK_CTNT " +
             "FROM   TM_GD110310 A " +
             "LEFT JOIN (SELECT TRIM(UGWTR_COM_CD) AS UGWTR_COM_CD, CD_CN " +
-            "           FROM   TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0026') B " +
+            "           FROM   TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0026') B " +
             "  ON A.QLTWTR_INSPCT_IEM_CODE = B.UGWTR_COM_CD " +
             "GROUP BY A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN " +
             "ORDER BY A.QLTWTR_INSPCT_IEM_CODE " +
@@ -52,7 +52,7 @@ public class InspectionDistinctHandler implements CustomOperationHandler {
             "  SELECT A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN " +
             "  FROM   TM_GD110310 A " +
             "  LEFT JOIN (SELECT TRIM(UGWTR_COM_CD) AS UGWTR_COM_CD, CD_CN " +
-            "             FROM   TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0026') B " +
+            "             FROM   TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0026') B " +
             "    ON A.QLTWTR_INSPCT_IEM_CODE = B.UGWTR_COM_CD " +
             "  GROUP BY A.QLTWTR_INSPCT_IEM_CODE, B.CD_CN" +
             ")";
@@ -65,7 +65,7 @@ public class InspectionDistinctHandler implements CustomOperationHandler {
                 .operationId(OPERATION_ID)
                 .operationName("B15 수질검사항목 코드 종류")
                 .description(
-                        "관련 테이블: TM_GD110310, TC_GD00002\n" +
+                        "관련 테이블: TM_GD110310, TC_GD000002\n" +
                         "변환: LEFT JOIN + GROUP BY (코드별 DISTINCT, NGW_0026 공통코드 매핑)"
                 )
                 .datasourceId(DATASOURCE_ID)

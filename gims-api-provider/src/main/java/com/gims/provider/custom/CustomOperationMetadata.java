@@ -11,7 +11,7 @@ import java.util.List;
  * 부팅 시 ApiPrvOperation/Column/Param 으로 변환되어 DB 등록.
  *
  * description 형식 가이드 (다중 테이블 표시):
- *   1줄: "관련 테이블: TM_GD110301, TM_GD110302, TM_GD120001, TC_GD00002"
+ *   1줄: "관련 테이블: TM_GD110301, TM_GD110302, TM_GD120001, TC_GD000002"
  *   2줄: "변환: 동적 PIVOT + 3JOIN + 스칼라"
  */
 @Data

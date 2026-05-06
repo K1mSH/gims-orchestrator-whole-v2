@@ -25,8 +25,20 @@ spring:
     init:
       mode: always
 
-# Proxy API Key (Agent/Proxy 간 인증)
+# Proxy API Key — Backend → Agent/Proxy outbound 호출 시 헤더 박는 용도
 proxy:
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+
+# 시스템 간 호출 보호 — Proxy/Agent → Backend inbound 검증
+# 다른 Agent/Proxy 모듈과 동일 패턴 (JASYPT_PASSWORD 로 풀린 동일 X-API-Key)
+# soft-mode = Backend mixed 케이스 — 운영자 cookie 흐름 양보 + 키 매치 시 SecurityContext.ROLE_SYSTEM
+common:
+  filter:
+    api-key:
+      enabled: true
+      soft-mode: true
+
+agent:
   api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
 
 # Auth (JWT — auth 모듈 8096 검증자)
