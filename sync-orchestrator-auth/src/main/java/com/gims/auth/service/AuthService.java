@@ -52,7 +52,7 @@ public class AuthService {
     // ============================================================
 
     public LoginResult login(String username, String password) {
-        AuthUser user = userRepository.findByUsername(username).orElse(null);
+        AuthUser user = userRepository.findByAuthUsersId(username).orElse(null);
         if (user == null) {
             // 사용자 없음 — BCrypt 1회 dummy 매칭 후 동일한 INVALID_CREDENTIALS 응답
             passwordEncoder.matches(password, dummyHash);

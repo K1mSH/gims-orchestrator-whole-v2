@@ -33,7 +33,7 @@ public class UserController {
     /** 새 사용자 추가 (peer multiplication) — 등록자가 ID/PW/이름 모두 입력 */
     @PostMapping
     public ResponseEntity<UserDto> add(@RequestBody AddUserRequest req) {
-        UserDto created = userService.addUser(req.username(), req.password(), req.name());
+        UserDto created = userService.addUser(req.authUsersId(), req.password(), req.name());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

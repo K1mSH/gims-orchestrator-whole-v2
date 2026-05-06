@@ -48,18 +48,18 @@ public class UserService {
         validatePassword(password);
         validateName(name);
 
-        if (userRepository.existsByUsername(username)) {
-            throw new IllegalStateException("USERNAME_DUPLICATE");
+        if (userRepository.existsByAuthUsersId(username)) {
+            throw new IllegalStateException("AUTH_USERS_ID_DUPLICATE");
         }
 
         AuthUser user = AuthUser.builder()
-            .username(username)
+            .authUsersId(username)
             .passwordHash(passwordEncoder.encode(password))
             .name(name)
             .build();
         AuthUser saved = userRepository.save(user);
 
-        log.info("[UserService] user added: id={}, username={}", saved.getId(), saved.getUsername());
+        log.info("[UserService] user added: id={}, username={}", saved.getId(), saved.getAuthUsersId());
         return UserDto.from(saved);
     }
 
@@ -121,10 +121,10 @@ public class UserService {
 
     private void validateUsername(String username) {
         if (username == null || username.isBlank()) {
-            throw new IllegalArgumentException("USERNAME_REQUIRED");
+            throw new IllegalArgumentException("AUTH_USERS_ID_REQUIRED");
         }
         if (username.length() > 50) {
-            throw new IllegalArgumentException("USERNAME_TOO_LONG");
+            throw new IllegalArgumentException("AUTH_USERS_ID_TOO_LONG");
         }
     }
 

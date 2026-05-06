@@ -68,6 +68,31 @@ Agent → Proxy → Backend
 - SecurityConfig path = `permitAll` (자기호출 보장 — api-collector LOOKUP, api-provider ApiKeyValidationService)
 - 운영 차단 = yml `mock.*.enabled=false` 단일 토글
 
+## DB 컬럼 (5/6 늦은 오후)
+
+`auth_users`:
+- `id` (PK, BIGINT IDENTITY) — 시퀀스 일련번호
+- **`auth_users_id`** (VARCHAR(50) NOT NULL UNIQUE) — 사용자 로그인 ID. 5/6 `username` → 명명 명확화 (auth_refresh_tokens.user_id 와 구분 + PK id 와 구분)
+- `name`, `password_hash`, `role`, `last_login_at`, `fail_count`, `locked_until`, `created_at`, `updated_at`
+- 모든 layer (DB / JPA / DTO / JSON 응답 / Frontend 변수) 동일 매핑 = `authUsersId`
+- 에러 코드: `AUTH_USERS_ID_DUPLICATE`, `AUTH_USERS_ID_REQUIRED`, `AUTH_USERS_ID_INVALID`, `AUTH_USERS_ID_TOO_LONG`
+
+## Frontend Route Group 분리 (5/6 늦은 오후)
+
+`AppShell` 안에서 `pathname === '/login'` 분기로 layout 갈라치는 패턴 → navigation transition 시점 stale `usePathname` → 로그아웃 후 재로그인 시 sidebar/header 둘 다 사라지는 stale 이슈 발생.
+
+해법 = Next.js Route Group:
+```
+app/
+  layout.tsx       → root: <html><body>{children}</body></html>  (단순)
+  login/page.tsx   → /login  (root layout 만)
+  (main)/          ← route group, URL 영향 0
+    layout.tsx     → <AppShell>{children}</AppShell>  (그룹 모두 자동 묶음)
+    page.tsx, agents/, datasources/, api-collect/, api-provide/, executions/, users/
+```
+
+→ AppShell 의 path 분기 제거. `/login` 은 root layout 만, 그 외 모두 (main) layout 자동 적용. timing 무관 구조적 분리.
+
 ## 참고
 
 - 설계: `docs/AUTH_DESIGN.md` (1424줄, §9.3.1 의 "별 후속" 미완 항목들)

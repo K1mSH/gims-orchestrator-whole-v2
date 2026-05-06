@@ -11,7 +11,7 @@ export default function LoginPage() {
   const next = params.get('next') || '/';
   const { mutate } = useCurrentUser();
 
-  const [username, setUsername] = useState('');
+  const [authUsersId, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +21,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await authApi.login(username, password);
+      await authApi.login(authUsersId, password);
       // 로그인 직전 미인증 상태에서 /auth/me 가 401 받아 cached=null 로 박혀있음.
       // mutate() 로 캐시 비우고 새 fetch 강제 — AppHeader 가 즉시 사용자 이름 표시.
       await mutate();
@@ -68,13 +68,13 @@ export default function LoginPage() {
 
         <form onSubmit={onSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="username">ID</label>
+            <label className="form-label" htmlFor="authUsersId">ID</label>
             <input
-              id="username"
+              id="authUsersId"
               className="form-input"
               type="text"
               autoComplete="username"
-              value={username}
+              value={authUsersId}
               onChange={(e) => setUsername(e.target.value)}
               required
               disabled={submitting}

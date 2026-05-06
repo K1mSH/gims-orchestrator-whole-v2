@@ -1,17 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import { authApi } from '@/lib/authApi';
 
 export default function AppHeader() {
   const { user, loading, clear } = useCurrentUser();
   const router = useRouter();
-  const pathname = usePathname();
-
-  // 로그인 페이지에선 헤더 숨김
-  if (pathname === '/login') return null;
 
   async function onLogout() {
     try {

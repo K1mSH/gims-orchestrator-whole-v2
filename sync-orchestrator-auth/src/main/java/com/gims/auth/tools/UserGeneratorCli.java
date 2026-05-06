@@ -49,7 +49,7 @@ public class UserGeneratorCli {
 
         // 입력 검증 (UserService.validatePassword/validateName 와 동일 정책)
         if (username.isBlank() || username.length() > 50) {
-            System.err.println("ERROR: USERNAME_INVALID (max 50, non-blank)");
+            System.err.println("ERROR: AUTH_USERS_ID_INVALID (max 50, non-blank)");
             System.exit(3);
         }
         if (password.length() < MIN_PASSWORD_LENGTH) {
@@ -74,7 +74,7 @@ public class UserGeneratorCli {
         Class.forName("org.postgresql.Driver");
         try (Connection conn = DriverManager.getConnection(creds.url, creds.user, creds.password);
              PreparedStatement ps = conn.prepareStatement(
-                 "INSERT INTO auth_users (username, password_hash, name, role, fail_count, created_at) " +
+                 "INSERT INTO auth_users (auth_users_id, password_hash, name, role, fail_count, created_at) " +
                  "VALUES (?, ?, ?, 'user', 0, NOW()) RETURNING id")) {
 
             ps.setString(1, username);
@@ -89,8 +89,8 @@ public class UserGeneratorCli {
             }
         } catch (SQLException e) {
             String msg = e.getMessage() != null ? e.getMessage() : "";
-            if (msg.contains("uk_auth_users_username") || msg.toLowerCase().contains("duplicate key")) {
-                System.err.println("ERROR: USERNAME_DUPLICATE — '" + username + "' already exists");
+            if (msg.contains("uk_auth_users_auth_users_id") || msg.toLowerCase().contains("duplicate key")) {
+                System.err.println("ERROR: AUTH_USERS_ID_DUPLICATE — '" + username + "' already exists");
                 System.exit(2);
             }
             System.err.println("ERROR: SQL — " + msg);

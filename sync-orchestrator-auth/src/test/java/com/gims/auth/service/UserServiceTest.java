@@ -35,24 +35,24 @@ class UserServiceTest {
     void addUser_success() {
         UserDto created = userService.addUser("alice", "alicePw!1", "앨리스");
         assertNotNull(created.id());
-        assertEquals("alice", created.username());
+        assertEquals("alice", created.authUsersId());
         assertEquals("앨리스", created.name());
         assertNotNull(created.createdAt());
 
         List<UserDto> all = userService.listUsers();
-        assertTrue(all.stream().anyMatch(u -> "alice".equals(u.username())));
+        assertTrue(all.stream().anyMatch(u -> "alice".equals(u.authUsersId())));
 
         // UserDto 자체에 password_hash 필드 없음 — record 정의로 보장됨
     }
 
     @Test
-    @DisplayName("username 중복 시 IllegalStateException (USERNAME_DUPLICATE)")
+    @DisplayName("username 중복 시 IllegalStateException (AUTH_USERS_ID_DUPLICATE)")
     void addUser_duplicate_username() {
         userService.addUser("bob", "bobPwAbc1", "밥");
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
             () -> userService.addUser("bob", "anotherPw", "다른"));
-        assertEquals("USERNAME_DUPLICATE", ex.getMessage());
+        assertEquals("AUTH_USERS_ID_DUPLICATE", ex.getMessage());
     }
 
     @Test

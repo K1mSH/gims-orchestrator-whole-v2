@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "auth_users", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_auth_users_username", columnNames = "username")
+    @UniqueConstraint(name = "uk_auth_users_auth_users_id", columnNames = "auth_users_id")
 })
 @DynamicUpdate
 @Getter
@@ -39,8 +39,9 @@ public class AuthUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 50)
-    private String username;
+    /** 사용자가 입력하는 로그인 ID (auth_refresh_tokens.user_id 와 구분 위해 컬럼명 명시화). */
+    @Column(name = "auth_users_id", nullable = false, length = 50)
+    private String authUsersId;
 
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
@@ -69,8 +70,8 @@ public class AuthUser {
     private LocalDateTime updatedAt;
 
     @Builder
-    public AuthUser(String username, String passwordHash, String name) {
-        this.username = username;
+    public AuthUser(String authUsersId, String passwordHash, String name) {
+        this.authUsersId = authUsersId;
         this.passwordHash = passwordHash;
         this.name = name;
         this.role = "user";

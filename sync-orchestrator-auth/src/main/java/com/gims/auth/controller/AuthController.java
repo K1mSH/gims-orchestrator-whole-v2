@@ -34,7 +34,7 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> login(
             @RequestBody LoginRequest req,
             HttpServletResponse response) {
-        AuthService.LoginResult result = authService.login(req.username(), req.password());
+        AuthService.LoginResult result = authService.login(req.authUsersId(), req.password());
         response.addHeader(HttpHeaders.SET_COOKIE, cookieHelper.accessCookie(result.accessToken()).toString());
         response.addHeader(HttpHeaders.SET_COOKIE, cookieHelper.refreshCookie(result.refreshToken()).toString());
         return ResponseEntity.ok(Map.of("user", result.user()));

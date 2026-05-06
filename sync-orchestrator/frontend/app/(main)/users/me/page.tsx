@@ -18,7 +18,7 @@ export default function MyPage() {
 
       <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', rowGap: '0.5rem', fontSize: '0.875rem' }}>
-          <div style={{ color: 'var(--gray-500)' }}>ID</div><div>{user.username}</div>
+          <div style={{ color: 'var(--gray-500)' }}>ID</div><div>{user.authUsersId}</div>
           <div style={{ color: 'var(--gray-500)' }}>이름</div><div>{user.name}</div>
           <div style={{ color: 'var(--gray-500)' }}>등록일</div><div>{user.createdAt?.replace('T', ' ').slice(0, 19)}</div>
         </div>

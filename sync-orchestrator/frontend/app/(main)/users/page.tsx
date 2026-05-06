@@ -64,7 +64,7 @@ export default function UsersPage() {
               {!loading && users.map((u) => (
                 <tr key={u.id}>
                   <td>{u.id}</td>
-                  <td>{u.username}</td>
+                  <td>{u.authUsersId}</td>
                   <td>{u.name}</td>
                   <td>{u.createdAt?.replace('T', ' ').slice(0, 19)}</td>
                   <td>
@@ -93,7 +93,7 @@ export default function UsersPage() {
 }
 
 function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [username, setUsername] = useState('');
+  const [authUsersId, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -104,15 +104,15 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     setError(null);
     setSubmitting(true);
     try {
-      await authApi.addUser(username, password, name);
-      alert(`사용자 [${username}] 발급 완료. 비밀번호를 별도 채널로 전달하세요.`);
+      await authApi.addUser(authUsersId, password, name);
+      alert(`사용자 [${authUsersId}] 발급 완료. 비밀번호를 별도 채널로 전달하세요.`);
       onCreated();
     } catch (err: any) {
       const code = err.response?.data?.error;
-      if (code === 'USERNAME_DUPLICATE') setError('이미 사용 중인 ID 입니다.');
+      if (code === 'AUTH_USERS_ID_DUPLICATE') setError('이미 사용 중인 ID 입니다.');
       else if (code === 'PASSWORD_TOO_SHORT') setError('비밀번호는 8자 이상이어야 합니다.');
       else if (code === 'NAME_REQUIRED') setError('이름을 입력하세요.');
-      else if (code === 'USERNAME_TOO_LONG') setError('ID 길이가 너무 깁니다 (50자 이하).');
+      else if (code === 'AUTH_USERS_ID_TOO_LONG') setError('ID 길이가 너무 깁니다 (50자 이하).');
       else setError(code || '실패');
     } finally {
       setSubmitting(false);
@@ -132,7 +132,7 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         <form onSubmit={onSubmit}>
           <div className="form-group">
             <label className="form-label">ID</label>
-            <input className="form-input" value={username} onChange={(e) => setUsername(e.target.value)} required disabled={submitting} maxLength={50} autoFocus />
+            <input className="form-input" value={authUsersId} onChange={(e) => setUsername(e.target.value)} required disabled={submitting} maxLength={50} autoFocus />
           </div>
           <div className="form-group">
             <label className="form-label">비밀번호 (8자 이상)</label>

@@ -10,11 +10,11 @@ import java.time.LocalDateTime;
  */
 public record UserDto(
     Long id,
-    String username,
+    String authUsersId,
     String name,
     LocalDateTime createdAt
 ) {
     public static UserDto from(AuthUser u) {
-        return new UserDto(u.getId(), u.getUsername(), u.getName(), u.getCreatedAt());
+        return new UserDto(u.getId(), u.getAuthUsersId(), u.getName(), u.getCreatedAt());
     }
 }

@@ -49,7 +49,7 @@ class AuthServiceTest {
         assertNotNull(result.accessToken());
         assertNotNull(result.refreshToken());
         assertNotNull(result.refreshExpiresAt());
-        assertEquals("alice", result.user().username());
+        assertEquals("alice", result.user().authUsersId());
         assertEquals("앨리스", result.user().name());
 
         // last_login_at 갱신

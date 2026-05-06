@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
         String code = e.getMessage() != null ? e.getMessage() : "CONFLICT";
         HttpStatus status = switch (code) {
             case "ACCOUNT_LOCKED" -> HttpStatus.LOCKED;        // 423
-            case "USERNAME_DUPLICATE",
+            case "AUTH_USERS_ID_DUPLICATE",
                  "LAST_USER_CANNOT_DELETE" -> HttpStatus.CONFLICT;  // 409
             default -> HttpStatus.CONFLICT;
         };
