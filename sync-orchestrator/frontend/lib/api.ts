@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { attachAuthInterceptor } from './authInterceptor';
 import type {
   Agent,
   AgentCreateRequest,
@@ -35,6 +36,7 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+attachAuthInterceptor(api);
 
 // Agent API
 export const agentApi = {

@@ -1,6 +1,7 @@
 package com.gims.provider.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -10,10 +11,13 @@ import java.util.Set;
  * Mock API Key 검증 API
  * 실제 운영에서는 외부 팀이 별도 서비스로 제공할 예정.
  * 테스트용 하드코딩 키로 검증한다.
+ *
+ * 운영 비활성 — yml 의 {@code mock.api-key.enabled=true} 일 때만 빈 등록 (이중 방어).
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/mock/api-key")
+@ConditionalOnProperty(name = "mock.api-key.enabled", havingValue = "true", matchIfMissing = true)
 public class MockApiKeyController {
 
     // 테스트용 키 목록

@@ -20,6 +20,22 @@ spring:
         format_sql: true
     show-sql: true
 
+# Auth (JWT — auth 모듈 8096 검증자, 운영자 호출용)
+auth:
+  jwks-url: http://localhost:8096/.well-known/jwks.json
+  issuer: orchestrator-auth
+  audience: orchestrator
+
+jwt:
+  cookie:
+    enabled: true
+
+# MockApiController — 개발 의존성 (LOOKUP 자체 호출: lookup.common-code-url=/mock/...).
+# 운영에서는 실 GIMS 내부 endpoint 호출로 완전 대체 → 운영 yml 에서 false 로 override.
+mock:
+  api:
+    enabled: true
+
 # Jasypt 암호화 설정
 jasypt:
   encryptor:

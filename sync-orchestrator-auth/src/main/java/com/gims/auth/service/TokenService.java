@@ -121,7 +121,7 @@ public class TokenService {
      * SigningKeyResolverAdapter 로 토큰 header 의 kid 보고 매칭 publicKey 동적 lookup.
      */
     private Claims parseAndVerify(String token) {
-        return Jwts.parserBuilder()
+        return Jwts.parser()
             .setSigningKeyResolver(new SigningKeyResolverAdapter() {
                 @Override
                 public Key resolveSigningKey(JwsHeader header, Claims claims) {

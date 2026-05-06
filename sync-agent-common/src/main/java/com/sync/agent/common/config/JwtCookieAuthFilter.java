@@ -81,7 +81,7 @@ public class JwtCookieAuthFilter extends OncePerRequestFilter {
 
         String token = cookie.getValue();
         try {
-            Claims claims = Jwts.parserBuilder()
+            Claims claims = Jwts.parser()
                 .setSigningKeyResolver(new SigningKeyResolverAdapter() {
                     @Override
                     public Key resolveSigningKey(JwsHeader header, Claims claims) {

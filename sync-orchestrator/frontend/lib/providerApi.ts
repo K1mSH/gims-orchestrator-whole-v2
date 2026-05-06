@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { attachAuthInterceptor } from './authInterceptor';
 import {
   ApiPrvOperation,
   ApiPrvKeyInfo,
@@ -9,6 +10,7 @@ const providerApi = axios.create({
   baseURL: '/provider-api',
   headers: { 'Content-Type': 'application/json' },
 });
+attachAuthInterceptor(providerApi);
 
 // --- Operation CRUD ---
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { attachAuthInterceptor } from './authInterceptor';
 import {
   ApiEndpointListItem,
   ApiEndpointDetail,
@@ -16,6 +17,7 @@ const collectorApi = axios.create({
   baseURL: '/collector-api',
   headers: { 'Content-Type': 'application/json' },
 });
+attachAuthInterceptor(collectorApi);
 
 // --- Endpoint CRUD ---
 

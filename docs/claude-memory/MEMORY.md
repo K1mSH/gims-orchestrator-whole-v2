@@ -36,6 +36,7 @@
 - [feedback_form_consistency_register_edit.md](feedback_form_consistency_register_edit.md) - 등록/수정 화면 양식 일관성 — 같은 항목은 같은 위치/그룹
 - [feedback_test_plan_baseline_tag.md](feedback_test_plan_baseline_tag.md) - 정식 기능 테스트 (test_plan/) = baseline tag 동반 + 통과 시 신규 stable tag + GitHub Release
 - [project_auth_system.md](project_auth_system.md) - Auth 시스템 (8096) — Phase 1+1.5 완료 (jjwt+Nimbus, Peer Multiplication, 토글 비활성)
+- [feedback_dependency_consistency.md](feedback_dependency_consistency.md) - 우리 시스템 모듈끼리는 같은 의존성 사용, 모듈별 GAV/버전 차이 금지
 
 ## 작업 규칙
 

@@ -33,7 +33,7 @@ dependencies {
 
     // Database Drivers
     runtimeOnly 'org.postgresql:postgresql'         // 자체 DB (PG 29006) + 제공 테이블
-    runtimeOnly 'com.oracle.database.jdbc:ojdbc8'   // 소스 Oracle (Proxy 경유)
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc8:19.3.0.0'   // 소스 Oracle (Proxy 경유) — 폐쇄망 nexus 가용 버전
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

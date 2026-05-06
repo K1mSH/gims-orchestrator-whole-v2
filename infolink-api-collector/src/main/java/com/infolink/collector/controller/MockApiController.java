@@ -1,6 +1,7 @@
 package com.infolink.collector.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -9,10 +10,14 @@ import java.util.*;
  * Mock API 컨트롤러 — GIMS 내부 시스템 시뮬레이션
  * - 공통코드 API (LOOKUP용)
  * - API 키 목록 (인증키 조회용)
+ *
+ * 개발 의존성 — yml 의 {@code mock.api.enabled=true} (default true) 일 때만 빈 등록.
+ * 운영에서는 실 GIMS 내부 endpoint 호출로 완전 대체 → 운영 yml 에서 false override.
  */
 @RestController
 @RequestMapping("/mock")
 @Slf4j
+@ConditionalOnProperty(name = "mock.api.enabled", havingValue = "true", matchIfMissing = true)
 public class MockApiController {
 
     /**

@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'io.spring.dependency-management' version '1.1.0'
 }
 
 group = 'com.sync'
@@ -15,59 +16,66 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    // Lombok
-    compileOnly 'org.projectlombok:lombok:1.18.30'
-    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:2.7.12'
+    }
+}
 
-    // Spring Web (for RestTemplate/WebClient) - Spring 5.3.x for Boot 2.7.x
-    implementation 'org.springframework:spring-web:5.3.27'
+dependencies {
+    // Lombok (BOM 관리)
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Spring Web (for RestTemplate/WebClient)
+    implementation 'org.springframework:spring-web'
 
     // Spring Boot autoconfigure (for @ConfigurationProperties, @ConditionalOnProperty - provided by Boot apps)
-    compileOnly 'org.springframework.boot:spring-boot-autoconfigure:2.7.12'
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure'
 
     // Servlet API (for ApiKeyFilter - provided by Boot apps at runtime)
-    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
+    compileOnly 'javax.servlet:javax.servlet-api'
 
     // Spring Data JPA (for execution logging entities)
-    api 'org.springframework.data:spring-data-jpa:2.7.12'
-    api 'org.hibernate:hibernate-core:5.6.15.Final'
-    api 'javax.persistence:javax.persistence-api:2.2'
+    api 'org.springframework.data:spring-data-jpa'
+    api 'org.hibernate:hibernate-core'
+    api 'javax.persistence:javax.persistence-api'
 
     // Spring TX (for @Transactional)
-    implementation 'org.springframework:spring-tx:5.3.27'
+    implementation 'org.springframework:spring-tx'
 
     // Jackson
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.5'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-    // Jasypt (암호화)
+    // Jasypt (암호화) — Boot BOM 미관리, 명시 유지
     implementation 'org.jasypt:jasypt:1.9.3'
 
     // HikariCP
-    implementation 'com.zaxxer:HikariCP:4.0.3'
+    implementation 'com.zaxxer:HikariCP'
 
     // Spring JDBC
-    implementation 'org.springframework:spring-jdbc:5.3.27'
+    implementation 'org.springframework:spring-jdbc'
 
     // SLF4J
-    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.slf4j:slf4j-api'
 
     // JWT — JwtCookieAuthFilter / JwksClient (검증자 모듈에서 사용)
-    api 'io.jsonwebtoken:jjwt-api:0.11.5'
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
-    api 'com.nimbusds:nimbus-jose-jwt:9.37'
+    // 폐쇄망 nexus 가용 버전: jjwt 0.12.6 / nimbus 9.31 (Boot BOM 기본값과 다른 버전 의도 사용)
+    api 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    api 'com.nimbusds:nimbus-jose-jwt:9.31'
 
     // Spring Security (검증자 모듈에서 SecurityContext / OncePerRequestFilter 등 사용)
-    compileOnly 'org.springframework.security:spring-security-web:5.7.10'
-    compileOnly 'org.springframework.security:spring-security-core:5.7.10'
+    compileOnly 'org.springframework.security:spring-security-web'
+    compileOnly 'org.springframework.security:spring-security-core'
 
     // Test
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'org.mockito:mockito-core:5.7.0'
-    testImplementation 'org.springframework.security:spring-security-web:5.7.10'
-    testImplementation 'org.springframework.security:spring-security-core:5.7.10'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.springframework.security:spring-security-web'
+    testImplementation 'org.springframework.security:spring-security-core'
 }
 
 tasks.withType(JavaCompile) {

@@ -41,7 +41,8 @@ class TokenServiceTest {
         assertEquals("42", claims.getSubject());
         assertEquals("user", claims.get("role"));
         assertEquals("orchestrator-auth", claims.getIssuer());
-        assertEquals("orchestrator", claims.getAudience());
+        // jjwt 0.12+ : getAudience() returns Set<String> (RFC 7519 정합)
+        assertTrue(claims.getAudience().contains("orchestrator"));
         assertNotNull(claims.getId());
         assertNotNull(claims.getIssuedAt());
         assertNotNull(claims.getExpiration());

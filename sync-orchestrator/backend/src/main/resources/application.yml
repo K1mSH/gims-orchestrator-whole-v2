@@ -29,6 +29,16 @@ spring:
 proxy:
   api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
 
+# Auth (JWT — auth 모듈 8096 검증자)
+auth:
+  jwks-url: http://localhost:8096/.well-known/jwks.json
+  issuer: orchestrator-auth
+  audience: orchestrator
+
+jwt:
+  cookie:
+    enabled: true
+
 # Retention(자동삭제) 스케줄
 retention:
   cron: "0 0 2 * * *"  # 매일 새벽 2시

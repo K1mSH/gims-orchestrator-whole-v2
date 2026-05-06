@@ -33,7 +33,7 @@ dependencies {
 
     // Database Drivers
     runtimeOnly 'org.postgresql:postgresql'       // Agent 자체 DB (SyncLog 등)
-    runtimeOnly 'com.oracle.database.jdbc:ojdbc11' // 내부망 IF + Target (Oracle/Tibero)
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc8:19.3.0.0' // 내부망 IF + Target (Oracle/Tibero) — 폐쇄망 nexus 가용 버전
     runtimeOnly 'com.h2database:h2'
 
     // Lombok

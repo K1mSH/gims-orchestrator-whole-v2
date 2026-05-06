@@ -33,7 +33,7 @@ dependencies {
 
     // Database Drivers
     runtimeOnly 'org.postgresql:postgresql'
-    runtimeOnly 'com.oracle.database.jdbc:ojdbc8'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc8:19.3.0.0'  // 폐쇄망 nexus 가용 버전
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
