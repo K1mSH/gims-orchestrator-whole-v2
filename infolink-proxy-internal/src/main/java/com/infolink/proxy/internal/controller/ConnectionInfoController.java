@@ -19,7 +19,7 @@ import java.util.Map;
  * Agent가 직접 PasswordEncryptor로 복호화하여 DataSource를 생성한다.
  *
  * -- 동기화 대상 --
- * 이 클래스는 sync-proxy-dmz / sync-proxy-internal 양쪽에 동일하게 존재한다.
+ * 이 클래스는 infolink-proxy-dmz / infolink-proxy-internal 양쪽에 동일하게 존재한다.
  * 한쪽을 수정하면 반드시 다른 쪽도 동일하게 수정할 것.
  * common 모듈에 두지 않는 이유: Agent 앱에 불필요하게 로딩되기 때문.
  *

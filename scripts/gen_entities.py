@@ -6,7 +6,7 @@ import re
 import os
 
 DDL_FILE = "scripts/ddl/internal-oracle/original-ddl-backup.sql"
-BASE_DIR = "sync-agent-bojo-int/src/main/java/com/sync/agent/bojoint/entity"
+BASE_DIR = "infolink-agent-bojo-internal/src/main/java/com/sync/agent/bojoint/entity"
 PACKAGE_BASE = "com.sync.agent.bojoint.entity"
 
 # 테이블 분류

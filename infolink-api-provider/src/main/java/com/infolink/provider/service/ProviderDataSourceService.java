@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Proxy 경유 DB 접속정보 해석 → JdbcTemplate 캐싱
- * bojo-int SyncDataSourceService 패턴 간소화 버전
+ * bojo-internal SyncDataSourceService 패턴 간소화 버전
  */
 @Slf4j
 @Service

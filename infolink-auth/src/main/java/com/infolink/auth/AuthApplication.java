@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * - JWKS endpoint (검증자 모듈에 RSA 공개키 노출)
  * - RSA 키 자정 회전 (매일)
  *
- * 검증자 모듈 (Backend / api-provider / api-collector) 은 sync-agent-common 의
+ * 검증자 모듈 (Backend / api-provider / api-collector) 은 infolink-agent-common 의
  * JwtCookieAuthFilter + JwksClient 로 자체 검증.
  */
 @SpringBootApplication

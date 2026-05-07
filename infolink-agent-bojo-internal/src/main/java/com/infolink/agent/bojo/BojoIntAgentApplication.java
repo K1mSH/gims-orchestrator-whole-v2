@@ -16,7 +16,7 @@ import com.infolink.agent.common.controller.DatasourceController;
  * DMZ SND IF → 내부 RSV IF 동기화
  * - RCV: if_snd_sec_jewon/obsvdata → if_rsv_sec_jewon/obsvdata
  *
- * DB 프록시 엔드포인트는 전용 프록시 Agent(sync-proxy-internal)로 분리됨
+ * DB 프록시 엔드포인트는 전용 프록시 Agent(infolink-proxy-internal)로 분리됨
  */
 @SpringBootApplication
 @ComponentScan(

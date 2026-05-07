@@ -23,7 +23,7 @@ public class HealthController {
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", "UP");
-        result.put("appName", "sync-proxy-dmz");
+        result.put("appName", "infolink-proxy-dmz");
         result.put("type", "DB_CON_PROXY");
         result.put("zone", zone);
         return ResponseEntity.ok(result);

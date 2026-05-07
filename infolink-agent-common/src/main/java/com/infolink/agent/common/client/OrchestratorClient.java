@@ -34,8 +34,8 @@ import java.util.stream.Collectors;
  * Step 결과는 notifyFinished()에서 PipelineResult로 일괄 전송.
  *
  * ── 사용처 ──
- * - sync-agent-bojo: PipelineService.executeWithRunner()
- * - sync-agent-bojo-int: PipelineService.executeWithRunner()
+ * - infolink-agent-bojo-dmz: PipelineService.executeWithRunner()
+ * - infolink-agent-bojo-internal: PipelineService.executeWithRunner()
  */
 @Slf4j
 public class OrchestratorClient implements com.infolink.agent.common.pipeline.StepProgressCallback {

@@ -136,7 +136,7 @@ public class ExtractStepConfig {
      * 지정 시 해당 컬럼만 INSERT/UPDATE 대상으로 취급.
      *
      * 용도:
-     * - IF 타겟 (bojo/bojo-int/others): null (기본 5종)
+     * - IF 타겟 (bojo/bojo-internal/others): null (기본 5종)
      * - 외부 제공 테이블 (provide): [source_refs, execution_id, updated_at] — link_status/extracted_at 없음
      *
      * 주의: source_refs 는 이 리스트에 없어도 INSERT에 포함됨 (추적 필수 메타).

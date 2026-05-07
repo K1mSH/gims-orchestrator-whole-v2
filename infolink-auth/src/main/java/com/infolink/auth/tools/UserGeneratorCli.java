@@ -21,7 +21,7 @@ import java.util.Map;
  *
  * <h3>실행</h3>
  * <pre>
- *   ./gradlew :sync-orchestrator-auth:createUser --args="alice alicePw1 앨리스"
+ *   ./gradlew :infolink-auth:createUser --args="alice alicePw1 앨리스"
  * </pre>
  *
  * <h3>처리</h3>

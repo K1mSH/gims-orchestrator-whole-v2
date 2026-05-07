@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * internal-bojo-load Factory (bojo-int 전용)
+ * internal-bojo-load Factory (bojo-internal 전용)
  *
  * Internal Loader Step 생성. 테이블명은 YAML step config에서 읽음.
  */

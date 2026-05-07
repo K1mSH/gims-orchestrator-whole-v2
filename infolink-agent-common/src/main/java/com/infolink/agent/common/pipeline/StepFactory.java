@@ -10,7 +10,7 @@ import java.util.Map;
  * Step 생성 팩토리 인터페이스
  *
  * YAML의 factory-key 값과 매칭되어, 해당 step config로 StepExecutor를 생성한다.
- * 각 모듈(common, bojo, bojo-int)에서 구현체를 @Component로 등록하면
+ * 각 모듈(common, bojo, bojo-internal)에서 구현체를 @Component로 등록하면
  * StepFactoryRegistry가 자동 수집한다.
  */
 public interface StepFactory {

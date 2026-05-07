@@ -612,19 +612,19 @@ else
 fi
 
 # ----- 10. 프로젝트 빌드 -----
-warn "sync-agent-common 빌드 중..."
-cd "${PROJECT_DIR}/sync-agent-common"
+warn "infolink-agent-common 빌드 중..."
+cd "${PROJECT_DIR}/infolink-agent-common"
 ./gradlew clean build -x test --quiet || err "common 빌드 실패"
-log "sync-agent-common 빌드 완료"
+log "infolink-agent-common 빌드 완료"
 
 warn "JAR 복사 중..."
-cp build/libs/sync-agent-common-*.jar "${PROJECT_DIR}/sync-agent-bojo-int/libs/"
-log "JAR → sync-agent-bojo-int/libs/ 복사 완료"
+cp build/libs/infolink-agent-common-*.jar "${PROJECT_DIR}/infolink-agent-bojo-internal/libs/"
+log "JAR → infolink-agent-bojo-internal/libs/ 복사 완료"
 
-warn "sync-agent-bojo-int 빌드 중..."
-cd "${PROJECT_DIR}/sync-agent-bojo-int"
-./gradlew clean build -x test --quiet || err "bojo-int 빌드 실패"
-log "sync-agent-bojo-int 빌드 완료"
+warn "infolink-agent-bojo-internal 빌드 중..."
+cd "${PROJECT_DIR}/infolink-agent-bojo-internal"
+./gradlew clean build -x test --quiet || err "bojo-internal 빌드 실패"
+log "infolink-agent-bojo-internal 빌드 완료"
 
 # ----- 11. 결과 요약 -----
 cd "${PROJECT_DIR}"
@@ -638,10 +638,10 @@ echo "   Oracle (소스):     localhost:${ORACLE_PORT}/XEPDB1       (k1m/1111)"
 echo "   PG Orchestrator:   localhost:${PG_ORCH_PORT}/orchestrator (k1m/1111)"
 echo "   PG API Provider:   localhost:${PG_PROVIDE_PORT}            (k1m/1111)"
 echo ""
-echo " 빌드 완료: sync-agent-common → sync-agent-bojo-int"
+echo " 빌드 완료: infolink-agent-common → infolink-agent-bojo-internal"
 echo ""
 echo " Agent 기동:"
-echo "   cd sync-agent-bojo-int && ./gradlew bootRun"
+echo "   cd infolink-agent-bojo-internal && ./gradlew bootRun"
 echo ""
 echo " 테스트 실행:"
 echo "   curl -X POST http://localhost:8092/api/pipeline/execute \\"

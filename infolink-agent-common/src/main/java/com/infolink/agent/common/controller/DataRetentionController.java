@@ -34,7 +34,7 @@ import java.util.Map;
  *
  * ── 사용처 ──
  * - Orchestrator의 스케줄 또는 수동 트리거로 호출
- * - sync-agent-bojo, sync-agent-bojo-int 모두 대상
+ * - infolink-agent-bojo-dmz, infolink-agent-bojo-internal 모두 대상
  */
 @Slf4j
 @RestController

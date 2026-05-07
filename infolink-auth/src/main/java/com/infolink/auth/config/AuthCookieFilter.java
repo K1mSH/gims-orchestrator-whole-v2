@@ -28,7 +28,7 @@ import java.util.Collections;
  *   <li>실패 / cookie 없음 → SecurityContext 비워둠 (Spring Security 가 401 처리)</li>
  * </ul>
  *
- * 검증자 모듈 (Backend / api-provider 등) 은 sync-agent-common 의 JwtCookieAuthFilter 사용 — JwksClient 통해 검증.
+ * 검증자 모듈 (Backend / api-provider 등) 은 infolink-agent-common 의 JwtCookieAuthFilter 사용 — JwksClient 통해 검증.
  */
 @Slf4j
 @Component

@@ -18,7 +18,7 @@ import com.infolink.agent.common.controller.DatasourceController;
  * - Loader 1개: IF_RSV → Target 적재
  * - SND 1개: Target → IF_SND 추출
  *
- * DB 프록시 엔드포인트는 전용 프록시 Agent(sync-proxy-dmz)로 분리됨
+ * DB 프록시 엔드포인트는 전용 프록시 Agent(infolink-proxy-dmz)로 분리됨
  */
 @SpringBootApplication
 @ComponentScan(

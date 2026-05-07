@@ -35,8 +35,8 @@ import java.util.*;
  * 판별: 샘플 1건 SELECT COUNT(*) WHERE source_refs = ? 체크
  *
  * ── 사용처 ──
- * - sync-agent-bojo-int, sync-proxy-dmz, sync-proxy-internal: 그대로 사용
- * - sync-agent-bojo: excludeFilters로 제외 (bojo는 Proxy 경유만 허용)
+ * - infolink-agent-bojo-internal, infolink-proxy-dmz, infolink-proxy-internal: 그대로 사용
+ * - infolink-agent-bojo-dmz: excludeFilters로 제외 (bojo는 Proxy 경유만 허용)
  *
  * Agent별 커스텀 구현이 필요한 경우 ComponentScan excludeFilters로 이 컨트롤러를 제외하고
  * 별도의 컨트롤러를 구현하세요.
@@ -996,7 +996,7 @@ public class ExecutionDataController {
                 } else {
                     // Loader TARGET 대응: sourceTable이 TARGET 테이블인 경우
                     //   1순위: target_tables 정확 매칭 → 매핑의 source_tables 반환 (가장 의미 명확)
-                    //   2순위: 양방향 contains (bojo-int: source⊃target / provide: target⊃source)
+                    //   2순위: 양방향 contains (bojo-internal: source⊃target / provide: target⊃source)
                     //   3순위: source_refs 파싱 fallback
                     List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
 

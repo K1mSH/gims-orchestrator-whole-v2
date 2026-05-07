@@ -17,8 +17,8 @@ Orchestrator에서 datasource 수정 시 해당 datasourceId를 사용하는 Age
 - 수동 캐시 클리어 API는 불필요 (사용자가 내부 구현을 몰라도 되게)
 
 ## 영향 범위
-- sync-orchestrator: DatasourceService.update()에 캐시 클리어 로직 추가
-- sync-agent-bojo: SyncDataSourceService에 evict() + REST 엔드포인트
-- sync-agent-bojo-int: 동일
-- sync-proxy-dmz: ProxyDataSourceService에 evict() + REST 엔드포인트 (Proxy도 자체 캐시 있음)
-- sync-proxy-internal: 동일
+- infolink-orchestrator: DatasourceService.update()에 캐시 클리어 로직 추가
+- infolink-agent-bojo-dmz: SyncDataSourceService에 evict() + REST 엔드포인트
+- infolink-agent-bojo-internal: 동일
+- infolink-proxy-dmz: ProxyDataSourceService에 evict() + REST 엔드포인트 (Proxy도 자체 캐시 있음)
+- infolink-proxy-internal: 동일

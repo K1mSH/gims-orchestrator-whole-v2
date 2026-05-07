@@ -28,7 +28,7 @@ import java.util.Map;
  * ── 사용처 ──
  *  - RCV: 외부 업체 DB → IF_RSV (bojo/others)
  *  - SND: Target → IF_SND (bojo)
- *  - Internal RCV: IF_SND → 내부 IF_RSV (bojo-int)
+ *  - Internal RCV: IF_SND → 내부 IF_RSV (bojo-internal)
  *  - Provide: Oracle 원본 → PG 제공 테이블 (provide)
  *  - 새 Agent 추가 시에도 이 Step을 재사용하는 것이 원칙
  *
@@ -50,7 +50,7 @@ import java.util.Map;
  *    - conditions/timeRange 있으면 SIMPLE_COPY로 오버라이드됨
  *
  * ── 타겟 메타 컬럼 처리 ──
- * 타겟이 IF 테이블(bojo/bojo-int): source_refs, link_status, extracted_at, updated_at, execution_id (5종)
+ * 타겟이 IF 테이블(bojo/bojo-internal): source_refs, link_status, extracted_at, updated_at, execution_id (5종)
  * 타겟이 제공 테이블(provide): source_refs, execution_id, updated_at (3종)
  * ExtractStepConfig.targetMetaColumns 로 커스터마이징.
  *

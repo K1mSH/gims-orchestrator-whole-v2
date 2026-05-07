@@ -35,7 +35,7 @@ public class HealthController {
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", "UP");
-        result.put("appName", "sync-agent-others");
+        result.put("appName", "infolink-agent-others-dmz");
         result.put("zone", zone);
         result.put("registeredAgents", pipelineRegistry.size());
 

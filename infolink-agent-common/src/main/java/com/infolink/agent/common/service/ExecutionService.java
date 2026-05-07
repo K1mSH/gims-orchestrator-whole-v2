@@ -29,8 +29,8 @@ import java.util.Optional;
  * - 둘은 독립적으로 동작 (하나가 실패해도 다른 하나에 영향 없음)
  *
  * ── 사용처 ──
- * - sync-agent-bojo: PipelineService
- * - sync-agent-bojo-int: PipelineService
+ * - infolink-agent-bojo-dmz: PipelineService
+ * - infolink-agent-bojo-internal: PipelineService
  */
 @Slf4j
 @Service

@@ -9,7 +9,7 @@
 
 - **배포 디렉토리**: `D:\dev\claude\GIMS\orchestrator_v2_deploy` (형제, 별도 git)
 - **반입 형태**: 소스만 (폐쇄망 Nexus 로 빌드)
-- **모듈 범위**: 11개 전체
+- **모듈 범위**: 12개 전체 (5/7 리네임 후 frontend 가 root 별도 모듈로 분리되어 11→12)
 - **포함**: 오직 소스코드 + 빌드 설정 (gradle wrapper / build.gradle / settings.gradle / gradle.properties / package.json 등)
 - **제외**: dev 관리 폴더 / 빌드 산출물 / 의존 캐시 / 로컬 jar / 테스트 / 문서 / docker / 메모리 / git
 - **Mock 컨트롤러**: 유지 (collector 의 LOOKUP 자기호출 / provider Mock 모두 폐쇄망 미구현 의존)
@@ -76,7 +76,8 @@ orchestrator_v2_deploy/                    ← 신규, 별도 git
 ├── .gitignore                             ← 빌드 산출물/캐시/IDE/jar 재방지
 ├── README.md                              ← 반입 후 빌드 순서 + ENC 교체 가이드 + 변환기 사용법
 ├── tools/
-│   └── encrypt.java                       ← scripts/encrypt.java 복사
+│   ├── encrypt.java                       ← scripts/encrypt.java 복사
+│   └── encrypt.sh                         ← scripts/encrypt.sh 복사 (Linux/Mac wrapper, jasypt jar 자동 탐색)
 ├── infolink-agent-common/
 │   ├── build.gradle, settings.gradle, gradle.properties (있는 것만)
 │   ├── gradle/, gradlew, gradlew.bat
@@ -94,15 +95,14 @@ orchestrator_v2_deploy/                    ← 신규, 별도 git
 ├── infolink-api-collector/                (동일)
 ├── infolink-api-provider/                     (동일)
 ├── infolink-auth/                (동일)
-└── infolink-orchestrator/
-    ├── backend/                           (위 패턴 동일)
-    └── frontend/
-        ├── package.json, package-lock.json
-        ├── next.config.js, tsconfig.json, next-env.d.ts
-        ├── middleware.ts
-        ├── app/, components/, lib/, public/
-        ├── tailwind.config.ts, postcss.config.js (있는 것만)
-        └── (node_modules/, .next/, .swc/ 제외)
+├── infolink-orchestrator-backend/         (위 검증자 패턴 동일 — 5/7 리네임 후 별도 root 모듈로 평탄화됨)
+└── infolink-orchestrator-frontend/        (5/7 리네임 후 별도 root 모듈로 평탄화)
+    ├── package.json, package-lock.json
+    ├── next.config.js, tsconfig.json, next-env.d.ts
+    ├── middleware.ts
+    ├── app/, components/, lib/, public/, types/
+    ├── tailwind.config.ts, postcss.config.js (있는 것만)
+    └── (node_modules/, .next/, .swc/, *.log 제외)
 ```
 
 ### libs/ 디렉토리 처리
@@ -201,7 +201,7 @@ agent:
 | 4 | src/test/ 제거 (모듈마다) | robocopy `/XD test` 추가 |
 | 5 | libs/ 디렉토리 9개 신규 생성 + `.gitkeep` | jar 자체는 안 들어감 |
 | 6 | 10개 yml ENC() 빈 값 치환 + jasypt default 제거 + application-dev.yml 제거 | sed/PowerShell 정규식 일괄 |
-| 7 | `tools/encrypt.java` ← `scripts/encrypt.java` 복사 | |
+| 7 | `tools/encrypt.java` + `tools/encrypt.sh` ← `scripts/` 에서 복사 | |
 | 8 | `README.md` 작성 | 빌드 순서 + jasypt 변환기 사용법 + libs/ 복사 단계 |
 | 9 | git add + 첫 커밋 | `chore: initial deploy package (1st 반입)` |
 | 10 | 사용자 검수 | 빌드 가능 여부 점검 후 zip 반입 |
