@@ -1,7 +1,7 @@
 # 8. 제공용 Agent (Type A) + Type B 커스텀 핸들러 (api-provider)
 
 > **요구사항**: 레거시 제공 API (MEGOKR / 가뭄119 / OPN) 를 신 시스템으로 이식한다.
-> Type A (단순 복사) = sync-agent-provide:8096 가 Oracle 원본 → PG 제공 테이블 적재 후 api-provider 가 동적 SELECT.
+> Type A (단순 복사) = infolink-agent-provide-dmz:8096 가 Oracle 원본 → PG 제공 테이블 적재 후 api-provider 가 동적 SELECT.
 > Type B (복잡 SQL) = api-provider:8095 안에 커스텀 Java 핸들러 구현 (4/27 결정 — 외부 호출 시점 직접 쿼리).
 > Oracle 29004 원본 → PG 29006 `api_prv_*` 제공 테이블 (Type A) / Oracle 29004 직접 (Type B).
 
@@ -13,8 +13,8 @@
 
 ```
 내부망:
-  bojo-int (8092)         → RCV + Loader (IF_RSV → Oracle 적재) — 기존
-  sync-agent-provide (8096) → Oracle → PG 제공 테이블 적재 (Type A) — 신규
+  bojo-internal (8092)         → RCV + Loader (IF_RSV → Oracle 적재) — 기존
+  infolink-agent-provide-dmz (8096) → Oracle → PG 제공 테이블 적재 (Type A) — 신규
   api-provider (8095)     → 동적 SELECT (Type A) + 커스텀 Java 핸들러 (Type B)
 ```
 
@@ -25,7 +25,7 @@
 | Type B 직접 쿼리 | (제공 테이블 없음, 외부 호출 시점) | 커스텀 핸들러 Java 코드 | — |
 
 ## 제공용 Agent 인프라 [Provide-Agent:8096]
-- [x] 모듈 생성 (bojo-int 복제, port 8096, PG 29006, ddl-auto)
+- [x] 모듈 생성 (bojo-internal 복제, port 8096, PG 29006, ddl-auto)
 - [x] Proxy 경유 Oracle 소스 연결 (SyncDataSourceService)
 - [x] DynamicEntityManagerService + CaseAwareNamingStrategy
 - [x] ProvideLoadStep 폐기 → SourceToIfStep 통합 (4/23 — 모든 Agent 단일 카피 Step 재사용)

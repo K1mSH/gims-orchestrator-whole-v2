@@ -68,8 +68,8 @@
 - [x] I5 UseLoadStep — 이용량 (Legacy+Status 2소스→4타겟, 일집계 후처리, 음수→0 변환)
 - [x] **약수터 Loader (4/30)** — 제원 1026 + 수질 1000 row, SimpleLoadStep merge-key 자연키 4키 dedup
 - [x] 내부망 RCV 파이프라인 (6개 IF_RSV 테이블)
-- [x] WTSMP_YMD length 8→10 정합 (4/30, bojo-int IF_RSV_TD + TD entity + Oracle DROP/recreate)
-- [x] bojo-int 4 entity @org.hibernate.annotations.Table 제거 (4/30, NamingStrategy 충돌 해소)
+- [x] WTSMP_YMD length 8→10 정합 (4/30, bojo-internal IF_RSV_TD + TD entity + Oracle DROP/recreate)
+- [x] bojo-internal 4 entity @org.hibernate.annotations.Table 제거 (4/30, NamingStrategy 충돌 해소)
 
 ## Entity 전환 [Bojo-Int:8092]
 - [x] gen_entities.py — DDL→Entity 55개 자동 생성
@@ -79,8 +79,8 @@
 - [ ] Phase 6: E2E 검증
 
 ## DB 연결 프록시 [Proxy]
-- [x] sync-proxy-dmz (8083) — DMZ Agent ↔ 외부 DB
-- [x] sync-proxy-internal (8093) — Internal Agent ↔ 내부 DB
+- [x] infolink-proxy-dmz (8083) — DMZ Agent ↔ 외부 DB
+- [x] infolink-proxy-internal (8093) — Internal Agent ↔ 내부 DB
 - [x] Oracle 지원 (ojdbc8 의존성)
 
 ---

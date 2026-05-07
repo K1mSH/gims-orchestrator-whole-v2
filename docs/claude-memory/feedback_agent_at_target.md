@@ -19,5 +19,5 @@ originSessionId: ea7e6d3a-0f30-4805-9b02-4966c58ab352
 |-------|--------------------------|:---------:|
 | bojo (DMZ) | dev PG 29001 (IF 테이블) | ✓ |
 | others (DMZ) | dev PG 29001 (IF 테이블) | ✓ |
-| bojo-int (내부망) | Oracle 29004 (GIMS 실테이블) | ✓ |
+| bojo-internal (내부망) | Oracle 29004 (GIMS 실테이블) | ✓ |
 | provide (내부망) | PG 29006 (api_prv_* 테이블) | ✓ |

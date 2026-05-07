@@ -3,7 +3,7 @@ id: VER-009
 title: 로그 설정 파일 부재 — Spring Boot 기본값만 사용
 status: OPEN
 created: 2026-04-23
-parts: [P1-common, P4-bojo, P5-others, P6-bojo-int, P7-provide, P8-api-collector, P9-api-provider, P10-orchestrator, P2-proxy-dmz, P3-proxy-internal]
+parts: [P1-common, P4-bojo, P5-others, P6-bojo-internal, P7-provide, P8-api-collector, P9-api-provider, P10-orchestrator, P2-proxy-dmz, P3-proxy-internal]
 parallel_safe: true
 assignee: forward
 related: []

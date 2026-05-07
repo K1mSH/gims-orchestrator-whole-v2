@@ -16,7 +16,7 @@ related: []
 ## 증거
 
 ```yaml
-# sync-agent-bojo/src/main/resources/application.yml:93-96
+# infolink-agent-bojo-dmz/src/main/resources/application.yml:93-96
 spring:
   h2:
     console:
@@ -72,9 +72,9 @@ spring:
 - prod 가정 (환경변수 미주입): 콘솔 404 또는 비활성화 확인
 - `verify/deployment/config-replacement.md § F / G` 에 H2 콘솔 제어 항목 추가 필요
 
-## 추가 — `sync-agent-bojo` H2 컨텍스트
+## 추가 — `infolink-agent-bojo-dmz` H2 컨텍스트
 
-`sync-agent-bojo/application.yml:88` 에 H2 인메모리 DB 도 있음:
+`infolink-agent-bojo-dmz/application.yml:88` 에 H2 인메모리 DB 도 있음:
 ```yaml
 url: jdbc:h2:mem:agent_bojo;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
 ```

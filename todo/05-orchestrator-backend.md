@@ -1,4 +1,4 @@
-# sync-orchestrator/backend (Orchestrator 백엔드)
+# infolink-orchestrator-backend (Orchestrator 백엔드)
 
 ## [E1] 아키텍처 변경
 - [x] ZoneConfig masterAgentUrl → proxyAgentUrl

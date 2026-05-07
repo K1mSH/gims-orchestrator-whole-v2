@@ -1,4 +1,4 @@
-# sync-agent-common (공통 모듈)
+# infolink-agent-common (공통 모듈)
 
 ## [E1] Source 추적 / SyncLog
 - [x] ExecutionDataController 추적 로직 (stripIfPrefix, source_refs 폴백)

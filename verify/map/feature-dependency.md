@@ -9,17 +9,17 @@
 
 | ID | 파트 | 위치 | 수정 시 영향 |
 |----|------|------|--------------|
-| P1 | **sync-agent-common** | `sync-agent-common/` | 모든 Agent JAR 재배포 + **전 파이프 회귀** |
-| P2 | sync-proxy-dmz (8083) | `sync-proxy-dmz/` | DMZ 파이프 전체 (bojo, others) |
-| P3 | sync-proxy-internal (8093) | `sync-proxy-internal/` | Internal 파이프 전체 (bojo-int, provide) + **관리 DB 헤더 라우팅** |
-| P4 | sync-agent-bojo (DMZ, 8082) | `sync-agent-bojo/` | DMZ 10 RCV + Loader + SND |
-| P5 | sync-agent-others (DMZ, 8085) | `sync-agent-others/` | 기타 Agent 해당 모듈만 |
-| P6 | sync-agent-bojo-int (Internal, 8092) | `sync-agent-bojo-int/` | Internal RCV + Loader |
-| P7 | sync-agent-provide (Internal, 8096) | `sync-agent-provide/` | provide 파이프 (Oracle 29004 → PG 29006) |
+| P1 | **infolink-agent-common** | `infolink-agent-common/` | 모든 Agent JAR 재배포 + **전 파이프 회귀** |
+| P2 | infolink-proxy-dmz (8083) | `infolink-proxy-dmz/` | DMZ 파이프 전체 (bojo, others) |
+| P3 | infolink-proxy-internal (8093) | `infolink-proxy-internal/` | Internal 파이프 전체 (bojo-internal, provide) + **관리 DB 헤더 라우팅** |
+| P4 | infolink-agent-bojo-dmz (DMZ, 8082) | `infolink-agent-bojo-dmz/` | DMZ 10 RCV + Loader + SND |
+| P5 | infolink-agent-others-dmz (DMZ, 8085) | `infolink-agent-others-dmz/` | 기타 Agent 해당 모듈만 |
+| P6 | infolink-agent-bojo-internal (Internal, 8092) | `infolink-agent-bojo-internal/` | Internal RCV + Loader |
+| P7 | infolink-agent-provide-dmz (Internal, 8096) | `infolink-agent-provide-dmz/` | provide 파이프 (Oracle 29004 → PG 29006) |
 | P8 | infolink-api-collector (8084/8094) | `infolink-api-collector/` | 독립 모듈 (api_collector DB) |
-| P9 | gims-api-provider (8095) | `gims-api-provider/` | 독립 읽기 모듈 (PG 29006) |
-| P10 | **sync-orchestrator/backend** (8080) | `sync-orchestrator/backend/` | 전 Agent 통신 → **광범위 회귀** |
-| P11 | sync-orchestrator/frontend (3000) | `sync-orchestrator/frontend/` | UI 만 (백엔드 영향 없음) |
+| P9 | infolink-api-provider (8095) | `infolink-api-provider/` | 독립 읽기 모듈 (PG 29006) |
+| P10 | **infolink-orchestrator-backend** (8080) | `infolink-orchestrator-backend/` | 전 Agent 통신 → **광범위 회귀** |
+| P11 | infolink-orchestrator-frontend (3000) | `infolink-orchestrator-frontend/` | UI 만 (백엔드 영향 없음) |
 | P12 | DDL 스크립트 | `scripts/ddl/` | 해당 DB 사용 Agent |
 | P13 | Agent YAML 설정 | `*/src/main/resources/config/agents/` | 해당 Agent 만 (병렬 안전) |
 
@@ -68,7 +68,7 @@
 | 시나리오 | 판정 | 근거 |
 |---------|:----:|------|
 | forward: provide 신규 YAML 추가 (P7 config, P13) / parallel: DMZ bojo YAML 수정 (P4 config, P13) | ✅ 안전 | 다른 YAML |
-| forward: common ExecutionDataController 수정 (P1) / parallel: bojo-int 로직 수정 (P6) | ❌ 겹침 | P1 변경 시 JAR 재배포 + 모든 Agent 회귀 필요 |
+| forward: common ExecutionDataController 수정 (P1) / parallel: bojo-internal 로직 수정 (P6) | ❌ 겹침 | P1 변경 시 JAR 재배포 + 모든 Agent 회귀 필요 |
 | forward: api-collector 기능 추가 (P8) / parallel: provide 테이블 추가 (P7 YAML + P12 DDL) | ✅ 안전 | 독립 모듈 + 독립 DB |
 | forward: Oracle DDL 추가 (P12) / parallel: provide 엔티티 추가 (P7) | ⚠️ 순서 의존 | DDL 선행 후 엔티티 검증 — 순차 |
 | forward: Orchestrator API 변경 (P10) / parallel: frontend 호출부 수정 (P11) | ⚠️ 계약 공유 | 같은 API 시그니처 건드리면 겹침, 다른 API 면 독립 |
@@ -84,10 +84,10 @@
 |----------|---------------|
 | P1 (common) | 모든 `checklists/*` — **전 파이프 회귀** |
 | P2 (DMZ Proxy) | bojo, others |
-| P3 (Internal Proxy) | bojo-int, provide, trace-lifecycle |
+| P3 (Internal Proxy) | bojo-internal, provide, trace-lifecycle |
 | P4 (bojo) | bojo-rcv, bojo-loader, bojo-snd |
 | P5 (others) | others |
-| P6 (bojo-int) | bojo-int, trace-lifecycle |
+| P6 (bojo-internal) | bojo-internal, trace-lifecycle |
 | P7 (provide) | provide-agent, trace-lifecycle |
 | P8 (api-collector) | api-collector |
 | P9 (api-provider) | api-provider |

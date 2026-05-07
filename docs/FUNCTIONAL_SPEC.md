@@ -14,7 +14,7 @@
           수집           적재             송신 준비
 ```
 
-- 하나의 물리적 앱(`sync-agent-bojo:8082`)에서 `agentCode`로 12개 논리적 Agent 라우팅
+- 하나의 물리적 앱(`infolink-agent-bojo-dmz:8082`)에서 `agentCode`로 12개 논리적 Agent 라우팅
 - Orchestrator(`8080`)가 Agent에 HTTP로 실행 요청, Agent가 콜백으로 결과 보고
 
 ### 1.2 RCV (수집)

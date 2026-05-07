@@ -45,10 +45,10 @@
 1. RCV:     Source(외부) → IF_RSV(중간)
 2. Loader:  IF_RSV(중간) → Target(내부)
 3. SND:     Target(내부) → IF_SND(중간, 전송 대기)
-4. int-RCV: IF_SND(DMZ)  → IF_RSV(내부망)   ← sync-agent-bojo-int
+4. int-RCV: IF_SND(DMZ)  → IF_RSV(내부망)   ← infolink-agent-bojo-internal
 ```
 
-> **내부망 Agent 문서:** DMZ → 내부망 동기화는 별도 프로젝트(`sync-agent-bojo-int`)로 구현.
+> **내부망 Agent 문서:** DMZ → 내부망 동기화는 별도 프로젝트(`infolink-agent-bojo-internal`)로 구현.
 > 상세 내용은 [ARCHITECTURE_INTERNAL.md](ARCHITECTURE_INTERNAL.md) 참조.
 
 ---
@@ -58,14 +58,14 @@
 > **v2 통합 아키텍처 (2026-02-12~)**
 >
 > v1에서는 RSV Relay, Loader, SND Relay가 각각 별도의 Spring Boot 앱이었으나,
-> v2에서는 **`sync-agent-bojo` 하나의 물리적 앱**에 **12개 논리적 Agent**(RCV 10 + Loader 1 + SND 1)를 통합.
+> v2에서는 **`infolink-agent-bojo-dmz` 하나의 물리적 앱**에 **12개 논리적 Agent**(RCV 10 + Loader 1 + SND 1)를 통합.
 > - 명칭 변경: RSV Relay → **RCV** (Receive), SND Relay → **SND**
 > - `PipelineRegistry`: agentId → PipelineRunner 라우팅으로 논리적 Agent 구분
 > - `config/agents/*.yml`: 파일 기반 Agent 설정 (Agent 추가/제거 = 파일 추가/제거)
 > - Orchestrator에는 12개 Agent 레코드가 모두 같은 `endpointUrl`을 가리킴
 > - 실행 요청 시 `agentId` 필드로 어떤 파이프라인을 실행할지 라우팅
 
-### 1.2.0 통합 Agent (`sync-agent-bojo`)
+### 1.2.0 통합 Agent (`infolink-agent-bojo-dmz`)
 
 **역할:** RCV, Loader, SND 3종 파이프라인을 하나의 Spring Boot 앱에서 관리
 
@@ -83,7 +83,7 @@
 
 **Agent YAML 설정 (파일 기반):**
 ```
-sync-agent-bojo/src/main/resources/config/agents/
+infolink-agent-bojo-dmz/src/main/resources/config/agents/
 ├── rcv-bojo-01.yml ~ rcv-bojo-10.yml   # RCV 10개
 ├── loader-bojo.yml                      # Loader 1개
 └── snd-bojo.yml                         # SND 1개
@@ -117,7 +117,7 @@ link:
 
 **프로젝트 구조:**
 ```
-sync-agent-bojo/
+infolink-agent-bojo-dmz/
 ├── src/main/java/com/sync/agent/bojo/
 │   ├── BojoAgentApplication.java
 │   ├── config/
@@ -182,7 +182,7 @@ sync-agent-bojo/
 
 **핵심 파일:**
 ```
-sync-agent-bojo/src/main/java/com/sync/agent/bojo/
+infolink-agent-bojo-dmz/src/main/java/com/sync/agent/bojo/
 ├── rcv/fetcher/LinkTableObsvDataFetcher.java  # 데이터 조회 (증분/기간지정)
 ├── rcv/step/LinkTableUpdateStep.java          # link_ngwis 업데이트
 └── config/RcvPipelineConfig.java              # RCV 파이프라인 등록 (YAML → PipelineRunner)
@@ -211,7 +211,7 @@ sync-agent-bojo/src/main/java/com/sync/agent/bojo/
 
 **핵심 파일:**
 ```
-sync-agent-bojo/src/main/java/com/sync/agent/bojo/
+infolink-agent-bojo-dmz/src/main/java/com/sync/agent/bojo/
 ├── loader/step/DaejeonLoadStep.java               # 메인 적재 로직 (JPA)
 ├── loader/repository/TargetRepositoryService.java  # Target DB 접근
 └── config/LoaderPipelineConfig.java                # Loader 파이프라인 등록
@@ -240,13 +240,13 @@ sync-agent-bojo/src/main/java/com/sync/agent/bojo/
 
 **핵심 파일:**
 ```
-sync-agent-bojo/src/main/java/com/sync/agent/bojo/
+infolink-agent-bojo-dmz/src/main/java/com/sync/agent/bojo/
 └── config/SndPipelineConfig.java  # SND 파이프라인 등록
 ```
 
 ---
 
-### 1.2.4 Orchestrator (`sync-orchestrator`)
+### 1.2.4 Orchestrator (`infolink-orchestrator`)
 
 **역할:** Agent 실행 관리, 모니터링, 대시보드 제공
 
@@ -280,14 +280,14 @@ sync-agent-bojo/src/main/java/com/sync/agent/bojo/
 
 **구성:**
 ```
-sync-orchestrator/
+infolink-orchestrator/
 ├── backend/   # Spring Boot (포트 8080)
 └── frontend/  # Next.js
 ```
 
 ---
 
-### 1.2.5 공통 모듈 (`sync-agent-common`)
+### 1.2.5 공통 모듈 (`infolink-agent-common`)
 
 **역할:** 모든 Agent가 공유하는 공통 로직
 
@@ -319,9 +319,9 @@ sync-orchestrator/
 
 **JAR 배포:**
 ```
-빌드: cd sync-agent-common && ./gradlew clean build -x test
+빌드: cd infolink-agent-common && ./gradlew clean build -x test
 배포 위치:
-  - sync-agent-bojo/libs/    # 통합 Agent (유일한 배포 대상)
+  - infolink-agent-bojo-dmz/libs/    # 통합 Agent (유일한 배포 대상)
 ```
 
 ---
@@ -823,8 +823,8 @@ RCV 기간지정 → IF_RSV(RESYNC) → Loader 일반 → Target(RESYNC) → SND
 | 서버 | 포트 | 설명 |
 |------|------|------|
 | Orchestrator Backend | 8080 | 중앙 관리 서버 |
-| DMZ Agent (sync-agent-bojo) | 8082 | RCV/Loader/SND 전체 (12개 논리적 Agent) |
-| 내부망 Agent (sync-agent-bojo-int) | 8092 | RCV (→ Loader 추가 예정). [상세 문서](ARCHITECTURE_INTERNAL.md) |
+| DMZ Agent (infolink-agent-bojo-dmz) | 8082 | RCV/Loader/SND 전체 (12개 논리적 Agent) |
+| 내부망 Agent (infolink-agent-bojo-internal) | 8092 | RCV (→ Loader 추가 예정). [상세 문서](ARCHITECTURE_INTERNAL.md) |
 
 > v1에서는 RSV Relay(18081), Loader(8082), SND Relay(18082)로 3개 포트였으나,
 > v2에서는 하나의 앱(8082)으로 통합. Orchestrator의 12개 Agent 레코드가 모두 같은 endpointUrl을 가리킴.
@@ -853,7 +853,7 @@ RCV 기간지정 → IF_RSV(RESYNC) → Loader 일반 → Target(RESYNC) → SND
 | 2026-02-06 | link_ngwis 업데이트 조건 추가 (더 최신일 때만) |
 | 2026-02-06 | RESYNC 상태 추가 (파이프라인 전체 UPSERT 전파) |
 | 2026-02-09 | sync_record_history 이력 테이블 추가 (UPSERT 이력 보존) |
-| 2026-02-12 | v2 통합 아키텍처 반영: 3개 분리 모듈 → sync-agent-bojo 1개 통합, RSV→RCV 명칭 변경, PipelineRegistry/AgentConfigLoader 추가, 파일 기반 Agent 설정 |
+| 2026-02-12 | v2 통합 아키텍처 반영: 3개 분리 모듈 → infolink-agent-bojo-dmz 1개 통합, RSV→RCV 명칭 변경, PipelineRegistry/AgentConfigLoader 추가, 파일 기반 Agent 설정 |
 | 2026-02-19 | Tracing 기능 강화: 복합 PK 지원, JDBC 메타데이터 기반 PK 자동 감지, source_refs 형식 업데이트 (JSON배열), 소스 테이블 자동 등록, MySQL/PG 호환성 (SQL 방언 분기) |
-| 2026-02-24 | 내부망 Agent(sync-agent-bojo-int) 추가, [ARCHITECTURE_INTERNAL.md](ARCHITECTURE_INTERNAL.md) 분리 |
+| 2026-02-24 | 내부망 Agent(infolink-agent-bojo-internal) 추가, [ARCHITECTURE_INTERNAL.md](ARCHITECTURE_INTERNAL.md) 분리 |
 | 2026-03-10 | LinkTableObsvDataFetcher 시간 비교 `>=` → `>` (극점 중복 방지), OrchestratorClient 콜백 재시도 3회 추가 |

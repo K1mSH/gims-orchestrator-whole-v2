@@ -57,28 +57,28 @@ default 가 dev 값(localhost, 29006, k1m, 1111, sync-pipeline-secret-key-2024)�
 ### yml — 9건 (전 모듈 JASYPT 전수)
 
 ```
-gims-api-provider/src/main/resources/application.yml:43      password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-agent-bojo/src/main/resources/application.yml:61        password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-agent-bojo-int/src/main/resources/application.yml:49    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-agent-others/src/main/resources/application.yml:49      password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-agent-provide/src/main/resources/application.yml:49     password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-orchestrator/backend/src/main/resources/application.yml:39  password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-proxy-dmz/src/main/resources/application.yml:42         password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-sync-proxy-internal/src/main/resources/application.yml:42    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-api-provider/src/main/resources/application.yml:43      password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-agent-bojo-dmz/src/main/resources/application.yml:61        password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-agent-bojo-internal/src/main/resources/application.yml:49    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-agent-others-dmz/src/main/resources/application.yml:49      password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-agent-provide-dmz/src/main/resources/application.yml:49     password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-orchestrator-backend/src/main/resources/application.yml:39  password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-proxy-dmz/src/main/resources/application.yml:42         password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-proxy-internal/src/main/resources/application.yml:42    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 infolink-api-collector/src/main/resources/application.yml:26 password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 ```
 
 ### Java @Value — 11건
 
 ```
-sync-agent-bojo/.../config/SyncDataSourceService.java:43            ${agent.orchestrator-url:http://localhost:8080}
-sync-agent-bojo-int/.../config/SyncDataSourceService.java:33        ${agent.orchestrator-url:http://localhost:8080}
-sync-agent-others/.../config/SyncDataSourceService.java:43          ${agent.orchestrator-url:http://localhost:8080}
-sync-agent-provide/.../config/SyncDataSourceService.java:33         ${agent.orchestrator-url:http://localhost:8080}
-sync-proxy-dmz/.../config/ProxyDataSourceService.java:35            ${agent.orchestrator-url:http://localhost:8080}
-sync-proxy-dmz/.../controller/ConnectionInfoController.java:33      ${agent.orchestrator-url:http://localhost:8080}
-sync-proxy-internal/.../config/ProxyDataSourceService.java:35       ${agent.orchestrator-url:http://localhost:8080}
-gims-api-provider/.../service/ApiKeyValidationService.java:22       ${app.api-key-validation.url:http://localhost:8095/api/mock/api-key/validate}
+infolink-agent-bojo-dmz/.../config/SyncDataSourceService.java:43            ${agent.orchestrator-url:http://localhost:8080}
+infolink-agent-bojo-internal/.../config/SyncDataSourceService.java:33        ${agent.orchestrator-url:http://localhost:8080}
+infolink-agent-others-dmz/.../config/SyncDataSourceService.java:43          ${agent.orchestrator-url:http://localhost:8080}
+infolink-agent-provide-dmz/.../config/SyncDataSourceService.java:33         ${agent.orchestrator-url:http://localhost:8080}
+infolink-proxy-dmz/.../config/ProxyDataSourceService.java:35            ${agent.orchestrator-url:http://localhost:8080}
+infolink-proxy-dmz/.../controller/ConnectionInfoController.java:33      ${agent.orchestrator-url:http://localhost:8080}
+infolink-proxy-internal/.../config/ProxyDataSourceService.java:35       ${agent.orchestrator-url:http://localhost:8080}
+infolink-api-provider/.../service/ApiKeyValidationService.java:22       ${app.api-key-validation.url:http://localhost:8095/api/mock/api-key/validate}
 infolink-api-collector/.../config/OrchestratorClient.java:24        ${orchestrator.url:http://localhost:8080}
 infolink-api-collector/.../executor/AnyangUsageExecutor.java:39     ${anyang.api.fac-url:http://localhost:8084/mock/anyang/fac}
 infolink-api-collector/.../executor/AnyangUsageExecutor.java:42     ${anyang.api.data-url:http://localhost:8084/mock/anyang/data}

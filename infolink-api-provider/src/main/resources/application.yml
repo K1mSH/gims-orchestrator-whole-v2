@@ -1,0 +1,65 @@
+server:
+  port: 8095
+
+spring:
+  application:
+    name: infolink-api-provider
+
+  # 기본 DB: PG api_provider (전용 컨테이너 29006)
+  datasource:
+    url: ENC(o/qziGzIw8araL6vR2YoZLwS8KBEMlU1Rn8APxxPjRs3esmUCrBUD8+wssZEsS7L245AkNKlHGLn5vxVj0nao60ebb96ehFQkiYjUn7+CCk=)
+    username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
+    password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
+    driver-class-name: org.postgresql.Driver
+    initialization-mode: always
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:db/comment.sql
+      continue-on-error: true
+
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQL95Dialect
+
+# Proxy 경유 동적 DataSource
+app:
+  proxy:
+    url: ENC(k3/EmYLK5qyNyPbGmVrWhqy9/w/Axnzgi/IVbs3pWpgy/K6/4rcN/10m2bwrFLaEU/VFuU6IB7nmJf7sGLUgfQ==)
+    api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+
+# Auth (JWT — auth 모듈 8096 검증자, 운영자 호출용)
+auth:
+  jwks-url: http://localhost:8096/.well-known/jwks.json
+  issuer: orchestrator-auth
+  audience: orchestrator
+
+jwt:
+  cookie:
+    enabled: true
+
+# MockApiKeyController — 개발 의존성 (외부 인증서버 시뮬레이션, ApiKeyValidationService 자체 호출).
+# 운영에서는 외부 인증서버로 완전 대체 → 운영 yml 에서 false 로 override.
+mock:
+  api-key:
+    enabled: true
+
+# Jasypt 암호화 (Proxy 응답 복호화용)
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+    algorithm: PBEWithHMACSHA512AndAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+logging:
+  level:
+    com.infolink.provider: DEBUG

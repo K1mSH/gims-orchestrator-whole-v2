@@ -52,7 +52,7 @@
 - 한글 사용 (주석, 터미널 설명, 변수명 혼용 OK)
 - 작업 범위: `orchestrator_v2/` 내에서만 진행
 - 빌드/테스트: **Gradle** 사용 (`./gradlew clean build -x test`)
-- lib(sync-agent-common) 수정 시 → 참조 프로젝트(sync-agent-bojo)에 JAR 복사 필수
+- lib(infolink-agent-common) 수정 시 → 참조 프로젝트(infolink-agent-bojo-dmz)에 JAR 복사 필수
 - dev_logs 작성: 코드 수정+테스트 완료 후, 수정 목적 기술
 - 구조/UI 문서(docs/)는 개발방향 문서 → 보수적 수정, 애매하면 질문
 - "테스트 해봐" = 앱 실행 + 로그 모니터링 + 피드백 루프
@@ -61,19 +61,18 @@
 ## 프로젝트 구조
 ```
 orchestrator_v2/
-├── sync-agent-common/        # 공통 모듈 (JAR 라이브러리, ApiKeyFilter / JwksClient / JwtCookieAuthFilter)
-├── sync-agent-bojo/          # DMZ Agent (12개 논리적 Agent, port 8082)
-├── sync-agent-bojo-int/      # Internal Agent (port 8092)
-├── sync-agent-others/        # Others DMZ Agent (yaksoter/nara/news/use 등, port 8085)
-├── sync-agent-provide/       # Provide Agent
-├── sync-proxy-dmz/           # DMZ Proxy (port 8083)
-├── sync-proxy-internal/      # Internal Proxy (port 8093)
-├── sync-orchestrator/
-│   ├── backend/              # Spring Boot (port 8080)
-│   └── frontend/             # Next.js (port 3000)
-├── sync-orchestrator-auth/   # Auth 모듈 (port 8096, JWT RS256, 2026-05-04 신규)
+├── infolink-agent-common/        # 공통 모듈 (JAR 라이브러리, ApiKeyFilter / JwksClient / JwtCookieAuthFilter)
+├── infolink-agent-bojo-dmz/          # DMZ Agent (12개 논리적 Agent, port 8082)
+├── infolink-agent-bojo-internal/      # Internal Agent (port 8092)
+├── infolink-agent-others-dmz/        # Others DMZ Agent (yaksoter/nara/news/use 등, port 8085)
+├── infolink-agent-provide-dmz/       # Provide Agent
+├── infolink-proxy-dmz/           # DMZ Proxy (port 8083)
+├── infolink-proxy-internal/      # Internal Proxy (port 8093)
+├── infolink-orchestrator-backend/  # Spring Boot (port 8080)
+├── infolink-orchestrator-frontend/ # Next.js (port 3000)
+├── infolink-auth/   # Auth 모듈 (port 8096, JWT RS256, 2026-05-04 신규)
 ├── infolink-api-collector/   # API 수집 모듈 (DMZ 8084 / Internal 8094)
-├── gims-api-provider/        # API 제공 모듈 (port 8095)
+├── infolink-api-provider/        # API 제공 모듈 (port 8095)
 ├── docs/                     # ARCHITECTURE / UI_GUIDE / AUTH_DESIGN / AUTH_FLOW / 클로드 작업 메뉴얼
 │   └── claude-memory/        # 메모리 양쪽 동기화 (git 추적)
 ├── verify/                   # 검증 세션 체계 (_invariants/deployment/checklists/issues/tasks/runs/map)
@@ -94,20 +93,20 @@ orchestrator_v2/
 ## 빌드 명령어
 ```bash
 # common (수정 시 bojo에 JAR 복사 필요)
-cd sync-agent-common && ./gradlew clean build -x test
-cp build/libs/sync-agent-common-*.jar ../sync-agent-bojo/libs/
+cd infolink-agent-common && ./gradlew clean build -x test
+cp build/libs/infolink-agent-common-*.jar ../infolink-agent-bojo-dmz/libs/
 
 # agent
-cd sync-agent-bojo && ./gradlew clean build -x test
+cd infolink-agent-bojo-dmz && ./gradlew clean build -x test
 
 # orchestrator backend
-cd sync-orchestrator/backend && ./gradlew clean build -x test
+cd infolink-orchestrator-backend && ./gradlew clean build -x test
 
 # api collector
 cd infolink-api-collector && ./gradlew clean build -x test
 
 # frontend 타입체크
-cd sync-orchestrator/frontend && npx tsc --noEmit
+cd infolink-orchestrator-frontend && npx tsc --noEmit
 ```
 
 ## DB 환경
@@ -128,15 +127,15 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 | 서비스 | 포트 |
 |--------|------|
 | Orchestrator Backend | 8080 |
-| Agent DMZ (sync-agent-bojo) | 8082 |
-| Proxy DMZ (sync-proxy-dmz) | 8083 |
+| Agent DMZ (infolink-agent-bojo-dmz) | 8082 |
+| Proxy DMZ (infolink-proxy-dmz) | 8083 |
 | API Collector DMZ | 8084 |
-| **Agent Others DMZ (sync-agent-others)** | **8085** |
-| Agent Internal (sync-agent-bojo-int) | 8092 |
-| Proxy Internal (sync-proxy-internal) | 8093 |
+| **Agent Others DMZ (infolink-agent-others-dmz)** | **8085** |
+| Agent Internal (infolink-agent-bojo-internal) | 8092 |
+| Proxy Internal (infolink-proxy-internal) | 8093 |
 | API Collector Internal | 8094 |
-| **API Provider (gims-api-provider)** | **8095** |
-| **Auth 모듈 (sync-orchestrator-auth)** | **8096** |
+| **API Provider (infolink-api-provider)** | **8095** |
+| **Auth 모듈 (infolink-auth)** | **8096** |
 | Frontend (Next.js) | 3000 |
 | 외부 PG | 29000 |
 | 내부 PG | 29001 |
@@ -144,7 +143,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 
 ## 핵심 아키텍처
 - 12개 논리적 Agent = RCV 10(업체별) + Loader 1 + SND 1
-- 하나의 물리적 앱(sync-agent-bojo:8082)에서 agentCode로 라우팅
+- 하나의 물리적 앱(infolink-agent-bojo-dmz:8082)에서 agentCode로 라우팅
 - 파이프라인: Source(외부) →[RCV]→ IF_RSV →[Loader]→ Target →[SND]→ IF_SND →[Int RCV]→ IF_RSV →[Int Loader]→ GIMS
 - Agent 설정: `config/agents/*.yml` (파일 기반, 업체명 네이밍, table-mappings 포함)
 - Multi-DB: PostgreSQL + MySQL 자동 분기 (isMysql()/qi() 헬퍼)
@@ -155,13 +154,13 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - **Link 테이블**: link_ngwis, tm_gd970101, tm_gd980002 → SyncLog/모니터링/매핑에서 제외
 
 ## 주요 파일 위치
-- Agent YAML: `sync-agent-bojo/src/main/resources/config/agents/`
-- 파이프라인 라우팅: `sync-agent-bojo/.../config/PipelineRegistry.java`
+- Agent YAML: `infolink-agent-bojo-dmz/src/main/resources/config/agents/`
+- 파이프라인 라우팅: `infolink-agent-bojo-dmz/.../config/PipelineRegistry.java`
 - RCV 핵심: `LinkTableObsvDataFetcher.java`, `LinkTableUpdateStep.java`
 - Loader 핵심: `DefaultLoadStep.java`, `LoaderStepHelper.java`, `TargetRepositoryService.java`
-- 공통 추출: `sync-agent-common/.../step/SourceToIfStep.java`
-- Tracing: `sync-agent-common/.../controller/ExecutionDataController.java`
-- Orchestrator 실행: `sync-orchestrator/backend/.../service/ExecutionService.java`
+- 공통 추출: `infolink-agent-common/.../step/SourceToIfStep.java`
+- Tracing: `infolink-agent-common/.../controller/ExecutionDataController.java`
+- Orchestrator 실행: `infolink-orchestrator-backend/.../service/ExecutionService.java`
 
 ## 참고 문서 (필요시 읽기)
 | 문서 | 언제 읽나 | 경로 |
@@ -196,7 +195,7 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - PipelineService: params에서 `executionModeId` 추출 → Runner 선택
 - LoaderStepHelper: 공통 로직 추출 (processJewon/processObsvdata/saveSyncLog)
 - DaejeonLoadStep → DefaultLoadStep 리네이밍 (stepId: `default-load`)
-- DMZ bojo + Internal bojo-int 양쪽 적용 완료
+- DMZ bojo + Internal bojo-internal 양쪽 적용 완료
 - 새 모드 추가: Step 구현체 + LoaderPipelineConfig에 등록만 하면 됨
 
 ## infolink-api-collector (3/13 신규, 3/23 LOOKUP 추가)
@@ -223,6 +222,6 @@ cd sync-orchestrator/frontend && npx tsc --noEmit
 - **Lombok 스타일**: 줄당 1개 (@Getter 줄바꿈 @Setter 줄바꿈 ...)
 - **ScheduleExecutor 패턴**: `@EventListener(ContextRefreshedEvent)` 초기화, `registerSchedule`/`unregisterSchedule`/`getActiveScheduleCount`
 - **PipelineController 응답**: `PipelineDto` (common) 사용, 요청은 `Map<String, Object>` 유지 (동적 파라미터)
-- **Agent 상태 추적**: `runningAgentCodes` Set + finally 블록 (bojo, bojo-int 양쪽)
+- **Agent 상태 추적**: `runningAgentCodes` Set + finally 블록 (bojo, bojo-internal 양쪽)
 - **패키지 구조**: 전 모듈 레이어 기반 통일 (controller/dto/entity/repository/service/scheduler/config) — 3/31 완료
 

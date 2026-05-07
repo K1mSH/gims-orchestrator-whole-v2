@@ -11,14 +11,14 @@ related: [VER-004]
 
 ## 증상
 
-`sync-agent-provide/**/entity/**/*.java` 전체에 `@Index(columnList = "execution_id")` 미적용 (**0 건**).
+`infolink-agent-provide-dmz/**/entity/**/*.java` 전체에 `@Index(columnList = "execution_id")` 미적용 (**0 건**).
 
 4/22 작업에서 16 개 엔티티에 `@Comment` 는 추가했으나 **인덱스는 빠짐**.
 
 ## 증거
 
 ```
-grep "@Index|indexes" sync-agent-provide/**/entity/**/*.java
+grep "@Index|indexes" infolink-agent-provide-dmz/**/entity/**/*.java
 → 0 건
 ```
 
@@ -62,5 +62,5 @@ grep "@Index|indexes" sync-agent-provide/**/entity/**/*.java
 
 ## 관련 문서
 - `verify/_invariants/00-overview.md § 4`
-- VER-004 (bojo-int 동일 누락)
+- VER-004 (bojo-internal 동일 누락)
 - MEMORY: "Source 추적 설계 (3/10 확정)", `feedback_provide_layer_upsert`

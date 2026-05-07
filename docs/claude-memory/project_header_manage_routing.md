@@ -11,8 +11,8 @@ Orchestrator → Proxy → Agent 관리 테이블 조회 경로에서 헤더 기
 **How to apply:**
 - **헤더명**: `X-Manage-Datasource-Id`
 - **값**: Agent.targetDatasourceId (Agent = target 쪽 규약에 따라 target ID가 곧 관리 DB ID)
-- **주입 지점**: `sync-orchestrator/backend/.../service/ExecutionService.java` — Proxy 호출 시 `buildHeaders(agent)` 공통 헬퍼로 주입
-- **수신 지점**: `sync-agent-common/.../controller/ExecutionDataController.java` — 13개 엔드포인트 전부 `@RequestHeader(required=false)`
+- **주입 지점**: `infolink-orchestrator-backend/.../service/ExecutionService.java` — Proxy 호출 시 `buildHeaders(agent)` 공통 헬퍼로 주입
+- **수신 지점**: `infolink-agent-common/.../controller/ExecutionDataController.java` — 13개 엔드포인트 전부 `@RequestHeader(required=false)`
 - **라우팅 로직**: `DataSourceProvider.getJdbcTemplate(headerValue)` — null이면 기본 DataSource, 값 있으면 Orchestrator에서 접속정보 조회 + 캐싱 후 신규 JdbcTemplate
 - **같은 DB 풀 중복 수용**: Proxy는 경량 조회만이라 실질 부담 없음. 중복 탈락 로직 없음
 

@@ -1,0 +1,79 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: infolink-orchestrator-backend
+
+  datasource:
+    url: ENC(BMigUUwEN738yfBUocoMn9furDkBOfQrHx+LnnM7ne2H/1Uwctqe4tFYdWOQ4tRHyGHOh3tc6AqG0foeYINsj/G6O1bLFb/Q5rvv1oMKb7s=)
+    username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
+    password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+
+# Proxy API Key — Backend → Agent/Proxy outbound 호출 시 헤더 박는 용도
+proxy:
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+
+# 시스템 간 호출 보호 — Proxy/Agent → Backend inbound 검증
+# 다른 Agent/Proxy 모듈과 동일 패턴 (JASYPT_PASSWORD 로 풀린 동일 X-API-Key)
+# soft-mode = Backend mixed 케이스 — 운영자 cookie 흐름 양보 + 키 매치 시 SecurityContext.ROLE_SYSTEM
+common:
+  filter:
+    api-key:
+      enabled: true
+      soft-mode: true
+
+agent:
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+
+# Auth (JWT — auth 모듈 8096 검증자)
+auth:
+  jwks-url: http://localhost:8096/.well-known/jwks.json
+  issuer: orchestrator-auth
+  audience: orchestrator
+
+jwt:
+  cookie:
+    enabled: true
+
+# Retention(자동삭제) 스케줄
+retention:
+  cron: "0 0 2 * * *"  # 매일 새벽 2시
+
+# Jasypt 암호화 설정
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+    algorithm: PBEWithHMACSHA512AndAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# Actuator 모니터링
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,threaddump,env
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.sync: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG

@@ -1,4 +1,4 @@
-# DMZ Agent 2호기 — sync-agent-others (8085)
+# DMZ Agent 2호기 — infolink-agent-others-dmz (8085)
 
 > 기존 bojo(보조관측)와 동일 구조, 담당 데이터만 다름
 > 운영 안정성 위해 별도 서비스 분리 (2026-03-30 회의)
@@ -7,13 +7,13 @@
 
 | 항목 | 값 |
 |------|-----|
-| 모듈명 | sync-agent-others |
+| 모듈명 | infolink-agent-others-dmz |
 | 포트 | 8085 |
 | 역할 | DMZ DB → IF_SND (SND 전용) |
 | agent-code prefix | `dmz-others-snd-*` |
 
 ## [E1] 모듈 생성
-- [x] sync-agent-others 디렉토리 + build.gradle
+- [x] infolink-agent-others-dmz 디렉토리 + build.gradle
 - [x] application.yml (port 8085, datasource)
 - [x] PipelineRegistry, DatasourceConfig 등 공통 구조
 - [x] OthersAgentApplication.java

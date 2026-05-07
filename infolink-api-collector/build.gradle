@@ -23,8 +23,8 @@ repositories {
 }
 
 dependencies {
-    // sync-agent-common (PasswordEncryptor 등 공통 유틸 + JwtCookieAuthFilter / JwksClient 검증자 자산)
-    implementation files('libs/sync-agent-common-1.0.0-SNAPSHOT.jar')
+    // infolink-agent-common (PasswordEncryptor 등 공통 유틸 + JwtCookieAuthFilter / JwksClient 검증자 자산)
+    implementation files('libs/infolink-agent-common-1.0.0-SNAPSHOT.jar')
 
     // Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter-web'

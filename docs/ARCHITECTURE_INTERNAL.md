@@ -1,7 +1,7 @@
 # GIMS 내부망 Agent 개발 방향 문서
 
-> 이 문서는 내부망 Agent(`sync-agent-bojo-int`)의 설계와 구현을 정리한 문서입니다.
-> DMZ Agent(`sync-agent-bojo`)와의 차이점 위주로 서술합니다.
+> 이 문서는 내부망 Agent(`infolink-agent-bojo-internal`)의 설계와 구현을 정리한 문서입니다.
+> DMZ Agent(`infolink-agent-bojo-dmz`)와의 차이점 위주로 서술합니다.
 > 공통 개념(파이프라인 구조, IF 테이블 설계, 컬럼 규칙 등)은 [ARCHITECTURE.md](ARCHITECTURE.md) 참조.
 
 ---
@@ -26,8 +26,8 @@ DMZ에서 SND가 준비한 IF_SND 데이터를 **내부망으로 가져오는** 
 
 | 항목 | 값 |
 |------|-----|
-| 프로젝트명 | `sync-agent-bojo-int` |
-| 패키지 | `com.sync.agent.bojoint` |
+| 프로젝트명 | `infolink-agent-bojo-internal` |
+| 패키지 | `com.infolink.agent.bojo` |
 | 포트 | 8092 |
 | Zone | INTERNAL |
 | 로컬 DB | PostgreSQL 29002/dev |
@@ -47,7 +47,7 @@ DMZ에서 SND가 준비한 IF_SND 데이터를 **내부망으로 가져오는** 
 
 ## 2.1 아키텍처 차이
 
-| 항목 | DMZ (`sync-agent-bojo`) | 내부망 (`sync-agent-bojo-int`) |
+| 항목 | DMZ (`infolink-agent-bojo-dmz`) | 내부망 (`infolink-agent-bojo-internal`) |
 |------|-------------------------|-------------------------------|
 | 포트 | 8082 | 8092 |
 | Zone | DMZ | INTERNAL |
@@ -113,7 +113,7 @@ jewon:
 ## 3.1 전체 파이프라인에서의 위치
 
 ```
-[외부 시스템]        [DMZ - bojo:8082]                [내부망 - bojo-int:8092]
+[외부 시스템]        [DMZ - bojo:8082]                [내부망 - bojo-internal:8092]
 Source DB    →(RCV)→ IF_RSV
                      ↓(Loader)
                      Target(sec_jewon/obsvdata)
@@ -163,11 +163,11 @@ Source DB    →(RCV)→ IF_RSV
 # 4. 프로젝트 구조
 
 ```
-sync-agent-bojo-int/
+infolink-agent-bojo-internal/
 ├── build.gradle                    # MySQL 드라이버 없음
 ├── settings.gradle
 ├── libs/
-│   └── sync-agent-common-*.jar     # bojo와 동일 공통 모듈
+│   └── infolink-agent-common-*.jar     # bojo와 동일 공통 모듈
 ├── src/main/java/com/sync/agent/bojoint/
 │   ├── BojoIntAgentApplication.java
 │   ├── config/
@@ -179,7 +179,7 @@ sync-agent-bojo-int/
 │   │   └── AsyncConfig.java            # BojoInt-Pipeline- prefix
 │   ├── controller/
 │   │   ├── PipelineController.java
-│   │   └── HealthController.java       # appName: sync-agent-bojo-int
+│   │   └── HealthController.java       # appName: infolink-agent-bojo-internal
 │   └── pipeline/
 │       ├── PipelineService.java
 │       └── CompositeStepCallback.java
@@ -240,7 +240,7 @@ DMZ RCV가 Link 테이블을 쓰는 이유:
 |--------|------|------|
 | Orchestrator Backend | 8080 | - |
 | DMZ Agent (bojo) | 8082 | DMZ |
-| **내부망 Agent (bojo-int)** | **8092** | **INTERNAL** |
+| **내부망 Agent (bojo-internal)** | **8092** | **INTERNAL** |
 | Frontend (Next.js) | 3000 | - |
 
 ## 6.2 DB 구성
@@ -292,4 +292,4 @@ IF_RSV_sec_obsvdata  →(Loader)→  sec_obsvdata (Target)
 
 | 날짜 | 내용 |
 |------|------|
-| 2026-02-24 | 최초 작성 - sync-agent-bojo-int 프로젝트 생성, RCV 파이프라인 |
+| 2026-02-24 | 최초 작성 - infolink-agent-bojo-internal 프로젝트 생성, RCV 파이프라인 |

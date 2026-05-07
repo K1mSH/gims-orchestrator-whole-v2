@@ -2,7 +2,7 @@
 
 > 작성일: 2026-04-24
 > 대상 독자: Agent(RCV / LOADER / SND / Provide)를 신규 추가하거나 수정하는 개발자
-> 관련 코드: `sync-agent-{bojo|bojo-int|others|provide}/src/main/resources/config/agents/*.yml`
+> 관련 코드: `infolink-agent-{bojo-dmz|bojo-internal|others-dmz|provide-dmz}/src/main/resources/config/agents/*.yml`
 
 ---
 
@@ -43,10 +43,10 @@
 
 | 모듈 | 경로 |
 |---|---|
-| DMZ 통합 Agent (bojo) | `sync-agent-bojo/src/main/resources/config/agents/` |
-| Internal 통합 Agent (bojo-int) | `sync-agent-bojo-int/src/main/resources/config/agents/` |
-| DMZ Others SND | `sync-agent-others/src/main/resources/config/agents/` |
-| API 제공 Agent (provide) | `sync-agent-provide/src/main/resources/config/agents/` |
+| DMZ 통합 Agent (bojo) | `infolink-agent-bojo-dmz/src/main/resources/config/agents/` |
+| Internal 통합 Agent (bojo-internal) | `infolink-agent-bojo-internal/src/main/resources/config/agents/` |
+| DMZ Others SND | `infolink-agent-others-dmz/src/main/resources/config/agents/` |
+| API 제공 Agent (provide) | `infolink-agent-provide-dmz/src/main/resources/config/agents/` |
 
 ### 1.3 파일명 규칙 (관례)
 
@@ -205,7 +205,7 @@ table-mappings:
 
 > IF → Target 1:1 MERGE. 비즈니스 변환 없이 키 기반으로 덮어씌우는 Internal Loader용.
 
-- Factory: `bojo-int` 모듈의 `SimpleLoadStepFactory`
+- Factory: `bojo-internal` 모듈의 `SimpleLoadStepFactory`
 - Step: `SimpleLoadStep`
 - 사용처: API Collector 데이터 적재 (뉴스, 나라장터)
 
@@ -532,7 +532,7 @@ table-mappings:
 ### 6.1 신규 RCV 업체 추가 (bojo)
 
 ```yaml
-# sync-agent-bojo/src/main/resources/config/agents/dmz-bojo-rcv-<업체>.yml
+# infolink-agent-bojo-dmz/src/main/resources/config/agents/dmz-bojo-rcv-<업체>.yml
 agent-code: dmz-bojo-rcv-<업체>
 type: RCV
 
@@ -571,7 +571,7 @@ steps:
 ### 6.2 Internal RCV 테이블 그룹 추가
 
 ```yaml
-# sync-agent-bojo-int/src/main/resources/config/agents/internal-<그룹>-rcv.yml
+# infolink-agent-bojo-internal/src/main/resources/config/agents/internal-<그룹>-rcv.yml
 agent-code: internal-<그룹>-rcv
 type: RCV
 
@@ -590,7 +590,7 @@ steps:
 ### 6.3 Provide Agent 추가
 
 ```yaml
-# sync-agent-provide/src/main/resources/config/agents/provide-<테이블명>.yml
+# infolink-agent-provide-dmz/src/main/resources/config/agents/provide-<테이블명>.yml
 
 # ──────────────────────────────────────
 # 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)
@@ -621,7 +621,7 @@ steps:
 
 신규 커스텀 로직(JOIN/PIVOT 등)이 필요하면:
 
-1. `sync-agent-bojo-int/loader/step/` 에 `<Domain>LoadStep.java` 작성 (참고: `JejuJewonLoadStep`)
+1. `infolink-agent-bojo-internal/loader/step/` 에 `<Domain>LoadStep.java` 작성 (참고: `JejuJewonLoadStep`)
 2. `<Domain>LoadStepFactory.java` 작성 (`getFactoryKey()` 에 신규 key)
 3. 공통 헬퍼 사용: `LoaderStepHelper` (processJewon/processObsvdata/saveSyncLog) 및 조건실행/Retention
 4. YAML 에 `factory-key: <신규-key>` 로 작성
@@ -735,12 +735,12 @@ Orchestrator 쪽에서 "알 수 없는 agentCode" 에러가 뜨면:
 | `source-to-if-link` | bojo | RCV Link 증분 | 단일 View | 단일 IF | + `link-table`, `link-jewon-source` |
 | `link-update` | bojo | Link 테이블 갱신 | — | — | `if-table`, `link-table` |
 | `dmz-bojo-load` | bojo | DMZ Loader | 하드코딩 | 하드코딩 | (application.yml) |
-| `internal-bojo-load` | bojo-int | Internal Loader | IF | 4개 타겟 | 테이블명 패턴 매칭 |
-| `jeju-jewon-load` | bojo-int | 제주 제원 1→5 | IF | 5개 | — |
-| `jeju-obsvdata-load` | bojo-int | 제주 관측 | IF | 2개 | — |
-| `jeju-facility-load` | bojo-int | 제주 이용시설 | IF | 1개 | — |
-| `use-load` | bojo-int | 이용량 2→4 | 2개 IF | 4개 | — |
-| `simple-load` | bojo-int | 1:1 MERGE | 단일 IF | 단일 | `merge-key` |
+| `internal-bojo-load` | bojo-internal | Internal Loader | IF | 4개 타겟 | 테이블명 패턴 매칭 |
+| `jeju-jewon-load` | bojo-internal | 제주 제원 1→5 | IF | 5개 | — |
+| `jeju-obsvdata-load` | bojo-internal | 제주 관측 | IF | 2개 | — |
+| `jeju-facility-load` | bojo-internal | 제주 이용시설 | IF | 1개 | — |
+| `use-load` | bojo-internal | 이용량 2→4 | 2개 IF | 4개 | — |
+| `simple-load` | bojo-internal | 1:1 MERGE | 단일 IF | 단일 | `merge-key` |
 | `saeol-link-plan-snd` | others | 새올 LINK_PLAN | 16개 | 16개 IF_SND | `table-mappings` (배열) |
 
 ---

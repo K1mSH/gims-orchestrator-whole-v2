@@ -50,8 +50,8 @@
 - [x] description 표시 통일 (tableAlias → description)
 
 ## DB 연결 프록시 [Proxy]
-- [x] sync-proxy-dmz (8083) — 외부 DB 연결 프록시
-- [x] sync-proxy-internal (8093) — 내부 DB 연결 프록시
+- [x] infolink-proxy-dmz (8083) — 외부 DB 연결 프록시
+- [x] infolink-proxy-internal (8093) — 내부 DB 연결 프록시
 - [x] ProxyDataSourceService (커넥션 풀 캐시 + Orchestrator 폴백)
 - [x] HikariCP 풀 하드닝 (maxPool=10, timeout=10s, leak=60s)
 - [x] API Key 인증

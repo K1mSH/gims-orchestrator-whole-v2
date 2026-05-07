@@ -1,6 +1,6 @@
 package com.infolink.collector.config;
 
-import com.sync.agent.common.datasource.PasswordEncryptor;
+import com.infolink.agent.common.datasource.PasswordEncryptor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

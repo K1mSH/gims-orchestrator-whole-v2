@@ -27,9 +27,9 @@
                                   ↓
               [bojo-dmz SND agent] → IF_SND (DMZ) → [Proxy] → IF_RSV (Internal)
                                                                      ↓
-                                                     [bojo-int RCV] → IF_RSV
+                                                     [bojo-internal RCV] → IF_RSV
                                                                      ↓
-                                                     [bojo-int 커스텀 Loader] → GIMS 타겟
+                                                     [bojo-internal 커스텀 Loader] → GIMS 타겟
 ```
 
 ### 서비스별 역할
@@ -39,8 +39,8 @@
 | **API Collector** | DMZ (8084) | 외부 API → DMZ DB 적재 | 커스텀 실행기 |
 | **bojo SND agent** (신규) | DMZ (8082) | DMZ DB → IF_SND 적재 | YAML 추가, 기존 SND 패턴 재사용 |
 | **Proxy** | DMZ↔Internal | IF_SND → IF_RSV 전달 | 기존 그대로 |
-| **bojo-int RCV** (신규) | Internal (8092) | IF_RSV 수신 | YAML 추가, 기존 source-to-if 재사용 |
-| **bojo-int Loader** (신규) | Internal (8092) | IF_RSV → GIMS 타겟 적재 | **커스텀 Step 필요** (C안: 패키지 분리) |
+| **bojo-internal RCV** (신규) | Internal (8092) | IF_RSV 수신 | YAML 추가, 기존 source-to-if 재사용 |
+| **bojo-internal Loader** (신규) | Internal (8092) | IF_RSV → GIMS 타겟 적재 | **커스텀 Step 필요** (C안: 패키지 분리) |
 
 ---
 
@@ -64,7 +64,7 @@
 
 DMZ DB 테이블 → IF_SND 적재 (기존 SND 패턴 재사용)
 
-### bojo-int RCV (신규 YAML)
+### bojo-internal RCV (신규 YAML)
 
 IF_RSV 수신 (기존 source-to-if Step 재사용)
 
@@ -111,10 +111,10 @@ IF_RSV 수신 (기존 source-to-if Step 재사용)
 
 ---
 
-## 3. Internal 서비스 (bojo-int 커스텀 Loader)
+## 3. Internal 서비스 (bojo-internal 커스텀 Loader)
 
 bojo-int에 패키지 분리하여 추가 (C안).
-기존 bojo-int 파이프라인과 적재 패턴이 다르므로 커스텀 Step으로 구현.
+기존 bojo-internal 파이프라인과 적재 패턴이 다르므로 커스텀 Step으로 구현.
 
 ```
 bojoint/
@@ -198,10 +198,10 @@ D3. JejuFacilityExecutor (이용시설 먼저)
 - bojo-dmz SND agent YAML 추가
   - 보조망 DB (PG) → 제주/이용량 IF_SND
   - 새올 DB (Tibero/Oracle) → 새올 IF_SND ← 실서버 시 Tibero 드라이버 필요
-- bojo-int RCV YAML 추가
+- bojo-internal RCV YAML 추가
 ```
 
-### Phase 4: Internal 커스텀 Loader (bojo-int 패키지 분리)
+### Phase 4: Internal 커스텀 Loader (bojo-internal 패키지 분리)
 ```
 I1. JejuJewonLoadStep (1→7 분산) — 커스텀
 I2. JejuObsvdataLoadStep (센서 분기) — 커스텀

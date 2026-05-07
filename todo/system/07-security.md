@@ -41,7 +41,7 @@
 - [ ] api-collector 하드닝 미적용 (maxPool=5, timeout/leak 미설정)
 
 ## 로그인/인가 [Orchestrator]
-- [x] 사용자 로그인 기능 (ID/PW 인증) — sync-orchestrator-auth:8096 모듈 신설 (5/4)
+- [x] 사용자 로그인 기능 (ID/PW 인증) — infolink-auth:8096 모듈 신설 (5/4)
 - [x] 세션 또는 JWT 기반 인증 유지 — JWT RS256 + JWKS + Cookie HttpOnly+SameSite=Strict
 - [x] 권한 체계 — peer multiplication 동급 1롤 결정 (역할 분리 없음)
 - [ ] 미인증 접근 차단 (프론트 + 백엔드) — Phase 2~5 한 묶음 배포 영역
@@ -56,14 +56,14 @@
 - [x] KeyRotationJob (자정 cron `0 0 0 * * ?`)
 - [x] UserGeneratorCli (초기 1명 발급, Spring context 미기동 단독 실행)
 - [x] 단위/통합 테스트 31/31 PASS (TokenService 7 + UserService 10 + AuthService 10 + KeyRotation 4)
-- [x] Phase 1.5 sync-agent-common 검증자 자산 — JwksClient + JwtCookieAuthFilter + 헬퍼 + 단위 5/5 PASS + JAR 8 모듈 복사 + 회귀 OK
+- [x] Phase 1.5 infolink-agent-common 검증자 자산 — JwksClient + JwtCookieAuthFilter + 헬퍼 + 단위 5/5 PASS + JAR 8 모듈 복사 + 회귀 OK
 - [x] Step 11 통합 검증 — 17 시나리오 모두 PASS (auth 모듈 E2E)
 - [x] 첫 사용자 발급 (admin) — UserGeneratorCli + UNIQUE 충돌 검증 OK
 - [x] Phase 2 backend 검증자 적용 (5/6 — `/api/callback/**` permitAll, 그 외 JWT)
 - [x] Phase 3 api-provider 검증자 적용 (5/6 — `/api/provide` permit / `/api/manage` JWT / `/api/mock` permit. Mock 정책: 개발 자기호출 흐름 의존 발견 → matchIfMissing=true + permitAll, 운영 차단은 yml 단일 토글)
 - [x] Phase 4 api-collector 검증자 적용 (5/6 — `/api/**` JWT, `/mock/**` permit. LOOKUP 자기호출 흐름 살아있음 검증 OK)
 - [x] Phase 5 frontend 로그인 + 사용자 관리 (5/6 — login/users/users-me 페이지 + AppHeader/AppShell + middleware + axios 401·503 interceptor + next.config /auth/* rewrite. 폐쇄망 npm 부담 회피로 SWR/toast 등 추가 패키지 0건)
-- [x] sync-agent-common AutoConfiguration 통합 (5/6 — 검증자 모듈 yml 토글만으로 자동 등록)
+- [x] infolink-agent-common AutoConfiguration 통합 (5/6 — 검증자 모듈 yml 토글만으로 자동 등록)
 - [x] 첫 로그인 후 헤더 stale fix (5/6 — useCurrentUser mutate() 호출, 모듈 캐시 stale 회피)
 - [x] 통합 E2E 검증 37/37 PASS (5/6 — Health · JWKS · 인증 정합 · LOOKUP 회귀 회피 · peer multi · 마지막 1명 차단 · Frontend middleware/proxy)
 - [ ] **후속 1**: 단위 테스트 환경 격리 — `UserServiceTest.deleteMe_blocked_when_only_one_user` 가 실 DB admin 살아있을 때 count=2 가 되어 차단 안 걸림. `@Sql` cleanup 또는 transactional isolation 강제로 fix 필요. (현재 영향: 테스트 1건 실패. curl E2E 17 로 동등 검증 됨)

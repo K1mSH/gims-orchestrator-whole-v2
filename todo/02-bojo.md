@@ -1,4 +1,4 @@
-# sync-agent-bojo (DMZ Agent)
+# infolink-agent-bojo-dmz (DMZ Agent)
 
 ## [E1] 아키텍처
 - [x] 프록시 엔드포인트 ComponentScan 제외

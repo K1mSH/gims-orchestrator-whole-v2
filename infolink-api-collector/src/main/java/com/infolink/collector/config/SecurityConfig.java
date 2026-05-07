@@ -1,6 +1,6 @@
 package com.infolink.collector.config;
 
-import com.sync.agent.common.config.JwtCookieAuthFilter;
+import com.infolink.agent.common.config.JwtCookieAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;

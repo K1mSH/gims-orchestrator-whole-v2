@@ -68,7 +68,7 @@ readTimeout: 응답 대기 제한 시간
 타임아웃이 발생하면 예외(Exception)가 던져지고, 호출한 쪽에서 에러 처리를 한다.
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../config/WebConfig.java` — connect=5s, read=30s
+> - `infolink-orchestrator-backend/.../config/WebConfig.java` — connect=5s, read=30s
 > - `infolink-api-collector/.../config/RestTemplateConfig.java` — connect=10s, read=30s
 
 ---
@@ -90,8 +90,8 @@ Interceptor 사용:
 Orchestrator의 RestTemplate에는 X-API-Key Interceptor가 등록되어 있다. Agent/Proxy에 보내는 모든 요청에 자동으로 인증 키가 붙는다.
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../config/WebConfig.java` — X-API-Key Interceptor 등록
-> - `sync-agent-common/.../config/ApiKeyFilter.java` — 수신 측 X-API-Key 검증 필터
+> - `infolink-orchestrator-backend/.../config/WebConfig.java` — X-API-Key Interceptor 등록
+> - `infolink-agent-common/.../config/ApiKeyFilter.java` — 수신 측 X-API-Key 검증 필터
 
 ---
 
@@ -123,9 +123,9 @@ Orchestrator가 Agent에 "동기화 실행해줘" 명령을 보내면, Agent는 
 **콜백이 유실되면?**: AgentHealthScheduler가 30초마다 Agent 상태를 확인한다. Agent는 이미 끝났는데 Orchestrator에 "RUNNING"으로 남아있는 실행 이력을 자동으로 복구한다.
 
 > **연관 파일**
-> - `sync-agent-common/.../client/OrchestratorClient.java` — notifyStarted(), notifyFinished(), 재시도 로직
-> - `sync-orchestrator/backend/.../execution/ExecutionCallbackController.java` — 콜백 수신
-> - `sync-orchestrator/backend/.../agent/AgentHealthScheduler.java` — 콜백 유실 자동 복구
+> - `infolink-agent-common/.../client/OrchestratorClient.java` — notifyStarted(), notifyFinished(), 재시도 로직
+> - `infolink-orchestrator-backend/.../execution/ExecutionCallbackController.java` — 콜백 수신
+> - `infolink-orchestrator-backend/.../agent/AgentHealthScheduler.java` — 콜백 유실 자동 복구
 
 ---
 
@@ -256,7 +256,7 @@ ApiCallService.call(endpoint, params)
 API Collector와 Orchestrator 백엔드 모두 이 설정이 되어 있어서, Next.js 프론트엔드에서 자유롭게 API를 호출할 수 있다.
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../config/WebConfig.java` — CORS 설정
+> - `infolink-orchestrator-backend/.../config/WebConfig.java` — CORS 설정
 > - `infolink-api-collector/.../config/WebConfig.java` — CORS 설정
 
 ---

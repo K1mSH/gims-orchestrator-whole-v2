@@ -11,7 +11,7 @@
 
 ### 0-1. AgentConfigLoader — YAML 파일 전체 스캔
 
-**파일**: `sync-agent-bojo/.../config/AgentConfigLoader.java`
+**파일**: `infolink-agent-bojo-dmz/.../config/AgentConfigLoader.java`
 
 ```
 [L26-27] @PostConstruct
@@ -53,7 +53,7 @@ select-tables:                      →  def.getSelectTables() (WHERE 조건 드
 
 AgentConfigLoader 초기화가 끝나면, 타입별 PipelineConfig가 @PostConstruct로 실행된다.
 
-**파일**: `sync-agent-bojo/.../config/RcvPipelineConfig.java` (예시)
+**파일**: `infolink-agent-bojo-dmz/.../config/RcvPipelineConfig.java` (예시)
 
 ```
 [L31-32] @PostConstruct
@@ -91,7 +91,7 @@ return new PipelineRunner(agentCode, List.of(jewonStep, obsvStep))
 
 ### 0-3. PipelineRegistry — 라우팅 테이블 완성
 
-**파일**: `sync-agent-bojo/.../config/PipelineRegistry.java`
+**파일**: `infolink-agent-bojo-dmz/.../config/PipelineRegistry.java`
 
 ```
 [register() L53-55]
@@ -181,7 +181,7 @@ PipelineRegistry 완성
 
 ### A. 수동 실행 — 프론트엔드에서 버튼 클릭
 
-**파일**: `sync-orchestrator/.../execution/ExecutionController.java`
+**파일**: `infolink-orchestrator/.../execution/ExecutionController.java`
 
 ```
 [L44] @PostMapping("/{id}/run")
@@ -214,7 +214,7 @@ conditions: List<Map>        // 동적 WHERE 조건 (optional, 지정 시 최소
 
 ### B. 스케줄 실행 — Cron 트리거
 
-**파일**: `sync-orchestrator/.../schedule/ScheduleExecutor.java`
+**파일**: `infolink-orchestrator/.../schedule/ScheduleExecutor.java`
 
 ```
 [L45-54] @PostConstruct init()
@@ -271,7 +271,7 @@ agent: Agent (ManyToOne)            // 실행 대상 Agent
 
 ## STEP 1. Orchestrator — 실행 요청 조립
 
-**파일**: `sync-orchestrator/.../execution/ExecutionService.java`
+**파일**: `infolink-orchestrator/.../execution/ExecutionService.java`
 **메서드**: `triggerExecutionInternal()` (L369-552)
 
 ### triggerExecution 오버로드 구조
@@ -445,7 +445,7 @@ RuntimeException 발생 → 프론트에 500 응답
 
 ## STEP 2. Agent 수신 — PipelineController
 
-**파일**: `sync-agent-bojo/.../controller/PipelineController.java`
+**파일**: `infolink-agent-bojo-dmz/.../controller/PipelineController.java`
 
 ```
 [L41-42] @PostMapping("/execute")
@@ -476,7 +476,7 @@ RuntimeException 발생 → 프론트에 500 응답
 
 ## STEP 3. 파이프라인 시작 — PipelineService
 
-**파일**: `sync-agent-bojo/.../pipeline/PipelineService.java`
+**파일**: `infolink-agent-bojo-dmz/.../pipeline/PipelineService.java`
 
 ### executeAsync() (L53-95)
 
@@ -552,7 +552,7 @@ RuntimeException 발생 → 프론트에 500 응답
 
 ## STEP 4. Proxy에 자격증명 요청 — SyncDataSourceService
 
-**파일**: `sync-agent-bojo/.../config/SyncDataSourceService.java`
+**파일**: `infolink-agent-bojo-dmz/.../config/SyncDataSourceService.java`
 
 ### resolveFromProxy() (L158-178)
 
@@ -612,7 +612,7 @@ RuntimeException 발생 → 프론트에 500 응답
 
 ## STEP 5. Proxy 패스스루 — ConnectionInfoController
 
-**파일**: `sync-proxy-dmz/.../controller/ConnectionInfoController.java`
+**파일**: `infolink-proxy-dmz/.../controller/ConnectionInfoController.java`
 
 ```
 [L37-39] @GetMapping("/{datasourceId}/connection-info")
@@ -636,8 +636,8 @@ RuntimeException 발생 → 프론트에 500 응답
 
 ## STEP 6. Orchestrator가 암호문 응답 — DatasourceService
 
-**파일**: `sync-orchestrator/.../datasource/DatasourceController.java`
-**파일**: `sync-orchestrator/.../datasource/DatasourceService.java`
+**파일**: `infolink-orchestrator/.../datasource/DatasourceController.java`
+**파일**: `infolink-orchestrator/.../datasource/DatasourceService.java`
 
 ```
 [DatasourceController L72-74]
@@ -684,7 +684,7 @@ RuntimeException 발생 → 프론트에 500 응답
 
 ## STEP 7-1. Agent가 암호문 복호화 → DataSource 생성
 
-**파일**: `sync-agent-bojo/.../config/SyncDataSourceService.java`
+**파일**: `infolink-agent-bojo-dmz/.../config/SyncDataSourceService.java`
 (STEP 4의 fetchConnectionInfoFromProxy 계속)
 
 ### 암호문 복호화 + DataSourceInfo 빌드 (L199-212)
@@ -771,7 +771,7 @@ Bojo-Pipeline-2 스레드: dmz-bojo-rcv-bytek 실행 중 (source=ext_bytek)
 
 ## STEP 7-2. 파이프라인 Step 실행 — PipelineRunner
 
-**파일**: `sync-agent-common/.../pipeline/PipelineRunner.java`
+**파일**: `infolink-agent-common/.../pipeline/PipelineRunner.java`
 **메서드**: `run()` (L42-247)
 
 ```
@@ -909,7 +909,7 @@ return PipelineResult.builder()
 
 ## STEP 7-3. 데이터 추출/적재 — SourceToIfStep
 
-**파일**: `sync-agent-common/.../step/SourceToIfStep.java`
+**파일**: `infolink-agent-common/.../step/SourceToIfStep.java`
 **메서드**: `execute()` (L121-417)
 
 ### Phase 0: 준비 (L130-153)
@@ -1031,9 +1031,9 @@ return StepResult.builder()
 
 ## STEP 8. Orchestrator 콜백 — 결과 기록
 
-**파일 (Agent)**: `sync-agent-common/.../client/OrchestratorClient.java`
-**파일 (Orchestrator)**: `sync-orchestrator/.../callback/CallbackController.java`
-**파일 (Orchestrator)**: `sync-orchestrator/.../callback/CallbackService.java`
+**파일 (Agent)**: `infolink-agent-common/.../client/OrchestratorClient.java`
+**파일 (Orchestrator)**: `infolink-orchestrator/.../callback/CallbackController.java`
+**파일 (Orchestrator)**: `infolink-orchestrator/.../callback/CallbackService.java`
 
 ### 8A. 시작 콜백
 

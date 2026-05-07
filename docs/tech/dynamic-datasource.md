@@ -62,10 +62,10 @@ DB에 쿼리를 보내려면 먼저 **연결(Connection)**을 맺어야 한다. 
 
 > **연관 파일 (HikariCP 풀 생성)**
 > - `infolink-api-collector/.../config/DynamicDataSourceService.java` — maxPoolSize=5
-> - `sync-agent-bojo/.../config/SyncDataSourceService.java` — maxPoolSize=10, leakDetection=60s
-> - `sync-agent-bojo-int/.../config/SyncDataSourceService.java` — 동일
-> - `sync-proxy-dmz/.../config/ProxyDataSourceService.java` — maxPoolSize=10
-> - `sync-proxy-internal/.../config/ProxyDataSourceService.java` — 동일
+> - `infolink-agent-bojo-dmz/.../config/SyncDataSourceService.java` — maxPoolSize=10, leakDetection=60s
+> - `infolink-agent-bojo-internal/.../config/SyncDataSourceService.java` — 동일
+> - `infolink-proxy-dmz/.../config/ProxyDataSourceService.java` — maxPoolSize=10
+> - `infolink-proxy-internal/.../config/ProxyDataSourceService.java` — 동일
 
 ---
 
@@ -93,7 +93,7 @@ getDataSource("daejeon")
 > **연관 파일**
 > - `infolink-api-collector/.../config/DynamicDataSourceService.java` — computeIfAbsent() 패턴
 > - `infolink-api-collector/.../config/OrchestratorClient.java` — Orchestrator에서 연결정보 조회
-> - `sync-agent-common/.../datasource/DataSourceInfo.java` — 연결정보 DTO (JDBC URL 자동 생성)
+> - `infolink-agent-common/.../datasource/DataSourceInfo.java` — 연결정보 DTO (JDBC URL 자동 생성)
 
 **JDBC URL 자동 생성**: DB 종류에 따라 URL 형식이 다르다. 시스템이 `dbType`을 보고 자동으로 만든다:
 
@@ -131,8 +131,8 @@ datasourceId로 DataSource를 찾는 순서:
 **ThreadLocal이란?**: 같은 변수인데 **스레드마다 독립적인 값**을 갖는 저장소다. 스레드 A가 "daejeon DB" 정보를 넣으면, 스레드 B에서는 보이지 않는다. 동시에 여러 파이프라인이 실행될 때 서로의 DB 연결 정보가 섞이지 않도록 보장한다.
 
 > **연관 파일 (4단계 Fallback)**
-> - `sync-agent-bojo/.../config/SyncDataSourceService.java` — ThreadLocal + 캐시 + Proxy + 기본DB
-> - `sync-agent-bojo-int/.../config/SyncDataSourceService.java` — 동일 패턴
+> - `infolink-agent-bojo-dmz/.../config/SyncDataSourceService.java` — ThreadLocal + 캐시 + Proxy + 기본DB
+> - `infolink-agent-bojo-internal/.../config/SyncDataSourceService.java` — 동일 패턴
 
 ---
 
@@ -157,21 +157,21 @@ spring:
   ENC(...) 값 → 마스터 키로 복호화 → 실제 비밀번호
 ```
 
-### PasswordEncryptor [sync-agent-common] — 공통 암호화/복호화 클래스
+### PasswordEncryptor [infolink-agent-common] — 공통 암호화/복호화 클래스
 
 실제 암호화·복호화를 수행하는 클래스는 **`PasswordEncryptor`**다. common 모듈에 있고, 전 모듈이 공통으로 사용한다.
 
 ```
-위치: sync-agent-common/.../datasource/PasswordEncryptor.java
+위치: infolink-agent-common/.../datasource/PasswordEncryptor.java
 
 사용하는 모듈:
-  ├─ sync-orchestrator/backend   → WebConfig, DatasourceService, ExecutionService, AgentService
-  ├─ sync-agent-bojo             → SyncDataSourceService
-  ├─ sync-agent-bojo-int         → SyncDataSourceService
-  ├─ sync-proxy-dmz              → ProxyDataSourceService
-  ├─ sync-proxy-internal         → ProxyDataSourceService
+  ├─ infolink-orchestrator-backend   → WebConfig, DatasourceService, ExecutionService, AgentService
+  ├─ infolink-agent-bojo-dmz             → SyncDataSourceService
+  ├─ infolink-agent-bojo-internal         → SyncDataSourceService
+  ├─ infolink-proxy-dmz              → ProxyDataSourceService
+  ├─ infolink-proxy-internal         → ProxyDataSourceService
   ├─ infolink-api-collector      → OrchestratorClient
-  └─ sync-agent-common 자체      → SyncDataSourceManager, LazyDataSource
+  └─ infolink-agent-common 자체      → SyncDataSourceManager, LazyDataSource
 ```
 
 각 모듈이 Jasypt 마스터 키로 `PasswordEncryptor`를 초기화하고, `ENC(...)` 값을 만나면 이 클래스의 `decrypt()`로 복호화한다. 주로 **DB 연결정보를 받아서 실제 커넥션 풀을 만들기 직전**에 사용된다.
@@ -247,11 +247,11 @@ services:
 
 | 모듈 | application.yml 위치 |
 |------|---------------------|
-| sync-orchestrator/backend | `src/main/resources/application.yml` |
-| sync-agent-bojo | `src/main/resources/application.yml` |
-| sync-agent-bojo-int | `src/main/resources/application.yml` |
-| sync-proxy-dmz | `src/main/resources/application.yml` |
-| sync-proxy-internal | `src/main/resources/application.yml` |
+| infolink-orchestrator-backend | `src/main/resources/application.yml` |
+| infolink-agent-bojo-dmz | `src/main/resources/application.yml` |
+| infolink-agent-bojo-internal | `src/main/resources/application.yml` |
+| infolink-proxy-dmz | `src/main/resources/application.yml` |
+| infolink-proxy-internal | `src/main/resources/application.yml` |
 | infolink-api-collector | `src/main/resources/application.yml` |
 
 6개 모듈 모두 **같은 마스터 키**를 사용한다. 하나의 키로 시스템 전체의 암호화/복호화가 통일된다.

@@ -20,8 +20,8 @@
 - [ ] bojo SND 실행 — IF_SND 적재 확인
 
 ### 2.2 Internal 파이프
-- [ ] Proxy Internal 경유 bojo-int RCV 실행 — IF_RSV 적재
-- [ ] bojo-int Loader 실행 — GIMS 연동 Target 적재 확인
+- [ ] Proxy Internal 경유 bojo-internal RCV 실행 — IF_RSV 적재
+- [ ] bojo-internal Loader 실행 — GIMS 연동 Target 적재 확인
 
 ### 2.3 Provide 파이프
 - [ ] provide Agent 1 개 실행 (TM_GD000203 등 파일럿)

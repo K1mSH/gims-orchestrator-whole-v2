@@ -13,7 +13,7 @@
 | Proxy Internal | | 8093 | 내부망 |
 | Agent DMZ (bojo) | | 8082 | DMZ |
 | Agent Others (DMZ) | | 8085 | DMZ |
-| Agent Internal (bojo-int) | | 8092 | 내부망 |
+| Agent Internal (bojo-internal) | | 8092 | 내부망 |
 | Agent Provide | | 8096 | 내부망 |
 | API Collector DMZ | | 8084 | DMZ |
 | API Collector Internal | | 8094 | 내부망 |
@@ -35,7 +35,7 @@
    인터넷 ──▶ API Provider (8095, 외부 공개)
                     │
    외부 원본DB ─▶ DMZ ─▶ Proxy Internal ─▶ 내부망 Agent/Orchestrator ─▶ GIMS
-                (Agent DMZ + Collector)            (bojo-int / provide / Orchestrator)
+                (Agent DMZ + Collector)            (bojo-internal / provide / Orchestrator)
 ```
 
 ### 2.2 방화벽 규칙 (필요 개방)

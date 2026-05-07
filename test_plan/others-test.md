@@ -1,6 +1,6 @@
 # Others Agent (SND) 기능 테스트 문서
 
-> sync-agent-others(8085)의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
+> infolink-agent-others-dmz(8085)의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
 > bojo-test.md와 동일한 공통 테스트 규칙 적용.
 
 ### 공통 테스트 규칙
@@ -44,7 +44,7 @@
 | 서비스 | 포트 | 필수 | 비고 |
 |--------|------|:---:|------|
 | Orchestrator Backend | 8080 | O | 실행 트리거 + 이력 관리 |
-| **Agent Others (sync-agent-others)** | **8085** | **O** | SND 전용 |
+| **Agent Others (infolink-agent-others-dmz)** | **8085** | **O** | SND 전용 |
 | Proxy DMZ | 8083 | O | datasource 해석 + 추적 API |
 | API Collector | 8084 | △ | 소스 데이터 적재용 (사전 실행) |
 | Frontend (Next.js) | 3000 | O | UI 검증 |
@@ -350,18 +350,18 @@ curl -s -X POST http://localhost:8080/api/executions/23/run \
 ## 부록: 빌드 명령어
 ```bash
 # common 수정 시
-cd sync-agent-common && ./gradlew clean build -x test
-cp build/libs/sync-agent-common-*.jar ../sync-agent-others/libs/
-cp build/libs/sync-agent-common-*.jar ../sync-proxy-dmz/libs/
+cd infolink-agent-common && ./gradlew clean build -x test
+cp build/libs/infolink-agent-common-*.jar ../infolink-agent-others-dmz/libs/
+cp build/libs/infolink-agent-common-*.jar ../infolink-proxy-dmz/libs/
 
 # others 빌드
-cd sync-agent-others && ./gradlew clean build -x test
+cd infolink-agent-others-dmz && ./gradlew clean build -x test
 
 # JAR 직접 실행 (bootRun 캐시 문제 회피)
-cd sync-agent-others && java -jar build/libs/sync-agent-others-1.0.0-SNAPSHOT.jar
+cd infolink-agent-others-dmz && java -jar build/libs/infolink-agent-others-dmz-1.0.0-SNAPSHOT.jar
 
 # 프론트 타입체크
-cd sync-orchestrator/frontend && npx tsc --noEmit
+cd infolink-orchestrator-frontend && npx tsc --noEmit
 ```
 
 ---

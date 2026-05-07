@@ -1,6 +1,6 @@
 # 체크리스트 — provide Agent (Internal, 8096)
 
-> **대상**: sync-agent-provide (Oracle 29004 → PG 29006)
+> **대상**: infolink-agent-provide-dmz (Oracle 29004 → PG 29006)
 > **최신 리스크** (4/22): 헤더 기반 관리 DB 라우팅, /target 통합, trace-source 분기 3 개선, TM_GD130001 파일럿, 16개 엔티티 @Comment 추가
 > **필수 의존**: P1 (common), P3 (proxy-internal), P10 (Orchestrator backend), P9 (api-provider)
 > **사용법**: 체크 항목은 **재실행 가능한 절차** 기준. 실패 시 `runs/YYYY-MM-DD.md` + `issues/OPEN/VER-*.md` 로 기록.
@@ -29,7 +29,7 @@
 - [ ] Agent 의 Execution/SyncLog 가 **PG 29006 (api_provider DB)** 에 기록됨
   - `psql` 로 `executions`, `sync_logs` 테이블 count 확인
 - [ ] Orchestrator 모니터링 화면에서 provide Agent 실행 이력 정상 조회
-- [ ] **회귀**: bojo-int 실행도 정상 — 29001 Internal DB 에 기록되어야 함 (헤더가 다른 값)
+- [ ] **회귀**: bojo-internal 실행도 정상 — 29001 Internal DB 에 기록되어야 함 (헤더가 다른 값)
 
 ---
 
@@ -77,7 +77,7 @@
 
 ## 5. 16 개 엔티티 @Comment 일괄 반영 (회귀)
 
-- [ ] 모든 provide 엔티티(`sync-agent-provide/src/.../entity/target/*.java`) 에 `@org.hibernate.annotations.Table(comment=)` + 컬럼 `@Comment` 있음
+- [ ] 모든 provide 엔티티(`infolink-agent-provide-dmz/src/.../entity/target/*.java`) 에 `@org.hibernate.annotations.Table(comment=)` + 컬럼 `@Comment` 있음
 - [ ] 임의 샘플 엔티티 3개: PG 에 테이블/컬럼 코멘트 실제 반영됨
 - [ ] 아직 생성되지 않은 테이블(DDL 없음) 은 엔티티만 존재 — 기동 시 ddl-auto update 실패/경고 없음
 
@@ -107,7 +107,7 @@
 
 ## 8. 회귀 위험 포인트 (기억용)
 
-- **ConditionOperator NoClassDefFoundError**: bojo-int/provide JVM 이 구 common JAR 을 로드 중일 때 발생. 재배포 후 반드시 **재기동**.
+- **ConditionOperator NoClassDefFoundError**: bojo-internal/provide JVM 이 구 common JAR 을 로드 중일 때 발생. 재배포 후 반드시 **재기동**.
 - **Retention 음수 방어**: 4계층 다중 방어 적용됨 — 프론트 min=1 / Orchestrator API 검증 / Agent Controller 예외 / Agent Service skip.
 - **source_refs vs PK 분기**: buildSourceFilter 샘플 1건 비교 로직이 3종 (RCV/Loader/SND) 모두 커버하는지 샘플링 확인.
 - **target_tables 1순위 매칭**: provide 네이밍 방향이 기존 RCV/Loader 와 반대였음 → 새 Agent 네이밍 추가 시 동일 이슈 재발 가능성.

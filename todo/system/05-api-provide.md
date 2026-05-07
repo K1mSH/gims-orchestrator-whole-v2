@@ -37,7 +37,7 @@
 - [x] 인증/인가 (API Key, IP 제한 등)
 - [x] 동적 쿼리 보안 (화이트리스트 정규식 + PreparedStatement 바인딩)
 - [x] 10종 WHERE 연산자 (=, >, >=, <, <=, LIKE 포함/시작/끝, IN, BETWEEN)
-- [x] Proxy 경유 DataSource 획득·캐싱 (ProviderDataSourceService, bojo-int 패턴)
+- [x] Proxy 경유 DataSource 획득·캐싱 (ProviderDataSourceService, bojo-internal 패턴)
 - [x] Mock API Key 검증기 (운영 시 외부 API URL만 교체하면 전환 가능)
 - [x] 슬래시 operationId 지원 (4/24, `megokrApi/ngw08` 레거시 URL 그대로 재현)
 - [x] 응답 alias 대소문자 보존 (4/24, PG identifier lowercase 회피, 쌍따옴표 alias)

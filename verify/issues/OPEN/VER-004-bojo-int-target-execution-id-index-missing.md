@@ -1,9 +1,9 @@
 ---
 id: VER-004
-title: bojo-int target 엔티티 executionId 인덱스 누락 (전무)
+title: bojo-internal target 엔티티 executionId 인덱스 누락 (전무)
 status: OPEN
 created: 2026-04-23
-parts: [P6-bojo-int]
+parts: [P6-bojo-internal]
 parallel_safe: true
 assignee: forward
 related: [VER-005]
@@ -11,14 +11,14 @@ related: [VER-005]
 
 ## 증상
 
-`sync-agent-bojo-int/**/entity/target/*.java` 전체에 `@Index(columnList = "execution_id")` 미적용 (**0 건**).
+`infolink-agent-bojo-internal/**/entity/target/*.java` 전체에 `@Index(columnList = "execution_id")` 미적용 (**0 건**).
 
-MEMORY `Source 추적 설계 (3/10 확정)` 의 "executionId 인덱스: IF/Target 6개 엔티티에 추가 완료" 기록은 **bojo 에만 한정**. bojo-int 로 확장되지 않음.
+MEMORY `Source 추적 설계 (3/10 확정)` 의 "executionId 인덱스: IF/Target 6개 엔티티에 추가 완료" 기록은 **bojo 에만 한정**. bojo-internal 로 확장되지 않음.
 
 ## 증거
 
 ```
-grep "@Index|indexes" sync-agent-bojo-int/**/entity/target/*.java
+grep "@Index|indexes" infolink-agent-bojo-internal/**/entity/target/*.java
 → 0 건
 ```
 
@@ -38,7 +38,7 @@ vs bojo (bojo/entity/target) / common (Execution, SyncLog) / others (IfSnd*) 는
 
 ## 수정 범위
 
-각 bojo-int target 엔티티에 bojo 선례대로 패턴 적용:
+각 bojo-internal target 엔티티에 bojo 선례대로 패턴 적용:
 ```java
 @Table(name = "TM_GD970001",
        indexes = @Index(name = "idx_tm_gd970001_exec_id", columnList = "execution_id"))
@@ -46,7 +46,7 @@ vs bojo (bojo/entity/target) / common (Execution, SyncLog) / others (IfSnd*) 는
 
 ## 회귀 확인
 
-- 빌드 통과 (`./gradlew -p sync-agent-bojo-int clean build -x test`)
+- 빌드 통과 (`./gradlew -p infolink-agent-bojo-internal clean build -x test`)
 - ddl-auto=`update` 로 인덱스 자동 생성 확인 또는 DDL 스크립트에도 반영
 - 실행 후 `/target` / `/trace-source` 응답 시간 측정 (선택)
 

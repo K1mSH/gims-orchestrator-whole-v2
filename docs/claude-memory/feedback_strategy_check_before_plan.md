@@ -6,7 +6,7 @@ type: feedback
 
 계획 문서(dev_plan/) 작성 시 **반드시 기존 전략 문서를 먼저 확인**하고 그에 맞게 설계해야 한다.
 
-**Why:** bojo-int Entity 전환 건에서 ARCHITECTURE.md에 "읽기=JPA, 쓰기=JDBC" 전략이 명시되어 있었는데, bojo-int 구현 시 이를 무시하고 전부 raw JDBC로 만들었음. 이후 52개 엔티티를 소급 생성하는 대규모 리팩터링이 필요해짐.
+**Why:** bojo-internal Entity 전환 건에서 ARCHITECTURE.md에 "읽기=JPA, 쓰기=JDBC" 전략이 명시되어 있었는데, bojo-internal 구현 시 이를 무시하고 전부 raw JDBC로 만들었음. 이후 52개 엔티티를 소급 생성하는 대규모 리팩터링이 필요해짐.
 
 **How to apply:**
 1. 계획 문서 작성 전 ARCHITECTURE.md의 다음 섹션 필수 확인:

@@ -61,7 +61,7 @@ jasypt:
 | `infolink-api-collector/application.yml:37` (**본 이슈**) | `lookup.api-key-url` | `http://localhost:8084/mock/api-keys` | **치환 지점 부재** |
 | `infolink-api-collector/AnyangUsageExecutor.java:39` | `anyang.api.fac-url` | `http://localhost:8084/mock/anyang/fac` | `@Value` 외부화 완료 |
 | `infolink-api-collector/AnyangUsageExecutor.java:42` | `anyang.api.data-url` | `http://localhost:8084/mock/anyang/data` | `@Value` 외부화 완료 |
-| `gims-api-provider/ApiKeyValidationService.java:22` | `app.api-key-validation.url` | `http://localhost:8095/api/mock/api-key/validate` | `@Value` 외부화 완료 |
+| `infolink-api-provider/ApiKeyValidationService.java:22` | `app.api-key-validation.url` | `http://localhost:8095/api/mock/api-key/validate` | `@Value` 외부화 완료 |
 
 본 이슈(VER-002) 범위는 **line 36/37 의 치환 지점 부재** 에 한정. 나머지 3 건은 이미 외부화되어 환경변수 주입만 하면 실 URL 전환 가능. 다만 **Mock 호출 위험은 동일**하므로 `verify/deployment/production-checklist.md § 2.2` 에 **"Mock URL 환경변수 전부 실 값으로 주입 확인"** 체크 항목을 추가해야 함 (후속 TASK 후보).
 

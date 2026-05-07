@@ -18,7 +18,7 @@ assignee: forward
 운영자 UI 에서 잘못된 클릭 한 번으로 파이프라인 전체가 멈출 수 있음.
 
 ## 수정 대상 파일
-- [ ] `sync-orchestrator/backend/src/main/java/com/sync/orchestrator/service/DatasourceService.java` (line 226 부근)
+- [ ] `infolink-orchestrator-backend/src/main/java/com/sync/orchestrator/service/DatasourceService.java` (line 226 부근)
 
 ## 변경 내용
 - [ ] 삭제 대상 `datasourceId` 를 Agent 엔티티의 `sourceDatasourceId` / `targetDatasourceId` 컬럼에서 참조 중인지 쿼리

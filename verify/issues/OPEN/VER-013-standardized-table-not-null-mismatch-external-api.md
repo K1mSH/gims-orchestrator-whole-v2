@@ -47,7 +47,7 @@ related: [project_yaksoter-pipeline]
 약수터 8 엔티티 + dev DB 4 테이블에서 NOT NULL 풀음:
 - `YaksoterJewon` / `YaksoterWqResult` (collector)
 - `IfSndTmGd010310` / `IfSndTdGd010310` (others)
-- `IfRsvTmGd010310` / `IfRsvTdGd010310` / `TmGd010310` / `TdGd010310` (bojo-int)
+- `IfRsvTmGd010310` / `IfRsvTdGd010310` / `TmGd010310` / `TdGd010310` (bojo-internal)
 - dev DB: `tm_gd010310` / `td_gd010310` / `if_snd_tm_gd010310` / `if_snd_td_gd010310` 의 `sn` PK 외 모든 컬럼 `DROP NOT NULL`
 - 결과: 응답 1000행 모두 적재 (검증은 4/29 사용자 재실행 시점)
 
@@ -83,7 +83,7 @@ related: [project_yaksoter-pipeline]
 
 - [x] 약수터 8 엔티티 + dev DB 4 테이블 NOT NULL 풀기 (4/29 완료)
 - [x] 약수터 4 엔티티 + dev DB 2 테이블 길이 100 → 500 (4/29 완료)
-- [ ] Internal Oracle 측 약수터 테이블 (`TM_GD010310`/`TD_GD010310`/`IF_RSV_*`) 미생성 — bojo-int 첫 기동 시 변경된 엔티티 기준으로 ddl-auto 자동 생성
+- [ ] Internal Oracle 측 약수터 테이블 (`TM_GD010310`/`TD_GD010310`/`IF_RSV_*`) 미생성 — bojo-internal 첫 기동 시 변경된 엔티티 기준으로 ddl-auto 자동 생성
 - [ ] 표준 관리 측에 표준화 자료 수정 건의 — **NULL 권장 + 길이 단축 권장 양쪽 모두**:
   - "외부 API 적재 케이스" 주석 추가 또는
   - NULLABLE = Y / 외부 응답 길이 그대로 정정

@@ -13,4 +13,4 @@ originSessionId: da0c9ed8-0d75-4f89-870b-145a526452a8
 2. 차이 발견 시 통일 방향 제안 (보통 더 보편적/안정적/사내망 보유 버전으로).
 3. 새 의존성 추가 시 다른 모듈에서 같은 라이브러리를 쓰는지 확인하고 동일 GAV/버전 채택.
 4. Spring Boot BOM 같은 BOM 기반 관리는 자동 일관성 확보 — 가능한 BOM 따라가기.
-5. java-library 모듈(BOM 미사용, 예: sync-agent-common)이라도 명시 버전은 BOM 친화 버전과 일치시킬 것.
+5. java-library 모듈(BOM 미사용, 예: infolink-agent-common)이라도 명시 버전은 BOM 친화 버전과 일치시킬 것.

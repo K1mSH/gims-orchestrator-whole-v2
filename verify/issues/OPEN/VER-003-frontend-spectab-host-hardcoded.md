@@ -11,13 +11,13 @@ related: [VER-001, VER-002]
 
 ## 증상 요약
 
-`sync-orchestrator/frontend/components/api-provide/SpecTab.tsx` 내에 API host 가 **코드 내 평문 상수** 로 선언되어 있음.
+`infolink-orchestrator-frontend/components/api-provide/SpecTab.tsx` 내에 API host 가 **코드 내 평문 상수** 로 선언되어 있음.
 
 다른 프론트엔드 호출부는 Next.js 프록시(`/collector-api/*`, `/provider-api/*`) 경유로 설정되어 있는데 이 한 곳만 예외 — **일관성 위반**.
 또한 `process.env.*` / `NEXT_PUBLIC_*` 치환 지점 없어 실배포 시 **코드 수정 없이 전환 불가**.
 
 ## 재현 절차
-1. `sync-orchestrator/frontend/components/api-provide/SpecTab.tsx` 열기
+1. `infolink-orchestrator-frontend/components/api-provide/SpecTab.tsx` 열기
 2. line 48 확인
 
 ## 기대 vs 실제
@@ -36,7 +36,7 @@ const host = process.env.NEXT_PUBLIC_PROVIDER_BASE ?? 'http://localhost:8095';
 
 ### 실제
 ```tsx
-// sync-orchestrator/frontend/components/api-provide/SpecTab.tsx:48
+// infolink-orchestrator-frontend/components/api-provide/SpecTab.tsx:48
 const host = 'http://localhost:8095';   // ⚠️ 코드 내 평문
 ```
 
@@ -47,7 +47,7 @@ const host = 'http://localhost:8095';   // ⚠️ 코드 내 평문
 - 나머지 4 건: `next.config.js` 의 rewrite destination 3 건 (빌드 설정 레이어 — G3~G5) + `app/agents/page.tsx:490` HTML `placeholder` 속성 (무해).
 
 ```
-sync-orchestrator/frontend/components/api-provide/SpecTab.tsx:48:  const host = 'http://localhost:8095';
+infolink-orchestrator-frontend/components/api-provide/SpecTab.tsx:48:  const host = 'http://localhost:8095';
 ```
 
 ## 수정 범위 제안
@@ -57,7 +57,7 @@ sync-orchestrator/frontend/components/api-provide/SpecTab.tsx:48:  const host = 
 - 대안 — 방향 B (환경변수) 는 SSR / ISR 컨텍스트 등 프록시가 적용되지 않는 경우에만
 
 ## 회귀 확인 방법
-- 프론트엔드 타입체크: `cd sync-orchestrator/frontend && npx tsc --noEmit` 통과
+- 프론트엔드 타입체크: `cd infolink-orchestrator-frontend && npx tsc --noEmit` 통과
 - SpecTab 화면 접근 → API 호출 정상 응답
 - dev 에서 기본값 유지, 실배포 빌드 시 프록시 경로 또는 환경변수로 치환되는지 확인
 

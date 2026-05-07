@@ -1,4 +1,4 @@
-# sync-orchestrator/frontend (프론트엔드)
+# infolink-orchestrator-frontend (프론트엔드)
 
 ## [E8] 프록시 아키텍처 반영
 - [x] AgentType DB_CON_PROXY 타입/레이블/색상

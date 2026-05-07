@@ -48,9 +48,9 @@
 | 서비스 | 포트 | 비고 |
 |--------|------|------|
 | Orchestrator Backend | 8080 | 중앙 관리 |
-| Agent DMZ (sync-agent-bojo) | 8082 | RCV/Loader/SND |
+| Agent DMZ (infolink-agent-bojo-dmz) | 8082 | RCV/Loader/SND |
 | Proxy DMZ | 8083 | DMZ↔Internal 중계 |
-| Agent Internal (sync-agent-bojo-int) | 8092 | Int RCV/Loader |
+| Agent Internal (infolink-agent-bojo-internal) | 8092 | Int RCV/Loader |
 | Proxy Internal | 8093 | Internal↔DMZ 중계 |
 | Frontend (Next.js) | 3000 | 모니터링 UI |
 
@@ -128,7 +128,7 @@ GIMS (pm_gd970201 + tm_gd970001 + tm_gd970101 + tm_gd980002)     [Oracle 29004/X
 
 ### 2-2. 컨트롤러 활성화 현황
 
-| 컨트롤러 | Agent (bojo/bojo-int) | Proxy (DMZ/Internal) |
+| 컨트롤러 | Agent (bojo/bojo-internal) | Proxy (DMZ/Internal) |
 |----------|:---:|:---:|
 | DataRetentionController (`/api/cleanup`) | O | **X** |
 | ExecutionDataController (`/api/execution-data`) | O | O |
@@ -305,7 +305,7 @@ SELECT DISTINCT OBSV_CODE, '보조지하수관측망', OBSV_NAME, ... FROM IF_RS
 - [ ] Internal Loader: **제원 없을 때 FAILED 반환** (write=0 & read>0 → status=FAILED + 에러메시지)
 
 #### Oracle 인프라 검증
-- [ ] **HikariCP connectionTestQuery**: Oracle은 `SELECT 1 FROM DUAL` (bojo-int, proxy-internal)
+- [ ] **HikariCP connectionTestQuery**: Oracle은 `SELECT 1 FROM DUAL` (bojo-internal, proxy-internal)
 - [ ] **Proxy Internal ojdbc11**: 추적 조회 시 Proxy가 Oracle에 직접 연결 가능
 - [ ] **Oracle 컬럼명 대문자**: qi() 인용 없음, 프론트 SOURCE_REFS 대문자 대응
 
@@ -771,17 +771,17 @@ curl -X POST http://localhost:8092/api/cleanup/internal-bojo-loader \
 ## 부록: 빌드 명령어
 ```bash
 # common 수정 시
-cd sync-agent-common && ./gradlew clean build -x test
-cp build/libs/sync-agent-common-*.jar ../sync-agent-bojo/libs/
-cp build/libs/sync-agent-common-*.jar ../sync-agent-bojo-int/libs/
-cp build/libs/sync-agent-common-*.jar ../sync-proxy-dmz/libs/
-cp build/libs/sync-agent-common-*.jar ../sync-proxy-internal/libs/
+cd infolink-agent-common && ./gradlew clean build -x test
+cp build/libs/infolink-agent-common-*.jar ../infolink-agent-bojo-dmz/libs/
+cp build/libs/infolink-agent-common-*.jar ../infolink-agent-bojo-internal/libs/
+cp build/libs/infolink-agent-common-*.jar ../infolink-proxy-dmz/libs/
+cp build/libs/infolink-agent-common-*.jar ../infolink-proxy-internal/libs/
 
 # 개별 빌드
-cd sync-agent-bojo && ./gradlew clean build -x test
-cd sync-agent-bojo-int && ./gradlew clean build -x test
-cd sync-orchestrator/backend && ./gradlew clean build -x test
+cd infolink-agent-bojo-dmz && ./gradlew clean build -x test
+cd infolink-agent-bojo-internal && ./gradlew clean build -x test
+cd infolink-orchestrator-backend && ./gradlew clean build -x test
 
 # 프론트 타입체크
-cd sync-orchestrator/frontend && npx tsc --noEmit
+cd infolink-orchestrator-frontend && npx tsc --noEmit
 ```

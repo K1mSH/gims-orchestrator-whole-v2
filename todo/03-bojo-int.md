@@ -1,4 +1,4 @@
-# sync-agent-bojo-int (Internal Agent)
+# infolink-agent-bojo-internal (Internal Agent)
 
 ## [E1] Source 추적 / SyncLog
 - [x] InternalLoadStep LINK SyncLog (tm_gd980002)

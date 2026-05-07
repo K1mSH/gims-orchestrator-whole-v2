@@ -1,6 +1,6 @@
 ---
 id: VER-001
-title: gims-api-provider 외부화 누락 (credentials + URL 평문)
+title: infolink-api-provider 외부화 누락 (credentials + URL 평문)
 status: OPEN
 created: 2026-04-23
 parts: [P9-api-provider]
@@ -11,12 +11,12 @@ related: []
 
 ## 증상 요약
 
-`gims-api-provider` 모듈만 **Jasypt 외부화 패턴을 따르지 않음**. credentials 와 DB/Proxy URL 이 평문으로 하드코딩되어 실배포 진입 블로커.
+`infolink-api-provider` 모듈만 **Jasypt 외부화 패턴을 따르지 않음**. credentials 와 DB/Proxy URL 이 평문으로 하드코딩되어 실배포 진입 블로커.
 
 다른 모든 모듈(7 개)은 이미 Jasypt ENC + `${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}` fallback 패턴 적용 완료 상태. 이 모듈 하나만 예외.
 
 ## 재현 절차
-1. `gims-api-provider/src/main/resources/application.yml` 열기
+1. `infolink-api-provider/src/main/resources/application.yml` 열기
 2. line 10 ~ 12, line 37 확인
 
 ## 기대 vs 실제
@@ -40,7 +40,7 @@ something:
 
 ### 실제
 ```yaml
-# gims-api-provider/src/main/resources/application.yml
+# infolink-api-provider/src/main/resources/application.yml
 spring:
   datasource:
     url: jdbc:postgresql://localhost:29006/api_provider   # line 10 — 평문
@@ -53,12 +53,12 @@ spring:
 ## 증거
 
 전 모듈 비교 (grep 결과):
-- **7 개 모듈** (`sync-agent-bojo/bojo-int/others/provide/proxy-dmz/proxy-internal/orchestrator-backend` + `infolink-api-collector` 일부): `url: ENC(...)` / `username: ENC(...)` / `password: ENC(...)`
-- **1 개 모듈** (`gims-api-provider`): 평문
+- **7 개 모듈** (`infolink-agent-bojo-dmz/bojo-internal/others/provide/proxy-dmz/proxy-internal/orchestrator-backend` + `infolink-api-collector` 일부): `url: ENC(...)` / `username: ENC(...)` / `password: ENC(...)`
+- **1 개 모듈** (`infolink-api-provider`): 평문
 
 ## 수정 범위 제안
 
-`gims-api-provider/src/main/resources/application.yml`:
+`infolink-api-provider/src/main/resources/application.yml`:
 - line 10 — DB URL → `ENC(...)` 또는 `${DB_URL}` (default 없음)
 - line 11 — username → `ENC(...)`
 - line 12 — password → `ENC(...)`

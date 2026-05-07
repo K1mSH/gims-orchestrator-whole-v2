@@ -3,7 +3,7 @@
 > 작성일: 2026-04-28
 > 범위: orchestrator 시스템 전체 (Backend / Frontend / api-provider / api-collector / agents) 에 통합 인증 적용
 > 분류: 보안 — 운영자 인증 누락 (현재 누구나 접근 가능)
-> 결과물: 신규 마이크로서비스 `sync-orchestrator-auth` (port 8096) + 기존 모든 모듈 보호
+> 결과물: 신규 마이크로서비스 `infolink-auth` (port 8096) + 기존 모든 모듈 보호
 
 ---
 
@@ -35,7 +35,7 @@
 
 | 항목 | 결정 |
 |---|---|
-| **인증 모듈 위치** | 별도 마이크로서비스 `sync-orchestrator-auth` |
+| **인증 모듈 위치** | 별도 마이크로서비스 `infolink-auth` |
 | **포트** | 8096 (api-provider 8095 옆) |
 | **알고리즘** | RS256 (RSA 비대칭) |
 | **키 회전** | 매일 자정 (자동) |
@@ -66,13 +66,13 @@
 
 | 모듈 | 포트 | 인증 적용 |
 |---|:--:|---|
-| **`sync-orchestrator-auth` (신규)** | **8096** | 로그인 / refresh / 로그아웃 / JWKS endpoint 제공 |
-| **`sync-orchestrator/backend`** | 8080 | 모든 운영 REST API JWT 필수 (resource server) |
-| **`sync-orchestrator/frontend`** | 3000 | 로그인 페이지 + 미인증 redirect + axios cookie 자동 전송 |
-| **`gims-api-provider`** | 8095 | `/api/manage/**` JWT 필수 / `/api/provide/**` API key 유지 |
+| **`infolink-auth` (신규)** | **8096** | 로그인 / refresh / 로그아웃 / JWKS endpoint 제공 |
+| **`infolink-orchestrator-backend`** | 8080 | 모든 운영 REST API JWT 필수 (resource server) |
+| **`infolink-orchestrator-frontend`** | 3000 | 로그인 페이지 + 미인증 redirect + axios cookie 자동 전송 |
+| **`infolink-api-provider`** | 8095 | `/api/manage/**` JWT 필수 / `/api/provide/**` API key 유지 |
 | **`infolink-api-collector`** | 8084/8094 | 운영 endpoint JWT 필수 |
-| **`sync-agent-bojo` / `bojo-int` / `others`** | 8082/8092/8085 | **JWT 미적용** — 시스템 간 통신, 기존 API key 그대로 |
-| **`sync-proxy-dmz` / `internal`** | 8083/8093 | **JWT 미적용** — 기존 X-API-Key 그대로 |
+| **`infolink-agent-bojo-dmz` / `bojo-internal` / `others`** | 8082/8092/8085 | **JWT 미적용** — 시스템 간 통신, 기존 API key 그대로 |
+| **`infolink-proxy-dmz` / `internal`** | 8083/8093 | **JWT 미적용** — 기존 X-API-Key 그대로 |
 
 ---
 
@@ -354,12 +354,12 @@ spring:
 
 ---
 
-## 6. 신규 모듈 구조 — `sync-orchestrator-auth`
+## 6. 신규 모듈 구조 — `infolink-auth`
 
 ### 6.1 패키지 구조
 
 ```
-sync-orchestrator-auth/
+infolink-auth/
 ├── build.gradle
 └── src/main/
     ├── java/com/gims/auth/
@@ -402,16 +402,16 @@ sync-orchestrator-auth/
         └── application.yml
 ```
 
-> 참고 — 검증자 측 (`sync-agent-common` 안 신규):
+> 참고 — 검증자 측 (`infolink-agent-common` 안 신규):
 > ```
-> sync-agent-common/.../config/
+> infolink-agent-common/.../config/
 > ├── ApiKeyFilter.java                (기존 — 시스템 간 X-API-Key 인증, 그대로)
 > └── JwtCookieAuthFilter.java         (신규 — 운영자 JWT 인증, OncePerRequestFilter)
 >
-> sync-agent-common/.../client/
+> infolink-agent-common/.../client/
 > └── JwksClient.java                  (신규 — JWKS fetch + 5min 캐시 + retry 2회)
 > ```
-> 검증자 모듈 (Backend, api-provider, api-collector) 은 기존 `sync-agent-common` 의존 추가하고 SecurityConfig 작성.
+> 검증자 모듈 (Backend, api-provider, api-collector) 은 기존 `infolink-agent-common` 의존 추가하고 SecurityConfig 작성.
 
 ### 6.4 UserGeneratorCli — **최초 1명** 발급 전용 도구 (별도 main)
 
@@ -420,7 +420,7 @@ sync-orchestrator-auth/
 
 ```java
 // 실행: ./gradlew createUser --args="<username> <password> <name>"
-// 또는: java -cp <fat-jar> com.gims.auth.tools.UserGeneratorCli <username> <password> <name>
+// 또는: java -cp <fat-jar> com.infolink.auth.tools.UserGeneratorCli <username> <password> <name>
 
 public class UserGeneratorCli {
     public static void main(String[] args) {
@@ -481,7 +481,7 @@ server:
 
 spring:
   application:
-    name: sync-orchestrator-auth
+    name: infolink-auth
   datasource:
     url: ENC(...)        # jdbc:postgresql://localhost:29001/orchestrator
     username: ENC(...)
@@ -665,8 +665,8 @@ implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.11.5'
 runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-// sync-agent-common 의 JwtCookieAuthFilter / JwksClient 사용
-implementation project(':sync-agent-common')   // 이미 의존하고 있을 수 있음
+// infolink-agent-common 의 JwtCookieAuthFilter / JwksClient 사용
+implementation project(':infolink-agent-common')   // 이미 의존하고 있을 수 있음
 ```
 
 `SecurityConfig.java` (검증자 측 — 자체 필터 등록):
@@ -675,7 +675,7 @@ implementation project(':sync-agent-common')   // 이미 의존하고 있을 수
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtCookieAuthFilter jwtCookieAuthFilter;   // sync-agent-common 의 신규 필터
+    private final JwtCookieAuthFilter jwtCookieAuthFilter;   // infolink-agent-common 의 신규 필터
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -711,13 +711,13 @@ public class SecurityConfig {
 | Backend (8080) | 모든 `/api/**` | `/actuator/health` |
 | api-provider (8095) | `/api/manage/**` | `/api/provide/**`, `/.well-known/...` |
 | api-collector (8084/8094) | 모든 운영 endpoint | `/actuator/health` |
-| Agent bojo / bojo-int / others | (Orchestrator 가 호출하는 internal endpoint — JWT 불필요?) | 운영자 호출 endpoint 만 보호 |
+| Agent bojo / bojo-internal / others | (Orchestrator 가 호출하는 internal endpoint — JWT 불필요?) | 운영자 호출 endpoint 만 보호 |
 
 > Agent endpoint 는 대부분 Orchestrator-internal — Orchestrator 자체가 인증되면 충분. 별도 검토 필요.
 
 ### 9.3 검증자 3개 모듈 — 실제 endpoint 매핑 (2026-05-04 조사)
 
-#### 9.3.1 sync-orchestrator/backend (8080) — 단순
+#### 9.3.1 infolink-orchestrator-backend (8080) — 단순
 
 전부 `/api/**` prefix. 운영자(Frontend) 호출 받음.
 
@@ -733,7 +733,7 @@ public class SecurityConfig {
 ✅ **이슈 1 결정 (2026-05-04)** — `/api/callback/**` = 시스템 간 호출 (Agent → Backend), JWT 적용 제외.
 
 **확인된 흐름**:
-- 호출자: **Agent (`sync-agent-common/OrchestratorClient`)**
+- 호출자: **Agent (`infolink-agent-common/OrchestratorClient`)**
 - endpoint: `POST /api/callback/started`, `POST /api/callback/finished` (파이프라인 실행 시작/완료 알림)
 - 본질: 운영자 호출 아닌 **시스템 간 콜백**
 
@@ -752,7 +752,7 @@ http
   .addFilterBefore(jwtCookieAuthFilter, UsernamePasswordAuthenticationFilter.class);
 ```
 
-#### 9.3.2 gims-api-provider (8095) — 복잡 (path 분리 필수)
+#### 9.3.2 infolink-api-provider (8095) — 복잡 (path 분리 필수)
 
 | Controller | Prefix | 호출자 | 인증 |
 |---|---|---|:--:|
@@ -835,8 +835,8 @@ Phase 1~5 와 별개로 검증자 모듈에 박힐 변경:
 
 | 모듈 | 파일 | 변경 |
 |---|---|---|
-| `gims-api-provider` | `MockApiKeyController.java` | `@ConditionalOnProperty(name="mock.api-key.enabled", havingValue="true")` 추가 |
-| `gims-api-provider` | `application.yml` | `mock.api-key.enabled: false` (default) |
+| `infolink-api-provider` | `MockApiKeyController.java` | `@ConditionalOnProperty(name="mock.api-key.enabled", havingValue="true")` 추가 |
+| `infolink-api-provider` | `application.yml` | `mock.api-key.enabled: false` (default) |
 | `infolink-api-collector` | `MockApiController.java` | `@ConditionalOnProperty(name="mock.api.enabled", havingValue="true")` 추가 |
 | `infolink-api-collector` | `application.yml` | `mock.api.enabled: false` (default) |
 
@@ -1058,7 +1058,7 @@ export default function RootLayout({ children }) {
 
 ## 11. 단계별 작업 (Phase 1~6)
 
-### Phase 1 — Auth 모듈 신규 (`sync-orchestrator-auth` 8096)
+### Phase 1 — Auth 모듈 신규 (`infolink-auth` 8096)
 - [ ] 모듈 생성 + build.gradle (Spring Security 5, **jjwt 0.11.5 + Nimbus JOSE 9.x**, JPA, jasypt) — Spring OAuth2 starter 미사용 (Boot 2.7 호환)
 - [ ] application.yml + jasypt ENC
 - [ ] DB 스키마 3 테이블 ddl-auto=update (auth_users 에 `name` 컬럼 포함, auth_refresh_tokens, auth_rsa_keys)
@@ -1077,7 +1077,7 @@ export default function RootLayout({ children }) {
 - [ ] **통합 테스트** (auth 모듈 endpoint, PG 실제 연결) — §12.6 매트릭스 #3~#7, #13, #15~#16, #18~#19, #21~#24
 - [ ] **검증자 통합 테스트** (Backend 또는 별 mock 으로 OAuth2 Resource Server 가 JWKS fetch 후 토큰 검증) — §12.6 #14, #20
 
-### Phase 1.5 — sync-agent-common 검증자 자산 추가 (Phase 2~4 의 공통 의존)
+### Phase 1.5 — infolink-agent-common 검증자 자산 추가 (Phase 2~4 의 공통 의존)
 - [ ] `JwtCookieAuthFilter` (OncePerRequestFilter) — cookie 추출 + jjwt 검증 + SecurityContext set
 - [ ] `JwksClient` — JWKS fetch + 5min 캐시 + retry 2회 (200ms/500ms) + 503 응답 처리
 - [ ] `JwtAuthenticationToken` (SecurityContext 객체)
@@ -1086,7 +1086,7 @@ export default function RootLayout({ children }) {
 - [ ] 단위 테스트 (jjwt 검증 / kid 매칭 / JWKS retry)
 
 ### Phase 2 — Backend (8080) 통합
-- [ ] build.gradle: jjwt + spring-security 의존성 추가 (sync-agent-common 이미 의존)
+- [ ] build.gradle: jjwt + spring-security 의존성 추가 (infolink-agent-common 이미 의존)
 - [ ] application.yml: `auth.jwks-url`, `jwt.cookie.enabled=true`
 - [ ] SecurityConfig 신규 — `/actuator/health`/`/api/callback/**` permit + 그 외 `/api/**` JWT 필수
 - [ ] 회귀 테스트 — Agent 콜백 (`/api/callback/started`/`/finished`) 정상 동작 확인
@@ -1116,7 +1116,7 @@ export default function RootLayout({ children }) {
 - [ ] useCurrentUser SWR hook (GET /api/auth/me)
 
 ### Phase 6 — Agent / Proxy (본 작업 범위 밖)
-- Agent (bojo/bojo-int/others) / Proxy (dmz/internal) = 시스템 간 통신 — **JWT 미적용**
+- Agent (bojo/bojo-internal/others) / Proxy (dmz/internal) = 시스템 간 통신 — **JWT 미적용**
 - 기존 API key 그대로 유지
 - 운영자가 직접 호출 안 함 (Backend 통해 간접 호출)
 
@@ -1367,7 +1367,7 @@ Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth;
 
 ### 14.3 사용자 발급 방법
 - **CLI 도구 사용** (§6.4 UserGeneratorCli)
-- 예: `./gradlew :sync-orchestrator-auth:createUser --args="alice strongPass!23"`
+- 예: `./gradlew :infolink-auth:createUser --args="alice strongPass!23"`
 - 결과: PG `auth_users` row INSERT (BCrypt 해시), id 출력
 - 운영자에게 username/password 별도 채널로 전달
 - 변경 시 동일 도구로 update (또는 사용자 본인이 비번 변경 endpoint — 별도 작업)
@@ -1425,6 +1425,6 @@ Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth;
 
 승인 받으면 다음 순서로 진행:
 1. Phase 1 (auth 모듈 신규 + UserController + UserGeneratorCli) — 본 세션
-2. Phase 1.5 (sync-agent-common 검증자 자산: JwtCookieAuthFilter / JwksClient) — Phase 1 끝나면 이어서
+2. Phase 1.5 (infolink-agent-common 검증자 자산: JwtCookieAuthFilter / JwksClient) — Phase 1 끝나면 이어서
 3. Phase 2~4 (Backend / api-provider / api-collector 통합) — 별 세션
 4. Phase 5 (Frontend) — 별 세션

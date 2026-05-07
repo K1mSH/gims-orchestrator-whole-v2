@@ -47,7 +47,7 @@ DB: cron_expression = "0 0 2 * * *"
 ```
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../schedule/Schedule.java` — cron_expression 컬럼 정의
+> - `infolink-orchestrator-backend/.../schedule/Schedule.java` — cron_expression 컬럼 정의
 > - `infolink-api-collector/.../entity/ApiSchedule.java` — API Collector 스케줄 엔티티
 
 ---
@@ -77,7 +77,7 @@ TaskScheduler (접수 창구)
 스레드 이름은 로그에서 "어떤 스케줄 풀에서 실행됐는지" 구분할 때 쓰인다.
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../config/SchedulerConfig.java` — poolSize=5, prefix=`schedule-`
+> - `infolink-orchestrator-backend/.../config/SchedulerConfig.java` — poolSize=5, prefix=`schedule-`
 > - `infolink-api-collector/.../config/SchedulerConfig.java` — poolSize=4, prefix=`api-schedule-`
 
 ---
@@ -103,7 +103,7 @@ future.getDelay(단위);   // 다음 실행까지 남은 시간
 `<?>` 부분: `Future<T>`의 T는 작업 반환값 타입인데, cron 작업은 반환값이 없으므로 `<?>` = "반환값 신경 안 씀".
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../schedule/ScheduleExecutor.java` — registerSchedule(), unregisterSchedule()
+> - `infolink-orchestrator-backend/.../schedule/ScheduleExecutor.java` — registerSchedule(), unregisterSchedule()
 > - `infolink-api-collector/.../service/ApiScheduleExecutor.java` — 동일 패턴
 
 ---
@@ -133,7 +133,7 @@ scheduledTasks (보관함)
 일반 HashMap은 동시 접근 시 데이터가 깨질 수 있다. ConcurrentHashMap은 내부적으로 잠금 처리를 해서 여러 스레드가 동시에 읽고 써도 안전하다. 개발자가 직접 `synchronized` 같은 잠금 코드를 쓸 필요가 없다.
 
 > **연관 파일**
-> - `sync-orchestrator/backend/.../schedule/ScheduleExecutor.java` — `scheduledTasks` 필드
+> - `infolink-orchestrator-backend/.../schedule/ScheduleExecutor.java` — `scheduledTasks` 필드
 > - `infolink-api-collector/.../service/ApiScheduleExecutor.java` — `scheduledTasks` 필드
 
 ---
@@ -182,10 +182,10 @@ scheduledTasks (보관함)
 `ContextRefreshedEvent`는 Spring이 모든 빈(bean) 초기화를 마친 직후 발생하는 이벤트다. "앱이 준비 완료됐으니 이제 스케줄 등록해도 된다"는 신호.
 
 > **연관 파일 (생명주기 전체)**
-> - `sync-orchestrator/backend/.../schedule/ScheduleExecutor.java` — 등록/해제/앱시작 복원
-> - `sync-orchestrator/backend/.../schedule/ScheduleService.java` — CRUD + Executor 호출
-> - `sync-orchestrator/backend/.../schedule/ScheduleController.java` — REST API
-> - `sync-orchestrator/backend/.../schedule/ScheduleRepository.java` — DB 조회
+> - `infolink-orchestrator-backend/.../schedule/ScheduleExecutor.java` — 등록/해제/앱시작 복원
+> - `infolink-orchestrator-backend/.../schedule/ScheduleService.java` — CRUD + Executor 호출
+> - `infolink-orchestrator-backend/.../schedule/ScheduleController.java` — REST API
+> - `infolink-orchestrator-backend/.../schedule/ScheduleRepository.java` — DB 조회
 > - `infolink-api-collector/.../service/ApiScheduleExecutor.java` — 등록/해제/앱시작 복원
 > - `infolink-api-collector/.../service/ApiScheduleService.java` — CRUD + Executor 호출
 > - `infolink-api-collector/.../controller/ApiScheduleController.java` — REST API
@@ -196,7 +196,7 @@ scheduledTasks (보관함)
 
 시스템에는 **두 개의 독립적인 스케줄 엔진**이 있다:
 
-### Orchestrator의 ScheduleExecutor [sync-orchestrator/backend]
+### Orchestrator의 ScheduleExecutor [infolink-orchestrator-backend]
 
 Agent 파이프라인(데이터 동기화)을 주기적으로 실행한다.
 
@@ -235,7 +235,7 @@ Agent 파이프라인(데이터 동기화)을 주기적으로 실행한다.
 
 사용자가 등록하는 동적 스케줄 외에, 시스템 자체적으로 고정 주기로 도는 작업도 있다:
 
-### AgentHealthScheduler [sync-orchestrator/backend] — 30초마다 Agent 상태 확인
+### AgentHealthScheduler [infolink-orchestrator-backend] — 30초마다 Agent 상태 확인
 
 ```
 @Scheduled(fixedDelay = 30000, initialDelay = 10000)
@@ -246,11 +246,11 @@ Agent 파이프라인(데이터 동기화)을 주기적으로 실행한다.
   → RUNNING으로 남아있지만 실제론 안 도는 작업 자동 복구
 ```
 
-> **연관 파일**: `sync-orchestrator/backend/.../agent/AgentHealthScheduler.java`
+> **연관 파일**: `infolink-orchestrator-backend/.../agent/AgentHealthScheduler.java`
 
 `@Scheduled`는 Spring이 제공하는 간편 애노테이션이다. 동적 스케줄처럼 CronTrigger/ScheduledFuture를 직접 다룰 필요 없이, 메서드에 붙이기만 하면 된다. 대신 **실행 중 취소나 변경이 불가능**하다.
 
-### DataRetentionScheduler [sync-orchestrator/backend] — 매일 새벽 2시 오래된 데이터 삭제
+### DataRetentionScheduler [infolink-orchestrator-backend] — 매일 새벽 2시 오래된 데이터 삭제
 
 ```
 @Scheduled(cron = "${retention.cron:0 0 2 * * *}")
@@ -262,7 +262,7 @@ Agent 파이프라인(데이터 동기화)을 주기적으로 실행한다.
 
 `${retention.cron:0 0 2 * * *}` 의미: application.yml에 `retention.cron` 값이 있으면 그걸 쓰고, 없으면 `0 0 2 * * *`(매일 새벽 2시)를 기본값으로 쓴다.
 
-> **연관 파일**: `sync-orchestrator/backend/.../agent/DataRetentionScheduler.java`
+> **연관 파일**: `infolink-orchestrator-backend/.../agent/DataRetentionScheduler.java`
 
 ---
 

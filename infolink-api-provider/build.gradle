@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.12'
+    id 'io.spring.dependency-management' version '1.1.0'
+}
+
+group = 'com.infolink'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // infolink-agent-common (JwtCookieAuthFilter / JwksClient 검증자 자산)
+    implementation files('libs/infolink-agent-common-1.0.0-SNAPSHOT.jar')
+
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Auth (JWT 검증) — 폐쇄망 nexus 가용 버전: jjwt 0.12.6 / nimbus 9.31
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    implementation 'com.nimbusds:nimbus-jose-jwt:9.31'
+
+    // Database — 관리 PG + 외부 GIMS Oracle (Type B 커스텀 핸들러용)
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc8:19.3.0.0'   // CUSTOM 핸들러가 datasource_id="internal" 통해 외부 Oracle 직결 — 폐쇄망 nexus 가용 버전
+
+    // HikariCP (동적 DataSource 생성용)
+    implementation 'com.zaxxer:HikariCP'
+
+    // Jasypt (encrypted properties)
+    implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.5'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

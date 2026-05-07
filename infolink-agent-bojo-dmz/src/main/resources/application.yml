@@ -1,0 +1,105 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: infolink-agent-bojo-dmz
+
+  # Agent 자체 DB (로그, 실행 기록 저장용) - DMZ PostgreSQL
+  datasource:
+    url: ENC(5nfufl87NVC0km6eGdKSO2aaAZ0fpzItQEOSgO2NDo/aE1bbnC6nS7jVmPIc7JENMLKoQkRx3Z1rDGCEpU/21gSIKWOOjK1tCVeub82uPJE=)
+    username: ENC(EDM5TL2kOyQiRFRd9jESbpEI2D5xiI39lrtus7w21+HokNEBVH//QAudBWulnwkW)
+    password: ENC(hqhtiytYUEOFiwvWrzC1/VpX4LSBz9izPItGydeOdcngRI5FUnI3U2wwYLiUEXfB)
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# common 컨트롤러/필터 활성화
+common:
+  controller:
+    cleanup.enabled: true
+    execution-data.enabled: true
+    datasource.enabled: true
+    execution-params.enabled: true
+  filter:
+    api-key.enabled: true
+
+# Agent 공통 설정
+agent:
+  orchestrator-url: ENC(OFVnMq6khLyzmLltDmT5G/bAMDkvZsa9Vm2o8a+aLtyOS63df427nLFCxDL/JjiahkhTBHS+FOALkdpIYMpPLA==)
+  proxy-url: ENC(ZdOrUviyTKn8YvU+Vs725joK12w5RyS01fYyA5p8zN0jPVJVpDxiZjRRQWf3AnkWQQ2R7wKjhM6AScv+OveAaQ==)
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+  zone: DMZ
+  debug:
+    step-delay-ms: 0
+  batch:
+    insert-batch-size: 1000
+
+# Loader Step 설정 (DefaultLoadStep @Value 바인딩용)
+loader:
+  step:
+    id: default-load
+    name: "보조망 데이터 적재 (default)"
+  if-table:
+    jewon: if_rsv_sec_jewon
+    obsvdata: if_rsv_sec_obsvdata
+  target-table:
+    jewon: sec_jewon
+    obsvdata: sec_obsvdata
+
+# Jasypt 암호화 설정
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+    algorithm: PBEWithHMACSHA512AndAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+
+# Actuator 모니터링 (부하 테스트용)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,threaddump,env
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.sync: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+# 개발용 H2 프로파일
+spring:
+  config:
+    activate:
+      on-profile: h2
+
+  datasource:
+    url: jdbc:h2:mem:agent_bojo;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect

@@ -19,15 +19,15 @@
 
 | 서비스 | 포트 | 역할 | 관련 체계 |
 |--------|------|------|-----------|
-| sync-orchestrator/backend | 8080 | 중앙 관리 API | 1, 4, 7 |
-| sync-orchestrator/frontend | 3000 | 관리 화면 (Next.js) | 1, 2, 3, 4 |
-| sync-agent-bojo | 8082 | DMZ 수집 Agent (10업체) | 2 |
-| sync-agent-others | 8085 | DMZ 전송 Agent (SND) | 2 |
-| sync-agent-bojo-int | 8092 | 내부망 적재 Agent | 2 |
-| sync-proxy-dmz | 8083 | DMZ DB 연결 프록시 | 1, 2, 7 |
-| sync-proxy-internal | 8093 | 내부망 DB 연결 프록시 | 1, 2, 7 |
+| infolink-orchestrator-backend | 8080 | 중앙 관리 API | 1, 4, 7 |
+| infolink-orchestrator-frontend | 3000 | 관리 화면 (Next.js) | 1, 2, 3, 4 |
+| infolink-agent-bojo-dmz | 8082 | DMZ 수집 Agent (10업체) | 2 |
+| infolink-agent-others-dmz | 8085 | DMZ 전송 Agent (SND) | 2 |
+| infolink-agent-bojo-internal | 8092 | 내부망 적재 Agent | 2 |
+| infolink-proxy-dmz | 8083 | DMZ DB 연결 프록시 | 1, 2, 7 |
+| infolink-proxy-internal | 8093 | 내부망 DB 연결 프록시 | 1, 2, 7 |
 | infolink-api-collector | 8084 | 외부 API 수집 모듈 | 3 |
-| sync-agent-common | - | 공통 라이브러리 (JAR) | 2, 7 |
+| infolink-agent-common | - | 공통 라이브러리 (JAR) | 2, 7 |
 
 ## Jira 파싱 규칙
 

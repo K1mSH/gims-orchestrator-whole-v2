@@ -6,7 +6,7 @@ originSessionId: ea7e6d3a-0f30-4805-9b02-4966c58ab352
 ---
 모든 코드 수정은 **기존 로직과 기능에 영향이 없어야 한다**. 이 프로젝트는 여러 Agent/Proxy/Orchestrator가 common을 공유하는 유기적 구조라 **한 케이스만 보고 수정하면 다른 케이스를 깰 수 있다**.
 
-**Why:** 2026-04-22 provide Agent 테스트 중 trace-source 로직을 provide 케이스만 보고 반복 수정 → 사용자가 제동. "개발 대상이 유기적 개발이라서 더욱 신경 써야 한다"는 원칙 재천명. common의 컨트롤러 하나 수정이 bojo/bojo-int/others/collector/provide 전부에 영향.
+**Why:** 2026-04-22 provide Agent 테스트 중 trace-source 로직을 provide 케이스만 보고 반복 수정 → 사용자가 제동. "개발 대상이 유기적 개발이라서 더욱 신경 써야 한다"는 원칙 재천명. common의 컨트롤러 하나 수정이 bojo/bojo-internal/others/collector/provide 전부에 영향.
 
 **How to apply:**
 - 변경 전: **해당 로직을 쓰는 모든 Agent 케이스를 먼저 열거** (RCV/Loader/SND × DMZ/Internal × 각 Agent)

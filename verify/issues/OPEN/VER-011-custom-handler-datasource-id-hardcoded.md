@@ -18,7 +18,7 @@ Type B 커스텀 핸들러 7개 클래스가 각자 `private static final String
 ## 재현 절차
 
 ```bash
-grep -rn "DATASOURCE_ID = \"internal\"" gims-api-provider/src/main/java/com/gims/provider/custom/
+grep -rn "DATASOURCE_ID = \"internal\"" infolink-api-provider/src/main/java/com/gims/provider/custom/
 # → 7 핸들러 + CustomOperationMetadata 의 default 1
 ```
 
@@ -36,14 +36,14 @@ grep -rn "DATASOURCE_ID = \"internal\"" gims-api-provider/src/main/java/com/gims
 ## 증거
 
 ```
-gims-api-provider/.../custom/handler/ActualUseDetailDjHandler.java:31:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/handler/ActualUseDetailKbHandler.java:28:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/handler/GroundwaterQualityHandler.java:40:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/handler/InspectionDistinctHandler.java:37:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/handler/InspectionListHandler.java:38:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/handler/SupplementaryGroundwaterHandler.java:47:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/handler/UnregitsFclySmrizeHandler.java:32:    private static final String DATASOURCE_ID = "internal";
-gims-api-provider/.../custom/CustomOperationMetadata.java:32:    private String datasourceId = "internal";
+infolink-api-provider/.../custom/handler/ActualUseDetailDjHandler.java:31:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/handler/ActualUseDetailKbHandler.java:28:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/handler/GroundwaterQualityHandler.java:40:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/handler/InspectionDistinctHandler.java:37:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/handler/InspectionListHandler.java:38:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/handler/SupplementaryGroundwaterHandler.java:47:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/handler/UnregitsFclySmrizeHandler.java:32:    private static final String DATASOURCE_ID = "internal";
+infolink-api-provider/.../custom/CustomOperationMetadata.java:32:    private String datasourceId = "internal";
 ```
 
 ## 영향

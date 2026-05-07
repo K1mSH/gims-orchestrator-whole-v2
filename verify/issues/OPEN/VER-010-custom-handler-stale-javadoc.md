@@ -11,7 +11,7 @@ related: []
 
 ## 증상 요약
 
-`gims-api-provider/src/main/java/com/gims/provider/custom/CustomOperationHandler.java:14` Javadoc 이 `CustomHandlerBootstrap` 클래스를 참조하지만 **실재하지 않음**.
+`infolink-api-provider/src/main/java/com/gims/provider/custom/CustomOperationHandler.java:14` Javadoc 이 `CustomHandlerBootstrap` 클래스를 참조하지만 **실재하지 않음**.
 
 설계 초기안(부팅 자동 등록)에서 카탈로그 패턴(`CustomHandlerCatalogService` — 운영자 의도 기반 등록)으로 전환되며 주석이 잔존한 것으로 추정.
 
