@@ -1,7 +1,18 @@
-# 보조관측망 (BOJO) 기능 테스트 문서
+# 02 — 보조관측망 (BOJO) 파이프라인 기능 테스트 문서
+
+> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
+> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
+> 작성일: 2026-05-07 (5/7 리네이밍 반영 + Auth/ApiKeyFilter soft-mode 신규 항목 추가)
 
 > 보조관측망 시스템의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
 > 기능 추가/수정 시 해당 섹션을 업데이트하여 반복 사용한다.
+
+### 공통 검증 규칙
+
+- claude API 호출 → 1차 확인. **사용자가 직접 프론트(`localhost:3000`)에서 같은 흐름 확인** 후에만 통과.
+- 단계마다 사용자 OK 후 다음 진입.
+- **사전 의존**: `07-security-test.md` 통과 후 cookie 보유 — 본 테스트의 모든 backend 호출은 cookie 동반 전제.
+- **사전 의존**: `01-datasource-test.md` 통과 후 datasource 정상 등록 — Proxy 패스스루 정합 전제.
 
 ### 공통 테스트 규칙
 > **모든 실행 테스트는 추적(Trace) 검증을 포함한다.**
@@ -126,6 +137,20 @@ GIMS (pm_gd970201 + tm_gd970001 + tm_gd970101 + tm_gd980002)     [Oracle 29004/X
 - common 모듈에 `ApiKeyFilter`를 두어 Agent/Proxy 모두 `/api/**` 요청에 `X-API-Key` 필수
 - `/health`만 인증 없이 접근 가능, `/debug/datasources`는 제거됨
 
+### 2-1-1. ApiKeyFilter strict / soft mode (5/6 보강)
+
+| 모드 | 적용 대상 | X-API-Key 없음 | 일치 | 불일치 |
+|---|---|:-:|:-:|:-:|
+| **strict** (default) | Agent (8082/8092) / Proxy (8083/8093) | 401 | 200 + chain 통과 | 401 |
+| **soft** | Backend (8080) | cookie 흐름 양보 (cookie 검증 결과대로) | 200 + ROLE_SYSTEM | 401 |
+
+→ Backend `/api/datasources/{id}/connection-info` 가 X-API-Key (proxy → backend) 와 cookie (운영자 → backend) **두 흐름 모두 통과** 하도록. 5/6 §9.3.1 비대칭 보완 결과.
+
+### 2-1-2. 운영자 호출 (JWT cookie) — 본 테스트의 backend 호출 전제
+- 사용자(운영자) → Frontend → Backend `/api/agents`, `/api/executions`, `/api/datasources` 등 → cookie 검증
+- Backend → Agent / Proxy: X-API-Key (시스템 간)
+- 본 테스트의 모든 `curl http://localhost:8080/api/...` 는 `-b /tmp/cookies.txt` 동반 (07 security 통과 후 보관된 cookie)
+
 ### 2-2. 컨트롤러 활성화 현황
 
 | 컨트롤러 | Agent (bojo/bojo-internal) | Proxy (DMZ/Internal) |
@@ -164,6 +189,12 @@ GIMS (pm_gd970201 + tm_gd970001 + tm_gd970101 + tm_gd980002)     [Oracle 29004/X
 - [ ] Orchestrator → Agent 파이프라인 실행 → SUCCESS
 - [ ] Orchestrator → Proxy → execution-data 조회 → 정상
 - [ ] Orchestrator → Agent cleanup → 정상
+
+#### Backend SecurityFilterChain 등록 (5/6 보강 회귀)
+- [ ] `ApiKeyFilter` 가 SecurityContextPersistenceFilter 다음에 등록 (servlet chain 자동등록 X)
+- [ ] X-API-Key 매치 시 SecurityContext 에 ROLE_SYSTEM 박힘
+- [ ] cookie 만으로도 통과 (soft mode 양보)
+- [ ] Proxy → Backend `/api/datasources/{id}/connection-info` X-API-Key 자동 주입 정합 (`infolink-proxy-{dmz,internal}/.../ConnectionInfoController` RestTemplate 인터셉터)
 
 ---
 
@@ -784,4 +815,15 @@ cd infolink-orchestrator-backend && ./gradlew clean build -x test
 
 # 프론트 타입체크
 cd infolink-orchestrator-frontend && npx tsc --noEmit
+```
+
+---
+
+## Baseline 태그 갱신
+
+```
+실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
+검증 통과 일시: 2026-05-XX
+신규 stable tag: stable-2026-05-XX (이름 보류)
+신규 tag commit: ?????? (실행 시점 main HEAD)
 ```

@@ -1,7 +1,17 @@
-# Others Agent (SND) 기능 테스트 문서
+# 03 — Others Agent (SND) 기능 테스트 문서
+
+> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
+> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
+> 작성일: 2026-05-07 (5/7 리네이밍 반영 + Auth/ApiKeyFilter soft-mode 신규 항목 추가)
 
 > infolink-agent-others-dmz(8085)의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
-> bojo-test.md와 동일한 공통 테스트 규칙 적용.
+> 02-bojo-test.md와 동일한 공통 테스트 규칙 적용.
+
+### 공통 검증 규칙
+
+- claude API 호출 → 1차 확인. **사용자가 직접 프론트(`localhost:3000`)에서 같은 흐름 확인** 후에만 통과.
+- 단계마다 사용자 OK 후 다음 진입.
+- **사전 의존**: `07-security-test.md` 통과 후 cookie 보유 + `01-datasource-test.md` + `04-api-collect-test.md` (소스 데이터 적재용) 통과 전제.
 
 ### 공통 테스트 규칙
 > **모든 실행 테스트는 추적(Trace) 검증을 포함한다.**
@@ -380,3 +390,15 @@ cd infolink-orchestrator-frontend && npx tsc --noEmit
 - **원인**: Agent가 datasource 연결정보를 Proxy 경유로만 해석 (직접 fallback 없음)
 - **대응**: Others Agent 기동 전 Proxy DMZ(8083) 반드시 먼저 기동
 - **확인**: `curl http://localhost:8083/health` → 200 확인 후 실행
+
+---
+
+## Baseline 태그 갱신
+
+```
+실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
+검증 통과 일시: 2026-05-XX
+신규 stable tag: stable-2026-05-XX (이름 보류)
+신규 tag commit: ?????? (실행 시점 main HEAD)
+```
+
