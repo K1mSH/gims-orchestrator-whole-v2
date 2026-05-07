@@ -534,7 +534,10 @@
       "Bash(cp /c/Users/podo/.claude/projects/D--dev-claude-GIMS-orchestrator-v2/memory/feedback_custom_handler_registration.md /d/dev/claude/GIMS/orchestrator_v2/docs/claude-memory/)",
       "Bash(cp /c/Users/podo/.claude/projects/D--dev-claude-GIMS-orchestrator-v2/memory/feedback_standardization_legacy_unmapped.md /d/dev/claude/GIMS/orchestrator_v2/docs/claude-memory/)",
       "Bash(./gradlew createUser --args=\"admin pass1234 운영자\")",
-      "Bash(awk -F'.' '{print $1\".\"$2\".\"$3}')"
+      "Bash(awk -F'.' '{print $1\".\"$2\".\"$3}')",
+      "Bash(mv test_plan/bojo-test.md test_plan/02-bojo-test.md)",
+      "Bash(mv test_plan/others-test.md test_plan/03-others-test.md)",
+      "Bash(awk -F'/' '{print $1}')"
     ]
   },
   "hooks": {
