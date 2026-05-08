@@ -1,7 +1,5 @@
-# 06 — 모니터링/운영 (cross-cutting) 기능 테스트 문서
+# 07 — 모니터링/운영 (cross-cutting) 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
 > 작성일: 2026-05-07
 
 ---
@@ -324,13 +322,3 @@ curl -s -X POST http://localhost:8092/api/cleanup/internal-bojo-rcv \
 ### 11-7. 관리 테이블 네이밍 정리 (별 사이클)
 - 현 `agent`, `schedule` 등 → `agt_*` 프리픽스 통일 — todo 영역에 등록만 (미실행)
 
----
-
-## 12. Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-```

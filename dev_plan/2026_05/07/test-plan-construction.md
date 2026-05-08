@@ -14,30 +14,32 @@
 - **baseline tag**: 현재 main HEAD 그대로 (`stable-2026-05-07-rename` = dad8a1b)
 - **양식**: 기능별 그때그때 (메모리 룰 `feedback_test_plan_baseline_tag` — "공통 템플릿 미리 안 박음, baseline tag 헤더 + 신규 tag 결과 끝 패턴만 일관")
 
-## 2. 8 문서 구성
+## 2. 8 문서 구성 (실행 순서 = 파일 번호)
 
-| # | 파일 | 체계 | 신규/보완 | 출처 |
+| # | 파일 | 체계 | 종류 | 비고 |
 |:-:|---|:-:|:-:|---|
-| 1 | `01-datasource-test.md` | 1 | **신규** | bojo-test §3 (Proxy 패스스루) 보강 + 등록/암호화/연결 테스트 |
-| 2 | `02-bojo-test.md` (현 `bojo-test.md` 갱신) | 2 | **보완** | 현 749 라인 — 5/7 리네이밍 반영 + 누락 항목 점검 |
-| 3 | `03-others-test.md` (현 `others-test.md` 갱신) | 2 | **보완** | 현 383 라인 — 동일 |
-| 4 | `04-api-collect-test.md` | 3 | **신규** | API Collector DMZ/Internal 흐름. LOOKUP / endpoint 등록 / Mock 자기호출 / 페이징 |
-| 5 | `05-api-provide-test.md` | 5 | **신규** | API Provider (B4 핸들러 36 + 다른 META operation). Provide API Key 흐름 + 운영자 cookie 흐름 |
-| 6 | `06-monitoring-test.md` | 4 | **신규** | execution history 조회 + Retention + Schedule + 추적 (3단계) — 다른 모듈 cross-cutting |
-| 7 | `07-security-test.md` | 7 | **신규** | Auth(8096) JWT 발급/검증 + cookie 흐름 + ApiKeyFilter (strict/soft) + 사용자 관리 |
-| 8 | `08-first-deployment-e2e.md` | (cross) | **신규** | 1차 반입 시점 통합 시나리오 — 시간 흐름 기반: auth 로그인 → datasource 등록 → bojo 실행 → provide 호출 → 모니터링 |
+| 00 | `00-test-protocol.md` | 공통 | 신규 | 분기점 + 데이터 클린 + 0건 룰 + 추적 3단계 + 사용자 직접 확인 |
+| 01 | `01-security-test.md` | 7 (보안) | 신규 | Auth(8096) JWT + cookie + ApiKeyFilter strict/soft + 사용자 관리 |
+| 02 | `02-datasource-test.md` | 1 | 신규 | 연결 테스트 + Proxy 패스스루 + Zone 분기 + 테이블/컬럼 검색 |
+| 03 | `03-bojo-test.md` | 2 | 보완 | 보조관측망 5단계 파이프라인 + conditions + 추적 + Schedule + Retention |
+| 04 | `04-others-test.md` | 2 | 보완 | Others SND (제주/이용량) |
+| 05 | `05-api-collect-test.md` | 3 | 신규 | 외부 API 수집 + LOOKUP + 커스텀 executor + Schedule |
+| 06 | `06-api-provide-test.md` | 5 | 신규 | API 제공 (B4 회귀 + META + CUSTOM) + Provide API Key |
+| 07 | `07-monitoring-test.md` | 4 | 신규 | 실행이력 + 추적 + Retention + Schedule + 대시보드 (cross-cutting) |
+| 08 | `08-first-deployment-e2e.md` | cross | 신규 | 1차 반입 통합 시나리오 — 운영자 페르소나 10 Step |
 
-## 3. 작성 순서 (의존성 기반)
+## 3. 실행 순서 = 파일 번호 (의존성 기반)
 
 ```
-1. 07-security-test         (Auth — 다른 endpoint 호출 전제)
-2. 01-datasource-test       (Proxy 패스스루 — 모든 Agent 의 의존)
-3. 02-bojo-test (보완)       (핵심 파이프라인)
-4. 03-others-test (보완)     (Others SND)
-5. 04-api-collect-test      (외부 API 수집)
-6. 05-api-provide-test      (외부 API 제공 — B4 회귀 포함)
-7. 06-monitoring-test       (cross-cutting — 위 모든 실행의 후속 검증)
-8. 08-first-deployment-e2e  (통합 — 위 모두 통과 후)
+00. 00-test-protocol         (모든 사이클의 공통 룰 — 사전 학습)
+01. 01-security-test         (Auth — 다른 endpoint 호출 전제)
+02. 02-datasource-test       (Proxy 패스스루 — 모든 Agent 의 의존)
+03. 03-bojo-test             (핵심 파이프라인)
+04. 04-others-test           (Others SND)
+05. 05-api-collect-test      (외부 API 수집)
+06. 06-api-provide-test      (외부 API 제공 — B4 회귀 포함)
+07. 07-monitoring-test       (cross-cutting — 위 모든 실행의 후속 검증)
+08. 08-first-deployment-e2e  (통합 — 위 모두 통과 후)
 ```
 
 > 작성 단계와 실행 단계 분리: 먼저 8 문서 다 작성 → 사용자 검토 → 작성된 문서 기반 실제 테스트 수행
@@ -48,23 +50,16 @@
 ```markdown
 # {기능명} 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음
 > 작성일: 2026-05-07
 ```
 
+> baseline tag / 신규 stable tag 항목은 문서에 박지 않음 (사용자 결정 5/7 — 사이클 마무리 시점에 사용자가 직접 언급).
+
 ### 본문 구조 (모듈별 자유)
 1. 시스템 구성 (관련 서비스/포트/DB)
-2. 사전 준비 (데이터, 환경)
-3. 검증 항목 (체크박스 list)
+2. 사전 준비 (데이터, 환경 — **유의미한 데이터 N건 사전 INSERT 보장**)
+3. 검증 항목 (체크박스 list — **분기점별로 분리**, **0건 = 테스트 안 함 룰**)
 4. 주의사항 / 알려진 허점
-
-### 끝부분
-```markdown
-## Baseline 태그 갱신
-- 검증 통과: 2026-05-XX
-- 신규 stable tag: `stable-2026-05-07` (commit: ?????)
-```
 
 ## 5. 5/7 리네이밍 반영 항목 (기존 bojo-test / others-test 보완)
 
@@ -83,13 +78,13 @@
 
 | Step | 내용 | 시간 |
 |---|---|:--:|
-| 1 | `07-security-test.md` 신규 (Auth Phase 1~5 + ApiKeyFilter soft-mode) | 45분 |
-| 2 | `01-datasource-test.md` 신규 (등록/암호화/Proxy 패스스루) | 30분 |
-| 3 | `02-bojo-test.md` 보완 (5/7 리네이밍 반영) | 15분 |
-| 4 | `03-others-test.md` 보완 | 15분 |
-| 5 | `04-api-collect-test.md` 신규 (Collector DMZ/Internal) | 45분 |
-| 6 | `05-api-provide-test.md` 신규 (B4 + META operations) | 45분 |
-| 7 | `06-monitoring-test.md` 신규 (Retention/Schedule/추적 cross-cutting) | 30분 |
+| 1 | `01-security-test.md` 신규 (Auth Phase 1~5 + ApiKeyFilter soft-mode) | 45분 |
+| 2 | `02-datasource-test.md` 신규 (등록/암호화/Proxy 패스스루) | 30분 |
+| 3 | `03-bojo-test.md` 보완 (5/7 리네이밍 반영) | 15분 |
+| 4 | `04-others-test.md` 보완 | 15분 |
+| 5 | `05-api-collect-test.md` 신규 (Collector DMZ/Internal) | 45분 |
+| 6 | `06-api-provide-test.md` 신규 (B4 + META operations) | 45분 |
+| 7 | `07-monitoring-test.md` 신규 (Retention/Schedule/추적 cross-cutting) | 30분 |
 | 8 | `08-first-deployment-e2e.md` 신규 (통합 시나리오) | 45분 |
 | 9 | 사용자 검토 게이트 | — |
 | 10 | 실제 테스트 수행 (8 문서 기반) | 별 사이클 |
@@ -134,7 +129,49 @@
 
 → 작업 메모리 후속 등록 권장 (`feedback_test_validation_user_confirms`)
 
-## 9. 참고 — 기존 bojo-test 의 좋은 패턴 (다른 문서에도 적용)
+## 9. ⭐ 본 사이클 범위 결정 (5/7 사용자 결정)
+
+본 통합 테스트 = **실행쪽 기능 위주 (데이터를 다루는 부분)**. 등록(POST) 흐름은 별 사이클.
+
+### 포함 (집중 영역)
+- **실행** — 파이프라인 (RCV/Loader/SND), API 호출 (외부 사용자/운영자), CUSTOM 핸들러 (B4 등)
+- **데이터 흐름** — 외부 → DMZ → Internal 데이터 흐르기, source_refs 생성/매칭
+- **추적** — 3단계 자동 분기 (PK / source_refs / SND), Forward / Backward
+- **운영 작업** — Schedule 자동 실행, Retention 보존기간 적용
+- **모니터링** — 실행 이력, 통계, 대시보드, 호출 이력
+- **인증** — JWT 로그인/refresh/logout/me, ApiKeyFilter strict/soft, cookie 흐름
+- **회귀** — 5/6 B4 핸들러 등
+
+### 제외 — 별 사이클 (등록 부담 큼 — 운영 환경에서 직접 검증)
+- ❌ **datasource 등록** (POST) — 외부 10 + 내부 5+ 이미 등록됨, 신규 등록은 운영 시점
+- ❌ **agent 등록** — auto-discover + 새 YAML 추가 + 재기동 필요, 부담 큼
+- ❌ **api-collector endpoint 등록** — 12+ 이미 등록
+- ❌ **api-provider operation 등록 (META)** — 16+ 이미 등록
+- ❌ **api-provider CUSTOM 핸들러 등록** — 코드 변경 필요. B4 (id=36) 는 5/6 등록 끝
+- ⚠️ 위 4 영역의 **수정 / 삭제** — 등록과 같은 사이클. 본 사이클 SKIP
+
+### 포함 — 자유 등록/수정/삭제 (사이드 이펙트 작음)
+- ✅ **Schedule (cron)** — Agent 메타 정책. 등록/수정/토글/삭제 자유. 자동 실행 검증과 같이.
+- ✅ **Retention (보존기간)** — 동일. 정책 등록 + cleanup 호출로 적용 검증.
+- ✅ **사용자 (auth) peer multi** — 등록(alice 추가) → 비번 변경 → 탈퇴 사이클 자연 검증.
+
+→ 위 3 영역은 **메타 데이터 / 정책** — 외래키 의존 X + 데이터 흐름 자체에 영향 X. 본 사이클 자유롭게 검증.
+
+### 각 문서 적용
+- 01 security: §6 사용자 관리 (peer multi 등록 자연 사이클), 나머지 인증 흐름
+- 02 datasource: §3 CRUD (datasource 등록) **SKIP**, §4 (연결 테스트) ~ §7 (테이블/컬럼) 핵심
+- 03 bojo: §1~3 인프라 검증, **§4 E2E 파이프라인 + §5 conditions + §6 추적 + §7 Schedule (등록/자동 실행) + §8 Retention (등록/cleanup)** 이 본 사이클 핵심
+- 04 others: 동일
+- 05 api-collect: §3 endpoint CRUD **SKIP**, §4 (실행기 호출) + §5 LOOKUP + **§7 Schedule (등록/자동 실행)** 핵심
+- 06 api-provide: §3 operation CRUD **SKIP**, §4 (META 호출) + §5 (CUSTOM B4) + §6 (외부 사용자) 핵심
+- 07 monitoring: cross-cutting 전부 실행 영역 — **Schedule + Retention 자유 / 추적 / 이력**
+- 08 통합: 운영자 흐름 그대로 — Step 8 Schedule + Retention 자유 등록/실행/삭제 사이클 검증
+
+→ 별 사이클 등록 검증 (datasource / agent / endpoint / operation) 은 1차 반입 후 운영 환경에서 신규 자산 등록 시 별도 사이클로.
+
+---
+
+## 10. 참고 — 기존 bojo-test 의 좋은 패턴 (다른 문서에도 적용)
 
 - ✅ "공통 테스트 규칙" 섹션 (3단계 추적 검증)
 - ✅ 시스템 구성 표 (포트/DB)

@@ -1,7 +1,5 @@
-# 07 — 보안 (Auth + ApiKeyFilter) 기능 테스트 문서
+# 01 — 보안 (Auth + ApiKeyFilter) 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류 — 실행 통과 후 결정)
 > 작성일: 2026-05-07
 > 동반: `docs/AUTH_DESIGN.md`, `docs/AUTH_FLOW.md`, `dev_plan/2026_05/06/auth-integration-matrix.md`
 
@@ -261,11 +259,13 @@ curl -s -b /tmp/cookies.txt -w "\nHTTP %{http_code}\n" \
 - [ ] 응답 body `{id: ..., authUsersId: "alice", ...}` (password_hash 미포함)
 - [ ] 사용자 검증: 프론트 `/users` → "+ 새 사용자" 모달 → 같은 정보 입력 → 목록에 alice 추가됨
 
-### 6-3. 검증 에러 (4가지)
+### 6-3. 검증 에러 (6가지)
 - [ ] 중복 authUsersId → 409 `AUTH_USERS_ID_DUPLICATE`
 - [ ] 비번 8자 미만 → 400 `PASSWORD_TOO_SHORT`
 - [ ] authUsersId 누락 → 400 `AUTH_USERS_ID_REQUIRED`
-- [ ] authUsersId 30자 초과 → 400 `AUTH_USERS_ID_TOO_LONG`
+- [ ] authUsersId 50자 초과 → 400 `AUTH_USERS_ID_TOO_LONG` (엔티티 length=50 정합)
+- [ ] name 누락 → 400 `NAME_REQUIRED`
+- [ ] name 50자 초과 → 400 `NAME_TOO_LONG`
 
 ### 6-4. 본인 비번 변경 (`PATCH /api/auth/users/me/password`)
 ```bash
@@ -370,13 +370,3 @@ curl -s -b /tmp/cookies.txt -w "\nHTTP %{http_code}\n" \
 ### 9-6. middleware 가 통제 못하는 영역
 - middleware = path 기반 1차 가드. 실제 인증 검증은 backend Filter. middleware 우회 시 (cookie 위조 등) 결국 backend 에서 401.
 
----
-
-## 10. Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-```

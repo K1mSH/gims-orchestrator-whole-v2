@@ -1,7 +1,5 @@
-# 01 — Datasource 관리 기능 테스트 문서
+# 02 — Datasource 관리 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
 > 작성일: 2026-05-07
 
 ---
@@ -99,6 +97,10 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "29(000
 ---
 
 ## 3. Datasource CRUD
+
+> ⚠️ **본 사이클 SKIP** (등록/수정/삭제) — `dev_plan/2026_05/07/test-plan-construction.md §9` 결정.
+> 외부 10 + 내부 5+ datasource 가 이미 운영 데이터로 등록됨. 신규 등록 검증은 운영 환경 별 사이클.
+> **본 사이클은 §3-1 목록 / §3-2 단건 (조회) 만** 사용자 화면 정합 확인. §3-3~3-5 (등록/수정/삭제 POST/PUT/DELETE) 는 미실행.
 
 ### 3-1. 목록 조회
 ```bash
@@ -365,13 +367,3 @@ curl -s -b /tmp/cookies.txt http://localhost:8080/api/datasources/dmz/tables | j
 ### 10-6. Oracle 한글 comment 인코딩
 - TC_GD000100/000002 의 한글 comment 가 일부 환경에서 깨질 수 있음 (NLS_LANG 설정 의존). proxy-internal yml 의 oracle properties 점검
 
----
-
-## 11. Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-```

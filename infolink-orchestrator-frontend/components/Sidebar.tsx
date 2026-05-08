@@ -23,7 +23,7 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">Sync Orchestrator</div>
+      <div className="sidebar-logo">GIMS-Link</div>
       <nav>
         <ul className="sidebar-nav">
           {navItems.map((item) => (

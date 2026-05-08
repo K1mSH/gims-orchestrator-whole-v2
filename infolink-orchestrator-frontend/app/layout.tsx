@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sync Orchestrator',
-  description: 'Sync Pipeline Management System',
+  title: 'GIMS-Link',
+  description: 'GIMS-Link 운영 관리',
 };
 
 export default function RootLayout({

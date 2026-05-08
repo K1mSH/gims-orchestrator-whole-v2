@@ -60,7 +60,7 @@ export default function LoginPage() {
         boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
       }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-          Sync Orchestrator
+          GIMS-Link
         </h1>
         <p style={{ color: 'var(--gray-500)', marginBottom: '1.75rem', fontSize: '0.875rem' }}>
           운영자 로그인

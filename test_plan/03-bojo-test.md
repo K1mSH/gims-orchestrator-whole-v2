@@ -1,7 +1,5 @@
-# 02 — 보조관측망 (BOJO) 파이프라인 기능 테스트 문서
+# 03 — 보조관측망 (BOJO) 파이프라인 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
 > 작성일: 2026-05-07 (5/7 리네이밍 반영 + Auth/ApiKeyFilter soft-mode 신규 항목 추가)
 
 > 보조관측망 시스템의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
@@ -11,8 +9,8 @@
 
 - claude API 호출 → 1차 확인. **사용자가 직접 프론트(`localhost:3000`)에서 같은 흐름 확인** 후에만 통과.
 - 단계마다 사용자 OK 후 다음 진입.
-- **사전 의존**: `07-security-test.md` 통과 후 cookie 보유 — 본 테스트의 모든 backend 호출은 cookie 동반 전제.
-- **사전 의존**: `01-datasource-test.md` 통과 후 datasource 정상 등록 — Proxy 패스스루 정합 전제.
+- **사전 의존**: `01-security-test.md` 통과 후 cookie 보유 — 본 테스트의 모든 backend 호출은 cookie 동반 전제.
+- **사전 의존**: `02-datasource-test.md` 통과 후 datasource 정상 등록 — Proxy 패스스루 정합 전제.
 
 ### 공통 테스트 규칙
 > **모든 실행 테스트는 추적(Trace) 검증을 포함한다.**
@@ -817,13 +815,3 @@ cd infolink-orchestrator-backend && ./gradlew clean build -x test
 cd infolink-orchestrator-frontend && npx tsc --noEmit
 ```
 
----
-
-## Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-```

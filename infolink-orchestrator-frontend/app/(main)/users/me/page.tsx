@@ -25,17 +25,20 @@ export default function MyPage() {
       </div>
 
       <ChangePasswordCard
-        onSuccess={() => {
+        onSuccess={async () => {
           alert('비밀번호가 변경되었습니다. 다시 로그인해주세요.');
+          try { await authApi.logout(); } catch {}
           clear();
-          router.replace('/login');
+          // full reload — cookie 만료 후 middleware 가 /login 으로
+          window.location.href = '/login';
         }}
       />
 
       <DeleteMeCard
-        onSuccess={() => {
+        onSuccess={async () => {
+          try { await authApi.logout(); } catch {}
           clear();
-          router.replace('/login');
+          window.location.href = '/login';
         }}
       />
     </div>

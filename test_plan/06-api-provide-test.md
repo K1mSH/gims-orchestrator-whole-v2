@@ -1,7 +1,5 @@
-# 05 — API Provider 기능 테스트 문서
+# 06 — API Provider 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
 > 작성일: 2026-05-07
 
 ---
@@ -10,7 +8,7 @@
 
 - claude API 호출 → 1차 확인. **사용자가 직접 프론트(`localhost:3000/api-provide`)에서 같은 흐름 확인** 후에만 통과.
 - 단계마다 사용자 OK 후 다음 진입.
-- **사전 의존**: `07-security-test.md` (운영자 cookie) + `01-datasource-test.md` (target DB 등록 — `internal` 등)
+- **사전 의존**: `01-security-test.md` (운영자 cookie) + `02-datasource-test.md` (target DB 등록 — `internal` 등)
 
 ---
 
@@ -85,6 +83,10 @@
 ---
 
 ## 3. Operation CRUD
+
+> ⚠️ **본 사이클 SKIP** (등록/수정/삭제) — `dev_plan/2026_05/07/test-plan-construction.md §9` 결정.
+> 16+ operation 이 이미 운영 데이터로 등록됨 (B4 id=36 포함). 신규 operation 등록 검증은 운영 환경 별 사이클.
+> **본 사이클은 §3-1 목록 / §3-2 단건 (조회) + §3-5 활성/비활성 토글 + §3-6 인증** 만. §3-3~3-4 (등록/수정) 는 미실행.
 
 ### 3-1. 목록 (`GET /api/manage/operations`)
 ```bash
@@ -364,13 +366,3 @@ curl -s -w "\nHTTP %{http_code}\n" \
 ### 12-8. UserServiceTest 환경 의존 (5/6 §단위 테스트 — 별 사이클)
 - 본 통합 테스트 영역 X
 
----
-
-## 13. Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-```

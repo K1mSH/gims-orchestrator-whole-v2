@@ -9,6 +9,9 @@ import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -34,6 +37,9 @@ public class ProxyDataSourceService implements DataSourceProvider {
 
     @Value("${agent.orchestrator-url:http://localhost:8080}")
     private String orchestratorUrl;
+
+    @Value("${agent.api-key:}")
+    private String apiKey;
 
     // Orchestrator에서 전달받은 datasource 정보 캐시
     private final Map<String, DataSourceInfo> cachedDataSourceInfos = new ConcurrentHashMap<>();
@@ -140,8 +146,13 @@ public class ProxyDataSourceService implements DataSourceProvider {
             log.info("[Proxy] Fetching datasource info from Orchestrator: {}", datasourceId);
 
             RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            if (apiKey != null && !apiKey.isEmpty()) {
+                headers.set("X-API-Key", apiKey);   // Backend ApiKeyFilter 통과용 (5/6 보강 정합)
+            }
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class).getBody();
 
             if (response == null || response.isEmpty()) {
                 log.warn("[Proxy] Empty response from Orchestrator for datasource: {}", datasourceId);

@@ -1,7 +1,5 @@
-# 04 — API Collector 기능 테스트 문서
+# 05 — API Collector 기능 테스트 문서
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류)
 > 작성일: 2026-05-07
 
 ---
@@ -10,7 +8,7 @@
 
 - claude API 호출 → 1차 확인. **사용자가 직접 프론트(`localhost:3000/api-collect`)에서 같은 흐름 확인** 후에만 통과.
 - 단계마다 사용자 OK 후 다음 진입.
-- **사전 의존**: `07-security-test.md` (cookie) + `01-datasource-test.md` (target DB 등록)
+- **사전 의존**: `01-security-test.md` (cookie) + `02-datasource-test.md` (target DB 등록)
 
 ---
 
@@ -78,6 +76,10 @@
 ---
 
 ## 3. Endpoint 등록 / CRUD
+
+> ⚠️ **본 사이클 SKIP** (등록/수정/삭제) — `dev_plan/2026_05/07/test-plan-construction.md §9` 결정.
+> 12+ endpoint 가 이미 운영 데이터로 등록됨. 신규 endpoint 등록 검증은 운영 환경 별 사이클.
+> **본 사이클은 §3-1 목록 / §3-2 단건 (조회) + §3-6 인증** 만. §3-3~3-5 (등록/수정/삭제) 는 미실행.
 
 ### 3-1. 목록 (`GET /api/endpoints`)
 ```bash
@@ -316,13 +318,3 @@ curl -s -b /tmp/cookies.txt -X POST http://localhost:8084/api/endpoints/{id}/sch
 ### 11-6. 약수터 4키 dedup 검증
 - `yaksoter-quality` executor 의 4키 dedup (B-1 패턴) 정합. 실 데이터 1000행 E2E 회귀 (4/30) 재실행 권장
 
----
-
-## 12. Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-```

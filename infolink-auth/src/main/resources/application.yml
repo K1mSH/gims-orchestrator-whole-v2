@@ -23,7 +23,7 @@ spring:
 
 # Auth 설정
 auth:
-  access-token-ttl-minutes: 15
+  access-token-ttl-minutes: 720    # 12시간
   refresh-token-ttl-days: 7
   rsa:
     key-size: 2048

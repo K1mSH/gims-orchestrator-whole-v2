@@ -1,7 +1,5 @@
 # 08 — 1차 반입 통합 시나리오 (E2E)
 
-> 검증 baseline: `stable-2026-05-07-rename` (commit: dad8a1b)
-> 통과 시: `stable-2026-05-07` 신규 tag 박음 (이름 보류) + 1차 반입 GO/NO-GO 결정 근거
 > 작성일: 2026-05-07
 
 ---
@@ -236,26 +234,33 @@ curl -s -w "\nHTTP %{http_code}\n" \
 
 ### Step 8: 운영 작업 — Schedule + Retention (06 통합)
 
-**페르소나 행동**: 운영 자동화 설정.
+**페르소나 행동**: 운영 자동화 설정. **Schedule / Retention 은 자유 등록/수정/삭제** (메타 정책 — 사이드 이펙트 작음).
 
-#### 8-1. Schedule 등록
+#### 8-1. Schedule 등록 + 자동 실행 검증
 ```
 1. dmz-bojo-rcv-daejeon → 스케줄 섹션
-2. "+ 새 스케줄" → cron: "0 */30 * * * *" (30분마다) → 활성
+2. "+ 새 스케줄" → cron: "0 */2 * * * *" (2분마다, 빠른 검증용) → 활성
 3. 토스트 "등록됨"
-4. cron 한글 표시: "30분마다"
+4. cron 한글 표시: "2분마다"
+5. 2분 대기 → 자동 실행 발생
+6. 실행 이력 탭에 `triggeredBy=SCHEDULE` 새 행
+7. 검증 끝 → 토글 OFF 또는 삭제 (정리)
 ```
-- [ ] **사용자 검증**: 등록 후 30분 내 자동 실행 발생 (또는 cron 수정 → 2분마다 단축 후 빠른 검증)
-- [ ] 실행 이력에 `triggeredBy=SCHEDULE`
+- [ ] **사용자 검증**: 등록 → 자동 실행 → 토글 OFF / 삭제 사이클 정합
+- [ ] cron 한글 표시 정합 ("2분마다")
+- [ ] 비활성 후 다음 cron 시점 자동 실행 X
 
-#### 8-2. Retention 설정
+#### 8-2. Retention 등록 + cleanup 호출 검증
 ```
 1. dmz-bojo-rcv-daejeon → Retention 섹션
 2. enabled=true / target=if_rsv_sec_obsvdata / dateColumn=obsv_date / retentionDays=90
-3. 저장
+3. 저장 → 토스트 "저장됨"
+4. 직접 cleanup 호출 (POST /api/cleanup/{agentCode}) → 결과 응답
+5. cutoff 이전 데이터 삭제 / 이후 보존
+6. 검증 끝 → enabled=false 토글 또는 설정 삭제 (정리)
 ```
-- [ ] **사용자 검증**: 저장 후 재조회 시 같은 값 표시
-- [ ] (선택) 직접 cleanup 호출 → 만료 데이터 삭제 결과 확인
+- [ ] **사용자 검증**: 저장 → cleanup 응답 totalDeleted + 결과 화면 표시 → 비활성 토글 사이클
+- [ ] retentionDays 음수 방어 (4계층) — 프론트 min=1 시도
 
 #### 8-3. 비활성 스케줄 토글
 ```
@@ -364,15 +369,3 @@ curl -s -w "\nHTTP %{http_code}\n" \
 - 본 dev 환경 = mock 활성 / dev default JASYPT 키 / 9 모듈 libs/ 자동 복사
 - 운영 환경 = mock 비활성 / 실 JASYPT 키 / 폐쇄망 nexus → **별 운영 환경 검증 사이클 필요** (본 통합 시나리오는 dev 환경 검증 한계 명시)
 
----
-
-## 6. Baseline 태그 갱신
-
-```
-실행 시작 baseline: stable-2026-05-07-rename (commit dad8a1b)
-검증 통과 일시: 2026-05-XX
-신규 stable tag: stable-2026-05-XX (이름 보류 — 통합 시나리오 통과 시 결정)
-신규 tag commit: ?????? (실행 시점 main HEAD)
-
-1차 반입 GO 결정: 2026-05-XX
-```
