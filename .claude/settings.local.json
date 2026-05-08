@@ -537,7 +537,26 @@
       "Bash(awk -F'.' '{print $1\".\"$2\".\"$3}')",
       "Bash(mv test_plan/bojo-test.md test_plan/02-bojo-test.md)",
       "Bash(mv test_plan/others-test.md test_plan/03-others-test.md)",
-      "Bash(awk -F'/' '{print $1}')"
+      "Bash(awk -F'/' '{print $1}')",
+      "Bash(unzip -l infolink-orchestrator-backend/libs/infolink-agent-common-*.jar)",
+      "Bash(mkdir -p infolink-orchestrator-backend/libs)",
+      "Bash(cp infolink-agent-common/build/libs/infolink-agent-common-1.0.0-SNAPSHOT.jar infolink-orchestrator-backend/libs/)",
+      "Bash(unzip -l D:/dev/claude/GIMS/orchestrator_v2/infolink-agent-common/build/libs/infolink-agent-common-1.0.0-SNAPSHOT.jar)",
+      "Bash(unzip -l D:/dev/claude/GIMS/orchestrator_v2/infolink-agent-bojo-dmz/libs/infolink-agent-common-1.0.0-SNAPSHOT.jar)",
+      "PowerShell(Test-NetConnection *)",
+      "Bash(tee /tmp/log-auth.log)",
+      "Bash(tee /tmp/log-backend.log)",
+      "Bash(tee /tmp/log-proxy-dmz.log)",
+      "Bash(tee /tmp/log-proxy-internal.log)",
+      "Bash(tee /tmp/log-bojo-dmz.log)",
+      "Bash(tee /tmp/log-bojo-internal.log)",
+      "Bash(tee /tmp/log-collector.log)",
+      "Bash(tee /tmp/log-provider.log)",
+      "Bash(tee /tmp/log-frontend.log)",
+      "Bash(PGPASSWORD=postgres psql -h localhost -p 29001 -U postgres -d orchestrator -c \"SELECT auth_users_id, role, is_active FROM auth_users ORDER BY auth_users_id;\")",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8092/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"8092 HTTP {0}\" -f $r.StatusCode } catch { \"8092 fail: $_\" })",
+      "PowerShell($svcs = @\\(@{p=8080;n=\"backend\"},@{p=8093;n=\"proxy-internal\"},@{p=8092;n=\"bojo-internal\"}\\); foreach \\($s in $svcs\\) { try { $r = Invoke-WebRequest -Uri \"http://localhost:$\\($s.p\\)/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"{0,5} {1,-15} HTTP {2}\" -f $s.p, $s.n, $r.StatusCode } catch { $code = if \\($_.Exception.Response\\) { [int]$_.Exception.Response.StatusCode } else { $null }; if \\($code\\) { \"{0,5} {1,-15} HTTP {2}\" -f $s.p, $s.n, $code } else { \"{0,5} {1,-15} fail\" -f $s.p, $s.n } } })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8092/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"8092 HTTP {0}\" -f $r.StatusCode } catch { \"8092 fail\" })"
     ]
   },
   "hooks": {
