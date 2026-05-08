@@ -13,6 +13,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
+      <head>
+        {/* KRDS 디자인 시스템 — token → common → component 순서 */}
+        <link rel="stylesheet" href="/krds/css/token/krds_tokens.css" />
+        <link rel="stylesheet" href="/krds/css/common/common.css" />
+        <link rel="stylesheet" href="/krds/css/component/component.css" />
+      </head>
       <body>{children}</body>
     </html>
   );

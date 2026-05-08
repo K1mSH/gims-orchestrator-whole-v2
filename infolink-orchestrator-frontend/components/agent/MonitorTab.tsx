@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Agent, ExecutionDetail } from '@/types';
 import { executionApi } from '@/lib/api';
 import StatusBadge from '@/components/StatusBadge';
+import styles from './MonitorTab.module.css';
 
 interface MonitorTabProps {
   agent: Agent;
@@ -22,7 +23,7 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
       const executions = await executionApi.getByAgent(agent.id);
 
       if (agent.status === 'RUNNING') {
-        const running = executions.find(e => e.status === 'RUNNING');
+        const running = executions.find((e) => e.status === 'RUNNING');
         if (running) {
           setExecution(running);
         }
@@ -34,7 +35,6 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
     }
   };
 
-  // 실행 중일 때만 폴링 (진입 시 즉시 1회 + 이후 3초마다)
   useEffect(() => {
     if (agent.status === 'RUNNING' && !completed) {
       fetchData();
@@ -45,7 +45,6 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
     }
   }, [agent.status, completed, agent.id]);
 
-  // 상태 변경 감지 (RUNNING → 완료)
   useEffect(() => {
     if (prevStatusRef.current === 'RUNNING' && agent.status !== 'RUNNING') {
       const fetchFinal = async () => {
@@ -68,10 +67,10 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
 
   if (loading) {
     return (
-      <div className="card">
-        <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
-          <div className="spinner" style={{ width: '32px', height: '32px', margin: '0 auto 1rem' }} />
-          <p style={{ color: 'var(--gray-500)' }}>로딩중...</p>
+      <div className="app-card">
+        <div className={styles.loadingBody}>
+          <span className={`krds-spinner ${styles.spinnerInline}`} />
+          <p className={styles.emptyTitle}>로딩중...</p>
         </div>
       </div>
     );
@@ -79,35 +78,41 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
 
   // 실행 완료 상태
   if (completed && execution) {
+    const isSuccess = execution.status === 'SUCCESS';
     return (
-      <div className="card" style={{
-        background: execution.status === 'SUCCESS' ? 'var(--green-50)' : 'var(--red-50)',
-        border: `2px solid ${execution.status === 'SUCCESS' ? 'var(--green-200)' : 'var(--red-200)'}`
-      }}>
-        <div className="card-header">
-          <h2 className="card-title" style={{
-            color: execution.status === 'SUCCESS' ? 'var(--green-700)' : 'var(--red-700)'
-          }}>
+      <div
+        className={`app-card ${styles.statusCard} ${
+          isSuccess ? styles['statusCard--success'] : styles['statusCard--failed']
+        }`}
+      >
+        <div className="app-card__header">
+          <h2
+            className={`app-card__title ${
+              isSuccess ? styles['statusTitle--success'] : styles['statusTitle--failed']
+            }`}
+          >
             실행 완료
           </h2>
           <StatusBadge status={execution.status as 'SUCCESS' | 'FAILED' | 'RUNNING'} />
         </div>
-        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-            {execution.status === 'SUCCESS'
-              ? '파이프라인이 성공적으로 완료되었습니다!'
+        <div className={styles.completeBody}>
+          <p className={styles.completeMessage}>
+            {isSuccess
+              ? '파이프라인이 성공적으로 완료되었습니다.'
               : '파이프라인 실행 중 오류가 발생했습니다.'}
           </p>
-          {execution.status === 'SUCCESS' && (
-            <p style={{ fontSize: '0.9rem', color: 'var(--gray-600)', marginBottom: '1rem' }}>
+          {isSuccess && (
+            <p className={styles.completeStats}>
               읽기: {execution.totalReadCount ?? 0}건, 쓰기: {execution.totalWriteCount ?? 0}건
               {execution.totalSkipCount ? `, 스킵: ${execution.totalSkipCount}건` : ''}
-              {execution.durationMs != null ? ` (${(execution.durationMs / 1000).toFixed(1)}s)` : ''}
+              {execution.durationMs != null
+                ? ` (${(execution.durationMs / 1000).toFixed(1)}s)`
+                : ''}
             </p>
           )}
           <Link
             href={`/executions/${execution.executionId}`}
-            className="btn btn-primary"
+            className="krds-btn small primary"
           >
             실행 결과 보기
           </Link>
@@ -119,10 +124,12 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
   // 실행 중이 아니고 완료 직후도 아님
   if (agent.status !== 'RUNNING' || !execution) {
     return (
-      <div className="card">
-        <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.2rem', color: 'var(--gray-500)' }}>현재 실행 중인 작업이 없습니다</p>
-          <p style={{ color: 'var(--gray-400)', marginTop: '0.5rem' }}>파이프라인을 실행하면 여기서 진행 상황을 확인할 수 있습니다</p>
+      <div className="app-card">
+        <div className="app-empty">
+          <p className={styles.emptyTitle}>현재 실행 중인 작업이 없습니다</p>
+          <p className={styles.emptyHint}>
+            파이프라인을 실행하면 여기서 진행 상황을 확인할 수 있습니다
+          </p>
         </div>
       </div>
     );
@@ -130,35 +137,29 @@ export default function MonitorTab({ agent, onExecutionComplete }: MonitorTabPro
 
   // 실행 중 상태
   return (
-    <div className="card" style={{ background: 'var(--blue-50)', border: '2px solid var(--blue-200)' }}>
-      <div className="card-header">
-        <h2 className="card-title" style={{ color: 'var(--blue-700)' }}>실행 중</h2>
+    <div className={`app-card ${styles.statusCard} ${styles['statusCard--running']}`}>
+      <div className="app-card__header">
+        <h2 className={`app-card__title ${styles['statusTitle--running']}`}>실행 중</h2>
         <StatusBadge status="RUNNING" />
       </div>
 
-      <div style={{ marginTop: '1.5rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div><strong>실행 ID:</strong> <code>{execution.executionId.substring(0, 8)}...</code></div>
-          <div><strong>시작 시간:</strong> {new Date(execution.startedAt).toLocaleString('ko-KR')}</div>
+      <div className={styles.runningBody}>
+        <div className={styles.runningMeta}>
+          <div>
+            <span className={styles.runningMeta__label}>실행 ID:</span>
+            <code>{execution.executionId.substring(0, 8)}...</code>
+          </div>
+          <div>
+            <span className={styles.runningMeta__label}>시작 시간:</span>
+            {new Date(execution.startedAt).toLocaleString('ko-KR')}
+          </div>
         </div>
 
-        {/* 진행 중 애니메이션 */}
-        <div style={{
-          background: 'var(--blue-100)',
-          border: '2px solid var(--blue-300)',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          justifyContent: 'center',
-        }}>
-          <div className="spinner" style={{ width: '24px', height: '24px' }} />
+        <div className={styles.runningProgress}>
+          <span className={`krds-spinner ${styles.spinnerInline}`} />
           <div>
-            <div style={{ fontWeight: 600, color: 'var(--blue-700)' }}>
-              파이프라인 처리 중...
-            </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--blue-600)', marginTop: '0.25rem' }}>
+            <div className={styles.runningProgress__title}>파이프라인 처리 중...</div>
+            <div className={styles.runningProgress__sub}>
               {execution.totalReadCount != null
                 ? `읽기: ${execution.totalReadCount}건, 쓰기: ${execution.totalWriteCount ?? 0}건`
                 : '데이터 처리 대기 중...'}

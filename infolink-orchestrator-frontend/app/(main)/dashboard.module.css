@@ -1,0 +1,159 @@
+/* 대시보드 페이지 전용 — 통계 카드/체인 등 KRDS 컴포넌트로 못 잡히는 부분 */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1.2rem;
+  margin-bottom: 2.4rem;
+}
+
+.statCard {
+  background-color: var(--krds-light-color-background-white);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-medium2);
+  padding: 1.6rem 1.8rem;
+  box-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.06);
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.statCardClickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.statCardClickable:hover {
+  box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.10);
+}
+
+.statCardActive {
+  border-color: var(--krds-light-color-border-primary);
+  background-color: var(--krds-light-color-element-primary-lighter);
+}
+
+.statCardAlert {
+  background-color: var(--krds-light-color-element-danger-lighter);
+}
+
+.statCardAlert.statCardActive {
+  border-color: var(--krds-light-color-border-danger);
+  background-color: var(--krds-light-color-element-danger-light);
+}
+
+.statLabel {
+  font-size: var(--krds-pc-font-size-label-medium);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 0.4rem;
+}
+
+.statValue {
+  font-size: var(--krds-pc-font-size-heading-large);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  line-height: 1.2;
+}
+
+.statValueSuccess { color: var(--krds-light-color-text-success); }
+.statValueWarning { color: var(--krds-light-color-text-warning); }
+.statValueError   { color: var(--krds-light-color-text-danger); }
+.statValuePrimary { color: var(--krds-light-color-text-primary); }
+
+/* 도메인 전용 배지 (KRDS .krds-badge 보조) */
+.agentTypeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.8rem;
+  border-radius: var(--krds-radius-max);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: var(--krds-font-weight-regular);
+}
+
+.agentTypeRelay {
+  background-color: var(--krds-light-color-element-secondary-lighter);
+  color: var(--krds-light-color-text-secondary);
+}
+
+.agentTypeLoader {
+  background-color: var(--krds-light-color-element-success-lighter);
+  color: var(--krds-light-color-text-success);
+}
+
+.agentTypeUnknown {
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.triggerBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--krds-radius-small1);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: var(--krds-font-weight-regular);
+  text-transform: uppercase;
+}
+
+.triggerManual {
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.triggerSchedule {
+  background-color: var(--krds-light-color-element-information-lighter);
+  color: var(--krds-light-color-text-information);
+}
+
+.triggerChain {
+  background-color: var(--krds-light-color-element-warning-lighter);
+  color: var(--krds-light-color-text-warning);
+}
+
+.agentCode {
+  margin-left: 0.6rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.linkAgent {
+  color: var(--krds-light-color-text-primary);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+/* 대시보드 테이블 — Agent 이름은 충분한 폭으로 자연 줄바꿈,
+   Zone/상태/실행결과 등 고정값 컬럼은 nowrap + 좁게 % 분배. */
+
+/* Agent 상태 테이블: Agent / Zone / 상태 / 마지막 실행 결과 / 마지막 실행 시간 */
+.agentTable {
+  table-layout: fixed;
+}
+.agentTable th:nth-child(1), .agentTable td:nth-child(1) { width: 42%; }
+.agentTable th:nth-child(2), .agentTable td:nth-child(2) { width: 12%; }
+.agentTable th:nth-child(3), .agentTable td:nth-child(3) { width: 12%; }
+.agentTable th:nth-child(4), .agentTable td:nth-child(4) { width: 16%; }
+.agentTable th:nth-child(5), .agentTable td:nth-child(5) { width: 18%; }
+.agentTable td:nth-child(n+2),
+.agentTable th:nth-child(n+2) {
+  white-space: nowrap;
+}
+
+/* 실행 이력 테이블: Agent / 타입 / 상태 / 읽기·쓰기·스킵 / 소요시간 / 트리거 / 시작 시간 */
+.historyTable {
+  table-layout: fixed;
+}
+.historyTable th:nth-child(1), .historyTable td:nth-child(1) { width: 28%; }
+.historyTable th:nth-child(2), .historyTable td:nth-child(2) { width: 10%; }
+.historyTable th:nth-child(3), .historyTable td:nth-child(3) { width: 10%; }
+.historyTable th:nth-child(4), .historyTable td:nth-child(4) { width: 14%; }
+.historyTable th:nth-child(5), .historyTable td:nth-child(5) { width: 10%; }
+.historyTable th:nth-child(6), .historyTable td:nth-child(6) { width: 10%; }
+.historyTable th:nth-child(7), .historyTable td:nth-child(7) { width: 18%; }
+.historyTable td:nth-child(n+2),
+.historyTable th:nth-child(n+2) {
+  white-space: nowrap;
+}

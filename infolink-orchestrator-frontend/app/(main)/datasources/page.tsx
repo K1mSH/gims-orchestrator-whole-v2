@@ -13,6 +13,7 @@ import type {
   DatasourceTable,
   ColumnCreateRequest,
 } from '@/types';
+import styles from './datasources.module.css';
 
 const DB_TYPE_LABELS: Record<DbType, string> = {
   POSTGRESQL: 'PostgreSQL',
@@ -96,22 +97,17 @@ export default function DatasourcesPage() {
   };
 
   if (loading) {
-    return <div className="loading">로딩중...</div>;
+    return <div className="app-loading">로딩중...</div>;
   }
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">DB 관리</h1>
+      <div className="app-page-header">
+        <h1 className="app-page-header__title">DB 관리</h1>
         <button
-          className="btn btn-primary"
-          onClick={() => {
-            if (showForm) {
-              handleCloseForm();
-            } else {
-              setShowForm(true);
-            }
-          }}
+          type="button"
+          className="krds-btn small primary"
+          onClick={() => (showForm ? handleCloseForm() : setShowForm(true))}
         >
           {showForm ? '취소' : 'DB 등록'}
         </button>
@@ -129,90 +125,88 @@ export default function DatasourcesPage() {
         />
       )}
 
-      <div className="card">
-        <div className="table-container">
-          <table>
-            <thead>
+      <div className="app-card">
+        <table className={`app-table ${styles.datasourceTable}`}>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>이름</th>
+              <th>DB 타입</th>
+              <th>Zone</th>
+              <th>호스트</th>
+              <th>포트</th>
+              <th>데이터베이스</th>
+              <th>상태</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            {datasources.length === 0 ? (
               <tr>
-                <th>ID</th>
-                <th>이름</th>
-                <th>DB 타입</th>
-                <th>Zone</th>
-                <th>호스트</th>
-                <th>포트</th>
-                <th>데이터베이스</th>
-                <th>상태</th>
-                <th>작업</th>
+                <td colSpan={9} className="app-empty">
+                  등록된 Datasource가 없습니다
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {datasources.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="empty-state">
-                    등록된 Datasource가 없습니다
+            ) : (
+              datasources.map((ds) => (
+                <tr key={ds.datasourceId}>
+                  <td>{ds.datasourceId}</td>
+                  <td>{ds.datasourceName}</td>
+                  <td>
+                    <span className={styles.dbTypeBadge}>{DB_TYPE_LABELS[ds.dbType]}</span>
                   </td>
-                </tr>
-              ) : (
-                datasources.map((ds) => (
-                  <tr key={ds.datasourceId}>
-                    <td>{ds.datasourceId}</td>
-                    <td>{ds.datasourceName}</td>
-                    <td>
-                      <span className={`db-type db-type-${ds.dbType.toLowerCase()}`}>
-                        {DB_TYPE_LABELS[ds.dbType]}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`zone-badge zone-${(ds.zone || 'none').toLowerCase().replace('_', '-')}`}>
-                        {ds.zone || '-'}
-                      </span>
-                    </td>
-                    <td>{ds.host}</td>
-                    <td>{ds.port}</td>
-                    <td>{ds.databaseName}</td>
-                    <td>
-                      <span className={`status-badge ${ds.isActive ? 'status-success' : 'status-offline'}`}>
-                        {ds.isActive ? '활성' : '비활성'}
-                      </span>
-                    </td>
-                    <td>
+                  <td>
+                    <span className={`zone-${(ds.zone || 'none').toLowerCase().replace('_', '-')}`}>
+                      {ds.zone || '-'}
+                    </span>
+                  </td>
+                  <td>{ds.host}</td>
+                  <td>{ds.port}</td>
+                  <td>{ds.databaseName}</td>
+                  <td>
+                    <span className={`krds-badge ${ds.isActive ? 'bg-light-success' : 'bg-light-gray'}`}>
+                      {ds.isActive ? '활성' : '비활성'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actionCell}>
                       <button
-                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        className="krds-btn xsmall secondary"
                         onClick={() => setSelectedDatasource(ds)}
-                        style={{ marginRight: '0.5rem' }}
                       >
                         테이블관리
                       </button>
                       <button
-                        className="btn btn-primary btn-sm"
+                        type="button"
+                        className="krds-btn xsmall primary"
                         onClick={() => handleTestConnection(ds.datasourceId)}
-                        style={{ marginRight: '0.5rem' }}
                       >
                         연결테스트
                       </button>
                       <button
-                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        className="krds-btn xsmall secondary"
                         onClick={() => handleEdit(ds)}
-                        style={{ marginRight: '0.5rem' }}
                       >
                         수정
                       </button>
                       <button
-                        className="btn btn-danger btn-sm"
+                        type="button"
+                        className="krds-btn xsmall app-btn-danger"
                         onClick={() => handleDelete(ds.datasourceId)}
                       >
                         삭제
                       </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* 테이블 관리 모달 */}
       {selectedDatasource && (
         <TableManagementModal
           datasource={selectedDatasource}
@@ -238,13 +232,12 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
     host: initialData?.host || '',
     port: initialData?.port || 5432,
     databaseName: initialData?.databaseName || '',
-    username: editMode ? '' : '', // 수정 시에는 보안상 비워둠
-    password: '', // 비밀번호는 보안상 비워둠
+    username: editMode ? '' : '',
+    password: '',
     description: initialData?.description || '',
     zone: initialData?.zone || '',
   });
 
-  // 원본 데이터 (수정 모드에서 변경 감지용) - username/password는 항상 비워두므로 제외
   const [originalData] = useState({
     dbType: initialData?.dbType || 'POSTGRESQL',
     host: initialData?.host || '',
@@ -257,46 +250,33 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // 연결 관련 필드가 변경되었는지 확인
   const isConnectionFieldChanged = () => {
-    if (!editMode) return true; // 신규 등록은 항상 테스트 필요
-
+    if (!editMode) return true;
     return (
       formData.dbType !== originalData.dbType ||
       formData.host !== originalData.host ||
       formData.port !== originalData.port ||
       formData.databaseName !== originalData.databaseName ||
-      formData.username !== '' || // username이 입력되면 변경된 것으로 간주
-      formData.password !== '' || // password가 입력되면 변경된 것으로 간주
+      formData.username !== '' ||
+      formData.password !== '' ||
       formData.zone !== originalData.zone
     );
   };
 
-  // 연결 테스트가 필요한지 확인
   const needsConnectionTest = () => {
-    if (!editMode) {
-      // 신규 등록: 테스트 성공 필수
-      return !testResult?.success;
-    }
-    // 수정 모드: 연결 관련 필드가 변경되었으면 재테스트 필요
-    if (isConnectionFieldChanged()) {
-      return !testResult?.success;
-    }
+    if (!editMode) return !testResult?.success;
+    if (isConnectionFieldChanged()) return !testResult?.success;
     return false;
   };
 
   const handleDbTypeChange = (dbType: DbType) => {
-    setFormData({
-      ...formData,
-      dbType,
-      port: DEFAULT_PORTS[dbType],
-    });
-    setTestResult(null); // 테스트 결과 리셋
+    setFormData({ ...formData, dbType, port: DEFAULT_PORTS[dbType] });
+    setTestResult(null);
   };
 
   const handleConnectionFieldChange = (field: string, value: string | number) => {
     setFormData({ ...formData, [field]: value });
-    setTestResult(null); // 연결 관련 필드 변경 시 테스트 결과 리셋
+    setTestResult(null);
   };
 
   const handleTestConnection = async () => {
@@ -327,17 +307,13 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // 연결 테스트 필수 체크
     if (needsConnectionTest()) {
       alert('연결 테스트를 먼저 수행하고 성공해야 합니다.');
       return;
     }
-
     setSubmitting(true);
     try {
       if (editMode && initialData) {
-        // 수정 모드
         const updateData: DatasourceUpdateRequest = {
           datasourceName: formData.datasourceName,
           dbType: formData.dbType,
@@ -347,17 +323,10 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
           description: formData.description,
           zone: formData.zone,
         };
-        // 사용자명이 입력된 경우에만 포함
-        if (formData.username) {
-          updateData.username = formData.username;
-        }
-        // 비밀번호가 입력된 경우에만 포함
-        if (formData.password) {
-          updateData.password = formData.password;
-        }
+        if (formData.username) updateData.username = formData.username;
+        if (formData.password) updateData.password = formData.password;
         await datasourceApi.update(initialData.datasourceId, updateData);
       } else {
-        // 신규 등록
         await datasourceApi.create(formData);
       }
       onSuccess();
@@ -372,39 +341,37 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
   const canSubmit = !needsConnectionTest();
 
   return (
-    <div className="card">
-      <h3 className="card-title" style={{ marginBottom: '1rem' }}>
-        {editMode ? 'DB 수정' : 'DB 등록'}
-      </h3>
+    <div className="app-card">
+      <h3 className={styles.sectionTitle}>{editMode ? 'DB 수정' : 'DB 등록'}</h3>
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <div className="form-group">
-            <label className="form-label">Datasource ID</label>
+        <div className="app-form-grid">
+          <div className="app-form-field">
+            <label className="app-form-label">Datasource ID</label>
             <input
               type="text"
-              className="form-input"
+              className="krds-input"
               value={formData.datasourceId}
               onChange={(e) => setFormData({ ...formData, datasourceId: e.target.value })}
               placeholder="external-postgres-1"
               required
-              disabled={editMode} // 수정 모드에서는 ID 변경 불가
+              disabled={editMode}
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">이름</label>
+          <div className="app-form-field">
+            <label className="app-form-label">이름</label>
             <input
               type="text"
-              className="form-input"
+              className="krds-input"
               value={formData.datasourceName}
               onChange={(e) => setFormData({ ...formData, datasourceName: e.target.value })}
               placeholder="대전시 외부 DB"
               required
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">DB 타입</label>
+          <div className="app-form-field">
+            <label className="app-form-label">DB 타입</label>
             <select
-              className="form-select"
+              className="krds-form-select"
               value={formData.dbType}
               onChange={(e) => handleDbTypeChange(e.target.value as DbType)}
             >
@@ -415,78 +382,78 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label className="form-label">호스트</label>
+          <div className="app-form-field">
+            <label className="app-form-label">호스트</label>
             <input
               type="text"
-              className="form-input"
+              className="krds-input"
               value={formData.host}
               onChange={(e) => handleConnectionFieldChange('host', e.target.value)}
               placeholder="192.168.1.100"
               required
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">포트</label>
+          <div className="app-form-field">
+            <label className="app-form-label">포트</label>
             <input
               type="number"
-              className="form-input"
+              className="krds-input"
               value={formData.port}
               onChange={(e) => handleConnectionFieldChange('port', parseInt(e.target.value))}
               required
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">데이터베이스명</label>
+          <div className="app-form-field">
+            <label className="app-form-label">데이터베이스명</label>
             <input
               type="text"
-              className="form-input"
+              className="krds-input"
               value={formData.databaseName}
               onChange={(e) => handleConnectionFieldChange('databaseName', e.target.value)}
               placeholder="gims"
               required
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">
-              사용자명 {editMode && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(변경시에만 입력)</span>}
+          <div className="app-form-field">
+            <label className="app-form-label">
+              사용자명{editMode && <span className="app-form-label__hint">(변경시에만 입력)</span>}
             </label>
             <input
               type="text"
-              className="form-input"
+              className="krds-input"
               value={formData.username}
               onChange={(e) => handleConnectionFieldChange('username', e.target.value)}
               placeholder={editMode ? '변경하려면 입력하세요' : 'postgres'}
               required={!editMode}
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">
-              비밀번호 {editMode && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(변경시에만 입력)</span>}
+          <div className="app-form-field">
+            <label className="app-form-label">
+              비밀번호{editMode && <span className="app-form-label__hint">(변경시에만 입력)</span>}
             </label>
             <input
               type="password"
-              className="form-input"
+              className="krds-input"
               value={formData.password}
               onChange={(e) => handleConnectionFieldChange('password', e.target.value)}
               required={!editMode}
               placeholder={editMode ? '변경하려면 입력하세요' : ''}
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">설명 (선택)</label>
+          <div className="app-form-field">
+            <label className="app-form-label">설명 (선택)</label>
             <input
               type="text"
-              className="form-input"
+              className="krds-input"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="대전시에서 제공하는 외부 관측 데이터 DB"
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">네트워크 Zone</label>
+          <div className="app-form-field">
+            <label className="app-form-label">네트워크 Zone</label>
             <select
-              className="form-select"
+              className="krds-form-select"
               value={formData.zone}
               onChange={(e) => handleConnectionFieldChange('zone', e.target.value)}
             >
@@ -496,62 +463,50 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
                 </option>
               ))}
             </select>
-            <small style={{ color: 'var(--text-muted, #666)', fontSize: '0.75rem' }}>
-              연결 테스트 시 해당 Zone의 Master Agent가 대신 테스트합니다
-            </small>
+            <small className="app-form-help">연결 테스트 시 해당 Zone의 Master Agent가 대신 테스트합니다</small>
           </div>
         </div>
 
-        {/* 연결 테스트 상태 메시지 */}
         {needsConnectionTest() && (
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '0.75rem',
-              borderRadius: '0.5rem',
-              background: 'var(--warning-bg, #fff3cd)',
-              color: 'var(--warning-color, #856404)',
-            }}
-          >
+          <div className="app-alert app-alert--warning" style={{ marginTop: '1.6rem' }}>
             {editMode && isConnectionFieldChanged()
               ? '연결 정보가 변경되었습니다. 연결 테스트를 다시 수행해주세요.'
               : '저장하기 전에 연결 테스트를 수행해주세요.'}
           </div>
         )}
 
-        {/* 연결 테스트 결과 */}
         {testResult && (
           <div
-            style={{
-              marginTop: '1rem',
-              padding: '0.75rem',
-              borderRadius: '0.5rem',
-              background: testResult.success ? 'var(--success-bg, #d4edda)' : 'var(--danger-bg, #f8d7da)',
-              color: testResult.success ? 'var(--success-color, #155724)' : 'var(--danger-color, #721c24)',
-            }}
+            className={`app-alert ${testResult.success ? 'app-alert--success' : 'app-alert--danger'}`}
+            style={{ marginTop: '1.6rem' }}
           >
             {testResult.message}
           </div>
         )}
 
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+        <div className="app-btn-row">
           <button
             type="button"
-            className="btn btn-secondary"
+            className="krds-btn small secondary"
             onClick={handleTestConnection}
-            disabled={testing || !formData.host || !formData.databaseName || (!editMode && (!formData.username || !formData.password))}
+            disabled={
+              testing ||
+              !formData.host ||
+              !formData.databaseName ||
+              (!editMode && (!formData.username || !formData.password))
+            }
           >
             {testing ? '테스트중...' : '연결 테스트'}
           </button>
           <button
             type="submit"
-            className="btn btn-primary"
+            className="krds-btn small primary"
             disabled={submitting || !canSubmit}
             title={!canSubmit ? '연결 테스트를 먼저 성공해야 합니다' : ''}
           >
             {submitting ? '저장중...' : editMode ? '수정' : '등록'}
           </button>
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
+          <button type="button" className="krds-btn small tertiary" onClick={onCancel}>
             취소
           </button>
         </div>
@@ -588,7 +543,6 @@ function TableManagementModal({
     }
   };
 
-  // 모달 최초 오픈 시 등록된 테이블 + DB 테이블 목록 자동 로드
   useEffect(() => {
     fetchRegisteredTables();
 
@@ -606,7 +560,6 @@ function TableManagementModal({
     loadAllTables();
   }, [datasource.datasourceId]);
 
-  // 실제 DB에서 테이블 검색
   const searchTablesFromDb = async (query: string) => {
     setLoadingTables(true);
     try {
@@ -621,14 +574,11 @@ function TableManagementModal({
 
   const [tableSearchQuery, setTableSearchQuery] = useState('');
 
-  // 테이블 검색 (버튼 클릭 시)
   const handleSearchTables = () => {
     searchTablesFromDb(tableSearchQuery);
   };
 
-  // 테이블 선택 시 컬럼 자동 로드
   const handleSelectTable = async (tableOption: Record<string, unknown> | null) => {
-    console.log('handleSelectTable called with:', tableOption);
     if (!tableOption) {
       setSelectedTable(null);
       setAllColumns([]);
@@ -642,9 +592,7 @@ function TableManagementModal({
     setLoadingColumns(true);
 
     try {
-      console.log('Calling datasourceApi.searchColumns for:', datasource.datasourceId, table.tableName);
       const columns = await datasourceApi.searchColumns(datasource.datasourceId, table.tableName);
-      console.log('searchColumns results:', columns);
       setAllColumns(columns);
     } catch (error) {
       console.error('컬럼 조회 실패:', error);
@@ -678,8 +626,7 @@ function TableManagementModal({
       return;
     }
 
-    // 이미 등록된 테이블인지 확인
-    if (registeredTables.some(t => t.tableName === selectedTable.tableName)) {
+    if (registeredTables.some((t) => t.tableName === selectedTable.tableName)) {
       alert('이미 등록된 테이블입니다.');
       return;
     }
@@ -739,9 +686,8 @@ function TableManagementModal({
     try {
       const dbColumns = await datasourceApi.searchColumns(datasource.datasourceId, table.tableName);
       setRefreshDbColumns(dbColumns);
-      // 기존 등록된 컬럼은 pre-check
-      const existingNames = new Set(table.columns.map(c => c.columnName));
-      setRefreshSelectedColumns(dbColumns.filter(c => existingNames.has(c.columnName)));
+      const existingNames = new Set(table.columns.map((c) => c.columnName));
+      setRefreshSelectedColumns(dbColumns.filter((c) => existingNames.has(c.columnName)));
       setRefreshTarget(table);
     } catch (error) {
       console.error('컬럼 재수집 실패:', error);
@@ -755,15 +701,14 @@ function TableManagementModal({
     if (!refreshTarget || refreshSelectedColumns.length === 0) return;
     setRefreshSaving(true);
     try {
-      // DB에서 테이블 remarks 조회 (tableAlias 갱신용)
       const dbTables = await datasourceApi.searchTables(datasource.datasourceId, refreshTarget.tableName);
-      const dbTable = dbTables.find(t => t.tableName === refreshTarget.tableName);
+      const dbTable = dbTables.find((t) => t.tableName === refreshTarget.tableName);
 
       await datasourceApi.refreshTableColumns(datasource.datasourceId, refreshTarget.id, {
         tableName: refreshTarget.tableName,
         tableAlias: dbTable?.remarks || refreshTarget.tableAlias || undefined,
         description: dbTable?.remarks || refreshTarget.description || undefined,
-        columns: refreshSelectedColumns.map(c => ({
+        columns: refreshSelectedColumns.map((c) => ({
           columnName: c.columnName,
           columnAlias: c.remarks || undefined,
           dataType: c.dataType,
@@ -783,74 +728,46 @@ function TableManagementModal({
   };
 
   const handleRefreshToggleColumn = (col: ColumnSearchResult) => {
-    setRefreshSelectedColumns(prev =>
-      prev.some(c => c.columnName === col.columnName)
-        ? prev.filter(c => c.columnName !== col.columnName)
+    setRefreshSelectedColumns((prev) =>
+      prev.some((c) => c.columnName === col.columnName)
+        ? prev.filter((c) => c.columnName !== col.columnName)
         : [...prev, col]
     );
   };
 
-  // 이미 등록된 테이블인지 확인
   const isTableRegistered = (tableName: string) => {
-    return registeredTables.some(t => t.tableName === tableName);
+    return registeredTables.some((t) => t.tableName === tableName);
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--card-bg, white)',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          width: '90%',
-          maxWidth: '900px',
-          maxHeight: '90vh',
-          overflow: 'auto',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0 }}>
-            테이블 관리 - {datasource.datasourceName}
-          </h2>
-          <button className="btn btn-secondary btn-sm" onClick={onClose}>
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>테이블 관리 - {datasource.datasourceName}</h2>
+          <button type="button" className="krds-btn xsmall secondary" onClick={onClose}>
             닫기
           </button>
         </div>
 
-        {/* 테이블 선택 섹션 */}
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h4 style={{ marginBottom: '0.75rem' }}>테이블 추가</h4>
+        {/* 테이블 추가 섹션 */}
+        <div className="app-card">
+          <h4 className={styles.sectionTitle}>테이블 추가</h4>
 
           {/* 테이블 검색 */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="form-label">테이블 검색</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="app-form-field" style={{ marginBottom: '1.6rem' }}>
+            <label className="app-form-label">테이블 검색</label>
+            <div className={styles.searchRow}>
               <input
                 type="text"
-                className="form-input"
+                className={`krds-input ${styles.searchRow__input}`}
                 placeholder="테이블명 입력 (비우면 전체 조회)"
                 value={tableSearchQuery}
                 onChange={(e) => setTableSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchTables()}
-                style={{ flex: 1 }}
               />
               <button
-                className="btn btn-primary"
+                type="button"
+                className="krds-btn small primary"
                 onClick={handleSearchTables}
                 disabled={loadingTables}
               >
@@ -859,20 +776,18 @@ function TableManagementModal({
             </div>
           </div>
 
-          {/* 테이블 선택 */}
           {loadingTables && allTables.length === 0 && (
-            <div style={{ marginBottom: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border-color, #ddd)', borderRadius: '0.375rem', background: 'var(--bg-secondary, #f9f9f9)' }}>
-              테이블 목록 로딩중...
-            </div>
+            <div className="app-empty">테이블 목록 로딩중...</div>
           )}
+
           {allTables.length > 0 && (
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">테이블 선택 ({allTables.length}개)</label>
+            <div className="app-form-field" style={{ marginBottom: '1.6rem' }}>
+              <label className="app-form-label">테이블 선택 ({allTables.length}개)</label>
               <select
-                className="form-select"
+                className="krds-form-select"
                 value={selectedTable?.tableName || ''}
                 onChange={(e) => {
-                  const table = allTables.find(t => t.tableName === e.target.value);
+                  const table = allTables.find((t) => t.tableName === e.target.value);
                   handleSelectTable(table ? { ...table, label: table.tableName, value: table.tableName } : null);
                 }}
               >
@@ -884,14 +799,16 @@ function TableManagementModal({
                     return aReg - bReg || a.tableName.localeCompare(b.tableName);
                   })
                   .map((table) => (
-                  <option
-                    key={table.tableName}
-                    value={table.tableName}
-                    disabled={isTableRegistered(table.tableName)}
-                  >
-                    {table.tableName}{table.remarks ? ` (${table.remarks})` : ` (${table.tableType})`}{isTableRegistered(table.tableName) ? ' - 등록됨' : ''}
-                  </option>
-                ))}
+                    <option
+                      key={table.tableName}
+                      value={table.tableName}
+                      disabled={isTableRegistered(table.tableName)}
+                    >
+                      {table.tableName}
+                      {table.remarks ? ` (${table.remarks})` : ` (${table.tableType})`}
+                      {isTableRegistered(table.tableName) ? ' - 등록됨' : ''}
+                    </option>
+                  ))}
               </select>
             </div>
           )}
@@ -899,12 +816,13 @@ function TableManagementModal({
           {/* 컬럼 선택 */}
           {selectedTable && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label className="form-label" style={{ margin: 0 }}>
+              <div className={styles.columnSelectStatus}>
+                <span className={styles.columnSelectStatus__count}>
                   컬럼 선택 ({selectedColumns.length}/{allColumns.length})
-                </label>
+                </span>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  className="krds-btn xsmall secondary"
                   onClick={handleSelectAllColumns}
                   disabled={loadingColumns}
                 >
@@ -913,61 +831,53 @@ function TableManagementModal({
               </div>
 
               {loadingColumns ? (
-                <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  컬럼 로딩중...
-                </div>
+                <div className="app-empty">컬럼 로딩중...</div>
               ) : (
-                <div style={{
-                  maxHeight: '200px',
-                  overflow: 'auto',
-                  border: '1px solid var(--border-color, #ddd)',
-                  borderRadius: '0.375rem',
-                  background: 'var(--bg-secondary, #f9f9f9)'
-                }}>
-                  {allColumns.map((col) => (
-                    <label
-                      key={col.columnName}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '0.5rem 0.75rem',
-                        cursor: 'pointer',
-                        borderBottom: '1px solid var(--border-color, #eee)',
-                        background: selectedColumns.some(c => c.columnName === col.columnName)
-                          ? 'var(--primary-bg, #e3f2fd)'
-                          : undefined,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedColumns.some((c) => c.columnName === col.columnName)}
-                        onChange={() => handleToggleColumn(col)}
-                        style={{ marginRight: '0.75rem' }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontWeight: col.isPrimaryKey ? 600 : 400 }}>
-                          {col.columnName}
-                          {col.isPrimaryKey && <span style={{ color: 'var(--primary-color, #1976d2)', marginLeft: '0.25rem' }}>(PK)</span>}
-                        </span>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
-                          {col.dataType} {col.isNullable ? '' : '(NOT NULL)'}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
+                <div className={styles.columnList}>
+                  {allColumns.map((col) => {
+                    const isSelected = selectedColumns.some((c) => c.columnName === col.columnName);
+                    return (
+                      <label
+                        key={col.columnName}
+                        className={`${styles.columnList__row} ${isSelected ? styles['columnList__row--selected'] : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleColumn(col)}
+                          className={styles.columnList__checkbox}
+                        />
+                        <div className={styles.columnList__main}>
+                          <span className={`${styles.columnList__name} ${col.isPrimaryKey ? styles['columnList__name--pk'] : ''}`}>
+                            {col.columnName}
+                            {col.isPrimaryKey && <span className={styles.columnList__pkLabel}>(PK)</span>}
+                          </span>
+                          <span className={styles.columnList__type}>
+                            {col.dataType} {col.isNullable ? '' : '(NOT NULL)'}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* 등록 버튼 */}
-              <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+              <div className="app-btn-row app-btn-row--end">
                 <button
-                  className="btn btn-primary"
+                  type="button"
+                  className="krds-btn small primary"
                   onClick={handleRegisterTable}
-                  disabled={registering || selectedColumns.length === 0 || isTableRegistered(selectedTable.tableName)}
+                  disabled={
+                    registering ||
+                    selectedColumns.length === 0 ||
+                    isTableRegistered(selectedTable.tableName)
+                  }
                 >
-                  {registering ? '등록중...' :
-                   isTableRegistered(selectedTable.tableName) ? '이미 등록된 테이블' :
-                   `${selectedTable.tableName} 등록 (${selectedColumns.length}개 컬럼)`}
+                  {registering
+                    ? '등록중...'
+                    : isTableRegistered(selectedTable.tableName)
+                    ? '이미 등록된 테이블'
+                    : `${selectedTable.tableName} 등록 (${selectedColumns.length}개 컬럼)`}
                 </button>
               </div>
             </div>
@@ -975,149 +885,131 @@ function TableManagementModal({
         </div>
 
         {/* 등록된 테이블 목록 */}
-        <div className="card">
-          <h4 style={{ marginBottom: '0.75rem' }}>
-            등록된 테이블 ({registeredTables.length})
-          </h4>
+        <div className="app-card">
+          <h4 className={styles.sectionTitle}>등록된 테이블 ({registeredTables.length})</h4>
           {loading ? (
-            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>로딩중...</div>
+            <div className="app-empty">로딩중...</div>
           ) : registeredTables.length === 0 ? (
-            <div className="empty-state" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              등록된 테이블이 없습니다. 위에서 테이블을 검색하여 추가하세요.
-            </div>
+            <div className="app-empty">등록된 테이블이 없습니다. 위에서 테이블을 검색하여 추가하세요.</div>
           ) : (
-            <div style={{ maxHeight: '300px', overflow: 'auto' }}>
+            <div className={styles.tableListScroll}>
               {registeredTables.map((table) => (
-                <div
-                  key={table.id}
-                  style={{
-                    border: '1px solid var(--border-color, #ddd)',
-                    borderRadius: '0.375rem',
-                    padding: '0.75rem',
-                    marginBottom: '0.5rem',
-                    background: 'var(--bg-secondary, #f9f9f9)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={table.id} className={styles.registeredTable}>
+                  <div className={styles.registeredTable__header}>
                     <span>
-                      <strong style={{ fontSize: '1rem' }}>{table.tableName}</strong>
-                      {(table.description || table.tableAlias) && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({table.description || table.tableAlias})</span>}
+                      <span className={styles.registeredTable__name}>{table.tableName}</span>
+                      {(table.description || table.tableAlias) && (
+                        <span className={styles.registeredTable__alias}>
+                          ({table.description || table.tableAlias})
+                        </span>
+                      )}
                     </span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div className={styles.registeredTable__actions}>
                       <button
-                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        className="krds-btn xsmall secondary"
                         onClick={() => handleRefreshColumns(table)}
                         disabled={refreshingTableId === table.id}
                       >
                         {refreshingTableId === table.id ? '수집중...' : '컬럼 재수집'}
                       </button>
                       <button
-                        className="btn btn-danger btn-sm"
+                        type="button"
+                        className="krds-btn xsmall app-btn-danger"
                         onClick={() => handleDeleteTable(table.id)}
                       >
                         삭제
                       </button>
                     </div>
                   </div>
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <button
-                      className="btn btn-sm"
-                      style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                      onClick={() => setExpandedTableId(expandedTableId === table.id ? null : table.id)}
-                    >
-                      {expandedTableId === table.id ? '▼' : '▶'} 컬럼 ({table.columns.length}개)
-                    </button>
-                    {expandedTableId === table.id && (
-                      <div style={{ marginTop: '0.25rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                        {table.columns.map((c) => (
-                          <span
-                            key={c.id}
-                            style={{
-                              display: 'inline-block',
-                              background: c.isPrimaryKey ? 'var(--primary-bg, #e3f2fd)' : 'var(--card-bg, white)',
-                              border: '1px solid var(--border-color, #ddd)',
-                              padding: '0.125rem 0.5rem',
-                              borderRadius: '0.25rem',
-                              fontSize: '0.75rem',
-                            }}
-                          >
-                            {c.columnName}
-                            {c.isPrimaryKey && <span style={{ color: 'var(--primary-color, #1976d2)' }}> (PK)</span>}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    className={styles.registeredTable__expand}
+                    onClick={() => setExpandedTableId(expandedTableId === table.id ? null : table.id)}
+                  >
+                    {expandedTableId === table.id ? '▼' : '▶'} 컬럼 ({table.columns.length}개)
+                  </button>
+                  {expandedTableId === table.id && (
+                    <div className={styles.registeredTable__columnChips}>
+                      {table.columns.map((c) => (
+                        <span
+                          key={c.id}
+                          className={`${styles.columnChip} ${c.isPrimaryKey ? styles['columnChip--pk'] : ''}`}
+                        >
+                          {c.columnName}
+                          {c.isPrimaryKey && <span className={styles.columnChip__pkLabel}>(PK)</span>}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* 컬럼 재수집 선택 모달 */}
+        {/* 컬럼 재수집 모달 */}
         {refreshTarget && (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
-          }}>
-            <div className="card" style={{ width: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h4 style={{ margin: 0 }}>컬럼 재수집 — {refreshTarget.tableName}</h4>
-                <button className="btn btn-sm" onClick={() => setRefreshTarget(null)} style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+          <div className={`${styles.modalOverlay} ${styles.modalZIndex2}`}>
+            <div className={`${styles.modalDialog} ${styles['modalDialog--small']}`}>
+              <div className={styles.modalHeader}>
+                <h4 className={styles.modalTitle}>컬럼 재수집 — {refreshTarget.tableName}</h4>
+                <button type="button" className={styles.modalCloseBtn} onClick={() => setRefreshTarget(null)}>
+                  ✕
+                </button>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div className={styles.columnSelectStatus}>
+                <span className={styles.columnSelectStatus__count}>
                   선택: {refreshSelectedColumns.length}/{refreshDbColumns.length}
                 </span>
                 <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setRefreshSelectedColumns(
-                    refreshSelectedColumns.length === refreshDbColumns.length ? [] : [...refreshDbColumns]
-                  )}
+                  type="button"
+                  className="krds-btn xsmall secondary"
+                  onClick={() =>
+                    setRefreshSelectedColumns(
+                      refreshSelectedColumns.length === refreshDbColumns.length ? [] : [...refreshDbColumns]
+                    )
+                  }
                 >
                   {refreshSelectedColumns.length === refreshDbColumns.length ? '전체해제' : '전체선택'}
                 </button>
               </div>
-              <div style={{
-                flex: 1, overflow: 'auto', border: '1px solid var(--border-color, #ddd)',
-                borderRadius: '0.375rem', background: 'var(--bg-secondary, #f9f9f9)',
-              }}>
+              <div className={`${styles.columnList} ${styles['columnList--scrollable']}`}>
                 {refreshDbColumns.map((col) => {
-                  const isExisting = refreshTarget.columns.some(c => c.columnName === col.columnName);
-                  const isSelected = refreshSelectedColumns.some(c => c.columnName === col.columnName);
+                  const isExisting = refreshTarget.columns.some((c) => c.columnName === col.columnName);
+                  const isSelected = refreshSelectedColumns.some((c) => c.columnName === col.columnName);
                   return (
                     <label
                       key={col.columnName}
-                      style={{
-                        display: 'flex', alignItems: 'center', padding: '0.5rem 0.75rem', cursor: 'pointer',
-                        borderBottom: '1px solid var(--border-color, #eee)',
-                        background: isSelected ? 'var(--primary-bg, #e3f2fd)' : undefined,
-                      }}
+                      className={`${styles.columnList__row} ${isSelected ? styles['columnList__row--selected'] : ''}`}
                     >
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleRefreshToggleColumn(col)}
-                        style={{ marginRight: '0.75rem' }}
+                        className={styles.columnList__checkbox}
                       />
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontWeight: col.isPrimaryKey ? 600 : 400 }}>
+                      <div className={styles.columnList__main}>
+                        <span className={`${styles.columnList__name} ${col.isPrimaryKey ? styles['columnList__name--pk'] : ''}`}>
                           {col.columnName}
-                          {col.isPrimaryKey && <span style={{ color: 'var(--primary-color, #1976d2)', marginLeft: '0.25rem' }}>(PK)</span>}
+                          {col.isPrimaryKey && <span className={styles.columnList__pkLabel}>(PK)</span>}
                         </span>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+                        <span className={styles.columnList__type}>
                           {col.dataType} {col.isNullable ? '' : '(NOT NULL)'}
                         </span>
-                        {!isExisting && <span style={{ color: 'var(--success-color, #2e7d32)', fontSize: '0.7rem', marginLeft: '0.5rem' }}>NEW</span>}
+                        {!isExisting && <span className={styles.columnList__newLabel}>NEW</span>}
                       </div>
                     </label>
                   );
                 })}
               </div>
-              <div style={{ marginTop: '0.75rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button className="btn btn-secondary" onClick={() => setRefreshTarget(null)}>취소</button>
+              <div className="app-btn-row app-btn-row--end">
+                <button type="button" className="krds-btn small tertiary" onClick={() => setRefreshTarget(null)}>
+                  취소
+                </button>
                 <button
-                  className="btn btn-primary"
+                  type="button"
+                  className="krds-btn small primary"
                   onClick={handleRefreshConfirm}
                   disabled={refreshSaving || refreshSelectedColumns.length === 0}
                 >

@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import styles from './Sidebar.module.css';
 
 const navItems = [
-  { href: '/', label: '대시보드', icon: '📊' },
-  { href: '/datasources', label: 'DB 관리', icon: '🗄️' },
-  { href: '/agents', label: 'Agent 관리', icon: '🖥️' },
-  { href: '/api-collect', label: 'API 수집 관리', icon: '🌐' },
-  { href: '/api-provide', label: 'API 제공 관리', icon: '📡' },
+  { href: '/', label: '대시보드' },
+  { href: '/datasources', label: 'DB 관리' },
+  { href: '/agents', label: 'Agent 관리' },
+  { href: '/api-collect', label: 'API 수집 관리' },
+  { href: '/api-provide', label: 'API 제공 관리' },
 ];
 
 export default function Sidebar() {
@@ -22,17 +23,16 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">GIMS-Link</div>
+    <aside className={styles.aside}>
+      <div className={styles.brand}>GIMS-Link</div>
       <nav>
-        <ul className="sidebar-nav">
+        <ul className={styles.list}>
           {navItems.map((item) => (
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={isActive(item.href) ? 'active' : ''}
+                className={`${styles.link} ${isActive(item.href) ? styles.active : ''}`}
               >
-                <span style={{ marginRight: '0.5rem' }}>{item.icon}</span>
                 {item.label}
               </Link>
             </li>

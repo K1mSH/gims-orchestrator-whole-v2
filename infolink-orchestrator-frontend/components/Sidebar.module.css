@@ -1,0 +1,50 @@
+/* 우리 시스템에 맞춘 사이드바 wrapper — KRDS .krds-side-navigation 톤 차용 */
+.aside {
+  width: 24rem;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: var(--krds-light-color-background-white);
+  border-right: 0.1rem solid var(--krds-light-color-border-gray-light);
+  padding: 2rem 1.6rem;
+  overflow-y: auto;
+}
+
+.brand {
+  font-size: var(--krds-pc-font-size-heading-small);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  padding: 0 0.8rem 1.6rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light);
+  margin-bottom: 1.2rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.link {
+  display: block;
+  padding: 1rem 1.2rem;
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-regular);
+  color: var(--krds-light-color-text-bolder);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.link:hover {
+  background-color: var(--krds-light-color-action-secondary-hover);
+}
+
+.link.active {
+  background-color: var(--krds-light-color-action-secondary-selected);
+  color: var(--krds-light-color-text-secondary);
+  font-weight: var(--krds-font-weight-bold);
+}

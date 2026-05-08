@@ -5,6 +5,7 @@ import { executionApi, executionHistoryApi, AgentExecutionSummary } from '@/lib/
 import type { ExecutionHistory, ExecutionDashboardStats, AgentType, Zone } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import Link from 'next/link';
+import styles from './dashboard.module.css';
 
 const AGENT_TYPE_LABELS: Record<AgentType, string> = {
   RCV: '수신(RCV)',
@@ -21,6 +22,20 @@ const ZONE_LABELS: Record<Zone, string> = {
 };
 
 type ActiveCard = 'total' | 'online' | 'offline' | 'running' | 'todayExec' | 'todayFailed' | null;
+
+const AGENT_TYPE_CLASS: Record<string, string> = {
+  RCV: styles.agentTypeRelay,
+  SND: styles.agentTypeRelay,
+  LOADER: styles.agentTypeLoader,
+  DB_CON_PROXY: styles.agentTypeUnknown,
+};
+
+const TRIGGER_CLASS: Record<string, string> = {
+  MANUAL: styles.triggerManual,
+  SCHEDULE: styles.triggerSchedule,
+  CHAIN: styles.triggerChain,
+  API: styles.triggerSchedule,
+};
 
 export default function DashboardPage() {
   const [execStats, setExecStats] = useState<ExecutionDashboardStats | null>(null);
@@ -57,9 +72,8 @@ export default function DashboardPage() {
   };
 
   const offlineCount = execStats ? execStats.totalAgents - execStats.onlineAgents : 0;
-  const today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
+  const today = new Date().toISOString().slice(0, 10);
 
-  // 필터된 Agent 목록
   const filteredAgents = (() => {
     if (activeCard === null || activeCard === 'total') return agentStatuses;
     if (activeCard === 'online') return agentStatuses.filter(a => a.agentStatus === 'ONLINE' || a.agentStatus === 'RUNNING');
@@ -67,7 +81,6 @@ export default function DashboardPage() {
     return [];
   })();
 
-  // 필터된 실행 이력
   const filteredHistory = (() => {
     if (activeCard === 'running') return recentHistory.filter(h => h.status === 'RUNNING');
     if (activeCard === 'todayExec') return recentHistory;
@@ -76,13 +89,13 @@ export default function DashboardPage() {
   })();
 
   if (loading) {
-    return <div className="loading">로딩중...</div>;
+    return <div className="app-loading">로딩중...</div>;
   }
 
   const cardClass = (card: ActiveCard, alertCondition?: boolean) => {
-    const classes = ['stat-card', 'stat-card-clickable'];
-    if (activeCard === card) classes.push('stat-card-active');
-    if (alertCondition) classes.push('stat-card-alert');
+    const classes = [styles.statCard, styles.statCardClickable];
+    if (activeCard === card) classes.push(styles.statCardActive);
+    if (alertCondition) classes.push(styles.statCardAlert);
     return classes.join(' ');
   };
 
@@ -100,57 +113,50 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">대시보드</h1>
-        <span style={{ color: 'var(--gray-400)', fontSize: '12px' }}>10초마다 자동 갱신</span>
+      <div className="app-page-header">
+        <h1 className="app-page-header__title">대시보드</h1>
+        <span className="app-page-header__meta">10초마다 자동 갱신</span>
       </div>
 
       {execStats && (
-        <div className="stats-grid">
+        <div className={styles.statsGrid}>
           <div className={cardClass('total')} onClick={() => handleCardClick('total')}>
-            <div className="stat-label">전체 Agent</div>
-            <div className="stat-value">{execStats.totalAgents}</div>
+            <div className={styles.statLabel}>전체 Agent</div>
+            <div className={styles.statValue}>{execStats.totalAgents}</div>
           </div>
           <div className={cardClass('online')} onClick={() => handleCardClick('online')}>
-            <div className="stat-label">온라인</div>
-            <div className="stat-value success">{execStats.onlineAgents}</div>
+            <div className={styles.statLabel}>온라인</div>
+            <div className={`${styles.statValue} ${styles.statValueSuccess}`}>{execStats.onlineAgents}</div>
           </div>
           <div className={cardClass('offline', offlineCount > 0)} onClick={() => handleCardClick('offline')}>
-            <div className="stat-label">오프라인</div>
-            <div className="stat-value error">{offlineCount}</div>
+            <div className={styles.statLabel}>오프라인</div>
+            <div className={`${styles.statValue} ${styles.statValueError}`}>{offlineCount}</div>
           </div>
-          <Link href={`/executions?status=RUNNING&startDate=${today}`} style={{ textDecoration: 'none' }}>
-            <div className={cardClass('running')}>
-              <div className="stat-label">실행 중</div>
-              <div className="stat-value" style={{ color: execStats.currentlyRunning > 0 ? 'var(--primary)' : undefined }}>
-                {execStats.currentlyRunning}
-              </div>
+          <Link href={`/executions?status=RUNNING&startDate=${today}`} className={cardClass('running')}>
+            <div className={styles.statLabel}>실행 중</div>
+            <div className={`${styles.statValue} ${execStats.currentlyRunning > 0 ? styles.statValuePrimary : ''}`}>
+              {execStats.currentlyRunning}
             </div>
           </Link>
-          <Link href={`/executions?startDate=${today}`} style={{ textDecoration: 'none' }}>
-            <div className={cardClass('todayExec')}>
-              <div className="stat-label">오늘 실행</div>
-              <div className="stat-value">{execStats.todayExecutions}</div>
-            </div>
+          <Link href={`/executions?startDate=${today}`} className={cardClass('todayExec')}>
+            <div className={styles.statLabel}>오늘 실행</div>
+            <div className={styles.statValue}>{execStats.todayExecutions}</div>
           </Link>
-          <Link href={`/executions?status=FAILED&startDate=${today}`} style={{ textDecoration: 'none' }}>
-            <div className={cardClass('todayFailed', execStats.todayFailed > 0)}>
-              <div className="stat-label">오늘 실패</div>
-              <div className="stat-value error">{execStats.todayFailed}</div>
-            </div>
+          <Link href={`/executions?status=FAILED&startDate=${today}`} className={cardClass('todayFailed', execStats.todayFailed > 0)}>
+            <div className={styles.statLabel}>오늘 실패</div>
+            <div className={`${styles.statValue} ${styles.statValueError}`}>{execStats.todayFailed}</div>
           </Link>
         </div>
       )}
 
-      {/* Agent 테이블 (기본 뷰 + 카드 클릭) */}
       {showAgentTable && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">{activeCard ? cardTitle[activeCard] : 'Agent 상태'}</h2>
-            <Link href="/agents" className="btn btn-secondary btn-sm">전체보기</Link>
+        <div className="app-card">
+          <div className="app-card__header">
+            <h2 className="app-card__title">{activeCard ? cardTitle[activeCard] : 'Agent 상태'}</h2>
+            <Link href="/agents" className="krds-btn small secondary">전체보기</Link>
           </div>
-          <div className="table-container">
-            <table>
+          <div>
+            <table className={`app-table ${styles.agentTable}`}>
               <thead>
                 <tr>
                   <th>Agent</th>
@@ -163,16 +169,14 @@ export default function DashboardPage() {
               <tbody>
                 {filteredAgents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="empty-state">해당 Agent가 없습니다</td>
+                    <td colSpan={5} className="app-empty">해당 Agent가 없습니다</td>
                   </tr>
                 ) : (
                   filteredAgents.map(agent => (
                     <tr key={agent.agentId}>
                       <td>
-                        <Link href={`/agents/${agent.agentId}`}>{agent.agentName}</Link>
-                        <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-400)' }}>
-                          {agent.agentCode}
-                        </span>
+                        <Link href={`/agents/${agent.agentId}`} className={styles.linkAgent}>{agent.agentName}</Link>
+                        <span className={styles.agentCode}>{agent.agentCode}</span>
                       </td>
                       <td>
                         <span className={`zone-${agent.zone.toLowerCase().replace('_', '-')}`}>
@@ -183,7 +187,7 @@ export default function DashboardPage() {
                       <td>
                         {agent.lastExecutionStatus ? (
                           <StatusBadge status={agent.lastExecutionStatus as 'SUCCESS' | 'FAILED' | 'RUNNING'} />
-                        ) : <span style={{ color: 'var(--gray-400)' }}>-</span>}
+                        ) : <span className={styles.muted}>-</span>}
                       </td>
                       <td>{agent.lastRunAt ? new Date(agent.lastRunAt).toLocaleString('ko-KR') : '-'}</td>
                     </tr>
@@ -195,14 +199,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 카드 클릭 시: 실행 이력 테이블 */}
       {showHistoryTable && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">{cardTitle[activeCard!]}</h2>
+        <div className="app-card">
+          <div className="app-card__header">
+            <h2 className="app-card__title">{cardTitle[activeCard!]}</h2>
           </div>
-          <div className="table-container">
-            <table>
+          <div>
+            <table className={`app-table ${styles.historyTable}`}>
               <thead>
                 <tr>
                   <th>Agent</th>
@@ -217,25 +220,25 @@ export default function DashboardPage() {
               <tbody>
                 {filteredHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty-state">해당 이력이 없습니다</td>
+                    <td colSpan={7} className="app-empty">해당 이력이 없습니다</td>
                   </tr>
                 ) : (
                   filteredHistory.map(history => (
                     <tr key={history.executionId}>
                       <td>
-                        <Link href={`/executions/${encodeURIComponent(history.executionId)}`} style={{ fontWeight: 500 }}>
+                        <Link href={`/executions/${encodeURIComponent(history.executionId)}`} className={styles.linkAgent}>
                           {history.agentName}
                         </Link>
                       </td>
                       <td>
-                        <span className={`agent-type-badge agent-type-${history.agentType?.toLowerCase() || 'unknown'}`}>
+                        <span className={`${styles.agentTypeBadge} ${AGENT_TYPE_CLASS[history.agentType ?? ''] ?? styles.agentTypeUnknown}`}>
                           {history.agentType ? (AGENT_TYPE_LABELS[history.agentType] || history.agentType) : '-'}
                         </span>
                       </td>
                       <td><StatusBadge status={history.status as 'SUCCESS' | 'FAILED' | 'RUNNING'} /></td>
                       <td>
                         {history.status === 'RUNNING' ? (
-                          <span style={{ color: 'var(--gray-400)' }}>-</span>
+                          <span className={styles.muted}>-</span>
                         ) : (
                           <span>
                             {history.totalReadCount ?? 0} / {history.totalWriteCount ?? 0} / {history.totalSkipCount ?? 0}
@@ -244,7 +247,7 @@ export default function DashboardPage() {
                       </td>
                       <td>{history.durationMs != null ? `${(history.durationMs / 1000).toFixed(1)}s` : '-'}</td>
                       <td>
-                        <span className={`trigger-badge trigger-${history.triggeredBy.toLowerCase()}`}>
+                        <span className={`${styles.triggerBadge} ${TRIGGER_CLASS[history.triggeredBy] ?? styles.triggerManual}`}>
                           {history.triggeredBy}
                         </span>
                       </td>

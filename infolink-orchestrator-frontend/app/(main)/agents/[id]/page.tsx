@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
-import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable, DatasourceColumn, AgentType } from '@/types';
+import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable } from '@/types';
 import { CONDITION_OPERATORS } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
 import InfoTab from '@/components/agent/InfoTab';
 import HistoryTab from '@/components/agent/HistoryTab';
+import styles from './page.module.css';
 
 const STATUS_LABELS: Record<string, string> = {
   ONLINE: '온라인',
@@ -32,12 +33,9 @@ export default function AgentDetailPage() {
   const [executions, setExecutions] = useState<ExecutionHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 조건실행 패널 상태
   const [showExecutionOptions, setShowExecutionOptions] = useState(false);
-  // 동적 WHERE 조건 상태
   const [conditions, setConditions] = useState<ExecutionCondition[]>([]);
-  const [condTableSelections, setCondTableSelections] = useState<string[]>([]); // 조건별 테이블 선택 (UI용)
-  // 소스 테이블/컬럼 정보 (WHERE 조건 드롭다운용)
+  const [condTableSelections, setCondTableSelections] = useState<string[]>([]);
   const [sourceTables, setSourceTables] = useState<DatasourceTable[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -45,7 +43,6 @@ export default function AgentDetailPage() {
       const agentData = await agentApi.getById(agentId);
       setAgent(agentData);
 
-      // 프록시 Agent는 스케줄/실행이력 불필요
       if (agentData.agentType !== 'DB_CON_PROXY') {
         const [schedulesData, executionsData] = await Promise.all([
           scheduleApi.getByAgentId(agentId),
@@ -54,10 +51,9 @@ export default function AgentDetailPage() {
         setSchedules(schedulesData);
         setExecutions(executionsData);
       }
-      // WHERE 조건 대상 테이블 로드 (Agent YML의 select-tables 기반)
       try {
         const tables = await agentApi.getSelectTables(agentId);
-        setSourceTables(tables.filter(t => t.columns && t.columns.length > 0));
+        setSourceTables(tables.filter((t) => t.columns && t.columns.length > 0));
       } catch {
         // 테이블 정보 로드 실패 시 무시 (수동 입력 fallback)
       }
@@ -72,7 +68,6 @@ export default function AgentDetailPage() {
     fetchData();
   }, [fetchData]);
 
-  // 실행중일 때 주기적으로 Agent 상태 확인
   useEffect(() => {
     if (agent?.status === 'RUNNING') {
       const interval = setInterval(async () => {
@@ -99,32 +94,42 @@ export default function AgentDetailPage() {
   };
 
   const handleTriggerExecution = async (withOptions: boolean = false) => {
-    // 동적 WHERE 조건: 유효한 조건만 필터링
     const validConditions: ExecutionCondition[] = withOptions
       ? conditions
           .map((c, idx) => ({ ...c, tableName: condTableSelections[idx] || undefined }))
-          .filter(c => c.column.trim() && (
-            c.operator === 'IS_NULL' || c.operator === 'IS_NOT_NULL' || (c.value && c.value.trim())
-          ))
+          .filter(
+            (c) =>
+              c.column.trim() &&
+              (c.operator === 'IS_NULL' || c.operator === 'IS_NOT_NULL' || (c.value && c.value.trim()))
+          )
       : [];
 
     const parts: string[] = [];
     if (validConditions.length > 0) {
-      const opLabels: Record<string, string> = Object.fromEntries(CONDITION_OPERATORS.map(o => [o.value, o.label]));
-      parts.push(`WHERE 조건 ${validConditions.length}개: ${validConditions.map(c => `${c.column} ${opLabels[c.operator] || c.operator} ${c.value || ''}${c.value2 ? ` ~ ${c.value2}` : ''}`).join(', ')}`);
+      const opLabels: Record<string, string> = Object.fromEntries(
+        CONDITION_OPERATORS.map((o) => [o.value, o.label])
+      );
+      parts.push(
+        `WHERE 조건 ${validConditions.length}개: ${validConditions
+          .map(
+            (c) =>
+              `${c.column} ${opLabels[c.operator] || c.operator} ${c.value || ''}${
+                c.value2 ? ` ~ ${c.value2}` : ''
+              }`
+          )
+          .join(', ')}`
+      );
     }
 
-    const confirmMsg = parts.length > 0
-      ? `조건실행:\n${parts.join('\n')}\n\n실행하시겠습니까?`
-      : '파이프라인을 실행하시겠습니까? (증분 동기화)';
+    const confirmMsg =
+      parts.length > 0
+        ? `조건실행:\n${parts.join('\n')}\n\n실행하시겠습니까?`
+        : '파이프라인을 실행하시겠습니까? (증분 동기화)';
 
     if (!confirm(confirmMsg)) return;
 
     try {
-      await executionApi.trigger(
-        agentId,
-        validConditions.length > 0 ? validConditions : undefined
-      );
+      await executionApi.trigger(agentId, validConditions.length > 0 ? validConditions : undefined);
       setActiveTab('history');
       setShowExecutionOptions(false);
       setConditions([]);
@@ -147,11 +152,11 @@ export default function AgentDetailPage() {
   };
 
   if (loading) {
-    return <div className="loading">로딩중...</div>;
+    return <div className="app-loading">로딩중...</div>;
   }
 
   if (!agent) {
-    return <div className="empty-state">Agent를 찾을 수 없습니다</div>;
+    return <div className="app-empty">Agent를 찾을 수 없습니다</div>;
   }
 
   const isProxy = agent.agentType === 'DB_CON_PROXY';
@@ -159,46 +164,51 @@ export default function AgentDetailPage() {
   return (
     <div>
       {/* 헤더 */}
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 className="page-title">{agent.agentName}</h1>
+      <div className="app-page-header">
+        <div className={styles.headerLeft}>
+          <h1 className="app-page-header__title">{agent.agentName}</h1>
           <StatusBadge status={agent.status} />
-          {isProxy && (
-            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: '#8b5cf620', color: '#8b5cf6', fontWeight: 500 }}>
-              DB Proxy
-            </span>
-          )}
+          {isProxy && <span className={styles.proxyBadge}>DB Proxy</span>}
         </div>
-        <div>
-          <button className="btn btn-primary" onClick={handleHealthCheck} style={{ marginRight: '0.5rem' }}>
+        <div className={styles.headerActions}>
+          <button type="button" className="krds-btn small primary" onClick={handleHealthCheck}>
             상태확인
           </button>
           {!isProxy && (
             <>
-              <button className="btn btn-primary" onClick={() => handleTriggerExecution(false)} disabled={agent.status !== 'ONLINE'} style={{ marginRight: '0.25rem' }}>
+              <button
+                type="button"
+                className="krds-btn small primary"
+                onClick={() => handleTriggerExecution(false)}
+                disabled={agent.status !== 'ONLINE'}
+              >
                 실행
               </button>
-              <button className="btn btn-secondary" onClick={() => setShowExecutionOptions(!showExecutionOptions)} disabled={agent.status !== 'ONLINE'} style={{ marginRight: '0.5rem' }}>
+              <button
+                type="button"
+                className="krds-btn small secondary"
+                onClick={() => setShowExecutionOptions(!showExecutionOptions)}
+                disabled={agent.status !== 'ONLINE'}
+              >
                 조건실행 ▾
               </button>
             </>
           )}
-          <button className="btn btn-danger" onClick={handleDelete}>
+          <button type="button" className="krds-btn small app-btn-danger" onClick={handleDelete}>
             삭제
           </button>
         </div>
       </div>
 
-      {/* 조건실행 패널 (프록시 Agent에서는 숨김) */}
+      {/* 조건실행 패널 (프록시 Agent 에서는 숨김) */}
       {!isProxy && showExecutionOptions && (
-        <div className="card" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--gray-50)' }}>
-          {/* 동적 WHERE 조건 */}
+        <div className={styles.optionsPanel}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <span style={{ fontWeight: 500 }}>WHERE 조건</span>
+            <div className={styles.optionsHeader}>
+              <span className={styles.optionsLabel}>WHERE 조건</span>
               <button
-                className="btn btn-secondary"
-                style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
+                type="button"
+                className="krds-btn xsmall secondary"
                 onClick={() => {
                   setConditions([...conditions, { column: '', operator: 'EQ', value: '' }]);
                   setCondTableSelections([...condTableSelections, sourceTables[0]?.tableName || '']);
@@ -209,40 +219,46 @@ export default function AgentDetailPage() {
             </div>
             {conditions.map((cond, idx) => {
               const selectedTableName = condTableSelections[idx] || '';
-              const selectedTable = sourceTables.find(t => t.tableName === selectedTableName);
+              const selectedTable = sourceTables.find((t) => t.tableName === selectedTableName);
               const columns = selectedTable?.columns || [];
-              const selectedColumn = columns.find(c => c.columnName === cond.column);
+              const selectedColumn = columns.find((c) => c.columnName === cond.column);
               const colDataType = selectedColumn?.dataType?.toLowerCase() || '';
 
-              // dataType 카테고리 분류
               const isDateType = ['date', 'timestamp', 'time'].includes(colDataType);
-              const isNumericType = ['numeric', 'int4', 'int8', 'serial', 'integer', 'float', 'double', 'bigint', 'smallint', 'decimal', 'real'].includes(colDataType);
+              const isNumericType = [
+                'numeric', 'int4', 'int8', 'serial', 'integer', 'float', 'double',
+                'bigint', 'smallint', 'decimal', 'real',
+              ].includes(colDataType);
               const isTextType = !isDateType && !isNumericType;
 
-              // dataType별 허용 연산자 필터링
-              const allowedOperators = CONDITION_OPERATORS.filter(op => {
-                if (!cond.column || !selectedColumn) return true; // 컬럼 미선택 시 전체
+              const allowedOperators = CONDITION_OPERATORS.filter((op) => {
+                if (!cond.column || !selectedColumn) return true;
                 if (op.value === 'LIKE') return isTextType;
                 if (op.value === 'IN') return !isDateType;
                 return true;
               });
 
-              // 현재 연산자가 허용 목록에 없으면 EQ로 리셋
-              const isOperatorAllowed = allowedOperators.some(op => op.value === cond.operator);
+              const isOperatorAllowed = allowedOperators.some((op) => op.value === cond.operator);
 
-              // input type 결정
-              const inputType = colDataType === 'date' ? 'date'
-                : colDataType === 'timestamp' ? 'datetime-local'
-                : colDataType === 'time' ? 'time'
-                : isNumericType ? 'number'
-                : 'text';
+              const inputType =
+                colDataType === 'date'
+                  ? 'date'
+                  : colDataType === 'timestamp'
+                  ? 'datetime-local'
+                  : colDataType === 'time'
+                  ? 'time'
+                  : isNumericType
+                  ? 'number'
+                  : 'text';
+
+              const isDateTimeLocal = inputType === 'datetime-local';
 
               return (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', marginLeft: '0.5rem', flexWrap: 'wrap' }}>
+                <div key={idx} className={styles.conditionRow}>
                   {sourceTables.length > 0 ? (
                     <>
                       <select
-                        className="form-input"
+                        className={`${styles.conditionInput} ${styles['conditionInput--table']}`}
                         value={selectedTableName}
                         onChange={(e) => {
                           const newSelections = [...condTableSelections];
@@ -252,26 +268,30 @@ export default function AgentDetailPage() {
                           updated[idx] = { ...cond, column: '', operator: 'EQ', value: '', value2: undefined };
                           setConditions(updated);
                         }}
-                        style={{ width: '180px', padding: '0.25rem 0.3rem', fontSize: '0.8rem' }}
                       >
-                        {sourceTables.map(t => (
+                        {sourceTables.map((t) => (
                           <option key={t.id} value={t.tableName}>
                             {t.tableAlias ? `${t.tableName} (${t.tableAlias})` : t.tableName}
                           </option>
                         ))}
                       </select>
                       <select
-                        className="form-input"
+                        className={`${styles.conditionInput} ${styles['conditionInput--column']}`}
                         value={cond.column}
                         onChange={(e) => {
                           const updated = [...conditions];
-                          updated[idx] = { ...cond, column: e.target.value, operator: 'EQ', value: '', value2: undefined };
+                          updated[idx] = {
+                            ...cond,
+                            column: e.target.value,
+                            operator: 'EQ',
+                            value: '',
+                            value2: undefined,
+                          };
                           setConditions(updated);
                         }}
-                        style={{ width: '160px', padding: '0.25rem 0.3rem', fontSize: '0.8rem' }}
                       >
                         <option value="">컬럼 선택</option>
-                        {columns.map(c => (
+                        {columns.map((c) => (
                           <option key={c.columnName} value={c.columnName}>
                             {c.columnAlias ? `${c.columnName} (${c.columnAlias})` : c.columnName}
                           </option>
@@ -281,7 +301,7 @@ export default function AgentDetailPage() {
                   ) : (
                     <input
                       type="text"
-                      className="form-input"
+                      className={`${styles.conditionInput} ${styles['conditionInput--column']}`}
                       value={cond.column}
                       onChange={(e) => {
                         const updated = [...conditions];
@@ -289,41 +309,51 @@ export default function AgentDetailPage() {
                         setConditions(updated);
                       }}
                       placeholder="컬럼명"
-                      style={{ width: '150px', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                     />
                   )}
                   <select
-                    className="form-input"
+                    className={`${styles.conditionInput} ${styles['conditionInput--operator']}`}
                     value={isOperatorAllowed ? cond.operator : 'EQ'}
                     onChange={(e) => {
                       const updated = [...conditions];
-                      updated[idx] = { ...cond, operator: e.target.value as ExecutionCondition['operator'], value: '', value2: undefined };
+                      updated[idx] = {
+                        ...cond,
+                        operator: e.target.value as ExecutionCondition['operator'],
+                        value: '',
+                        value2: undefined,
+                      };
                       setConditions(updated);
                     }}
-                    style={{ width: '110px', padding: '0.25rem 0.3rem', fontSize: '0.8rem' }}
                   >
-                    {allowedOperators.map(op => (
-                      <option key={op.value} value={op.value}>{op.label}</option>
+                    {allowedOperators.map((op) => (
+                      <option key={op.value} value={op.value}>
+                        {op.label}
+                      </option>
                     ))}
                   </select>
                   {cond.operator !== 'IS_NULL' && cond.operator !== 'IS_NOT_NULL' && (
                     <input
                       type={cond.operator === 'IN' ? 'text' : inputType}
-                      className="form-input"
+                      className={`${styles.conditionInput} ${
+                        isDateTimeLocal ? styles['conditionInput--valueDate'] : styles['conditionInput--value']
+                      }`}
                       value={cond.value || ''}
                       onChange={(e) => {
                         const updated = [...conditions];
                         updated[idx] = { ...cond, value: e.target.value };
                         setConditions(updated);
                       }}
-                      placeholder={cond.operator === 'IN' ? '값1,값2,...' : cond.operator === 'LIKE' ? '%값%' : '값'}
-                      style={{ width: inputType === 'datetime-local' ? '220px' : '180px', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                      placeholder={
+                        cond.operator === 'IN' ? '값1,값2,...' : cond.operator === 'LIKE' ? '%값%' : '값'
+                      }
                     />
                   )}
                   {cond.operator === 'BETWEEN' && (
                     <input
                       type={inputType}
-                      className="form-input"
+                      className={`${styles.conditionInput} ${
+                        isDateTimeLocal ? styles['conditionInput--valueDate'] : styles['conditionInput--value2']
+                      }`}
                       value={cond.value2 || ''}
                       onChange={(e) => {
                         const updated = [...conditions];
@@ -331,12 +361,11 @@ export default function AgentDetailPage() {
                         setConditions(updated);
                       }}
                       placeholder="종료 값"
-                      style={{ width: inputType === 'datetime-local' ? '220px' : '150px', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                     />
                   )}
                   <button
-                    className="btn btn-danger"
-                    style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                    type="button"
+                    className="krds-btn xsmall app-btn-danger"
                     onClick={() => {
                       setConditions(conditions.filter((_, i) => i !== idx));
                       setCondTableSelections(condTableSelections.filter((_, i) => i !== idx));
@@ -348,19 +377,21 @@ export default function AgentDetailPage() {
               );
             })}
             {conditions.length === 0 && (
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                조건 없음 (기본 증분 동기화)
-              </div>
+              <div className={styles.conditionEmpty}>조건 없음 (기본 증분 동기화)</div>
             )}
           </div>
 
-          {/* 버튼 */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
-            <button className="btn btn-primary" onClick={() => handleTriggerExecution(true)}>
+          <div className={styles.optionsFooter}>
+            <button
+              type="button"
+              className="krds-btn small primary"
+              onClick={() => handleTriggerExecution(true)}
+            >
               실행
             </button>
             <button
-              className="btn btn-secondary"
+              type="button"
+              className="krds-btn small tertiary"
               onClick={() => {
                 setShowExecutionOptions(false);
                 setConditions([]);
@@ -370,31 +401,29 @@ export default function AgentDetailPage() {
               취소
             </button>
           </div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-            * 옵션 미선택 시 전체 데이터 대상 실행
-          </p>
+          <p className={styles.optionsHelp}>* 옵션 미선택 시 전체 데이터 대상 실행</p>
         </div>
       )}
 
       {/* 탭 네비게이션 */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '1.5rem', borderBottom: '2px solid var(--gray-200)' }}>
-        <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')}>
-          기본정보
-        </TabButton>
-        {!isProxy && (
-          <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
-            실행이력 ({executions.length})
-          </TabButton>
-        )}
+      <div className={`krds-tab-area ${styles.tabsWrap}`}>
+        <div className="tab line">
+          <ul>
+            <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')}>
+              기본정보
+            </TabButton>
+            {!isProxy && (
+              <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
+                실행이력 ({executions.length})
+              </TabButton>
+            )}
+          </ul>
+        </div>
       </div>
 
       {/* 탭 컨텐츠 */}
-      {activeTab === 'info' && (
-        <InfoTab agent={agent} schedules={schedules} onUpdate={fetchData} />
-      )}
-      {activeTab === 'history' && (
-        <HistoryTab executions={executions} />
-      )}
+      {activeTab === 'info' && <InfoTab agent={agent} schedules={schedules} onUpdate={fetchData} />}
+      {activeTab === 'history' && <HistoryTab executions={executions} />}
     </div>
   );
 }

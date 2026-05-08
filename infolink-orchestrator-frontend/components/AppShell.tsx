@@ -9,11 +9,11 @@ import AppHeader from './AppHeader';
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="layout">
+    <div className="app-layout">
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: '250px', display: 'flex', flexDirection: 'column' }}>
+      <div className="app-layout__body">
         <AppHeader />
-        <main className="main-content" style={{ marginLeft: 0 }}>{children}</main>
+        <main className="app-layout__main">{children}</main>
       </div>
     </div>
   );

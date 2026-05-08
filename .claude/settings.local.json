@@ -562,7 +562,12 @@
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 frontend \\(booting...\\)\" })",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 8 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 fail\" })",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 still booting\" })",
-      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 fail\" })"
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 fail\" })",
+      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/css/token/krds_tokens.css\" \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/css/token/\")",
+      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/css/common/common.css\" \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/css/common/\")",
+      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/css/component/component.css\" \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/css/component/\")",
+      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/fonts/\"PretendardGOV-*.woff2 \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/fonts/\")",
+      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/fonts/\"PretendardGOV-*.woff \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/fonts/\")"
     ]
   },
   "hooks": {

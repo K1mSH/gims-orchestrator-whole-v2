@@ -1,448 +1,432 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/*
+ * KRDS 디자인 시스템 기반.
+ * - reset / base / typography / 컴포넌트는 모두 /krds/css/* 에서 처리.
+ * - 본 파일은 (1) PretendardGOV @font-face 등록, (2) KRDS 토큰 fallback,
+ *   (3) 앱 전역 wrapper / 유틸리티만 정의한다.
+ */
+
+/* ---------- PretendardGOV @font-face ---------- */
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/krds/fonts/PretendardGOV-Regular.subset.woff2') format('woff2'),
+       url('/krds/fonts/PretendardGOV-Regular.subset.woff') format('woff');
+}
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('/krds/fonts/PretendardGOV-Medium.subset.woff2') format('woff2'),
+       url('/krds/fonts/PretendardGOV-Medium.subset.woff') format('woff');
+}
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/krds/fonts/PretendardGOV-Bold.subset.woff2') format('woff2'),
+       url('/krds/fonts/PretendardGOV-Bold.subset.woff') format('woff');
 }
 
+/* ---------- KRDS 토큰 fallback (KRDS 토큰 자체엔 fallback 폰트 없음) ---------- */
 :root {
-  --primary: #3b82f6;
-  --primary-dark: #2563eb;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
+  --krds-typo-font-type: 'Pretendard GOV', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--gray-50);
-  color: var(--gray-900);
-  line-height: 1.5;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* Layout */
-.layout {
+/* ---------- 앱 셸 wrapper ---------- */
+.app-layout {
   display: flex;
   min-height: 100vh;
+  background-color: var(--krds-light-color-background-gray-subtler);
 }
 
-.sidebar {
-  width: 250px;
-  background: var(--gray-800);
-  color: white;
-  padding: 1rem;
-  position: fixed;
-  height: 100vh;
-  overflow-y: auto;
-}
-
-.sidebar-logo {
-  font-size: 1.25rem;
-  font-weight: 700;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--gray-700);
-  margin-bottom: 1rem;
-}
-
-.sidebar-nav {
-  list-style: none;
-}
-
-.sidebar-nav li {
-  margin-bottom: 0.25rem;
-}
-
-.sidebar-nav a {
-  display: block;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
-}
-
-.sidebar-nav a:hover,
-.sidebar-nav a.active {
-  background: var(--gray-700);
-}
-
-.main-content {
+.app-layout__body {
   flex: 1;
-  margin-left: 250px;
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  margin-left: 24rem; /* sidebar width */
   min-width: 0;
 }
 
-/* Cards */
-.card {
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+.app-layout__main {
+  flex: 1;
+  padding: 2.4rem;
+  min-width: 0;
 }
 
+/* ---------- 페이지 헤더 (모든 도메인 페이지 공통) ---------- */
+.app-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.app-page-header__title {
+  font-size: var(--krds-pc-font-size-heading-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.app-page-header__meta {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ---------- 콘텐츠 카드 (페이지 내 박스 단위) ---------- */
+.app-card {
+  background-color: var(--krds-light-color-background-white);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-medium2);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.app-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.6rem;
+}
+
+.app-card__title {
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+/* ---------- 빈 상태 / 로딩 ---------- */
+.app-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-body-medium);
+}
+
+.app-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 2rem;
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ---------- 표 기본 (KRDS .krds-table-wrap 보조 — 우리 도메인 톤) ---------- */
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.app-table thead th {
+  text-align: left;
+  padding: 1rem 1.2rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.app-table tbody td {
+  padding: 1rem 1.2rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.app-table tbody tr:hover {
+  background-color: var(--krds-light-color-background-gray-subtler);
+}
+
+/* ---------- 폼 레이아웃 (KRDS .krds-input/.krds-form-select 보조) ---------- */
+.app-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.6rem;
+}
+
+.app-form-grid--single {
+  grid-template-columns: 1fr;
+}
+
+.app-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.app-form-label {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.app-form-label__hint {
+  font-weight: var(--krds-font-weight-regular);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-left: 0.4rem;
+}
+
+.app-form-help {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.app-btn-row {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.6rem;
+  flex-wrap: wrap;
+}
+
+.app-btn-row--end {
+  justify-content: flex-end;
+}
+
+.app-btn-row--between {
+  justify-content: space-between;
+}
+
+/* ---------- 위험(삭제) 버튼 — KRDS .krds-btn에 danger 변형이 없어 자체 정의.
+   .krds-btn 베이스가 default primary 색을 가지므로 specificity 한 단계 올림(0,2,0).
+   사용: <button class="krds-btn small app-btn-danger"> */
+.krds-btn.app-btn-danger {
+  background-color: var(--krds-light-color-element-danger);
+  border-color: var(--krds-light-color-element-danger);
+  color: var(--krds-color-light-gray-0);
+}
+.krds-btn.app-btn-danger:hover {
+  background-color: var(--krds-color-light-danger-60);
+  border-color: var(--krds-color-light-danger-60);
+}
+.krds-btn.app-btn-danger:active,
+.krds-btn.app-btn-danger:focus {
+  background-color: var(--krds-color-light-danger-70);
+  border-color: var(--krds-color-light-danger-70);
+}
+.krds-btn.app-btn-danger[disabled],
+.krds-btn.app-btn-danger.disabled {
+  background-color: var(--krds-light-color-element-disabled-light);
+  border-color: var(--krds-light-color-element-disabled-light);
+  color: var(--krds-light-color-text-disabled-on);
+  cursor: not-allowed;
+}
+
+/* ---------- 알림 박스 (form 안 안내/결과 메시지) ---------- */
+.app-alert {
+  padding: 1.2rem 1.4rem;
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-body-small);
+  border: 0.1rem solid transparent;
+}
+.app-alert--warning {
+  background-color: var(--krds-light-color-element-warning-lighter);
+  border-color: var(--krds-color-light-warning-30);
+  color: var(--krds-light-color-text-warning);
+}
+.app-alert--success {
+  background-color: var(--krds-light-color-element-success-lighter);
+  border-color: var(--krds-light-color-border-success);
+  color: var(--krds-light-color-text-success);
+}
+.app-alert--danger {
+  background-color: var(--krds-light-color-element-danger-lighter);
+  border-color: var(--krds-light-color-border-danger);
+  color: var(--krds-light-color-text-danger);
+}
+
+/* ---------- Legacy compat (InfoTab/MonitorTab 등 미정리 페이지 보존용 — 다음주 제거 예정) ---------- */
+.card {
+  background-color: var(--krds-light-color-background-white);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-medium2);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.6rem;
 }
-
 .card-title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
 }
-
-/* Stats Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--krds-light-color-text-subtle);
 }
-
-.stat-card {
-  background: white;
-  border-radius: 0.5rem;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 2px solid transparent;
-  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
-}
-
-.stat-card-clickable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.stat-card-clickable:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.stat-card-active {
-  border-color: var(--primary);
-  background: #f0f4ff;
-}
-
-.stat-card-alert {
-  background: #fff5f5;
-}
-
-.stat-card-alert.stat-card-active {
-  background: #ffe8e8;
-  border-color: var(--error);
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--gray-500);
-  margin-bottom: 0.25rem;
-}
-
-.stat-value {
-  font-size: 1.875rem;
-  font-weight: 700;
-}
-
-.stat-value.success { color: var(--success); }
-.stat-value.warning { color: var(--warning); }
-.stat-value.error { color: var(--error); }
-
-/* Tables */
-.table-container {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid var(--gray-200);
-}
-
-th {
-  background: var(--gray-50);
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--gray-600);
-}
-
-tr:hover {
-  background: var(--gray-50);
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
+.loading {
+  display: flex;
   justify-content: center;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  padding: 4rem;
+  color: var(--krds-light-color-text-subtle);
 }
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-dark);
-}
-
-.btn-secondary {
-  background: var(--gray-200);
-  color: var(--gray-700);
-}
-
-.btn-secondary:hover {
-  background: var(--gray-300);
-}
-
-.btn-danger {
-  background: var(--error);
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-
-/* Status Badge */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-badge.online,
-.status-badge.completed {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.offline,
-.status-badge.pending {
-  background: var(--gray-100);
-  color: var(--gray-600);
-}
-
-.status-badge.error,
-.status-badge.failed {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-badge.running {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-badge.cancelled {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-/* Forms */
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gray-700);
-  margin-bottom: 0.25rem;
-}
-
-.form-input,
-.form-select {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--gray-300);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-}
-
-.form-input:focus,
-.form-select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Chain Flow */
-.chain-flow {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  overflow-x: auto;
-}
-
-.chain-node {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1rem;
-  background: white;
-  border: 2px solid var(--gray-200);
-  border-radius: 0.5rem;
-  min-width: 150px;
-}
-
-.chain-node.active {
-  border-color: var(--primary);
-}
-
-.chain-arrow {
-  font-size: 1.5rem;
-  color: var(--gray-400);
-}
-
-/* Page Header */
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
-
 .page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--krds-pc-font-size-heading-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
 }
-
-/* Loading */
-.loading {
-  display: flex;
-  justify-content: center;
+.btn {
+  display: inline-flex;
   align-items: center;
-  padding: 2rem;
-  color: var(--gray-500);
+  justify-content: center;
+  height: 4rem;
+  padding: 0 1.6rem;
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-regular);
+  cursor: pointer;
+  border: 0.1rem solid transparent;
+  transition: background-color 0.15s, border-color 0.15s;
 }
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--gray-500);
+.btn-primary {
+  background-color: var(--krds-color-light-primary-50);
+  color: var(--krds-color-light-gray-0);
+  border-color: var(--krds-color-light-primary-50);
 }
-
-/* Zone Colors */
-.zone-external { color: #dc2626; }
-.zone-dmz { color: #f59e0b; }
-.zone-internal { color: #8b5cf6; }
-.zone-internal-common { color: #3b82f6; }
-.zone-internal-service { color: #22c55e; }
-
-/* Spinner Animation */
-.spinner {
-  border: 3px solid var(--gray-200);
-  border-top: 3px solid var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.btn-primary:hover {
+  background-color: var(--krds-color-light-primary-60);
 }
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.btn-secondary {
+  background-color: var(--krds-light-color-background-white);
+  color: var(--krds-light-color-text-bolder);
+  border-color: var(--krds-light-color-border-gray);
 }
-
-/* Additional Colors for Monitoring */
-:root {
-  --blue-50: #eff6ff;
-  --blue-100: #dbeafe;
-  --blue-200: #bfdbfe;
-  --blue-300: #93c5fd;
-  --blue-500: #3b82f6;
-  --blue-600: #2563eb;
-  --blue-700: #1d4ed8;
-  --green-500: #22c55e;
-  --red-500: #ef4444;
-  --purple-100: #f3e8ff;
-  --purple-500: #a855f7;
-  --purple-700: #7e22ce;
+.btn-secondary:hover {
+  background-color: var(--krds-light-color-action-secondary-hover);
 }
-
-/* Trigger Badge */
+.btn-danger {
+  background-color: var(--krds-light-color-element-danger);
+  color: var(--krds-color-light-gray-0);
+  border-color: var(--krds-light-color-element-danger);
+}
+.btn-danger:hover {
+  background-color: var(--krds-color-light-danger-60);
+}
+.btn-sm {
+  height: 3.2rem;
+  padding: 0 1.2rem;
+  font-size: var(--krds-pc-font-size-label-small);
+}
+.btn[disabled],
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.form-group {
+  margin-bottom: 1.2rem;
+}
+.form-label {
+  display: block;
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  margin-bottom: 0.6rem;
+}
+.form-input,
+.form-select {
+  width: 100%;
+  height: 4rem;
+  padding: 0 1.2rem;
+  border: 0.1rem solid var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-body-medium);
+  background-color: var(--krds-light-color-background-white);
+  color: var(--krds-light-color-text-bolder);
+}
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--krds-light-color-border-primary);
+  box-shadow: 0 0 0 0.3rem var(--krds-light-color-element-primary-lighter);
+}
+.table-container {
+  overflow-x: auto;
+}
+.table-container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+.table-container th {
+  text-align: left;
+  padding: 1rem 1.2rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+.table-container td {
+  padding: 1rem 1.2rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.8rem;
+  border-radius: var(--krds-radius-max);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+.status-badge.online,
+.status-badge.success,
+.status-badge.completed,
+.status-badge.status-success {
+  background-color: var(--krds-light-color-element-success-lighter);
+  color: var(--krds-light-color-text-success);
+}
+.status-badge.offline,
+.status-badge.pending,
+.status-badge.status-offline {
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
+}
+.status-badge.error,
+.status-badge.failed {
+  background-color: var(--krds-light-color-element-danger-lighter);
+  color: var(--krds-light-color-text-danger);
+}
+.status-badge.running {
+  background-color: var(--krds-light-color-element-information-lighter);
+  color: var(--krds-light-color-text-information);
+}
 .trigger-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.675rem;
-  font-weight: 500;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--krds-radius-small1);
+  font-size: var(--krds-pc-font-size-label-xsmall);
   text-transform: uppercase;
 }
-
 .trigger-badge.trigger-manual {
-  background: var(--gray-100);
-  color: var(--gray-600);
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
 }
-
 .trigger-badge.trigger-schedule {
-  background: #dbeafe;
-  color: #1e40af;
+  background-color: var(--krds-light-color-element-information-lighter);
+  color: var(--krds-light-color-text-information);
 }
-
 .trigger-badge.trigger-chain {
-  background: #fef3c7;
-  color: #92400e;
+  background-color: var(--krds-light-color-element-warning-lighter);
+  color: var(--krds-light-color-text-warning);
 }
 
-/* Agent Type Badge */
-.agent-type-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-.agent-type-badge.agent-type-relay {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.agent-type-badge.agent-type-loader-custom,
-.agent-type-badge.agent-type-loader-standard {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.agent-type-badge.agent-type-unknown {
-  background: var(--gray-100);
-  color: var(--gray-500);
-}
+/* ---------- Zone 색상 (도메인 전용 — KRDS 토큰 차용) ---------- */
+.zone-external       { color: var(--krds-light-color-text-danger); }
+.zone-dmz            { color: var(--krds-light-color-text-warning); }
+.zone-internal       { color: var(--krds-color-light-graphic-50); }
+.zone-internal-common  { color: var(--krds-light-color-text-information); }
+.zone-internal-service { color: var(--krds-light-color-text-success); }

@@ -1,0 +1,285 @@
+/* InfoTab — Agent 정보 / Datasource&테이블 / Retention / 스케줄 */
+
+/* ---------- Agent 타입 배지 ---------- */
+.agentTypeBadge {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: var(--krds-font-weight-bold);
+}
+.agentTypeBadge--rcv {
+  background-color: var(--krds-light-color-element-secondary-lighter);
+  color: var(--krds-light-color-text-secondary);
+}
+.agentTypeBadge--loader {
+  background-color: var(--krds-light-color-element-success-lighter);
+  color: var(--krds-light-color-text-success);
+}
+.agentTypeBadge--snd {
+  background-color: var(--krds-light-color-element-warning-lighter);
+  color: var(--krds-light-color-text-warning);
+}
+.agentTypeBadge--proxy {
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ---------- 보기 모드 정보 그리드 (라벨: 값) ---------- */
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem 2rem;
+  margin-top: 1rem;
+}
+
+.infoGrid__row {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.infoGrid__row--full {
+  grid-column: 1 / -1;
+}
+
+.infoGrid__label {
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-subtle);
+  margin-right: 0.6rem;
+}
+
+/* ---------- Datasource & 테이블 설정 (수정 모드 패널) ---------- */
+.dsSection {
+  margin-top: 2rem;
+  padding: 1.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-medium2);
+}
+
+.dsSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.dsSectionTitle {
+  font-size: var(--krds-pc-font-size-label-large);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  margin: 0;
+}
+
+.sourceLabel {
+  color: var(--krds-light-color-text-primary);
+}
+
+.targetLabel {
+  color: var(--krds-light-color-text-success);
+}
+
+.inputDisabled {
+  background-color: var(--krds-light-color-element-gray-lighter) !important;
+  color: var(--krds-light-color-text-disabled) !important;
+}
+
+/* ---------- 통합 테이블 박스 (수정모드 검증/단순 + 보기모드 검증/단순 모두 공용) ----------
+   행마다 분리선, zebra 없음. 톤 일관. */
+.tableBox {
+  margin-top: 0.8rem;
+  background-color: var(--krds-light-color-background-white);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-pc-font-size-label-small);
+  overflow: hidden;
+}
+
+.tableBox__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.tableBox__row:last-child {
+  border-bottom: none;
+}
+
+.tableBox__name {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.tableBox__description {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.tableBox__columnCount {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.verifyMark--ok {
+  color: var(--krds-light-color-text-success);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.verifyMark--fail {
+  color: var(--krds-light-color-text-danger);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.verifyMissing {
+  color: var(--krds-light-color-text-danger);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+/* ---------- Datasource 정보 카드 (보기) ---------- */
+.dsViewGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.4rem;
+  margin-top: 1rem;
+}
+
+.dsViewSubtitle {
+  margin: 0 0 0.8rem;
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.dsViewSubtitle--source {
+  color: var(--krds-light-color-text-primary);
+}
+
+.dsViewSubtitle--target {
+  color: var(--krds-light-color-text-success);
+}
+
+.dsViewMeta {
+  margin-bottom: 0.8rem;
+}
+
+.dsViewMeta__name {
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.dsViewMeta__sub {
+  margin-left: 0.6rem;
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.dsViewEmpty {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-small);
+}
+
+/* ---------- Retention ---------- */
+.retentionToolbar {
+  margin-bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.retentionToolbar__label {
+  font-size: var(--krds-pc-font-size-label-small);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.retentionToolbar__input {
+  width: 18rem;
+}
+
+.retentionDateColumnReadonly {
+  background-color: var(--krds-light-color-element-gray-lighter);
+}
+
+.retentionAddBtn {
+  margin-top: 0.8rem;
+}
+
+.retentionHelp {
+  margin-top: 0.8rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.retentionMutedHeader {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ---------- 스케줄 ---------- */
+.scheduleAddPanel {
+  margin-top: 1.2rem;
+  padding: 1.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-medium2);
+}
+
+.cronPreview {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  background-color: var(--krds-light-color-element-information-lighter);
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-information);
+}
+
+.cronArrow {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-primary);
+  margin-top: 0.4rem;
+}
+
+.filterChip {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  background-color: var(--krds-light-color-element-information-lighter);
+  border-radius: var(--krds-radius-small1);
+  margin-right: 0.4rem;
+  margin-bottom: 0.2rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-information);
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-small);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+  cursor: pointer;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+}
+
+.cronInputCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cronInputCell__input {
+  width: 22rem;
+}
+
+/* 스케줄 추가 패널의 Cron 입력 — 짧은 표현식이라 좁게 */
+.cronInputAdd {
+  max-width: 28rem;
+}
