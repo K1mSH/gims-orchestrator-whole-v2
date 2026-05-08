@@ -534,6 +534,30 @@ public class ExecutionDataController {
     }
 
     /**
+     * Per-target count 메타 파싱.
+     * sync_log.target_tables JSON 이 [{"name":"...","count":N}] 형식일 때 Map 반환.
+     * 단순 문자열 배열 ["..."] 또는 count 없는 객체일 때 null 반환 (TableStatsDto.targetCounts 도 null).
+     */
+    private Map<String, Long> parseTargetCounts(String json) {
+        if (json == null || json.isBlank()) return null;
+        Map<String, Long> result = new LinkedHashMap<>();
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            if (root.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode node : root) {
+                    if (node.isObject() && node.has("name") && node.has("count")) {
+                        result.put(node.get("name").asText(), node.get("count").asLong());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 파싱 실패 시 null 반환 (frontend 가 fallback 으로 mapping write 사용)
+            return null;
+        }
+        return result.isEmpty() ? null : result;
+    }
+
+    /**
      * Target 테이블 데이터 조회 (구 /target-if와 통합)
      */
     @GetMapping("/{executionId}/target")
@@ -681,6 +705,7 @@ public class ExecutionDataController {
                     .mappingName(mappingName)
                     .sourceTables(parseJsonArray(syncLog.getSourceTables()))
                     .targetTables(parseJsonArray(syncLog.getTargetTables()))
+                    .targetCounts(parseTargetCounts(syncLog.getTargetTables()))
                     .readCount(syncLog.getReadCount() != null ? syncLog.getReadCount() : 0L)
                     .writeCount(syncLog.getWriteCount() != null ? syncLog.getWriteCount() : 0L)
                     .failedCount(syncLog.getFailedCount() != null ? syncLog.getFailedCount() : 0L)
@@ -1608,13 +1633,19 @@ public class ExecutionDataController {
         int batchSize = 1000;
         int totalCount = 0;
 
+        // 검색 절 1회 생성 (각 batch 에 동일 적용)
+        List<Object> searchParams = new ArrayList<>();
+        String searchClause = buildSearchClause(sourceJdbc, actualTableName, search, searchColumn, searchParams);
+
         // 1. 배치 COUNT 합산
         for (int i = 0; i < allPks.size(); i += batchSize) {
             List<Object> batch = allPks.subList(i, Math.min(i + batchSize, allPks.size()));
             String placeholders = String.join(",", batch.stream().map(pk -> "?").toList());
-            String countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s IN (%s)",
-                    quotedTableName, pkColumn, placeholders);
-            Integer cnt = sourceJdbc.queryForObject(countSql, Integer.class, batch.toArray());
+            String countSql = String.format("SELECT COUNT(*) FROM %s WHERE %s IN (%s)%s",
+                    quotedTableName, pkColumn, placeholders, searchClause);
+            List<Object> queryParams = new ArrayList<>(batch);
+            queryParams.addAll(searchParams);
+            Integer cnt = sourceJdbc.queryForObject(countSql, Integer.class, queryParams.toArray());
             if (cnt != null) totalCount += cnt;
         }
 
@@ -1628,11 +1659,13 @@ public class ExecutionDataController {
         for (int i = 0; i < allPks.size() && remaining > 0; i += batchSize) {
             List<Object> batch = allPks.subList(i, Math.min(i + batchSize, allPks.size()));
             String placeholders = String.join(",", batch.stream().map(pk -> "?").toList());
+            List<Object> queryParams = new ArrayList<>(batch);
+            queryParams.addAll(searchParams);
 
-            // 이 배치의 건수 확인 (skip 최적화)
-            String batchCountSql = String.format("SELECT COUNT(*) FROM %s WHERE %s IN (%s)",
-                    quotedTableName, pkColumn, placeholders);
-            Integer batchCount = sourceJdbc.queryForObject(batchCountSql, Integer.class, batch.toArray());
+            // 이 배치의 (검색 적용된) 건수 확인 (skip 최적화)
+            String batchCountSql = String.format("SELECT COUNT(*) FROM %s WHERE %s IN (%s)%s",
+                    quotedTableName, pkColumn, placeholders, searchClause);
+            Integer batchCount = sourceJdbc.queryForObject(batchCountSql, Integer.class, queryParams.toArray());
             if (batchCount == null) batchCount = 0;
 
             if (skipped + batchCount <= offset) {
@@ -1643,10 +1676,10 @@ public class ExecutionDataController {
 
             // 이 배치에서 데이터 가져오기
             int batchOffset = Math.max(0, offset - skipped);
-            String baseSql = String.format("SELECT * FROM %s WHERE %s IN (%s) %s",
-                    quotedTableName, pkColumn, placeholders, orderBy);
+            String baseSql = String.format("SELECT * FROM %s WHERE %s IN (%s)%s %s",
+                    quotedTableName, pkColumn, placeholders, searchClause, orderBy);
             String dataSql = pagingSql(baseSql, dbType, remaining, batchOffset);
-            List<Map<String, Object>> batchData = sourceJdbc.queryForList(dataSql, batch.toArray());
+            List<Map<String, Object>> batchData = sourceJdbc.queryForList(dataSql, queryParams.toArray());
             pageData.addAll(batchData);
             remaining -= batchData.size();
             skipped += batchCount;

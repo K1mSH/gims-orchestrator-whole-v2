@@ -79,7 +79,7 @@ public class GimsTargetRepository {
      * Oracle: SELECT 먼저 → 없으면 INSERT → SELECT
      */
     public long ensureResultId(String resultTable, Map<String, Long> resultIdMap,
-                                long brnchId, int artclId) {
+                                long brnchId, int artclId, String executionId) {
         String key = brnchId + ":" + artclId;
         Long existing = resultIdMap.get(key);
         if (existing != null) return existing;
@@ -96,10 +96,11 @@ public class GimsTargetRepository {
             if (!ids.isEmpty()) {
                 rsltId = ids.get(0);
             } else {
+                // execution_id 박기 (이번 실행에서 신규 생성한 row 추적용)
                 String insertSql = String.format(
-                        "INSERT INTO %s (hr_unit_id, obsrvn_artcl_id, brnch_id, unit_id, mthd_id) VALUES (3, ?, ?, 1, 1)",
+                        "INSERT INTO %s (hr_unit_id, obsrvn_artcl_id, brnch_id, unit_id, mthd_id, execution_id) VALUES (3, ?, ?, 1, 1, ?)",
                         resultTable);
-                targetJdbc.update(insertSql, artclId, brnchId);
+                targetJdbc.update(insertSql, artclId, brnchId, executionId);
 
                 // INSERT 후 생성된 IDENTITY 조회
                 rsltId = targetJdbc.queryForObject(selectSql, Long.class, artclId, brnchId);
@@ -107,12 +108,12 @@ public class GimsTargetRepository {
         } else {
             // PostgreSQL: INSERT ... ON CONFLICT DO NOTHING RETURNING rslt_id
             String sql = String.format(
-                    "INSERT INTO %s (hr_unit_id, obsrvn_artcl_id, brnch_id, unit_id, mthd_id) VALUES (3, ?, ?, 1, 1) " +
+                    "INSERT INTO %s (hr_unit_id, obsrvn_artcl_id, brnch_id, unit_id, mthd_id, execution_id) VALUES (3, ?, ?, 1, 1, ?) " +
                     "ON CONFLICT (hr_unit_id, obsrvn_artcl_id, brnch_id) DO NOTHING " +
                     "RETURNING rslt_id",
                     resultTable);
 
-            List<Long> ids = targetJdbc.query(sql, (rs, rowNum) -> rs.getLong("rslt_id"), artclId, brnchId);
+            List<Long> ids = targetJdbc.query(sql, (rs, rowNum) -> rs.getLong("rslt_id"), artclId, brnchId, executionId);
 
             if (!ids.isEmpty()) {
                 rsltId = ids.get(0);
@@ -168,7 +169,7 @@ public class GimsTargetRepository {
      *   - 기존 Link 존재(UPDATE): frst_obsrvn_ymd/frst_obsrvn_hr = 기존값 유지
      *   - 신규 INSERT: frst_obsrvn_ymd/frst_obsrvn_hr = VALUES의 값 사용
      *
-     * @param rows 각 행: [obsvtr_id, brnch_id, last_obsrvn_ymd, last_obsrvn_hr, chg_dt, frst_obsrvn_ymd, frst_obsrvn_hr]
+     * @param rows 각 행: [obsvtr_id, brnch_id, last_obsrvn_ymd, last_obsrvn_hr, chg_dt, frst_obsrvn_ymd, frst_obsrvn_hr, execution_id]
      */
     public int batchUpsertLink(String tableName, List<Object[]> rows) {
         if (rows.isEmpty()) return 0;
@@ -178,30 +179,33 @@ public class GimsTargetRepository {
             sql = String.format(
                     "MERGE INTO %s t " +
                     "USING (SELECT ? AS obsvtr_id, ? AS brnch_id, ? AS last_obsrvn_ymd, " +
-                    "? AS last_obsrvn_hr, ? AS chg_dt, ? AS frst_obsrvn_ymd, ? AS frst_obsrvn_hr FROM DUAL) s " +
+                    "? AS last_obsrvn_hr, ? AS chg_dt, ? AS frst_obsrvn_ymd, ? AS frst_obsrvn_hr, " +
+                    "? AS execution_id FROM DUAL) s " +
                     "ON (t.obsvtr_id = s.obsvtr_id) " +
                     "WHEN MATCHED THEN UPDATE SET " +
                     "t.last_obsrvn_ymd = s.last_obsrvn_ymd, " +
                     "t.last_obsrvn_hr = s.last_obsrvn_hr, " +
                     "t.chg_dt = s.chg_dt, " +
                     "t.frst_obsrvn_ymd = COALESCE(t.frst_obsrvn_ymd, s.frst_obsrvn_ymd), " +
-                    "t.frst_obsrvn_hr = COALESCE(t.frst_obsrvn_hr, s.frst_obsrvn_hr) " +
+                    "t.frst_obsrvn_hr = COALESCE(t.frst_obsrvn_hr, s.frst_obsrvn_hr), " +
+                    "t.execution_id = s.execution_id " +
                     "WHEN NOT MATCHED THEN INSERT " +
-                    "(obsvtr_id, brnch_id, last_obsrvn_ymd, last_obsrvn_hr, chg_dt, frst_obsrvn_ymd, frst_obsrvn_hr) " +
+                    "(obsvtr_id, brnch_id, last_obsrvn_ymd, last_obsrvn_hr, chg_dt, frst_obsrvn_ymd, frst_obsrvn_hr, execution_id) " +
                     "VALUES (s.obsvtr_id, s.brnch_id, s.last_obsrvn_ymd, s.last_obsrvn_hr, " +
-                    "s.chg_dt, s.frst_obsrvn_ymd, s.frst_obsrvn_hr)",
+                    "s.chg_dt, s.frst_obsrvn_ymd, s.frst_obsrvn_hr, s.execution_id)",
                     tableName);
         } else {
             sql = String.format(
                     "INSERT INTO %s (obsvtr_id, brnch_id, last_obsrvn_ymd, last_obsrvn_hr, " +
-                    "chg_dt, frst_obsrvn_ymd, frst_obsrvn_hr) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                    "chg_dt, frst_obsrvn_ymd, frst_obsrvn_hr, execution_id) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
                     "ON CONFLICT (obsvtr_id) DO UPDATE SET " +
                     "last_obsrvn_ymd = EXCLUDED.last_obsrvn_ymd, " +
                     "last_obsrvn_hr = EXCLUDED.last_obsrvn_hr, " +
                     "chg_dt = EXCLUDED.chg_dt, " +
                     "frst_obsrvn_ymd = COALESCE(%s.frst_obsrvn_ymd, EXCLUDED.frst_obsrvn_ymd), " +
-                    "frst_obsrvn_hr = COALESCE(%s.frst_obsrvn_hr, EXCLUDED.frst_obsrvn_hr)",
+                    "frst_obsrvn_hr = COALESCE(%s.frst_obsrvn_hr, EXCLUDED.frst_obsrvn_hr), " +
+                    "execution_id = EXCLUDED.execution_id",
                     tableName, tableName, tableName);
         }
 

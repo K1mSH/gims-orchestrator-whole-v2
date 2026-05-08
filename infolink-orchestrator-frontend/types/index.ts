@@ -150,6 +150,9 @@ export interface TableStats {
   writeCount: number;
   failedCount: number;
   skipCount: number;
+  // Per-target 실 적재 카운트 (선택). multi-target mapping 에서 각 target 의 실 INSERT/UPSERT 행수.
+  // sync_log.target_tables JSON 이 [{"name":"...","count":N}] 형식일 때 채워짐. 없으면 undefined → fallback 으로 writeCount 사용.
+  targetCounts?: Record<string, number>;
 }
 
 // Sync Log (from Agent)

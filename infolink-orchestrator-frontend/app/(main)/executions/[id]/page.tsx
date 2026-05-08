@@ -49,6 +49,12 @@ export default function ExecutionDetailPage() {
   const [traceResult, setTraceResult] = useState<TraceResult | null>(null);
   const [traceLoading, setTraceLoading] = useState(false);
 
+  // 페이지/테이블 이동 시 추적 토글 자동 닫기
+  useEffect(() => {
+    setExpandedRowPk(null);
+    setTraceResult(null);
+  }, [currentPage, selectedTable]);
+
 
   // execution_id가 덮어씌워진 실행인지 여부 (IF 테이블에서 fallbackMode 감지 시 set)
   const [isOverwrittenExecution, setIsOverwrittenExecution] = useState(false);
@@ -332,7 +338,9 @@ export default function ExecutionDetailPage() {
       });
     }
     for (const t of (stat.targetTables ?? [])) {
-      const write = stat.writeCount ?? 0;
+      // Per-target count 메타가 있으면 각 target 의 실 적재 카운트 사용, 없으면 mapping write 합산 fallback
+      const perTargetCount = stat.targetCounts?.[t];
+      const write = perTargetCount ?? (stat.writeCount ?? 0);
       const failed = stat.failedCount ?? 0;
       const skip = stat.skipCount ?? 0;
       flatTableStats.push({

@@ -49,22 +49,22 @@ public class IfRsvSecJewon {
     private String y;
 
     @Column(name = "PYOGO")
-    private Long pyogo;
+    private Double pyogo;
 
     @Column(name = "INSDATE")
     private LocalDateTime insdate;
 
     @Column(name = "GULDEP")
-    private Long guldep;
+    private Double guldep;
 
     @Column(name = "GULDIA")
-    private Long guldia;
+    private Double guldia;
 
     @Column(name = "REGDATE")
     private LocalDateTime regdate;
 
     @Column(name = "CASING_HEIGHT")
-    private Long casingHeight;
+    private Double casingHeight;
 
     @Column(name = "SOURCE_REFS", length = 4000, nullable = false)
     private String sourceRefs;

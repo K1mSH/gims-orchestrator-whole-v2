@@ -28,13 +28,13 @@ public class IfRsvSecObsvdata {
     private String obsvTime;
 
     @Column(name = "GWDEP")
-    private Long gwdep;
+    private Double gwdep;
 
     @Column(name = "GWTEMP")
-    private Long gwtemp;
+    private Double gwtemp;
 
     @Column(name = "EC")
-    private Long ec;
+    private Double ec;
 
     @Column(name = "REMARK")
     private String remark;

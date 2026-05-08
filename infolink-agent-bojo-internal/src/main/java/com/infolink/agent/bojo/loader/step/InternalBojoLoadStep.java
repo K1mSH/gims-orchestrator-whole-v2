@@ -98,6 +98,7 @@ public class InternalBojoLoadStep implements StepExecutor {
 
         int obsvSuccess = 0, obsvFailed = 0;
         int linkUpdated = 0;
+        int inserted = 0;
         List<String> obsvFailedKeys = new ArrayList<>();
         String obsvFirstError = null;
         int obsvReadCount = 0;
@@ -124,6 +125,10 @@ public class InternalBojoLoadStep implements StepExecutor {
 
             log.info("[{}] brnch_id {} 건, rslt_id {} 건 매핑 로드 완료",
                     getStepId(), brnchIdMap.size(), rsltIdMap.size());
+
+            // TM_GD970101 신규 INSERT 추적용 row count (ensureResultId 가 신규 row 생성한 횟수 측정)
+            int rsltCountBefore = targetJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM " + targetResultTable, Integer.class);
 
             if (brnchIdMap.isEmpty()) {
                 log.warn("[{}] {}에서 brnch_id 매핑을 찾을 수 없음 - target 제원이 아직 등록되지 않았을 수 있음",
@@ -201,9 +206,9 @@ public class InternalBojoLoadStep implements StepExecutor {
                         Double ec = toDouble(row.get("ec"));
 
                         // rslt_id 확보 (없으면 자동 생성)
-                        long rsltGwdep = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWDEP);
-                        long rsltGwtemp = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWTEMP);
-                        long rsltEc = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_EC);
+                        long rsltGwdep = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWDEP, executionId);
+                        long rsltGwtemp = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWTEMP, executionId);
+                        long rsltEc = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_EC, executionId);
 
                         // source_refs: IF 레코드의 id 참조
                         Object ifId = row.get("id");
@@ -240,9 +245,9 @@ public class InternalBojoLoadStep implements StepExecutor {
 
                 // batch INSERT
                 if (!expandedRows.isEmpty()) {
-                    int inserted = targetRepo.batchInsertObsvdata(targetObsvdataTable, expandedRows);
-                    writeCount = obsvSuccess;  // 논리적 레코드 수 기준 (EAV 확장 행 수가 아닌 IF 처리 건수)
-                    log.info("[{}] EAV 관측데이터 {} 행 INSERT 완료 (IF 레코드 {} 건 기준)",
+                    inserted = targetRepo.batchInsertObsvdata(targetObsvdataTable, expandedRows);
+                    writeCount += inserted;  // 5dfa203 패턴: 실 INSERT 행 (EAV 1:3 팽창 그대로)
+                    log.info("[{}] EAV 관측데이터 {} 행 INSERT 완료 (IF 레코드 {} 건 기준, EAV 1:3 확장)",
                             getStepId(), inserted, obsvSuccess);
                 }
 
@@ -273,7 +278,8 @@ public class InternalBojoLoadStep implements StepExecutor {
                                 obsvCode, brnchId,
                                 dateTime[0], dateTime[1],  // last_obsrvn_ymd, last_obsrvn_hr
                                 now,                        // chg_dt
-                                dateTime[0], dateTime[1]    // frst_obsrvn_ymd, frst_obsrvn_hr (신규 INSERT 시만 사용)
+                                dateTime[0], dateTime[1],   // frst_obsrvn_ymd, frst_obsrvn_hr (신규 INSERT 시만 사용)
+                                executionId                 // execution_id (target 추적용)
                         });
                     }
                     linkUpdated = targetRepo.batchUpsertLink(targetLinkTable, linkRows);
@@ -285,11 +291,23 @@ public class InternalBojoLoadStep implements StepExecutor {
             log.info("[{}] 완료: read={}, write={}, skip={}, duration={}ms",
                     getStepId(), readCount, writeCount, skipCount, durationMs);
 
-            // ===== 4. SyncLog 요약 저장 (매핑 단위, link 제외) =====
-            saveSyncLogMapping(executionId, stepId,
+            // TM_GD970101 신규 INSERT 횟수 = 처리 후 row count - 처리 전 row count
+            int rsltCountAfter = targetJdbc.queryForObject(
+                    "SELECT COUNT(*) FROM " + targetResultTable, Integer.class);
+            int rsltInserted = rsltCountAfter - rsltCountBefore;
+
+            // ===== 4. SyncLog 요약 저장 (Agent 정의 정합: 1 mapping, 3 target — per-target count 메타 포함) =====
+            // write=inserted (실 INSERT 행, EAV 1:3 팽창 포함). Link 도 같은 mapping 의 target 으로 표시.
+            // target_tables JSON 형식: [{"name":"...","count":N}] — 각 target 별 실 적재 카운트 분리.
+            java.util.LinkedHashMap<String, Long> targetCounts = new java.util.LinkedHashMap<>();
+            targetCounts.put(targetObsvdataTable, (long) inserted);     // PM_GD970201
+            targetCounts.put(targetResultTable, (long) rsltInserted);    // TM_GD970101
+            targetCounts.put(targetLinkTable, (long) linkUpdated);       // TM_GD980002
+
+            saveSyncLogMappingWithCounts(executionId, "obsvdata",
                     configSourceTables != null ? configSourceTables : List.of(ifObsvdataTable),
-                    configTargetTables != null ? configTargetTables : List.of(targetObsvdataTable),
-                    (long) obsvReadCount, (long) obsvSuccess, (long) obsvFailed, 0L,
+                    targetCounts,
+                    (long) obsvReadCount, (long) inserted, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     obsvFirstError);
 
@@ -328,7 +346,7 @@ public class InternalBojoLoadStep implements StepExecutor {
             saveSyncLogMapping(context.getExecutionId(), "obsvdata",
                     List.of(ifObsvdataTable),
                     List.of(targetObsvdataTable),
-                    (long) obsvReadCount, (long) obsvSuccess, (long) obsvFailed, 0L,
+                    (long) obsvReadCount, (long) inserted, (long) obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
                     errorMessage);
 
@@ -344,6 +362,8 @@ public class InternalBojoLoadStep implements StepExecutor {
             date = ((java.sql.Timestamp) dateObj).toLocalDateTime().toLocalDate();
         } else if (dateObj instanceof java.sql.Date) {
             date = ((java.sql.Date) dateObj).toLocalDate();
+        } else if (dateObj instanceof LocalDateTime) {
+            date = ((LocalDateTime) dateObj).toLocalDate();
         } else if (dateObj instanceof LocalDate) {
             date = (LocalDate) dateObj;
         } else if (dateObj instanceof String) {
@@ -355,6 +375,10 @@ public class InternalBojoLoadStep implements StepExecutor {
         LocalTime time = LocalTime.MIDNIGHT;
         if (timeObj instanceof java.sql.Time) {
             time = ((java.sql.Time) timeObj).toLocalTime();
+        } else if (timeObj instanceof java.sql.Timestamp) {
+            time = ((java.sql.Timestamp) timeObj).toLocalDateTime().toLocalTime();
+        } else if (timeObj instanceof LocalDateTime) {
+            time = ((LocalDateTime) timeObj).toLocalTime();
         } else if (timeObj instanceof LocalTime) {
             time = (LocalTime) timeObj;
         } else if (timeObj instanceof String) {
@@ -374,6 +398,8 @@ public class InternalBojoLoadStep implements StepExecutor {
             return ((java.sql.Timestamp) dateObj).toLocalDateTime().toLocalDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         } else if (dateObj instanceof java.sql.Date) {
             return ((java.sql.Date) dateObj).toLocalDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        } else if (dateObj instanceof LocalDateTime) {
+            return ((LocalDateTime) dateObj).toLocalDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         } else if (dateObj instanceof LocalDate) {
             return ((LocalDate) dateObj).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         } else if (dateObj instanceof String) {
@@ -387,6 +413,8 @@ public class InternalBojoLoadStep implements StepExecutor {
             return ((java.sql.Timestamp) timeObj).toLocalDateTime().toLocalTime().format(DateTimeFormatter.ofPattern("HHmmss"));
         } else if (timeObj instanceof java.sql.Time) {
             return ((java.sql.Time) timeObj).toLocalTime().format(DateTimeFormatter.ofPattern("HHmmss"));
+        } else if (timeObj instanceof LocalDateTime) {
+            return ((LocalDateTime) timeObj).toLocalTime().format(DateTimeFormatter.ofPattern("HHmmss"));
         } else if (timeObj instanceof LocalTime) {
             return ((LocalTime) timeObj).format(DateTimeFormatter.ofPattern("HHmmss"));
         } else if (timeObj instanceof String) {
@@ -427,6 +455,41 @@ public class InternalBojoLoadStep implements StepExecutor {
         try {
             String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
             String targetJson = "[" + targetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+
+            SyncLog logEntry = SyncLog.builder()
+                    .executionId(executionId)
+                    .stepId(getStepId())
+                    .mappingName(mappingName)
+                    .sourceTables(sourceJson)
+                    .targetTables(targetJson)
+                    .readCount(readCount != null ? readCount : 0L)
+                    .writeCount(writeCount != null ? writeCount : 0L)
+                    .failedCount(failedCount != null ? failedCount : 0L)
+                    .skipCount(skipCount != null ? skipCount : 0L)
+                    .failedKeys(failedKeys)
+                    .errorSummary(errorSummary)
+                    .build();
+            syncLogRepository.save(logEntry);
+        } catch (Exception e) {
+            log.warn("[{}] SyncLog 저장 실패 (매핑: {}): {}", getStepId(), mappingName, e.getMessage());
+        }
+    }
+
+    /**
+     * SyncLog 저장 — per-target count 메타 포함.
+     * target_tables JSON = [{"name":"...","count":N}, ...] 형식.
+     * frontend 가 각 target 별 실 적재 카운트 분리 표시 가능.
+     */
+    private void saveSyncLogMappingWithCounts(String executionId, String mappingName,
+                                                List<String> sourceTables,
+                                                java.util.LinkedHashMap<String, Long> targetCounts,
+                                                Long readCount, Long writeCount, Long failedCount, Long skipCount,
+                                                String failedKeys, String errorSummary) {
+        try {
+            String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+            String targetJson = "[" + targetCounts.entrySet().stream()
+                    .map(e -> "{\"name\":\"" + e.getKey() + "\",\"count\":" + e.getValue() + "}")
+                    .reduce((a, b) -> a + "," + b).orElse("") + "]";
 
             SyncLog logEntry = SyncLog.builder()
                     .executionId(executionId)
