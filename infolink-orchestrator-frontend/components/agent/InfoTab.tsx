@@ -965,7 +965,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
       {agent.agentType !== 'DB_CON_PROXY' && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
-            <h2 className="card-title">데이터 보존 (Retention)</h2>
+            <h2 className="card-title">데이터 보존</h2>
             {!retentionEditMode ? (
               <button className="btn btn-secondary btn-sm" onClick={handleRetentionEdit}>설정</button>
             ) : (
