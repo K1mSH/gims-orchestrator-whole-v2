@@ -90,6 +90,19 @@ public class AgentConfigLoader {
             def.setTableMappings(generateTableMappings(def.getSteps()));
         }
 
+        // retention-candidates: 운영자 retention 설정 시 dropdown 후보
+        // 빈 배열 또는 누락 = retention 비대상 Agent
+        List<Map<String, Object>> rcList = (List<Map<String, Object>>) data.get("retention-candidates");
+        if (rcList != null) {
+            for (Map<String, Object> rcMap : rcList) {
+                com.infolink.agent.common.model.RetentionCandidate rc = new com.infolink.agent.common.model.RetentionCandidate();
+                rc.setTable((String) rcMap.get("table"));
+                rc.setDateColumn((String) rcMap.get("dateColumn"));
+                rc.setDescription((String) rcMap.get("description"));
+                def.getRetentionCandidates().add(rc);
+            }
+        }
+
         return def;
     }
 

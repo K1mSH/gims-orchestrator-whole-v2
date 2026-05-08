@@ -181,6 +181,24 @@ public class PipelineController {
         return ResponseEntity.ok(List.of());
     }
 
+    /**
+     * retention-candidates 응답 — 운영자 retention 설정 dropdown 의 단일 진실원.
+     * 빈 배열 = retention 비대상 Agent.
+     * dev_plan/2026_05/08/retention-candidates-safety.md
+     */
+    @GetMapping("/{agentCode}/retention-candidates")
+    public ResponseEntity<List<com.infolink.agent.common.model.RetentionCandidate>> getRetentionCandidates(@PathVariable String agentCode) {
+        if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
+            return ResponseEntity.badRequest().build();
+        }
+        for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
+            if (agentCode.equals(def.getAgentCode())) {
+                return ResponseEntity.ok(def.getRetentionCandidates());
+            }
+        }
+        return ResponseEntity.ok(List.of());
+    }
+
     @GetMapping("/{agentCode}/tables")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> getPipelineTables(@PathVariable String agentCode) {

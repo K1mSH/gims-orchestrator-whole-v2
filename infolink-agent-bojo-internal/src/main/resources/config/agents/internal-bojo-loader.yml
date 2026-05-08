@@ -11,3 +11,10 @@ steps:
     factory-key: internal-bojo-load
     source-table: IF_RSV_SEC_OBSVDATA
     target-table: [PM_GD970201, TM_GD970101, TM_GD980002]
+
+# Retention 룰: Agent 는 자기 target 만 후보 (이중 설정 방지).
+# IF_RSV_SEC_OBSVDATA 는 internal-bojo-rcv 의 target 이라 거기서만 박힘.
+retention-candidates:
+  - table: PM_GD970201
+    dateColumn: OBSRVN_DT
+    description: GIMS 관측 시계열 (EAV 1:3 적재)

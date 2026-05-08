@@ -23,3 +23,8 @@ steps:
     conflict-key: source_refs
     date-column: obsv_date
     time-column: obsv_time
+
+retention-candidates:
+  - table: IF_RSV_SEC_OBSVDATA
+    dateColumn: OBSV_DATE
+    description: Internal 수신 관측 시계열 (Oracle)

@@ -483,12 +483,29 @@ public class AgentService {
         Agent agent = agentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + id));
 
-        // retentionDays 음수/0 방어
+        // retentionDays 음수/0 방어 + retention-candidates 화이트리스트 검증
+        // 룰: targets 가 있으면 적용 (enabled 필드 deprecate)
+        // dev_plan/2026_05/08/retention-candidates-safety.md §3-3 layer C
         try {
             Map<String, Object> parsed = objectMapper.readValue(configJson, Map.class);
             List<Map<String, Object>> targets = (List<Map<String, Object>>) parsed.get("targets");
-            if (targets != null) {
+
+            if (targets != null && !targets.isEmpty()) {
+                List<Map<String, Object>> candidates = getRetentionCandidates(id);
+                java.util.Set<String> allowed = candidates.stream()
+                        .map(c -> c.get("table") + ":" + c.get("dateColumn"))
+                        .collect(java.util.stream.Collectors.toSet());
+
+                if (allowed.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "이 Agent 는 retention 비대상입니다 (yml retention-candidates 비어있음). agent=" + agent.getAgentCode());
+                }
                 for (Map<String, Object> t : targets) {
+                    String key = t.get("table") + ":" + t.get("dateColumn");
+                    if (!allowed.contains(key)) {
+                        throw new IllegalArgumentException(
+                                "retention-candidates 외 (table, dateColumn) — yml 정합 필요. agent=" + agent.getAgentCode() + ", 입력=" + key);
+                    }
                     int days = t.get("retentionDays") != null ? ((Number) t.get("retentionDays")).intValue() : 365;
                     if (days < 1) {
                         throw new IllegalArgumentException(
@@ -572,6 +589,26 @@ public class AgentService {
      * Agent YML에 정의된 select-tables(WHERE 조건 대상 테이블) 목록 조회.
      * Agent API를 호출하여 테이블명 목록을 받고, Orchestrator에 등록된 DatasourceTable과 매칭하여 컬럼 정보를 포함해 반환.
      */
+    /**
+     * Agent yml 의 retention-candidates 조회 (보존 정책 dropdown 단일 진실원).
+     * Agent 가 자기 yml 의 retention-candidates 를 그대로 응답. 빈 배열 = retention 비대상.
+     * dev_plan/2026_05/08/retention-candidates-safety.md
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getRetentionCandidates(Long agentId) {
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + agentId));
+        try {
+            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/retention-candidates";
+            log.info("Agent에서 retention-candidates 조회 중: {}", url);
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            log.warn("Agent {} retention-candidates 조회 실패: {}", agent.getAgentCode(), e.getMessage());
+            return List.of();
+        }
+    }
+
     public List<DatasourceDto.TableResponse> getSelectTables(Long agentId) {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + agentId));

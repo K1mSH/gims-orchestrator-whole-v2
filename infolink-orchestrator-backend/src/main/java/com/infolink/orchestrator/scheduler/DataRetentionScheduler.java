@@ -40,9 +40,11 @@ public class DataRetentionScheduler {
                 .filter(a -> a.getStatus() != AgentStatus.OFFLINE)
                 .filter(a -> a.getRetentionConfig() != null && !a.getRetentionConfig().isBlank())
                 .filter(a -> {
+                    // 룰: targets 가 있으면 적용 (enabled 필드 deprecate — dev_plan/2026_05/08/retention-candidates-safety.md)
                     try {
                         Map<String, Object> config = objectMapper.readValue(a.getRetentionConfig(), Map.class);
-                        return Boolean.TRUE.equals(config.get("enabled"));
+                        Object t = config.get("targets");
+                        return t instanceof List && !((List<?>) t).isEmpty();
                     } catch (Exception e) {
                         return false;
                     }

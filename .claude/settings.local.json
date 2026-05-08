@@ -556,7 +556,13 @@
       "Bash(PGPASSWORD=postgres psql -h localhost -p 29001 -U postgres -d orchestrator -c \"SELECT auth_users_id, role, is_active FROM auth_users ORDER BY auth_users_id;\")",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8092/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"8092 HTTP {0}\" -f $r.StatusCode } catch { \"8092 fail: $_\" })",
       "PowerShell($svcs = @\\(@{p=8080;n=\"backend\"},@{p=8093;n=\"proxy-internal\"},@{p=8092;n=\"bojo-internal\"}\\); foreach \\($s in $svcs\\) { try { $r = Invoke-WebRequest -Uri \"http://localhost:$\\($s.p\\)/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"{0,5} {1,-15} HTTP {2}\" -f $s.p, $s.n, $r.StatusCode } catch { $code = if \\($_.Exception.Response\\) { [int]$_.Exception.Response.StatusCode } else { $null }; if \\($code\\) { \"{0,5} {1,-15} HTTP {2}\" -f $s.p, $s.n, $code } else { \"{0,5} {1,-15} fail\" -f $s.p, $s.n } } })",
-      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8092/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"8092 HTTP {0}\" -f $r.StatusCode } catch { \"8092 fail\" })"
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8092/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"8092 HTTP {0}\" -f $r.StatusCode } catch { \"8092 fail\" })",
+      "Bash(tee /tmp/log-others-dmz.log)",
+      "PowerShell($svcs = @\\(@{p=8096;n=\"auth\"},@{p=8080;n=\"backend\"},@{p=8093;n=\"proxy-internal\"},@{p=8092;n=\"bojo-internal\"},@{p=8085;n=\"others-dmz\"},@{p=3000;n=\"frontend\"}\\); foreach \\($s in $svcs\\) { try { $r = Invoke-WebRequest -Uri \"http://localhost:$\\($s.p\\)/health\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"{0,5} {1,-15} HTTP {2}\" -f $s.p, $s.n, $r.StatusCode } catch { $code = if \\($_.Exception.Response\\) { [int]$_.Exception.Response.StatusCode } else { \"n/a\" }; \"{0,5} {1,-15} {2}\" -f $s.p, $s.n, $code } })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 frontend \\(booting...\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 8 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 fail\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 still booting\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop; \"3000 frontend HTTP {0}\" -f $r.StatusCode } catch { \"3000 fail\" })"
     ]
   },
   "hooks": {

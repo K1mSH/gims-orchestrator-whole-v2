@@ -39,6 +39,7 @@
 - [feedback_dependency_consistency.md](feedback_dependency_consistency.md) - 우리 시스템 모듈끼리는 같은 의존성 사용, 모듈별 GAV/버전 차이 금지
 - [feedback_custom_handler_registration.md](feedback_custom_handler_registration.md) - Type B 핸들러 등록 = `POST /api/manage/custom-handlers/register` (메타 자동 sync). 직접 operations POST 금지
 - [feedback_standardization_legacy_unmapped.md](feedback_standardization_legacy_unmapped.md) - 표준화 자료 매핑 없는 테이블 = 레거시 이름 그대로. 추측 X. TSV $4=표준화 후 11자리
+- [feedback_retention_yml_target_only.md](feedback_retention_yml_target_only.md) - Retention 후보 = Agent yml 자기 target 만 (이중 설정 방지). 비대상은 빈 배열 명시. enabled deprecate (targets 만 검사)
 
 ## 작업 규칙
 

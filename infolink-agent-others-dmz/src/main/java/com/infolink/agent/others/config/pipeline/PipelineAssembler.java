@@ -1,11 +1,14 @@
 package com.infolink.agent.others.config.pipeline;
 
+import com.infolink.agent.common.model.RetentionCandidate;
 import com.infolink.agent.common.pipeline.StepFactoryRegistry;
 import com.infolink.agent.common.pipeline.PipelineRunner;
+import com.infolink.agent.common.service.RetentionCandidatesProvider;
 import com.infolink.agent.common.step.StepDefinition;
 import com.infolink.agent.common.step.StepExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
@@ -60,5 +63,21 @@ public class PipelineAssembler {
                 log.error("Failed to assemble pipeline: {}", def.getAgentCode(), e);
             }
         }
+    }
+
+    /**
+     * RetentionCandidatesProvider 빈 — Agent yml retention-candidates 단일 진실원.
+     * dev_plan/2026_05/08/retention-candidates-safety.md §3-3 layer D
+     */
+    @Bean
+    public RetentionCandidatesProvider retentionCandidatesProvider() {
+        return agentCode -> {
+            for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
+                if (agentCode.equals(def.getAgentCode())) {
+                    return def.getRetentionCandidates();
+                }
+            }
+            return List.of();
+        };
     }
 }

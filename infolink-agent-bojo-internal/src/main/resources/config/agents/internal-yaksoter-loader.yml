@@ -18,3 +18,7 @@ steps:
     source-table: IF_RSV_TD_GD010310
     target-table: TD_GD010310
     merge-key: [BRNCH_NO, YR, QTR, WTSMP_YMD]
+
+# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
+# dev_plan/2026_05/08/retention-candidates-safety.md
+retention-candidates: []

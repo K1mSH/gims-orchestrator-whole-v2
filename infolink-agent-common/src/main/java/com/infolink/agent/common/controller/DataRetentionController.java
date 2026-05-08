@@ -2,9 +2,12 @@ package com.infolink.agent.common.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infolink.agent.common.config.RetentionConfig;
+import com.infolink.agent.common.model.RetentionCandidate;
 import com.infolink.agent.common.service.DataRetentionService;
+import com.infolink.agent.common.service.RetentionCandidatesProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +15,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Target 테이블의 오래된 데이터를 자동 삭제하는 Retention REST API
@@ -47,6 +53,14 @@ public class DataRetentionController {
     private final DataSourceProvider dataSourceProvider;
     private final ObjectMapper objectMapper;
 
+    /**
+     * yml retention-candidates 검증 Provider (Optional — 모듈에서 빈 등록 시 사용).
+     * 등록되지 않으면 검증 skip (backward-compat).
+     * dev_plan/2026_05/08/retention-candidates-safety.md §3-3 layer D
+     */
+    @Autowired(required = false)
+    private RetentionCandidatesProvider candidatesProvider;
+
     @PostMapping("/{agentCode}")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> cleanup(
@@ -57,11 +71,39 @@ public class DataRetentionController {
         try {
             RetentionConfig config = parseFromBody(requestBody);
 
-            if (config == null || !config.isEnabled() || config.getTargets().isEmpty()) {
+            // 룰: targets 가 있으면 적용 (enabled 필드 deprecate)
+            // dev_plan/2026_05/08/retention-candidates-safety.md
+            if (config == null || config.getTargets().isEmpty()) {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("agentCode", agentCode);
-                body.put("message", "retention 설정이 없거나 비활성화 상태입니다.");
+                body.put("message", "retention 설정이 없습니다 (targets 비어있음).");
                 return ResponseEntity.status(404).body(body);
+            }
+
+            // Layer D — yml retention-candidates 검증 (defense-in-depth).
+            // Provider 미등록 시 skip (기존 Agent 호환). 등록 + 빈 candidates = 비대상 Agent (cleanup 거부).
+            if (candidatesProvider != null) {
+                List<RetentionCandidate> candidates = candidatesProvider.getCandidates(agentCode);
+                Set<String> allowed = candidates.stream()
+                        .map(c -> c.getTable() + ":" + c.getDateColumn())
+                        .collect(Collectors.toSet());
+                if (allowed.isEmpty()) {
+                    log.warn("[Retention] candidates 비어있음 (retention 비대상 Agent): {}", agentCode);
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("agentCode", agentCode);
+                    body.put("error", "이 Agent 는 retention 비대상입니다 (yml retention-candidates 비어있음).");
+                    return ResponseEntity.badRequest().body(body);
+                }
+                for (RetentionConfig.TableRetention tr : config.getTargets()) {
+                    String key = tr.getTable() + ":" + tr.getDateColumn();
+                    if (!allowed.contains(key)) {
+                        log.warn("[Retention] candidates 외 (table, dateColumn): agent={}, 입력={}", agentCode, key);
+                        Map<String, Object> body = new LinkedHashMap<>();
+                        body.put("agentCode", agentCode);
+                        body.put("error", "retention-candidates 외 (table, dateColumn) — yml 정합 필요. 입력=" + key);
+                        return ResponseEntity.badRequest().body(body);
+                    }
+                }
             }
 
             // datasource: body의 targetDatasourceId → DataSourceProvider fallback

@@ -18,3 +18,7 @@ steps:
     source-table: IF_RSV_TM_GD014000
     target-table: TM_GD014000
     merge-key: BID_PBANC_NO
+
+# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
+# dev_plan/2026_05/08/retention-candidates-safety.md
+retention-candidates: []

@@ -1,6 +1,7 @@
 package com.infolink.orchestrator.controller;
 
 import com.infolink.orchestrator.dto.AgentDto;
+import com.infolink.orchestrator.scheduler.DataRetentionScheduler;
 import com.infolink.orchestrator.service.AgentService;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class AgentController {
 
     private final AgentService agentService;
+    private final DataRetentionScheduler dataRetentionScheduler;
 
     @GetMapping
     public ResponseEntity<List<AgentDto.Response>> getAgents() {
@@ -90,6 +92,26 @@ public class AgentController {
     @GetMapping("/{id}/select-tables")
     public ResponseEntity<?> getSelectTables(@PathVariable Long id) {
         return ResponseEntity.ok(agentService.getSelectTables(id));
+    }
+
+    /**
+     * Agent YML의 retention-candidates 조회 (보존 정책 dropdown 용 단일 진실원).
+     * 빈 배열 = 해당 Agent 는 retention 비대상 (마스터 / Link / 메타 데이터).
+     * dev_plan/2026_05/08/retention-candidates-safety.md
+     */
+    @GetMapping("/{id}/retention-candidates")
+    public ResponseEntity<?> getRetentionCandidates(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getRetentionCandidates(id));
+    }
+
+    /**
+     * Retention 자동 cleanup 즉시 트리거 — DataRetentionScheduler.executeRetentionCleanup() 동일.
+     * 운영자 수동 호출 + 검증 시나리오용.
+     */
+    @PostMapping("/retention/trigger")
+    public ResponseEntity<?> triggerRetentionCleanup() {
+        dataRetentionScheduler.executeRetentionCleanup();
+        return ResponseEntity.ok(Map.of("status", "triggered"));
     }
 
     /**

@@ -279,7 +279,10 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   const [retentionEditMode, setRetentionEditMode] = useState(false);
   const [retentionForm, setRetentionForm] = useState<RetentionState>({ enabled: false, targets: [] });
   const [retentionSaving, setRetentionSaving] = useState(false);
-  const [retentionTables, setRetentionTables] = useState<DatasourceTable[]>([]);
+  // Retention 후보 (yml 단일 진실원). 빈 배열 = 비대상 Agent.
+  // dev_plan/2026_05/08/retention-candidates-safety.md
+  type RetentionCandidate = { table: string; dateColumn: string; description?: string };
+  const [retentionCandidates, setRetentionCandidates] = useState<RetentionCandidate[]>([]);
 
   const fetchRetention = useCallback(async () => {
     if (agent.agentType === 'DB_CON_PROXY') return;
@@ -289,15 +292,14 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
     } catch {
       setRetentionConfig(null);
     }
-    // retention select용: target datasource의 전체 등록 테이블
-    const dsId = agent.targetDatasourceId;
-    if (dsId) {
-      try {
-        const tables = await datasourceApi.getRegisteredTables(dsId);
-        setRetentionTables(tables);
-      } catch { /* ignore */ }
+    // Retention 후보 = Agent yml retention-candidates (단일 진실원)
+    try {
+      const candidates = await agentApi.getRetentionCandidates(agent.id);
+      setRetentionCandidates(candidates);
+    } catch {
+      setRetentionCandidates([]);
     }
-  }, [agent.id, agent.agentType, agent.targetDatasourceId]);
+  }, [agent.id, agent.agentType]);
 
   useEffect(() => {
     fetchRetention();
@@ -379,12 +381,13 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
 
   const handleRetentionAddTarget = () => {
     const usedTables = retentionForm.targets.map(t => t.table);
-    const firstAvailable = retentionTables.find(tb => !usedTables.includes(tb.tableName));
+    const firstAvailable = retentionCandidates.find(c => !usedTables.includes(c.table));
     setRetentionForm(prev => ({
       ...prev,
+      enabled: true,  // 등록 = 적용 (enabled 필드 deprecate, 항상 true 박음 — 백엔드는 targets 만 검사)
       targets: [...prev.targets, {
-        table: firstAvailable?.tableName || '',
-        dateColumn: firstAvailable?.columns[0]?.columnName || '',
+        table: firstAvailable?.table || '',
+        dateColumn: firstAvailable?.dateColumn || '',
         retentionDays: 365
       }]
     }));
@@ -403,8 +406,9 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
       targets: prev.targets.map((t, i) => {
         if (i !== index) return t;
         if (field === 'table') {
-          const selected = retentionTables.find(tb => tb.tableName === value);
-          return { ...t, table: value as string, dateColumn: selected?.columns[0]?.columnName || '' };
+          // table 변경 시 candidate 의 dateColumn 자동 매핑 (yml 단일 진실원)
+          const selected = retentionCandidates.find(c => c.table === value);
+          return { ...t, table: value as string, dateColumn: selected?.dateColumn || '' };
         }
         return { ...t, [field]: value };
       })
@@ -966,7 +970,10 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
             <h2 className="card-title">데이터 보존</h2>
-            {!retentionEditMode ? (
+            {/* yml retention-candidates 비어 있으면 retention 비대상 Agent — 설정 버튼 숨김 */}
+            {retentionCandidates.length === 0 ? (
+              <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>비대상 (마스터 / Link / 메타 데이터)</span>
+            ) : !retentionEditMode ? (
               <button className="btn btn-secondary btn-sm" onClick={handleRetentionEdit}>설정</button>
             ) : (
               <div>
@@ -980,11 +987,8 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
 
           {retentionEditMode ? (
             <div style={{ marginTop: '1rem' }}>
+              {/* 활성/비활성 개념 제거 — 등록된 테이블이 곧 적용 대상 (제거하면 비대상) */}
               <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={retentionForm.enabled} onChange={(e) => setRetentionForm(prev => ({ ...prev, enabled: e.target.checked }))} />
-                  활성화
-                </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <label className="form-label" style={{ margin: 0, fontSize: '0.875rem' }}>Target Datasource ID:</label>
                   <input type="text" className="form-input" value={retentionForm.targetDatasourceId || ''} onChange={(e) => setRetentionForm(prev => ({ ...prev, targetDatasourceId: e.target.value }))} style={{ width: '150px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} placeholder={agent.targetDatasourceId || ''} />
@@ -1002,24 +1006,21 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                   </thead>
                   <tbody>
                     {retentionForm.targets.map((t, i) => {
-                      const selectedTable = retentionTables.find(tb => tb.tableName === t.table);
+                      // yml retention-candidates (단일 진실원). dateColumn 은 candidate 에서 자동 결정 (read-only)
+                      const selectedCandidate = retentionCandidates.find(c => c.table === t.table);
                       return (
                         <tr key={i}>
                           <td>
                             <select className="form-input" value={t.table} onChange={(e) => handleRetentionTargetChange(i, 'table', e.target.value)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
                               <option value="">-- 테이블 선택 --</option>
-                              {retentionTables.map(tb => (
-                                <option key={tb.id} value={tb.tableName}>{tb.tableName}{tb.description ? ` (${tb.description})` : ''}</option>
+                              {retentionCandidates.map(c => (
+                                <option key={c.table} value={c.table}>{c.table}{c.description ? ` (${c.description})` : ''}</option>
                               ))}
                             </select>
                           </td>
                           <td>
-                            <select className="form-input" value={t.dateColumn} onChange={(e) => handleRetentionTargetChange(i, 'dateColumn', e.target.value)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
-                              <option value="">-- 컬럼 선택 --</option>
-                              {selectedTable?.columns.map(c => (
-                                <option key={c.id} value={c.columnName}>{c.columnName}{c.dataType ? ` (${c.dataType})` : ''}</option>
-                              ))}
-                            </select>
+                            {/* dateColumn 은 yml candidate 에서 자동 결정 — 운영자 자유 선택 X */}
+                            <input type="text" className="form-input" value={selectedCandidate?.dateColumn || t.dateColumn} readOnly style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: 'var(--gray-100)' }} title="yml retention-candidates 에서 자동 결정" />
                           </td>
                           <td><input type="number" className="form-input" min={1} value={t.retentionDays} onChange={(e) => handleRetentionTargetChange(i, 'retentionDays', Math.max(1, parseInt(e.target.value) || 1))} style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} /></td>
                           <td><button className="btn btn-danger btn-sm" onClick={() => handleRetentionRemoveTarget(i)}>X</button></td>
@@ -1031,7 +1032,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
               </div>
               <button className="btn btn-secondary btn-sm" onClick={handleRetentionAddTarget} style={{ marginTop: '0.5rem' }}>+ 테이블 추가</button>
             </div>
-          ) : retentionConfig && retentionConfig.enabled && retentionConfig.targets.length > 0 ? (
+          ) : retentionConfig && retentionConfig.targets.length > 0 ? (
             <div>
               <div className="table-container" style={{ marginTop: '1rem' }}>
                 <table>
@@ -1054,7 +1055,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 </table>
               </div>
               <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                * 기준 날짜 컬럼 기준으로 보존 기간 이전 데이터가 자동 삭제됩니다.
+                * 기준 날짜 컬럼 기준으로 보존 기간 이전 데이터가 자동 삭제됩니다. 제거하려면 행 삭제 후 저장하세요.
               </p>
             </div>
           ) : (

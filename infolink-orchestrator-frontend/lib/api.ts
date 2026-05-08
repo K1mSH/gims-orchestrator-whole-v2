@@ -80,6 +80,11 @@ export const agentApi = {
 
   updateRetentionConfig: (id: number, config: { enabled: boolean; targetDatasourceId?: string; targets: { table: string; dateColumn: string; retentionDays: number }[] }) =>
     api.put(`/agents/${id}/retention`, config).then((res) => res.data),
+
+  // Retention 후보 (yml 단일 진실원). 빈 배열 = retention 비대상 Agent.
+  // dev_plan/2026_05/08/retention-candidates-safety.md
+  getRetentionCandidates: (id: number) =>
+    api.get<{ table: string; dateColumn: string; description?: string }[]>(`/agents/${id}/retention-candidates`).then((res) => res.data),
 };
 
 // Schedule API

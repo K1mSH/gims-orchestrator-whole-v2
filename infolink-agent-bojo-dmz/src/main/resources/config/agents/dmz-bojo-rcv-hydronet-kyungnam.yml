@@ -32,3 +32,9 @@ steps:
     factory-key: link-update
     if-table: if_rsv_sec_obsvdata
     link-table: link_ngwis
+
+# Retention 후보 (단일 진실원) — dev_plan/2026_05/08/retention-candidates-safety.md
+retention-candidates:
+  - table: if_rsv_sec_obsvdata
+    dateColumn: obsv_date
+    description: 외부에서 수신한 관측 시계열 데이터

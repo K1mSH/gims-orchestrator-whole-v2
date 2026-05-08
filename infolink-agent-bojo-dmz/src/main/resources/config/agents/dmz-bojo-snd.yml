@@ -23,3 +23,8 @@ steps:
     conflict-key: source_refs
     date-column: obsv_date
     time-column: obsv_time
+
+retention-candidates:
+  - table: if_snd_sec_obsvdata
+    dateColumn: obsv_date
+    description: DMZ → Internal 송신용 관측 시계열
