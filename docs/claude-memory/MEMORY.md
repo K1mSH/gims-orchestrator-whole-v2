@@ -40,6 +40,10 @@
 - [feedback_custom_handler_registration.md](feedback_custom_handler_registration.md) - Type B 핸들러 등록 = `POST /api/manage/custom-handlers/register` (메타 자동 sync). 직접 operations POST 금지
 - [feedback_standardization_legacy_unmapped.md](feedback_standardization_legacy_unmapped.md) - 표준화 자료 매핑 없는 테이블 = 레거시 이름 그대로. 추측 X. TSV $4=표준화 후 11자리
 - [feedback_retention_yml_target_only.md](feedback_retention_yml_target_only.md) - Retention 후보 = Agent yml 자기 target 만 (이중 설정 방지). 비대상은 빈 배열 명시. enabled deprecate (targets 만 검사)
+- [feedback_one_page_at_a_time.md](feedback_one_page_at_a_time.md) - 페이지 단위 UI 작업은 한 페이지씩 끝내고 사용자 화면 검증 후 다음 진입 (KRDS 등)
+- [feedback_delete_action_placement.md](feedback_delete_action_placement.md) - 위험 액션(삭제/비활성)은 상세 페이지가 있는 도메인은 상세에, 모달 상세는 목록에 둬도 됨
+- [feedback_schedule_drives_active.md](feedback_schedule_drives_active.md) - 운영 도메인 entity 의 isActive UI 노출 X, 실행 여부는 스케줄이 제어
+- [feedback_krds_checkbox_pattern.md](feedback_krds_checkbox_pattern.md) - KRDS 체크박스/라디오는 .krds-form-check medium 패턴 필수 (KRDS !important 로 input 숨김)
 
 ## 작업 규칙
 

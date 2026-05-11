@@ -567,7 +567,10 @@
       "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/css/common/common.css\" \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/css/common/\")",
       "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/css/component/component.css\" \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/css/component/\")",
       "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/fonts/\"PretendardGOV-*.woff2 \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/fonts/\")",
-      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/fonts/\"PretendardGOV-*.woff \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/fonts/\")"
+      "Bash(cp \"D:/dev/claude/GIMS/krds-uiux/fonts/\"PretendardGOV-*.woff \"D:/dev/claude/GIMS/orchestrator_v2/infolink-orchestrator-frontend/public/krds/fonts/\")",
+      "PowerShell(Get-ChildItem \"D:\\\\dev\\\\claude\\\\GIMS\\\\orchestrator_v2\\\\infolink-orchestrator-frontend\\\\public\\\\krds\\\\img\" -Recurse | Where-Object { $_.Name -match \"\\(user|lock|person|key|account|login|password|id\\)\" } | Select-Object -First 10 FullName)",
+      "Bash(head -n 801 \"app/\\(main\\)/executions/[id]/page.tsx\")",
+      "Bash(mv /tmp/exec_id_page.tsx \"app/\\(main\\)/executions/[id]/page.tsx\")"
     ]
   },
   "hooks": {
