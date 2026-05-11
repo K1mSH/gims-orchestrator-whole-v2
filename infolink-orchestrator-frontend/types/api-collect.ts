@@ -114,6 +114,7 @@ export interface ApiFieldMapping {
   id: number;
   sourceFieldPath: string;
   targetColumnName: string;
+  sourceFieldType: string | null;
   isConflictKey: boolean;
   transformType: TransformType;
   transformConfig: string | null;
@@ -134,6 +135,7 @@ export interface ApiFieldMapping {
 export interface ApiFieldMappingRequest {
   sourceFieldPath: string;
   targetColumnName: string;
+  sourceFieldType?: string;
   isConflictKey?: boolean;
   transformType?: TransformType;
   transformConfig?: string;

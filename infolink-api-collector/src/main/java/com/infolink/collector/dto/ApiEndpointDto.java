@@ -211,6 +211,7 @@ public class ApiEndpointDto {
     public static class FieldMappingRequest {
         @NotBlank private String sourceFieldPath;
         @NotBlank private String targetColumnName;
+        private String sourceFieldType;
         private Boolean isConflictKey;
         private ApiFieldMapping.TransformType transformType;
         private String transformConfig;
@@ -237,6 +238,7 @@ public class ApiEndpointDto {
         private Long id;
         private String sourceFieldPath;
         private String targetColumnName;
+        private String sourceFieldType;
         private Boolean isConflictKey;
         private ApiFieldMapping.TransformType transformType;
         private String transformConfig;
@@ -258,6 +260,7 @@ public class ApiEndpointDto {
                     .id(m.getId())
                     .sourceFieldPath(m.getSourceFieldPath())
                     .targetColumnName(m.getTargetColumnName())
+                    .sourceFieldType(m.getSourceFieldType())
                     .isConflictKey(m.getIsConflictKey())
                     .transformType(m.getTransformType())
                     .transformConfig(m.getTransformConfig())

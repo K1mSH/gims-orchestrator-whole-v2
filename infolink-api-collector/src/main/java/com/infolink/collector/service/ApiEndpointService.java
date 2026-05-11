@@ -128,14 +128,28 @@ public class ApiEndpointService {
         ApiEndpoint endpoint = endpointRepository.findById(endpointId)
                 .orElseThrow(() -> new IllegalArgumentException("ApiEndpoint not found: " + endpointId));
 
+        // 기존 매핑의 sourceFieldType 보존 — 새 요청에서 빈 값/누락 시 기존값 그대로
+        // (예: items 가 비어있어 타입 추출 못한 케이스에서 기존 DB 값 보호)
+        java.util.Map<String, String> existingTypeMap = endpoint.getFieldMappings().stream()
+                .filter(m -> m.getSourceFieldType() != null && !m.getSourceFieldType().isEmpty())
+                .collect(java.util.stream.Collectors.toMap(
+                        ApiFieldMapping::getSourceFieldPath,
+                        ApiFieldMapping::getSourceFieldType,
+                        (a, b) -> a));
+
         endpoint.getFieldMappings().clear();
 
         for (int i = 0; i < requests.size(); i++) {
             FieldMappingRequest req = requests.get(i);
+            String reqType = req.getSourceFieldType();
+            String fallbackType = (reqType == null || reqType.isEmpty())
+                    ? existingTypeMap.get(req.getSourceFieldPath())
+                    : reqType;
             ApiFieldMapping mapping = ApiFieldMapping.builder()
                     .apiEndpoint(endpoint)
                     .sourceFieldPath(req.getSourceFieldPath())
                     .targetColumnName(req.getTargetColumnName())
+                    .sourceFieldType(fallbackType)
                     .isConflictKey(req.getIsConflictKey() != null ? req.getIsConflictKey() : false)
                     .transformType(req.getTransformType() != null ? req.getTransformType() : ApiFieldMapping.TransformType.NONE)
                     .transformConfig(req.getTransformConfig())

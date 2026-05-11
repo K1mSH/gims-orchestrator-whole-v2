@@ -32,6 +32,10 @@ public class ApiFieldMapping {
     @Comment("DB 컬럼명")
     private String targetColumnName;
 
+    @Column(name = "source_field_type", length = 20)
+    @Comment("응답 필드 타입 (string/number/boolean 등) — 재진입 시 화면 표시용")
+    private String sourceFieldType;
+
     @Column(name = "is_conflict_key")
     @Comment("UPSERT conflict 기준 여부 (ON CONFLICT 대상 컬럼)")
     @Builder.Default
