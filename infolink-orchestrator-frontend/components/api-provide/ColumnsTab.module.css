@@ -1,0 +1,164 @@
+.cardActions {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+/* 그리드 위 도구바 (전체선택 / 전체해제 / 응답필드명 자동) */
+.toolbar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  margin-bottom: 1.2rem;
+}
+
+.cardSubLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.2rem;
+}
+
+.lockNote {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 1.2rem;
+}
+
+/* 읽기 전용 (locked) 테이블 */
+.readonlyTableWrap {
+  overflow-x: auto;
+}
+
+.readonlyCol {
+  font-family: var(--krds-typo-font-type);
+}
+
+.readonlyAlias {
+  font-family: var(--krds-typo-font-type);
+}
+
+.readonlyAliasMuted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.readonlyTransform {
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* 컬럼 그리드 (수정 모드) */
+.colGrid {
+  overflow-x: auto;
+}
+
+.colGridHeader,
+.colGridRow {
+  display: grid;
+  grid-template-columns: 4rem 18rem 9rem 1fr 13rem 11rem;
+  column-gap: 2rem;
+  row-gap: 0;
+  align-items: center;
+  min-width: 78rem;
+}
+
+.colGridHeader > div:first-child,
+.colGridRow > :global(.krds-form-check) {
+  justify-self: center;
+}
+
+.colGridHeader {
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.colGridHeader > div {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.colGridRow {
+  padding: 0.8rem 0;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light, var(--krds-light-color-border-gray-light));
+}
+
+.colName {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.colNameTop {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.colNameChecked .colNameText {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.colNameText {
+  font-family: var(--krds-typo-font-type);
+}
+
+.colNamePk {
+  display: inline-block;
+  padding: 0 0.4rem;
+  background-color: var(--krds-light-color-element-secondary-lighter);
+  color: var(--krds-light-color-text-secondary);
+  border-radius: var(--krds-radius-small1);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+  line-height: 1.5;
+}
+
+.colNameRequired {
+  display: inline-block;
+  padding: 0 0.4rem;
+  background-color: var(--krds-light-color-element-danger-lighter);
+  color: var(--krds-light-color-text-danger);
+  border-radius: var(--krds-radius-small1);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+  line-height: 1.5;
+}
+
+.remarksCell {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.paramHidden {
+  visibility: hidden;
+}
+
+.colMeta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-small1);
+  color: var(--krds-light-color-text-bolder);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-family: var(--krds-typo-font-type);
+  text-align: center;
+  width: fit-content;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inputDimmed {
+  opacity: 0.4;
+}

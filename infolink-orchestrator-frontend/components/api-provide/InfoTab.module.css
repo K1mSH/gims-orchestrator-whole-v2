@@ -1,0 +1,82 @@
+.cardHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lockNote {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-regular);
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem 2rem;
+}
+
+.infoCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.infoLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.infoValue {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+  word-break: break-all;
+}
+
+.infoValueCode {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+  word-break: break-all;
+}
+
+.descSection {
+  margin-top: 1.6rem;
+  padding-top: 1.6rem;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.descText {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+  line-height: 1.5;
+}
+
+.urlPreview {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.3rem;
+  font-family: var(--krds-typo-font-type);
+}
+
+.lockedHint {
+  margin-top: 1rem;
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* textarea 는 .small 의 fixed height(짧음) 무시 + 여유있는 높이 */
+.descTextarea {
+  height: auto;
+  min-height: 8rem;
+  padding: 0.8rem 1.2rem;
+  resize: vertical;
+  line-height: 1.5;
+}

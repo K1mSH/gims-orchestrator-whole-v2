@@ -1,31 +1,29 @@
 'use client';
 
+/**
+ * KRDS 탭 마크업: <li class="active"><button class="btn-tab"> ... </button></li>
+ * 부모는 반드시 <div class="krds-tab-area"><div class="tab line"><ul>...</ul></div></div> 구조여야 함.
+ */
 interface TabButtonProps {
-  label: string;
   active: boolean;
   onClick: () => void;
+  children: React.ReactNode;
   disabled?: boolean;
   disabledReason?: string;
 }
 
-export default function TabButton({ label, active, onClick, disabled, disabledReason }: TabButtonProps) {
+export default function TabButton({ active, onClick, children, disabled, disabledReason }: TabButtonProps) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={disabled ? disabledReason : undefined}
-      style={{
-        padding: '0.5rem 1rem',
-        border: 'none',
-        borderBottom: active ? '2px solid var(--primary)' : '2px solid transparent',
-        background: 'none',
-        fontWeight: active ? 600 : 400,
-        color: disabled ? 'var(--gray-400)' : active ? 'var(--primary)' : 'var(--gray-600)',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: '0.9rem',
-      }}
-    >
-      {label}
-    </button>
+    <li className={active ? 'active' : ''}>
+      <button
+        type="button"
+        className="btn-tab"
+        onClick={onClick}
+        disabled={disabled}
+        title={disabled ? disabledReason : undefined}
+      >
+        {children}
+      </button>
+    </li>
   );
 }

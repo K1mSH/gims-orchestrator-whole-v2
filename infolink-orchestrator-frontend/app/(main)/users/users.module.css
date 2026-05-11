@@ -1,0 +1,52 @@
+.errorBox {
+  margin-bottom: 1rem;
+}
+
+.idCol {
+  width: 8rem;
+}
+
+.bigoCol {
+  width: 14rem;
+}
+
+/* 모달 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.modalBox {
+  width: 42rem;
+  max-width: 100%;
+  background-color: var(--krds-light-color-background-white);
+  border-radius: var(--krds-radius-medium2);
+  padding: 2rem;
+  box-shadow: 0 1.2rem 3.2rem rgba(0, 0, 0, 0.16);
+}
+
+.modalTitle {
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  margin: 0 0 1.4rem 0;
+}
+
+.modalFields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}

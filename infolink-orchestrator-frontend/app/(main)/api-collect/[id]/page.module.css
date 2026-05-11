@@ -1,0 +1,40 @@
+.headerLeftCol {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+}
+
+.statusDotActive {
+  background-color: var(--krds-light-color-element-success);
+}
+
+.statusDotInactive {
+  background-color: var(--krds-light-color-element-disabled-light);
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+/* 상태 배지 줄 (커스텀/파라미터/데이터루트/매핑/적재) */
+.metaRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.tabsWrap {
+  margin-bottom: 1.6rem;
+}

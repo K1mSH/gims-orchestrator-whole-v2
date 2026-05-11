@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { authApi, type AuthUser } from '@/lib/authApi';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import styles from './users.module.css';
 
 export default function UsersPage() {
   const { user: me } = useCurrentUser();
@@ -31,52 +32,46 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>사용자 관리</h1>
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ 새 사용자 추가</button>
+      <div className="app-page-header">
+        <h1 className="app-page-header__title">사용자 관리</h1>
+        <button className="krds-btn small" onClick={() => setShowAdd(true)}>+ 새 사용자 추가</button>
       </div>
 
-      {error && (
-        <div style={{ background: '#fef2f2', color: 'var(--error)', padding: '0.75rem', borderRadius: '0.375rem', marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
+      {error && <div className={`app-alert app-alert--danger ${styles.errorBox}`}>{error}</div>}
 
-      <div className="card">
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 80 }}>ID</th>
-                <th>Username</th>
-                <th>이름</th>
-                <th>등록일</th>
-                <th style={{ width: 120 }}>비고</th>
+      <div className="app-card">
+        <table className="app-table">
+          <thead>
+            <tr>
+              <th className={styles.idCol}>ID</th>
+              <th>Username</th>
+              <th>이름</th>
+              <th>등록일</th>
+              <th className={styles.bigoCol}>비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr><td colSpan={5} className="app-empty">로딩 중...</td></tr>
+            )}
+            {!loading && users.length === 0 && (
+              <tr><td colSpan={5} className="app-empty">사용자 없음</td></tr>
+            )}
+            {!loading && users.map((u) => (
+              <tr key={u.id}>
+                <td>{u.id}</td>
+                <td>{u.authUsersId}</td>
+                <td>{u.name}</td>
+                <td>{u.createdAt?.replace('T', ' ').slice(0, 19)}</td>
+                <td>
+                  {me?.id === u.id && (
+                    <Link href="/users/me" className="krds-btn small secondary">내 정보 변경</Link>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>로딩 중...</td></tr>
-              )}
-              {!loading && users.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>사용자 없음</td></tr>
-              )}
-              {!loading && users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.id}</td>
-                  <td>{u.authUsersId}</td>
-                  <td>{u.name}</td>
-                  <td>{u.createdAt?.replace('T', ' ').slice(0, 19)}</td>
-                  <td>
-                    {me?.id === u.id && (
-                      <Link href="/users/me" className="btn btn-secondary btn-sm">내 정보 변경</Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {showAdd && (
@@ -120,38 +115,31 @@ function AddUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }} onClick={onClose}>
-      <div style={{
-        width: 420, background: 'white', borderRadius: '0.5rem', padding: '1.75rem',
-      }} onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem' }}>새 사용자 추가</h2>
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.modalTitle}>새 사용자 추가</h2>
 
         <form onSubmit={onSubmit}>
-          <div className="form-group">
-            <label className="form-label">ID</label>
-            <input className="form-input" value={authUsersId} onChange={(e) => setUsername(e.target.value)} required disabled={submitting} maxLength={50} autoFocus />
-          </div>
-          <div className="form-group">
-            <label className="form-label">비밀번호 (8자 이상)</label>
-            <input className="form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={submitting} minLength={8} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">이름</label>
-            <input className="form-input" value={name} onChange={(e) => setName(e.target.value)} required disabled={submitting} maxLength={50} />
-          </div>
-
-          {error && (
-            <div style={{ background: '#fef2f2', color: 'var(--error)', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.8125rem', marginBottom: '1rem' }}>
-              {error}
+          <div className={styles.modalFields}>
+            <div className="app-form-field">
+              <label className="app-form-label">ID</label>
+              <input className="krds-input small" value={authUsersId} onChange={(e) => setUsername(e.target.value)} required disabled={submitting} maxLength={50} autoFocus />
             </div>
-          )}
+            <div className="app-form-field">
+              <label className="app-form-label">비밀번호 (8자 이상)</label>
+              <input className="krds-input small" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={submitting} minLength={8} />
+            </div>
+            <div className="app-form-field">
+              <label className="app-form-label">이름</label>
+              <input className="krds-input small" value={name} onChange={(e) => setName(e.target.value)} required disabled={submitting} maxLength={50} />
+            </div>
+          </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>취소</button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+          {error && <div className={`app-alert app-alert--danger ${styles.errorBox}`}>{error}</div>}
+
+          <div className={styles.modalActions}>
+            <button type="button" className="krds-btn small secondary" onClick={onClose} disabled={submitting}>취소</button>
+            <button type="submit" className="krds-btn small" disabled={submitting}>
               {submitting ? '추가 중...' : '추가'}
             </button>
           </div>

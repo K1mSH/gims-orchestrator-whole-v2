@@ -5,8 +5,7 @@ import { datasourceApi } from '@/lib/api';
 import { columnApi } from '@/lib/providerApi';
 import { ApiPrvOperation } from '@/types/api-provide';
 import { ColumnSearchResult } from '@/types/index';
-
-const fieldLabel: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 };
+import styles from './ColumnsTab.module.css';
 
 type ColConfig = { alias: string; transformType: string; transformParam: string };
 
@@ -40,7 +39,6 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
           }));
           setSelectedColumns(map);
         } else {
-          // 신규: 전체 선택 + alias 대문자 자동 채움
           setSelectedColumns(new Map(cols.map(c => [c.columnName, defaultCfg(c.columnName.toUpperCase())])));
         }
       } catch (e) {
@@ -55,7 +53,6 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
   const toggleColumn = (colName: string) => {
     setSelectedColumns(prev => {
       const next = new Map(prev);
-      // 체크 → alias 에 대문자 자동 채움 / 해제 → 제거
       next.has(colName) ? next.delete(colName) : next.set(colName, defaultCfg(colName.toUpperCase()));
       return next;
     });
@@ -97,34 +94,36 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>컬럼 불러오는 중...</div>;
+  if (loading) return <div className="app-loading">컬럼 불러오는 중...</div>;
 
   const locked = operation.isLocked;
 
   if (locked) {
     return (
-      <div className="card">
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', fontSize: '0.85rem', fontWeight: 600 }}>
-          🔒 컬럼 설정 (읽기 전용 — {operation.columns.length}개)
+      <div className="app-card">
+        <div className="app-card__header">
+          <h2 className="app-card__title">🔒 컬럼 설정 (읽기 전용 — {operation.columns.length}개)</h2>
         </div>
-        <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-          시스템 내장 핸들러가 자동 등록한 메타입니다. 수정 불가.
-        </div>
-        <div style={{ padding: '0 1rem 1rem' }}>
-          <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+        <div className={styles.lockNote}>시스템 내장 핸들러가 자동 등록한 메타입니다. 수정 불가.</div>
+        <div className={styles.readonlyTableWrap}>
+          <table className="app-table">
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--gray-100)', textAlign: 'left', color: 'var(--gray-500)' }}>
-                <th style={{ padding: '0.4rem' }}>컬럼명</th>
-                <th style={{ padding: '0.4rem' }}>응답 필드명</th>
-                <th style={{ padding: '0.4rem' }}>가공</th>
+              <tr>
+                <th>컬럼명</th>
+                <th>응답 필드명</th>
+                <th>가공</th>
               </tr>
             </thead>
             <tbody>
               {operation.columns.map(c => (
-                <tr key={c.id ?? c.columnName} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-                  <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>{c.columnName}</td>
-                  <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>{c.aliasName || <span style={{ color: 'var(--gray-400)' }}>(원본)</span>}</td>
-                  <td style={{ padding: '0.4rem', color: 'var(--gray-500)' }}>{c.transformType === 'NONE' ? '-' : `${c.transformType}${c.transformParam ? ` (${c.transformParam})` : ''}`}</td>
+                <tr key={c.id ?? c.columnName}>
+                  <td className={styles.readonlyCol}>{c.columnName}</td>
+                  <td className={styles.readonlyAlias}>
+                    {c.aliasName || <span className={styles.readonlyAliasMuted}>(원본)</span>}
+                  </td>
+                  <td className={styles.readonlyTransform}>
+                    {c.transformType === 'NONE' ? '-' : `${c.transformType}${c.transformParam ? ` (${c.transformParam})` : ''}`}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -134,22 +133,53 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
     );
   }
 
+  const allSelectedNoCustom =
+    selectedColumns.size === dbColumns.length &&
+    !Array.from(selectedColumns.values()).some(c => c.alias.trim() || c.transformType !== 'NONE');
+
   return (
-    <div className="card">
-      <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="app-card">
+      <div className="app-card__header">
         <div>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>SELECT 컬럼 ({selectedColumns.size}/{dbColumns.length})</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>
-            {selectedColumns.size === dbColumns.length && !Array.from(selectedColumns.values()).some(c => c.alias.trim() || c.transformType !== 'NONE')
-              ? 'SELECT * (전체 컬럼)'
-              : `${selectedColumns.size}개 컬럼 선택됨`}
+          <h2 className="app-card__title">SELECT 컬럼 ({selectedColumns.size}/{dbColumns.length})</h2>
+          <div className={styles.cardSubLine}>
+            {allSelectedNoCustom ? 'SELECT * (전체 컬럼)' : `${selectedColumns.size}개 컬럼 선택됨`}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn btn-sm" onClick={() => setSelectedColumns(new Map(dbColumns.map(c => [c.columnName, defaultCfg(c.columnName.toUpperCase())])))}>전체 선택</button>
-          <button className="btn btn-sm" onClick={() => setSelectedColumns(new Map())}>전체 해제</button>
+        <div className={styles.cardActions}>
           <button
-            className="btn btn-sm"
+            type="button"
+            className="krds-btn small"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      </div>
+
+      {dbColumns.length === 0 ? (
+        <div className="app-empty">DB에서 컬럼을 조회할 수 없습니다. Datasource 연결을 확인하세요.</div>
+      ) : (
+        <>
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            className="krds-btn small secondary"
+            onClick={() => setSelectedColumns(new Map(dbColumns.map(c => [c.columnName, defaultCfg(c.columnName.toUpperCase())])))}
+          >
+            전체 선택
+          </button>
+          <button
+            type="button"
+            className="krds-btn small secondary"
+            onClick={() => setSelectedColumns(new Map())}
+          >
+            전체 해제
+          </button>
+          <button
+            type="button"
+            className="krds-btn small secondary"
             onClick={() => setSelectedColumns(prev => {
               const next = new Map<string, ColConfig>();
               prev.forEach((cfg, colName) => next.set(colName, { ...cfg, alias: colName.toUpperCase() }));
@@ -159,62 +189,74 @@ export default function ColumnsTab({ operation, onUpdate }: Props) {
           >
             응답필드명 자동(대문자)
           </button>
-          <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? '저장 중...' : '저장'}
-          </button>
         </div>
-      </div>
-
-      {dbColumns.length === 0 ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>
-          DB에서 컬럼을 조회할 수 없습니다. Datasource 연결을 확인하세요.
-        </div>
-      ) : (
-        <div style={{ padding: '0.75rem 1rem', overflowX: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 80px 1fr 160px 140px', gap: '0.5rem', marginBottom: '0.5rem', minWidth: '700px' }}>
-            <div></div>
-            <div style={fieldLabel}>컬럼명</div>
-            <div style={fieldLabel}>타입</div>
-            <div style={fieldLabel}>응답 필드명</div>
-            <div style={fieldLabel}>가공</div>
-            <div style={fieldLabel}>가공 파라미터</div>
+        <div className={styles.colGrid}>
+          <div className={styles.colGridHeader}>
+            <div>사용</div>
+            <div>컬럼명</div>
+            <div>타입</div>
+            <div>응답 필드명</div>
+            <div>가공</div>
+            <div>가공 파라미터</div>
           </div>
           {dbColumns.map(col => {
             const cfg = selectedColumns.get(col.columnName);
             const checked = !!cfg;
             return (
-              <div key={col.columnName} style={{ display: 'grid', gridTemplateColumns: '30px 1fr 80px 1fr 160px 140px', gap: '0.5rem', marginBottom: '0.15rem', alignItems: 'center', minWidth: '700px' }}>
-                <input type="checkbox" checked={checked} onChange={() => toggleColumn(col.columnName)} />
-                <span style={{ fontSize: '0.8rem', fontWeight: checked ? 600 : 400 }}>
-                  <span style={{ fontFamily: 'monospace' }}>{col.columnName}</span>
-                  {col.isPrimaryKey ? <span style={{ color: '#2563eb', fontSize: '0.7rem' }}> [PK]</span> : ''}
-                  {!col.isNullable ? <span style={{ color: '#dc2626', fontSize: '0.7rem' }}> *</span> : ''}
-                  {col.remarks ? <span style={{ color: 'var(--gray-400)', fontSize: '0.7rem' }}> {col.remarks}</span> : ''}
-                </span>
-                <span style={{ color: 'var(--gray-400)', fontSize: '0.75rem' }}>{col.dataType}</span>
-                <input className="form-input" placeholder={col.columnName} disabled={!checked}
+              <div key={col.columnName} className={styles.colGridRow}>
+                <div className="krds-form-check medium">
+                  <input
+                    type="checkbox"
+                    id={`col-chk-${col.columnName}`}
+                    checked={checked}
+                    onChange={() => toggleColumn(col.columnName)}
+                  />
+                  <label htmlFor={`col-chk-${col.columnName}`} aria-label={`${col.columnName} 사용`}></label>
+                </div>
+                <div className={`${styles.colName} ${checked ? styles.colNameChecked : ''}`}>
+                  <div className={styles.colNameTop}>
+                    <span className={styles.colNameText}>{col.columnName}</span>
+                    {col.isPrimaryKey && <span className={styles.colNamePk}>PK</span>}
+                  </div>
+                  {col.remarks && <div className={styles.colNameRemarks}>{col.remarks}</div>}
+                </div>
+                <span className={styles.colMeta}>{col.dataType}</span>
+                <input
+                  className={`krds-input small ${checked ? '' : styles.inputDimmed}`}
+                  placeholder={col.columnName}
+                  disabled={!checked}
                   value={cfg?.alias || ''}
                   onChange={e => updateCfg(col.columnName, 'alias', e.target.value)}
-                  style={{ fontSize: '0.8rem', opacity: checked ? 1 : 0.3 }} />
-                <select className="form-input" disabled={!checked}
+                />
+                <select
+                  className={`krds-input small ${checked ? '' : styles.inputDimmed}`}
+                  disabled={!checked}
                   value={cfg?.transformType || 'NONE'}
                   onChange={e => updateCfg(col.columnName, 'transformType', e.target.value)}
-                  style={{ fontSize: '0.75rem', opacity: checked ? 1 : 0.3 }}>
+                >
                   <option value="NONE">없음</option>
                   <option value="ROUND">소수점 (N자리 반올림)</option>
                   <option value="DATE_FORMAT">날짜형식 (YYYY-MM-DD 등)</option>
                   <option value="COALESCE">NULL대체 (기본값 지정)</option>
                   <option value="SUBSTRING">문자절삭 (앞 N자)</option>
                 </select>
-                <input className="form-input" disabled={!checked || cfg?.transformType === 'NONE'}
-                  placeholder={cfg?.transformType === 'ROUND' ? '예: 2 (소수점 2자리)' : cfg?.transformType === 'DATE_FORMAT' ? '예: YYYY-MM-DD' : cfg?.transformType === 'COALESCE' ? '예: 0 또는 없음' : cfg?.transformType === 'SUBSTRING' ? '예: 50 (앞 50자)' : ''}
+                <input
+                  className={`krds-input small ${checked && cfg?.transformType !== 'NONE' ? '' : styles.inputDimmed}`}
+                  disabled={!checked || cfg?.transformType === 'NONE'}
+                  placeholder={
+                    cfg?.transformType === 'ROUND' ? '예: 2 (소수점 2자리)' :
+                    cfg?.transformType === 'DATE_FORMAT' ? '예: YYYY-MM-DD' :
+                    cfg?.transformType === 'COALESCE' ? '예: 0 또는 없음' :
+                    cfg?.transformType === 'SUBSTRING' ? '예: 50 (앞 50자)' : ''
+                  }
                   value={cfg?.transformParam || ''}
                   onChange={e => updateCfg(col.columnName, 'transformParam', e.target.value)}
-                  style={{ fontSize: '0.8rem', opacity: checked && cfg?.transformType !== 'NONE' ? 1 : 0.3 }} />
+                />
               </div>
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

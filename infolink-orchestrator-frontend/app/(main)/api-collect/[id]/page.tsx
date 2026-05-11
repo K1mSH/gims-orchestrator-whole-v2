@@ -10,6 +10,7 @@ import InfoTab from '@/components/api-collect/InfoTab';
 import MappingTab from '@/components/api-collect/MappingTab';
 import HistoryTab from '@/components/api-collect/HistoryTab';
 import ScheduleTab from '@/components/api-collect/ScheduleTab';
+import styles from './page.module.css';
 
 type TabType = 'info' | 'mapping' | 'schedule' | 'history';
 
@@ -42,8 +43,15 @@ export default function ApiCollectDetailPage() {
   }, [fetchEndpoint]);
 
   if (loading || !endpoint) {
-    return <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>;
+    return <div className="app-loading">로딩 중...</div>;
   }
+
+  // Step Lock 판별
+  const isCustom = !!endpoint.executorType;
+  const hasParams = endpoint.params.length > 0;
+  const hasDataRoot = !!endpoint.dataRootPath;
+  const hasMappings = endpoint.fieldMappings.length > 0;
+  const canRun = isCustom || (hasMappings && hasDataRoot && !!endpoint.targetTableName);
 
   const handleRun = async () => {
     if (!canRun) {
@@ -68,88 +76,90 @@ export default function ApiCollectDetailPage() {
     }
   };
 
-  // Step Lock 판별
-  const isCustom = !!endpoint.executorType;
-  const hasParams = endpoint.params.length > 0;
-  const hasDataRoot = !!endpoint.dataRootPath;
-  const hasMappings = endpoint.fieldMappings.length > 0;
-  const canRun = isCustom || (hasMappings && hasDataRoot && !!endpoint.targetTableName);
+  const handleDelete = async () => {
+    if (!confirm(`'${endpoint.apiName}' API를 삭제하시겠습니까?`)) return;
+    try {
+      await endpointApi.delete(endpoint.id);
+      router.push('/api-collect');
+    } catch (e: any) {
+      alert('삭제 실패: ' + (e.response?.data?.message || e.message));
+    }
+  };
 
   return (
     <div>
       {/* 헤더 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <button className="btn btn-sm" onClick={() => router.push('/api-collect')}
-          style={{ background: 'var(--gray-200)' }}>
-          &larr; 목록
-        </button>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{endpoint.apiName}</h1>
-        <span style={{
-          display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
-          background: endpoint.isActive ? 'var(--success)' : 'var(--gray-400)',
-        }} />
-      </div>
-
-      {/* 상태 배지 + 수동 실행 */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        {isCustom && (
-          <span style={{
-            padding: '2px 8px', borderRadius: '4px', background: '#fef3c7', color: '#92400e',
-          }}>
-            커스텀: {endpoint.executorType}
-          </span>
-        )}
-        <span style={{
-          padding: '2px 8px', borderRadius: '4px',
-          background: hasParams ? '#dcfce7' : '#fef3c7',
-          color: hasParams ? '#166534' : '#92400e',
-        }}>
-          파라미터: {hasParams ? `${endpoint.params.length}개` : '미설정'}
-        </span>
-        {!isCustom && (<>
-        <span style={{
-          padding: '2px 8px', borderRadius: '4px',
-          background: hasDataRoot ? '#dcfce7' : '#fee2e2',
-          color: hasDataRoot ? '#166534' : '#991b1b',
-        }}>
-          데이터 루트: {hasDataRoot ? endpoint.dataRootPath : '미설정'}
-        </span>
-        <span style={{
-          padding: '2px 8px', borderRadius: '4px',
-          background: hasMappings ? '#dcfce7' : '#fee2e2',
-          color: hasMappings ? '#166534' : '#991b1b',
-        }}>
-          매핑: {hasMappings ? `${endpoint.fieldMappings.length}개` : '미설정'}
-        </span>
-        </>)}
-        {endpoint.targetTableName && (
-          <span style={{
-            padding: '2px 8px', borderRadius: '4px', background: '#dbeafe', color: '#1d4ed8',
-          }}>
-            적재: {endpoint.targetTableName}
-          </span>
-        )}
-        <div style={{ marginLeft: 'auto' }}>
-          <button className="btn btn-sm" onClick={handleRun} disabled={running}
-            style={{
-              background: canRun ? 'var(--success)' : 'var(--gray-300)',
-              color: canRun ? 'white' : 'var(--gray-500)',
-              padding: '4px 16px', fontSize: '0.85rem',
-              cursor: running ? 'wait' : 'pointer',
-            }}>
+      <div className="app-page-header">
+        <div className={styles.headerLeftCol}>
+          <h1 className="app-page-header__title">{endpoint.apiName}</h1>
+          <span className={`${styles.statusDot} ${endpoint.isActive ? styles.statusDotActive : styles.statusDotInactive}`}
+            title={endpoint.isActive ? '활성' : '비활성'} />
+        </div>
+        <div className={styles.headerActions}>
+          <button type="button" className="krds-btn small secondary" onClick={() => router.push('/api-collect')}>목록</button>
+          <button type="button" className="krds-btn small" onClick={handleRun} disabled={running || !canRun}
+            title={!canRun ? '필수 항목(데이터 루트/매핑/적재 테이블) 누락' : undefined}>
             {running ? '실행 중...' : '수동 실행'}
           </button>
+          <button type="button" className="krds-btn small app-btn-danger" onClick={handleDelete}>삭제</button>
         </div>
       </div>
 
+      {/* 상태 배지 줄 */}
+      <div className={styles.metaRow}>
+        {isCustom && (
+          <span className="krds-badge bg-light-warning">
+            커스텀: {endpoint.executorType}
+          </span>
+        )}
+        <span className={`krds-badge ${hasParams ? 'bg-light-success' : 'bg-light-warning'}`}>
+          파라미터: {hasParams ? `${endpoint.params.length}개` : '미설정'}
+        </span>
+        {!isCustom && (
+          <>
+            <span className={`krds-badge ${hasDataRoot ? 'bg-light-success' : 'bg-light-danger'}`}>
+              데이터 루트: {hasDataRoot ? endpoint.dataRootPath : '미설정'}
+            </span>
+            <span className={`krds-badge ${hasMappings ? 'bg-light-success' : 'bg-light-danger'}`}>
+              매핑: {hasMappings ? `${endpoint.fieldMappings.length}개` : '미설정'}
+            </span>
+          </>
+        )}
+        {endpoint.targetTableName && (
+          <span className="krds-badge bg-light-information">
+            적재: {endpoint.targetTableName}
+          </span>
+        )}
+      </div>
+
       {/* 탭 */}
-      <div style={{ borderBottom: '1px solid var(--gray-200)', marginBottom: '1rem', display: 'flex', gap: '0.25rem' }}>
-        <TabButton label="기본정보" active={activeTab === 'info'} onClick={() => setActiveTab('info')} />
-        <TabButton label="매핑" active={activeTab === 'mapping'} onClick={() => setActiveTab('mapping')}
-          disabled={isCustom} disabledReason="커스텀 실행기는 매핑 불필요" />
-        <TabButton label="스케줄" active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')}
-          disabled={!isCustom && !hasMappings} disabledReason="매핑 설정 후 이용 가능" />
-        <TabButton label="실행 이력" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
+      <div className={`krds-tab-area ${styles.tabsWrap}`}>
+        <div className="tab line">
+          <ul>
+            <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')}>
+              기본정보
+            </TabButton>
+            <TabButton
+              active={activeTab === 'mapping'}
+              onClick={() => setActiveTab('mapping')}
+              disabled={isCustom}
+              disabledReason="커스텀 실행기는 매핑 불필요"
+            >
+              매핑
+            </TabButton>
+            <TabButton
+              active={activeTab === 'schedule'}
+              onClick={() => setActiveTab('schedule')}
+              disabled={!isCustom && !hasMappings}
+              disabledReason="매핑 설정 후 이용 가능"
+            >
+              스케줄
+            </TabButton>
+            <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
+              실행 이력
+            </TabButton>
+          </ul>
+        </div>
       </div>
 
       {/* 탭 콘텐츠 */}

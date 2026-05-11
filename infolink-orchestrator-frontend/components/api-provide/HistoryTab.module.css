@@ -1,0 +1,37 @@
+.tableWrap {
+  overflow-x: auto;
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.errorCell {
+  color: var(--krds-light-color-text-danger);
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apiKeyCell {
+  font-family: var(--krds-typo-font-type);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* 페이저 */
+.pager {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 1.2rem 0 0;
+  margin-top: 1.2rem;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.pagerLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  padding: 0 0.6rem;
+}

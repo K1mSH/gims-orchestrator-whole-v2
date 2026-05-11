@@ -14,6 +14,7 @@ import {
   TransformType,
 } from '@/types/api-collect';
 import { DatasourceSimple, ColumnSearchResult, TableSearchResult } from '@/types';
+import styles from './page.module.css';
 
 // --- 매핑 행 타입 ---
 interface MappingRow {
@@ -234,6 +235,26 @@ export default function ApiCollectPage() {
   // 등록 (validation + 일괄 저장)
   const isCustom = !!executorType;
 
+  // 등록 가능 여부 — 미설정 항목 목록 계산
+  const createMissing = (() => {
+    const missing: string[] = [];
+    if (!form.apiName.trim()) missing.push('API명');
+    if (!form.url.trim()) missing.push('URL');
+    if (!testResult?.success) missing.push('테스트 호출 성공');
+    if (!isCustom) {
+      if (!selectedDataRoot) missing.push('데이터 루트');
+      if (!selectedDatasourceId) missing.push('Target Datasource');
+      if (!targetTable.trim()) missing.push('Target 테이블');
+      const activeMappings = mappingRows.filter(r => r.targetColumnName);
+      const activeDerived = derivedRows.filter(r => r.targetColumnName);
+      if (activeMappings.length === 0 && activeDerived.length === 0) missing.push('필드 매핑');
+      const hasConflictKey = [...activeMappings, ...activeDerived].some(r => r.isConflictKey);
+      if (upsertEnabled && !hasConflictKey) missing.push('UPSERT 중복키');
+    }
+    return missing;
+  })();
+  const canCreate = createMissing.length === 0;
+
   const handleCreate = async () => {
     // 1. 기본정보
     if (!form.apiName.trim()) { alert('API명을 입력하세요.'); return; }
@@ -377,53 +398,83 @@ export default function ApiCollectPage() {
     }
   };
 
-  const sectionLabel = { fontSize: '0.75rem', color: 'var(--gray-400)', marginBottom: '0.5rem', fontWeight: 600 } as const;
-  const fieldLabel = { fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 } as const;
-  const sectionStyle = { padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' } as const;
-
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>API 수집 관리</h1>
-        <button className="btn btn-primary" onClick={() => showCreateForm ? resetForm() : setShowCreateForm(true)}>
+      <div className="app-page-header">
+        <h1 className="app-page-header__title">API 수집 관리</h1>
+        <button className="krds-btn small" onClick={() => showCreateForm ? resetForm() : setShowCreateForm(true)}>
           {showCreateForm ? '취소' : '+ API 등록'}
         </button>
       </div>
 
       {showCreateForm && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header"><h3 className="card-title">새 API 등록</h3></div>
-
-          {/* 등록 유형 선택 */}
-          <div style={sectionStyle}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gray-600)' }}>등록 유형</span>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                <input type="radio" checked={!isCustom} onChange={() => setExecutorType('')} /> 일반 (범용 매핑)
+        <div className={styles.formWrap}>
+          {/* 기본 정보 카드 — 등록 유형 + 요청 + 인증 + 설명 묶음 */}
+          <div className="app-card">
+          <div className="app-card__header">
+            <h2 className="app-card__title">기본정보</h2>
+            <button type="button" className="krds-btn small" onClick={handleCreate}
+              disabled={saving || !canCreate}
+              title={!canCreate ? `미설정: ${createMissing.join(', ')}` : undefined}>
+              {saving ? '등록 중...' : '등록'}
+            </button>
+          </div>
+          {/* 등록 유형 선택 — 카드형 라디오 */}
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>등록 유형</div>
+            <div className={styles.modeOptions}>
+              <label className={`${styles.modeOption} ${!isCustom ? styles.modeOptionActive : ''}`}>
+                <input
+                  type="radio"
+                  checked={!isCustom}
+                  onChange={() => setExecutorType('')}
+                  className={styles.modeOptionRadio}
+                />
+                <div className={styles.modeOptionContent}>
+                  <span className={styles.modeOptionTitle}>
+                    일반<span className={styles.modeOptionBadge}>META</span>
+                  </span>
+                  <span className={styles.modeOptionDesc}>
+                    범용 매핑 — 응답 트리에서 필드 선택해서 직접 매핑.
+                  </span>
+                </div>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                <input type="radio" checked={isCustom} onChange={() => setExecutorType(customExecutors[0]?.id || '')} /> 프리셋 (커스텀 실행기)
+              <label className={`${styles.modeOption} ${isCustom ? styles.modeOptionActive : ''}`}>
+                <input
+                  type="radio"
+                  checked={isCustom}
+                  onChange={() => setExecutorType(customExecutors[0]?.id || '')}
+                  className={styles.modeOptionRadio}
+                />
+                <div className={styles.modeOptionContent}>
+                  <span className={styles.modeOptionTitle}>
+                    프리셋<span className={styles.modeOptionBadge}>CUSTOM</span>
+                  </span>
+                  <span className={styles.modeOptionDesc}>
+                    커스텀 실행기 — 시스템 내장 로직으로 처리 (매핑 불필요).
+                  </span>
+                </div>
               </label>
             </div>
           </div>
 
           {/* 커스텀일 때 실행기 선택 */}
           {isCustom && (
-            <div style={sectionStyle}>
-              <div style={sectionLabel}>실행기</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <div style={fieldLabel}>실행기 *</div>
-                  <select className="form-select" value={executorType}
+            <div className={styles.section}>
+              <div className={styles.sectionLabel}>실행기</div>
+              <div className={styles.gridForm}>
+                <div className="app-form-field">
+                  <label className="app-form-label">실행기 *</label>
+                  <select className="krds-input small" value={executorType}
                     onChange={e => setExecutorType(e.target.value)}>
                     {customExecutors.map(ce => (
                       <option key={ce.id} value={ce.id}>{ce.displayName}</option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <div style={fieldLabel}>Target Datasource</div>
-                  <select className="form-select" value={selectedDatasourceId}
+                <div className="app-form-field">
+                  <label className="app-form-label">Target Datasource</label>
+                  <select className="krds-input small" value={selectedDatasourceId}
                     onChange={e => setSelectedDatasourceId(e.target.value)}>
                     <option value="">-- 기본 DB --</option>
                     {datasources.map(ds => (
@@ -435,50 +486,57 @@ export default function ApiCollectPage() {
             </div>
           )}
 
-          {/* 요청 설정 (공통) */}
-          <div style={sectionStyle}>
-            <div style={sectionLabel}>요청</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
-              <div>
-                <div style={fieldLabel}>API명 *</div>
-                <input className="form-input" value={form.apiName}
+          {/* 요청 설정 */}
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>요청</div>
+            <div className={styles.gridForm}>
+              <div className="app-form-field">
+                <label className="app-form-label">API명 *</label>
+                <input className="krds-input small" value={form.apiName}
                   onChange={e => setForm({ ...form, apiName: e.target.value })}
                   placeholder="예: 네이버 뉴스 수집" />
               </div>
-              <div>
-                <div style={fieldLabel}>URL *</div>
-                <input className="form-input" value={form.url}
-                  onChange={e => setForm({ ...form, url: e.target.value })}
-                  placeholder="https://openapi.naver.com/..." />
-              </div>
-              <div>
-                <div style={fieldLabel}>HTTP Method</div>
-                <select className="form-select" value={form.httpMethod}
+              <div className="app-form-field">
+                <label className="app-form-label">HTTP Method</label>
+                <select className="krds-input small" value={form.httpMethod}
                   onChange={e => setForm({ ...form, httpMethod: e.target.value })}>
                   <option value="GET">GET</option>
                   <option value="POST">POST</option>
                 </select>
               </div>
-              <div>
-                <div style={fieldLabel}>Content-Type</div>
-                <select className="form-select" value={form.contentType || ''}
+              <div className={`app-form-field ${styles.fullSpan}`}>
+                <label className="app-form-label">URL *</label>
+                <input className="krds-input small" value={form.url}
+                  onChange={e => setForm({ ...form, url: e.target.value })}
+                  placeholder="https://openapi.naver.com/..." />
+              </div>
+              <div className="app-form-field">
+                <label className="app-form-label">Content-Type</label>
+                <select className="krds-input small" value={form.contentType || ''}
                   onChange={e => setForm({ ...form, contentType: e.target.value })}>
                   <option value="">기본 (없음)</option>
                   <option value="application/json">application/json</option>
                   <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
                 </select>
               </div>
+              <div className="app-form-field">
+                <label className="app-form-label">Zone</label>
+                <select className="krds-input small" value={form.zone}
+                  onChange={e => setForm({ ...form, zone: e.target.value as CollectorZone })}>
+                  <option value="DMZ">DMZ</option>
+                  <option value="INTERNAL">INTERNAL</option>
+                </select>
+              </div>
             </div>
           </div>
 
-
           {/* 인증 */}
-          <div style={sectionStyle}>
-            <div style={sectionLabel}>인증</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', alignItems: 'start' }}>
-              <div>
-                <div style={fieldLabel}>인증 유형</div>
-                <select className="form-select" value={form.authType}
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>인증</div>
+            <div className={styles.gridForm}>
+              <div className="app-form-field">
+                <label className="app-form-label">인증 유형</label>
+                <select className="krds-input small" value={form.authType}
                   onChange={e => setForm({ ...form, authType: e.target.value as AuthType })}>
                   <option value="NONE">없음</option>
                   <option value="BASIC">Basic Auth</option>
@@ -486,17 +544,17 @@ export default function ApiCollectPage() {
                 </select>
               </div>
               {form.authType === 'BASIC' && (
-                <div>
-                  <div style={fieldLabel}>인증 설정 (JSON)</div>
-                  <input className="form-input" value={form.authConfig || ''}
+                <div className="app-form-field">
+                  <label className="app-form-label">인증 설정 (JSON)</label>
+                  <input className="krds-input small" value={form.authConfig || ''}
                     onChange={e => setForm({ ...form, authConfig: e.target.value })}
                     placeholder='{"username": "...", "password": "..."}' />
                 </div>
               )}
               {form.authType === 'BEARER' && (
-                <div>
-                  <div style={fieldLabel}>Bearer Token</div>
-                  <input className="form-input" value={form.authConfig || ''}
+                <div className="app-form-field">
+                  <label className="app-form-label">Bearer Token</label>
+                  <input className="krds-input small" value={form.authConfig || ''}
                     onChange={e => setForm({ ...form, authConfig: e.target.value })}
                     placeholder='토큰 값 입력' />
                 </div>
@@ -504,151 +562,120 @@ export default function ApiCollectPage() {
             </div>
           </div>
 
-          {/* 기타 */}
-          <div style={sectionStyle}>
-            <div style={sectionLabel}>기타</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <div>
-                <div style={fieldLabel}>Zone</div>
-                <select className="form-select" value={form.zone}
-                  onChange={e => setForm({ ...form, zone: e.target.value as CollectorZone })}>
-                  <option value="DMZ">DMZ</option>
-                  <option value="INTERNAL">INTERNAL</option>
-                </select>
-              </div>
-              <div>
-                <div style={fieldLabel}>설명</div>
-                <input className="form-input" value={form.description || ''}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  placeholder="API 설명 (선택)" />
-              </div>
+          {/* 설명 */}
+          <div className={styles.section}>
+            <div className="app-form-field">
+              <label className="app-form-label">설명</label>
+              <input className="krds-input small" value={form.description || ''}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                placeholder="API 설명 (선택)" />
             </div>
           </div>
+          </div>
+          {/* /기본정보 카드 끝 */}
 
-          {/* 헤더 (paramType=HEADER) */}
-          <div style={sectionStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <div style={sectionLabel}>헤더</div>
-              <button className="btn btn-sm btn-primary" onClick={() => {
+          {/* 헤더 카드 */}
+          <div className="app-card">
+            <div className="app-card__header">
+              <h2 className="app-card__title">헤더</h2>
+              <button type="button" className="krds-btn small" onClick={() => {
                 setParams([...params, { paramName: '', paramType: 'HEADER', valueType: 'STATIC', staticValue: '', isApiKeyRef: false, displayOrder: params.length }]);
-              }} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
+              }}>+ 추가</button>
             </div>
             {(() => {
               const headerParams = params.map((p, i) => ({ ...p, _idx: i })).filter(p => p.paramType === 'HEADER');
               return headerParams.length === 0 ? (
-                <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>커스텀 헤더 없음 (필요 시 추가)</div>
+                <div className="app-empty">커스텀 헤더 없음 (필요 시 추가)</div>
               ) : (
-                <table style={{ width: '100%', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>헤더명</th>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>값 유형</th>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>값 설정</th>
-                      <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>설명</th>
-                      <th style={{ width: '40px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {headerParams.map(hp => {
-                      const i = hp._idx;
-                      const p = params[i];
-                      return (
-                        <tr key={i}>
-                          <td style={{ padding: '0.25rem' }}>
-                            <input className="form-input" value={p.paramName} style={{ fontSize: '0.85rem' }}
-                              onChange={e => updateParam(i, 'paramName', e.target.value)} placeholder="Header Name" />
-                          </td>
-                          <td style={{ padding: '0.25rem' }}>
-                            <select className="form-select" value={p.isApiKeyRef ? 'APIKEY' : 'STATIC'} style={{ fontSize: '0.85rem' }}
-                              onChange={e => {
-                                if (e.target.value === 'APIKEY') {
-                                  loadApiKeys();
-                                  const u = [...params]; u[i] = { ...u[i], isApiKeyRef: true, staticValue: '' }; setParams(u);
-                                } else {
-                                  const u = [...params]; u[i] = { ...u[i], isApiKeyRef: false }; setParams(u);
-                                }
-                              }}>
-                              <option value="STATIC">직접입력</option>
-                              <option value="APIKEY">🔑 API키</option>
-                            </select>
-                          </td>
-                          <td style={{ padding: '0.25rem' }}>
-                            {p.isApiKeyRef ? (
-                              <select className="form-select" style={{ fontSize: '0.85rem' }}
-                                value={p.staticValue || ''} onFocus={() => loadApiKeys()}
-                                onChange={e => {
-                                  const key = apiKeys.find(k => String(k.id) === e.target.value);
-                                  const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '' }; setParams(u);
-                                }}>
-                                <option value="">-- API 키 선택 --</option>
-                                {apiKeys.filter(k => k.useAt === 'Y').map(k => (
-                                  <option key={k.id} value={String(k.id)}>{k.serviceName} (D-{k.dday})</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input className="form-input" value={p.staticValue || ''} style={{ fontSize: '0.85rem' }}
-                                onChange={e => updateParam(i, 'staticValue', e.target.value)} placeholder="값 입력" />
-                            )}
-                          </td>
-                          <td style={{ padding: '0.25rem' }}>
-                            <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
-                              onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
-                          </td>
-                          <td style={{ padding: '0.25rem' }}>
-                            <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)} style={{ fontSize: '0.75rem' }}>X</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className={styles.paramGrid}>
+                  <div className={styles.headerGridHeader}>
+                    <div>헤더명</div>
+                    <div>값 유형</div>
+                    <div>값 설정</div>
+                    <div>설명</div>
+                    <div></div>
+                  </div>
+                  {headerParams.map(hp => {
+                    const i = hp._idx;
+                    const p = params[i];
+                    return (
+                      <div key={i} className={styles.headerGridRow}>
+                        <input className="krds-input small" value={p.paramName}
+                          onChange={e => updateParam(i, 'paramName', e.target.value)} placeholder="Header Name" />
+                        <select className="krds-input small" value={p.isApiKeyRef ? 'APIKEY' : 'STATIC'}
+                          onChange={e => {
+                            if (e.target.value === 'APIKEY') {
+                              loadApiKeys();
+                              const u = [...params]; u[i] = { ...u[i], isApiKeyRef: true, staticValue: '' }; setParams(u);
+                            } else {
+                              const u = [...params]; u[i] = { ...u[i], isApiKeyRef: false }; setParams(u);
+                            }
+                          }}>
+                          <option value="STATIC">직접입력</option>
+                          <option value="APIKEY">🔑 API키</option>
+                        </select>
+                        {p.isApiKeyRef ? (
+                          <select className="krds-input small"
+                            value={p.staticValue || ''} onFocus={() => loadApiKeys()}
+                            onChange={e => {
+                              const key = apiKeys.find(k => String(k.id) === e.target.value);
+                              const u = [...params]; u[i] = { ...u[i], staticValue: e.target.value, description: key ? `🔑 ${key.serviceName}` : '' }; setParams(u);
+                            }}>
+                            <option value="">-- API 키 선택 --</option>
+                            {apiKeys.filter(k => k.useAt === 'Y').map(k => (
+                              <option key={k.id} value={String(k.id)}>{k.serviceName} (D-{k.dday})</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input className="krds-input small" value={p.staticValue || ''}
+                            onChange={e => updateParam(i, 'staticValue', e.target.value)} placeholder="값 입력" />
+                        )}
+                        <input className="krds-input small" value={p.description || ''}
+                          onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
+                        <button type="button" className="krds-btn small app-btn-danger"
+                          onClick={() => removeParam(i)}>X</button>
+                      </div>
+                    );
+                  })}
+                </div>
               );
             })()}
           </div>
 
-          {/* 파라미터 (QUERY/BODY/PATH) */}
-          <div style={sectionStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <div style={sectionLabel}>호출 파라미터</div>
-              <button className="btn btn-sm btn-primary" onClick={addParam}
-                style={{ fontSize: '0.75rem', padding: '2px 8px' }}>+ 추가</button>
+          {/* 파라미터 (QUERY/BODY/PATH) 카드 */}
+          <div className="app-card">
+            <div className="app-card__header">
+              <h2 className="app-card__title">호출 파라미터</h2>
+              <button type="button" className="krds-btn small" onClick={addParam}>+ 추가</button>
             </div>
             {(() => {
               const queryParams = params.map((p, i) => ({ ...p, _idx: i })).filter(p => p.paramType !== 'HEADER');
               return queryParams.length === 0 ? (
-                <div style={{ fontSize: '0.85rem', color: 'var(--gray-400)', padding: '0.25rem 0' }}>파라미터 없음 (필요 시 추가)</div>
+                <div className="app-empty">파라미터 없음 (필요 시 추가)</div>
               ) : (
-              <table style={{ width: '100%', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>파라미터명</th>
-                    <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>위치</th>
-                    <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>값 유형</th>
-                    <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>값 설정</th>
-                    <th style={{ textAlign: 'left', padding: '0.4rem 0.25rem' }}>설명</th>
-                    <th style={{ width: '40px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
+                <div className={styles.paramGrid}>
+                  <div className={styles.paramGridHeader}>
+                    <div>파라미터명</div>
+                    <div>위치</div>
+                    <div>값 유형</div>
+                    <div>값 설정</div>
+                    <div>설명</div>
+                    <div></div>
+                  </div>
                   {queryParams.map(qp => {
                     const i = qp._idx;
                     const p = params[i];
                     return (
-                    <tr key={i}>
-                      <td style={{ padding: '0.25rem' }}>
-                        <input className="form-input" value={p.paramName} style={{ fontSize: '0.85rem' }}
+                      <div key={i} className={styles.paramGridRow}>
+                        <input className="krds-input small" value={p.paramName}
                           onChange={e => updateParam(i, 'paramName', e.target.value)} />
-                      </td>
-                      <td style={{ padding: '0.25rem' }}>
-                        <select className="form-select" value={p.paramType} style={{ fontSize: '0.85rem' }}
+                        <select className="krds-input small" value={p.paramType}
                           onChange={e => updateParam(i, 'paramType', e.target.value)}>
-                          <option value="QUERY">QUERY</option>
-                          <option value="BODY">BODY</option>
-                          <option value="PATH">PATH</option>
+                          <option value="QUERY">쿼리 (?key=val)</option>
+                          <option value="BODY">본문 (POST body)</option>
+                          <option value="PATH">경로 (/path/{'{id}'})</option>
                         </select>
-                      </td>
-                      <td style={{ padding: '0.25rem' }}>
-                        <select className="form-select" value={p.isApiKeyRef ? 'APIKEY' : p.valueType} style={{ fontSize: '0.85rem' }}
+                        <select className="krds-input small" value={p.isApiKeyRef ? 'APIKEY' : p.valueType}
                           onChange={e => {
                             const v = e.target.value;
                             if (v === 'APIKEY') {
@@ -666,10 +693,8 @@ export default function ApiCollectPage() {
                           <option value="APIKEY">🔑 API키</option>
                           <option value="DYNAMIC">동적</option>
                         </select>
-                      </td>
-                      <td style={{ padding: '0.25rem' }}>
                         {p.isApiKeyRef ? (
-                          <select className="form-select" style={{ fontSize: '0.85rem' }}
+                          <select className="krds-input small"
                             value={p.staticValue || ''}
                             onFocus={() => loadApiKeys()}
                             onChange={e => {
@@ -686,55 +711,48 @@ export default function ApiCollectPage() {
                             ))}
                           </select>
                         ) : p.valueType === 'STATIC' ? (
-                          <input className="form-input" value={p.staticValue || ''} style={{ fontSize: '0.85rem' }}
+                          <input className="krds-input small" value={p.staticValue || ''}
                             onChange={e => updateParam(i, 'staticValue', e.target.value)} placeholder="고정값 입력" />
                         ) : (
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            <select className="form-select" value={p.dynamicType || 'TODAY'} style={{ fontSize: '0.85rem', width: '80px' }}
+                          <div className={styles.dynamicCell}>
+                            <select className={`krds-input small ${styles.dynamicType}`} value={p.dynamicType || 'TODAY'}
                               onChange={e => updateParam(i, 'dynamicType', e.target.value)}>
                               <option value="TODAY">날짜</option>
                               <option value="NOW">시간</option>
                               <option value="YEAR">연도</option>
                             </select>
-                            <input className="form-input" value={p.dynamicFormat || ''} style={{ fontSize: '0.85rem', width: '100px' }}
+                            <input className={`krds-input small ${styles.dynamicFormat}`} value={p.dynamicFormat || ''}
                               onChange={e => updateParam(i, 'dynamicFormat', e.target.value)} placeholder="yyyyMMdd" />
-                            <input className="form-input" type="number" value={p.dynamicOffset ?? 0} style={{ fontSize: '0.85rem', width: '60px' }}
+                            <input className={`krds-input small ${styles.dynamicOffset}`} type="number" value={p.dynamicOffset ?? 0}
                               onChange={e => updateParam(i, 'dynamicOffset', parseInt(e.target.value) || 0)} title="오프셋 (예: -1 = 어제)" />
                           </div>
                         )}
-                      </td>
-                      <td style={{ padding: '0.25rem' }}>
-                        <input className="form-input" value={p.description || ''} style={{ fontSize: '0.85rem' }}
+                        <input className="krds-input small" value={p.description || ''}
                           onChange={e => updateParam(i, 'description', e.target.value)} placeholder="설명" />
-                      </td>
-                      <td style={{ padding: '0.25rem' }}>
-                        <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)} style={{ fontSize: '0.75rem' }}>X</button>
-                      </td>
-                    </tr>
-                  ); })}
-                </tbody>
-              </table>
-              ); })()}
+                        <button type="button" className="krds-btn small app-btn-danger"
+                          onClick={() => removeParam(i)}>X</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
-          {/* 테스트 호출 버튼 */}
-          <div style={sectionStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={sectionLabel}>테스트 호출</div>
-              <button className="btn btn-primary" onClick={handleTestCall} disabled={testing}>
+          {/* 테스트 호출 카드 */}
+          <div className="app-card">
+            <div className="app-card__header">
+              <h2 className="app-card__title">테스트 호출</h2>
+              <button type="button" className="krds-btn small" onClick={handleTestCall} disabled={testing}>
                 {testing ? '호출 중...' : '테스트 호출'}
               </button>
             </div>
             {testResult && (
-              <div style={{ marginTop: '0.5rem' }}>
-                <span style={{
-                  padding: '2px 8px', borderRadius: '4px', fontWeight: 600, fontSize: '0.8rem',
-                  background: testResult.success ? '#dcfce7' : '#fee2e2',
-                  color: testResult.success ? '#166534' : '#991b1b',
-                }}>
+              <div className={styles.testStatusRow}>
+                <span className={`krds-badge ${testResult.success ? 'bg-light-success' : 'bg-light-danger'}`}>
                   {testResult.success ? 'SUCCESS' : 'FAILED'} {testResult.httpStatusCode > 0 && `(${testResult.httpStatusCode})`}
                 </span>
-                {testResult.errorMessage && <span style={{ color: '#991b1b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>{testResult.errorMessage}</span>}
+                {testResult.errorMessage && <span className={styles.testErrorText}>{testResult.errorMessage}</span>}
               </div>
             )}
           </div>
@@ -743,100 +761,97 @@ export default function ApiCollectPage() {
           {isCustom && (
             <>
               {testResult?.success && (
-                <div style={{ ...sectionStyle, background: '#fffbeb', borderLeft: '3px solid #f59e0b' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
-                    API 연결 확인 완료. 매핑/적재 로직은 실행기 내부에서 처리됩니다.
-                  </div>
+                <div className={`app-alert app-alert--warning ${styles.customCompleteAlert}`}>
+                  API 연결 확인 완료. 매핑/적재 로직은 실행기 내부에서 처리됩니다. 상단 [등록] 버튼으로 저장하세요.
                 </div>
               )}
-              <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="btn" onClick={handleCreate} disabled={saving || !testResult?.success}
-                  style={{ background: testResult?.success ? 'var(--success)' : 'var(--gray-300)', color: 'white', padding: '0.5rem 1.5rem' }}>
-                  {saving ? '등록 중...' : '등록'}
-                </button>
-              </div>
             </>
           )}
 
           {/* 이하 범용 전용: 응답 트리 + 데이터 루트 + 매핑 + 적재 + 등록 */}
           {!isCustom && <>
-          {/* 응답 트리 + 데이터 루트 선택 */}
+          {/* 응답 트리 카드 */}
           {testResult?.success && testResult.responseTree && (
-            <div style={sectionStyle}>
-              <div style={sectionLabel}>응답 구조 (배열 노드를 클릭하여 데이터 루트 선택)</div>
-              <div style={{
-                fontFamily: 'monospace', fontSize: '0.8rem', maxHeight: '300px', overflow: 'auto',
-                border: '1px solid var(--gray-200)', borderRadius: '4px', padding: '0.75rem', background: 'var(--gray-50)',
-              }}>
+            <div className="app-card">
+              <div className="app-card__header">
+                <h2 className="app-card__title">응답 구조</h2>
+              </div>
+              <div className={styles.sectionLabel}>배열 노드를 클릭하여 데이터 루트 선택</div>
+              <div className={styles.treeWrap}>
                 <SelectableJsonTreeView node={testResult.responseTree} path="" selectedRoot={selectedDataRoot} onSelectRoot={handleSelectRoot} />
               </div>
               {selectedDataRoot && (
-                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', background: '#f0fdf4', padding: '0.5rem', borderRadius: '4px' }}>
-                  data_root: <code style={{ fontWeight: 600 }}>{selectedDataRoot}</code>
+                <div className={styles.dataRootFoot}>
+                  data_root:<code className={styles.dataRootCode}>{selectedDataRoot}</code>
                 </div>
               )}
             </div>
           )}
 
-          {/* 적재 설정 */}
+          {/* 적재 설정 카드 */}
           {selectedDataRoot && (
-            <div ref={mappingSectionRef} style={sectionStyle}>
-              <div style={sectionLabel}>적재 설정</div>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={fieldLabel}>Target DB</span>
-                  <select className="form-select" value={selectedDatasourceId} style={{ width: '250px' }}
+            <div ref={mappingSectionRef} className="app-card">
+              <div className="app-card__header">
+                <h2 className="app-card__title">적재 설정</h2>
+              </div>
+              <div className={styles.loadRow}>
+                <div className={styles.loadField}>
+                  <span className={styles.loadFieldLabel}>Target DB</span>
+                  <select className={`krds-input small ${styles.loadSelect}`} value={selectedDatasourceId}
                     onChange={e => { setSelectedDatasourceId(e.target.value); setTargetTable(''); setTargetColumns([]); }}>
                     <option value="">-- 선택 --</option>
                     {datasources.map(ds => (
                       <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName} ({ds.dbType})</option>
                     ))}
                   </select>
-                  <button className="btn btn-sm btn-secondary" onClick={refreshDatasources}
-                    style={{ fontSize: '0.7rem', padding: '2px 6px' }} title="DB 목록 새로고침">↻</button>
+                  <button type="button" className="krds-btn xsmall secondary" onClick={refreshDatasources} title="DB 목록 새로고침">↻</button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={fieldLabel}>테이블</span>
-                  <select className="form-select" value={targetTable} style={{ width: '200px' }} disabled={!selectedDatasourceId}
+                <div className={styles.loadField}>
+                  <span className={styles.loadFieldLabel}>테이블</span>
+                  <select className={`krds-input small ${styles.loadSelectShort}`} value={targetTable} disabled={!selectedDatasourceId}
                     onChange={e => setTargetTable(e.target.value)}>
                     <option value="">-- 선택 --</option>
                     {tables.map(t => <option key={t.tableName} value={t.tableName}>{t.tableName}{t.remarks ? ` (${t.remarks})` : ''}</option>)}
                   </select>
-                  <button className="btn btn-sm btn-secondary" onClick={refreshTables} disabled={!selectedDatasourceId}
-                    style={{ fontSize: '0.7rem', padding: '2px 6px' }} title="테이블 목록 새로고침">↻</button>
+                  <button type="button" className="krds-btn xsmall secondary" onClick={refreshTables} disabled={!selectedDatasourceId} title="테이블 목록 새로고침">↻</button>
                 </div>
-                <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <input type="checkbox" checked={upsertEnabled} onChange={e => setUpsertEnabled(e.target.checked)} />
-                  UPSERT
-                </label>
+                <div className={styles.upsertWrap}>
+                  <div className="krds-form-check medium">
+                    <input type="checkbox" id="reg-upsert" checked={upsertEnabled}
+                      onChange={e => setUpsertEnabled(e.target.checked)} />
+                    <label htmlFor="reg-upsert" aria-label="UPSERT"></label>
+                  </div>
+                  <label htmlFor="reg-upsert" className={styles.loadFieldLabel}>UPSERT</label>
+                </div>
               </div>
             </div>
           )}
 
-          {/* 필드 매핑 */}
+          {/* 필드 매핑 카드 */}
           {selectedDataRoot && mappingRows.length > 0 && (
-            <div style={sectionStyle}>
-              <div style={sectionLabel}>필드 매핑 ({mappingRows.filter(r => r.targetColumnName).length}/{mappingRows.length})</div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', fontSize: '0.8rem' }}>
+            <div className="app-card">
+              <div className="app-card__header">
+                <h2 className="app-card__title">필드 매핑 ({mappingRows.filter(r => r.targetColumnName).length}/{mappingRows.length})</h2>
+              </div>
+              <div className={styles.paramGrid}>
+                <table className={styles.mappingTable}>
                   <thead>
-                    <tr style={{ background: 'var(--gray-50)' }}>
-                      <th style={{ padding: '0.5rem', textAlign: 'left' }}>API 필드</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', width: '16px' }}></th>
-                      <th style={{ padding: '0.5rem', textAlign: 'left' }}>Target 컬럼</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center', width: '60px' }}>중복키</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'left', width: '100px' }}>변환</th>
+                    <tr>
+                      <th>API 필드</th>
+                      <th className={styles.thArrow}></th>
+                      <th>Target 컬럼</th>
+                      <th className={`${styles.thCenter} ${styles.thWidth60}`}>중복키</th>
+                      <th className={styles.thWidth120}>변환</th>
                     </tr>
                   </thead>
                   <tbody>
                     {mappingRows.map((row, i) => (
-                      <tr key={i} style={{ opacity: row.targetColumnName ? 1 : 0.4, borderBottom: '1px solid var(--gray-100)' }}>
-                        <td style={{ padding: '0.35rem 0.5rem' }}><code>{row.sourceFieldPath}</code></td>
-                        <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
-                        <td style={{ padding: '0.35rem 0.5rem' }}>
+                      <tr key={i} className={row.targetColumnName ? '' : styles.mappingRowDimmed}>
+                        <td><span className={styles.sourceCode}>{row.sourceFieldPath}</span></td>
+                        <td className={styles.arrowCell}>→</td>
+                        <td>
                           {targetColumns.length > 0 ? (
-                            <select className="form-select" value={row.targetColumnName}
-                              style={{ fontSize: '0.8rem' }}
+                            <select className="krds-input small" value={row.targetColumnName}
                               onChange={e => updateMappingRow(i, 'targetColumnName', e.target.value)}>
                               <option value="">-- 선택 --</option>
                               {targetColumns.map(c => (
@@ -846,19 +861,21 @@ export default function ApiCollectPage() {
                               ))}
                             </select>
                           ) : (
-                            <input className="form-input" value={row.targetColumnName}
-                              style={{ fontSize: '0.8rem' }}
+                            <input className="krds-input small" value={row.targetColumnName}
                               onChange={e => updateMappingRow(i, 'targetColumnName', e.target.value)}
                               placeholder="컬럼명 입력" />
                           )}
                         </td>
-                        <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                          <input type="checkbox" checked={row.isConflictKey} disabled={!row.targetColumnName}
-                            onChange={e => updateMappingRow(i, 'isConflictKey', e.target.checked)} />
+                        <td className={styles.thCenter}>
+                          <div className="krds-form-check medium">
+                            <input type="checkbox" id={`reg-mkey-${i}`}
+                              checked={row.isConflictKey} disabled={!row.targetColumnName}
+                              onChange={e => updateMappingRow(i, 'isConflictKey', e.target.checked)} />
+                            <label htmlFor={`reg-mkey-${i}`} aria-label="중복키"></label>
+                          </div>
                         </td>
-                        <td style={{ padding: '0.35rem 0.5rem' }}>
-                          <select className="form-select" value={row.transformType} disabled={!row.targetColumnName}
-                            style={{ fontSize: '0.75rem' }}
+                        <td>
+                          <select className="krds-input small" value={row.transformType} disabled={!row.targetColumnName}
                             onChange={e => updateMappingRow(i, 'transformType', e.target.value)}>
                             <option value="NONE">없음</option>
                             <option value="DATE_FORMAT">날짜변환</option>
@@ -872,38 +889,34 @@ export default function ApiCollectPage() {
                       </tr>
                     ))}
 
-                    {/* 파생 컬럼 구분선 */}
                     {derivedRows.length > 0 && (
-                      <tr>
-                        <td colSpan={5} style={{ padding: '0.25rem 0.5rem', background: 'var(--gray-100)', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>
-                          파생 컬럼 (LOOKUP / 고정값)
-                        </td>
+                      <tr className={styles.sectionDivider}>
+                        <td colSpan={5}>파생 컬럼 (LOOKUP / 고정값)</td>
                       </tr>
                     )}
 
-                    {/* 파생 컬럼 행 */}
                     {derivedRows.map((row, i) => {
                       const isExpanded = expandedDerived.has(i);
                       const isFixed = row.transformType === 'DEFAULT_VALUE';
                       const sourceFields = mappingRows.filter(r => r.targetColumnName).map(r => r.sourceFieldPath);
                       return (
                         <React.Fragment key={`d-${i}`}>
-                          <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--gray-100)', background: isFixed ? '#f0fdf4' : '#fefce8' }}>
-                            <td style={{ padding: '0.35rem 0.5rem' }}>
+                          <tr className={isFixed ? styles.derivedFixedRow : styles.derivedDerivedRow}>
+                            <td>
                               {isFixed ? (
-                                <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>고정값</span>
+                                <span className={styles.muted}>고정값</span>
                               ) : (
-                                <select className="form-select" value={row.sourceFieldPath} style={{ fontSize: '0.8rem' }}
+                                <select className="krds-input small" value={row.sourceFieldPath}
                                   onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], sourceFieldPath: e.target.value }; setDerivedRows(u); }}>
                                   <option value="">-- 소스 필드 --</option>
                                   {sourceFields.map(f => <option key={f} value={f}>{f}</option>)}
                                 </select>
                               )}
                             </td>
-                            <td style={{ padding: '0.35rem', textAlign: 'center', color: 'var(--gray-400)' }}>→</td>
-                            <td style={{ padding: '0.35rem 0.5rem' }}>
+                            <td className={styles.arrowCell}>→</td>
+                            <td>
                               {targetColumns.length > 0 ? (
-                                <select className="form-select" value={row.targetColumnName} style={{ fontSize: '0.8rem' }}
+                                <select className="krds-input small" value={row.targetColumnName}
                                   onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], targetColumnName: e.target.value }; setDerivedRows(u); }}>
                                   <option value="">-- 선택 --</option>
                                   {targetColumns.map(c => (
@@ -911,84 +924,91 @@ export default function ApiCollectPage() {
                                   ))}
                                 </select>
                               ) : (
-                                <input className="form-input" value={row.targetColumnName} style={{ fontSize: '0.8rem' }}
+                                <input className="krds-input small" value={row.targetColumnName}
                                   onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], targetColumnName: e.target.value }; setDerivedRows(u); }}
                                   placeholder="컬럼명 입력" />
                               )}
                             </td>
-                            <td style={{ padding: '0.35rem', textAlign: 'center' }}>
-                              <input type="checkbox" checked={row.isConflictKey}
-                                onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], isConflictKey: e.target.checked }; setDerivedRows(u); }} />
+                            <td className={styles.thCenter}>
+                              <div className="krds-form-check medium">
+                                <input type="checkbox" id={`reg-dkey-${i}`} checked={row.isConflictKey}
+                                  onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], isConflictKey: e.target.checked }; setDerivedRows(u); }} />
+                                <label htmlFor={`reg-dkey-${i}`} aria-label="중복키"></label>
+                              </div>
                             </td>
-                            <td style={{ padding: '0.35rem 0.5rem', display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                              {isFixed ? (
-                                <input className="form-input" value={row.defaultValue || ''} style={{ fontSize: '0.8rem' }}
-                                  onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], defaultValue: e.target.value }; setDerivedRows(u); }}
-                                  placeholder="고정값 입력" />
-                              ) : (
-                                <button className="btn btn-sm" onClick={() => {
-                                  setExpandedDerived(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
-                                }} style={{ fontSize: '0.7rem', padding: '1px 6px', background: isExpanded ? 'var(--primary)' : 'var(--gray-200)', color: isExpanded ? 'white' : 'var(--gray-700)' }}>
-                                  {isExpanded ? '설정 ▴' : '설정 ▾'}
-                                </button>
-                              )}
-                              <button onClick={() => {
-                                setDerivedRows(derivedRows.filter((_, idx) => idx !== i));
-                                setExpandedDerived(prev => { const n = new Set<number>(); prev.forEach(v => { if (v < i) n.add(v); else if (v > i) n.add(v - 1); }); return n; });
-                              }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '1rem', padding: '0 4px' }}>✕</button>
+                            <td>
+                              <div className={styles.derivedActionCell}>
+                                {isFixed ? (
+                                  <input className="krds-input small" value={row.defaultValue || ''}
+                                    onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], defaultValue: e.target.value }; setDerivedRows(u); }}
+                                    placeholder="고정값 입력" />
+                                ) : (
+                                  <button type="button"
+                                    className={`krds-btn xsmall ${isExpanded ? '' : 'secondary'}`}
+                                    onClick={() => {
+                                      setExpandedDerived(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+                                    }}>
+                                    {isExpanded ? '설정 ▴' : '설정 ▾'}
+                                  </button>
+                                )}
+                                <button type="button" className={styles.removeBtn}
+                                  onClick={() => {
+                                    setDerivedRows(derivedRows.filter((_, idx) => idx !== i));
+                                    setExpandedDerived(prev => { const n = new Set<number>(); prev.forEach(v => { if (v < i) n.add(v); else if (v > i) n.add(v - 1); }); return n; });
+                                  }}>✕</button>
+                              </div>
                             </td>
                           </tr>
                           {isExpanded && (
-                            <tr style={{ background: '#fefce8' }}>
-                              <td colSpan={6} style={{ padding: '0.5rem 1rem 1rem 2rem' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
-                                  <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>추출 정규식</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
-                                      <input className="form-input" value={row.extractPattern} style={{ flex: 1, fontSize: '0.8rem', fontFamily: 'monospace' }}
+                            <tr className={styles.derivedDerivedRow}>
+                              <td colSpan={5} className={styles.lookupPanel}>
+                                <div className={styles.lookupGrid}>
+                                  <div className={styles.lookupFull}>
+                                    <label className="app-form-label">추출 정규식</label>
+                                    <div className={styles.lookupExtractRow}>
+                                      <input className={`krds-input small ${styles.lookupExtractInput}`} value={row.extractPattern}
                                         onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], extractPattern: e.target.value }; setDerivedRows(u); }}
                                         placeholder="정규식 (예: https?://(?:www\.)?([^/]+))" />
-                                      <label style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>그룹:</label>
-                                      <input className="form-input" type="number" min={0} value={row.extractGroup} style={{ width: '50px', fontSize: '0.8rem' }}
+                                      <span className={styles.lookupExtractGroupLabel}>그룹:</span>
+                                      <input className={`krds-input small ${styles.lookupExtractGroup}`} type="number" min={0} value={row.extractGroup}
                                         onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], extractGroup: parseInt(e.target.value) || 1 }; setDerivedRows(u); }} />
                                     </div>
-                                    <div style={{ marginTop: '0.25rem', display: 'flex', gap: '0.25rem' }}>
+                                    <div className={styles.presetRow}>
                                       {EXTRACT_PRESETS.map(p => (
-                                        <button key={p.label} className="btn btn-sm"
-                                          style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--gray-100)' }}
+                                        <button key={p.label} type="button" className="krds-btn xsmall secondary"
                                           onClick={() => { const u = [...derivedRows]; u[i] = { ...u[i], extractPattern: p.pattern, extractGroup: p.group }; setDerivedRows(u); }}>
                                           {p.label}
                                         </button>
                                       ))}
                                     </div>
                                   </div>
-                                  <div>
-                                    <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>코드 파라미터 (그룹코드)</label>
-                                    <input className="form-input" value={row.lookupParam} style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  <div className="app-form-field">
+                                    <label className="app-form-label">코드 파라미터 (그룹코드)</label>
+                                    <input className="krds-input small" value={row.lookupParam}
                                       onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], lookupParam: e.target.value }; setDerivedRows(u); }}
                                       placeholder="NGW_0118" />
                                   </div>
-                                  <div>
-                                    <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>데이터 루트</label>
-                                    <input className="form-input" value={row.lookupDataRootPath} style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  <div className="app-form-field">
+                                    <label className="app-form-label">데이터 루트</label>
+                                    <input className="krds-input small" value={row.lookupDataRootPath}
                                       onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], lookupDataRootPath: e.target.value }; setDerivedRows(u); }}
                                       placeholder="data.common" />
                                   </div>
-                                  <div>
-                                    <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>키 필드</label>
-                                    <input className="form-input" value={row.lookupKeyField} style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  <div className="app-form-field">
+                                    <label className="app-form-label">키 필드</label>
+                                    <input className="krds-input small" value={row.lookupKeyField}
                                       onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], lookupKeyField: e.target.value }; setDerivedRows(u); }}
                                       placeholder="detailCode" />
                                   </div>
-                                  <div>
-                                    <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>값 필드</label>
-                                    <input className="form-input" value={row.lookupValueField} style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  <div className="app-form-field">
+                                    <label className="app-form-label">값 필드</label>
+                                    <input className="krds-input small" value={row.lookupValueField}
                                       onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], lookupValueField: e.target.value }; setDerivedRows(u); }}
                                       placeholder="detailCodeName" />
                                   </div>
-                                  <div>
-                                    <label style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--gray-600)' }}>기본값 (매칭 실패 시)</label>
-                                    <input className="form-input" value={row.defaultValue} style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}
+                                  <div className="app-form-field">
+                                    <label className="app-form-label">기본값 (매칭 실패 시)</label>
+                                    <input className="krds-input small" value={row.defaultValue}
                                       onChange={e => { const u = [...derivedRows]; u[i] = { ...u[i], defaultValue: e.target.value }; setDerivedRows(u); }}
                                       placeholder="기타" />
                                   </div>
@@ -1001,10 +1021,11 @@ export default function ApiCollectPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
 
-                {/* 파생 컬럼 추가 버튼 */}
-                <div style={{ padding: '0.5rem', borderTop: '1px solid var(--gray-100)' }}>
-                  <button className="btn btn-sm" onClick={() => {
+              <div className={styles.addDerivedRow}>
+                <button type="button" className={styles.addDerivedBtn}
+                  onClick={() => {
                     const sourceFields = mappingRows.filter(r => r.targetColumnName).map(r => r.sourceFieldPath);
                     setDerivedRows([...derivedRows, {
                       sourceFieldPath: sourceFields[0] || '',
@@ -1021,10 +1042,11 @@ export default function ApiCollectPage() {
                       defaultValue: '',
                     }]);
                     setExpandedDerived(prev => new Set(prev).add(derivedRows.length));
-                  }} style={{ fontSize: '0.8rem', background: 'var(--gray-50)', border: '1px dashed var(--gray-300)', width: '49%', padding: '0.4rem' }}>
-                    + 파생 컬럼 추가
-                  </button>
-                  <button className="btn btn-sm" onClick={() => {
+                  }}>
+                  + 파생 컬럼 추가
+                </button>
+                <button type="button" className={`${styles.addDerivedBtn} ${styles.addFixedBtn}`}
+                  onClick={() => {
                     setDerivedRows([...derivedRows, {
                       sourceFieldPath: '',
                       targetColumnName: '',
@@ -1039,83 +1061,59 @@ export default function ApiCollectPage() {
                       lookupMatchType: 'EXACT',
                       defaultValue: '',
                     }]);
-                  }} style={{ fontSize: '0.8rem', background: '#f0fdf4', border: '1px dashed var(--gray-300)', width: '49%', padding: '0.4rem' }}>
-                    + 고정값 컬럼 추가
-                  </button>
-                </div>
+                  }}>
+                  + 고정값 컬럼 추가
+                </button>
               </div>
             </div>
           )}
 
-          {/* 등록 버튼 (범용) */}
-          <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button className="btn" onClick={handleCreate} disabled={saving}
-              style={{ background: 'var(--success)', color: 'white', padding: '0.5rem 1.5rem' }}>
-              {saving ? '등록 중...' : '등록'}
-            </button>
-          </div>
           </>}
         </div>
       )}
 
       {/* API 목록 */}
-      <div className="card">
-        <div className="card-header"><h3 className="card-title">API 목록</h3></div>
+      <div className="app-card">
+        <div className="app-card__header">
+          <h2 className="app-card__title">API 목록</h2>
+        </div>
         {loading ? (
-          <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>
+          <div className="app-loading">로딩 중...</div>
         ) : endpoints.length === 0 ? (
-          <div className="empty-state" style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
-            등록된 API가 없습니다.
-          </div>
+          <div className="app-empty">등록된 API가 없습니다.</div>
         ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>API명</th>
-                  <th>Method</th>
-                  <th>인증</th>
-                  <th>적재 테이블</th>
-                  <th>매핑</th>
-                  <th>상태</th>
-                  <th>Zone</th>
-                  <th>작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {endpoints.map(ep => (
-                  <tr key={ep.id} style={{ cursor: 'pointer' }}
-                    onClick={() => router.push(`/api-collect/${ep.id}`)}>
-                    <td style={{ fontWeight: 600 }}>{ep.apiName}</td>
-                    <td>
-                      <span style={{
-                        padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
-                        background: ep.httpMethod === 'GET' ? '#dbeafe' : '#fef3c7',
-                        color: ep.httpMethod === 'GET' ? '#1d4ed8' : '#92400e'
-                      }}>{ep.httpMethod}</span>
-                    </td>
-                    <td>{ep.authType === 'NONE' ? '-' : ep.authType}</td>
-                    <td>{ep.targetTableName || <span style={{ color: 'var(--gray-400)' }}>미설정</span>}</td>
-                    <td>{ep.hasMappings ?
-                      <span style={{ color: 'var(--success)' }}>완료</span> :
-                      <span style={{ color: 'var(--gray-400)' }}>미설정</span>
-                    }</td>
-                    <td>
-                      <span style={{
-                        display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
-                        background: ep.isActive ? 'var(--success)' : 'var(--gray-400)', marginRight: '6px'
-                      }} />
+          <table className="app-table">
+            <thead>
+              <tr>
+                <th>API명</th>
+                <th>Method</th>
+                <th>적재 테이블</th>
+                <th>상태</th>
+                <th>Zone</th>
+              </tr>
+            </thead>
+            <tbody>
+              {endpoints.map(ep => (
+                <tr key={ep.id} className={styles.clickableRow}
+                  onClick={() => router.push(`/api-collect/${ep.id}`)}>
+                  <td className={styles.boldCell}>{ep.apiName}</td>
+                  <td>
+                    <span className={`krds-badge ${ep.httpMethod === 'GET' ? 'bg-light-information' : 'bg-light-warning'}`}>
+                      {ep.httpMethod}
+                    </span>
+                  </td>
+                  <td>{ep.targetTableName || <span className={styles.muted}>미설정</span>}</td>
+                  <td>
+                    <span className={styles.statusCell}>
+                      <span className={`${styles.statusDot} ${ep.isActive ? styles.statusDotActive : styles.statusDotInactive}`} />
                       {ep.isActive ? '활성' : '비활성'}
-                    </td>
-                    <td>{ep.zone}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(ep.id, ep.apiName)}>삭제</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                  </td>
+                  <td>{ep.zone}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
@@ -1134,26 +1132,27 @@ function SelectableJsonTreeView({ node, path, selectedRoot, onSelectRoot, depth 
   const isExpandable = node.type === 'object' || node.type === 'array';
 
   return (
-    <div style={{ marginLeft: depth > 0 ? '1.25rem' : 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '2px 0', background: isSelected ? '#dcfce7' : 'transparent', borderRadius: '3px' }}>
+    <div className={depth > 0 ? styles.treeNode : styles.treeNodeRoot}>
+      <div className={`${styles.treeRow} ${isSelected ? styles.treeRowSelected : ''}`}>
         {isExpandable && hasChildren ? (
-          <span onClick={() => setExpanded(!expanded)} style={{ cursor: 'pointer', width: '16px', textAlign: 'center', userSelect: 'none' }}>
+          <span onClick={() => setExpanded(!expanded)} className={styles.treeToggle}>
             {expanded ? '▾' : '▸'}
           </span>
         ) : (
-          <span style={{ width: '16px', textAlign: 'center' }}>-</span>
+          <span className={styles.treeBullet}>-</span>
         )}
-        <span style={{ fontWeight: isExpandable ? 600 : 400 }}>{node.name === 'root' ? '(root)' : node.name}</span>
-        <span style={{ color: 'var(--gray-400)', fontSize: '0.75rem' }}>({node.type}{node.arraySize != null ? `, ${node.arraySize}건` : ''})</span>
+        <span className={`${styles.treeName} ${isExpandable ? styles.treeNameExpandable : ''}`}>
+          {node.name === 'root' ? '(root)' : node.name}
+        </span>
+        <span className={styles.treeMeta}>({node.type}{node.arraySize != null ? `, ${node.arraySize}건` : ''})</span>
         {node.sampleValue != null && (
-          <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}>
+          <span className={styles.treeSample}>
             {node.sampleValue.length > 40 ? `"${node.sampleValue.substring(0, 40)}..."` : `"${node.sampleValue}"`}
           </span>
         )}
         {node.type === 'array' && (
-          <button onClick={() => onSelectRoot(currentPath || 'root')} className="btn btn-sm"
-            style={{ fontSize: '0.7rem', padding: '1px 6px', marginLeft: '0.5rem',
-              background: isSelected ? 'var(--success)' : 'var(--gray-200)', color: isSelected ? 'white' : 'var(--gray-700)' }}>
+          <button type="button" onClick={() => onSelectRoot(currentPath || 'root')}
+            className={`krds-btn xsmall ${isSelected ? '' : 'secondary'}`}>
             {isSelected ? '선택됨' : '데이터 루트 선택'}
           </button>
         )}

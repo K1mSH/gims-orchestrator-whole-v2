@@ -1,0 +1,112 @@
+.cardActions {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.cardSubLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.2rem;
+}
+
+.lockNote {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 1.2rem;
+}
+
+/* 컬럼 추가 드롭다운 */
+.addColumnBar {
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 0;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  margin-bottom: 1.2rem;
+}
+
+.addColumnSelect {
+  max-width: 32rem;
+}
+
+/* 읽기 전용 (locked) 테이블 */
+.readonlyTableWrap {
+  overflow-x: auto;
+}
+
+.readonlyMono {
+  font-family: var(--krds-typo-font-type);
+}
+
+.readonlyCenter {
+  text-align: center;
+}
+
+.readonlyMuted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* 파라미터 그리드 (수정 모드) */
+.paramGrid {
+  overflow-x: auto;
+}
+
+.paramGridHeader,
+.paramGridRow {
+  display: grid;
+  grid-template-columns: 16rem 12rem 11rem 5rem 5rem 9rem 1fr 4rem;
+  column-gap: 1.6rem;
+  align-items: center;
+  min-width: 88rem;
+}
+
+.paramGridHeader {
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.8rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.paramGridHeader > div {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.headerCenter {
+  text-align: center;
+}
+
+.paramGridRow {
+  padding: 0.8rem 0;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light, var(--krds-light-color-border-gray-light));
+}
+
+.paramColName {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-small1);
+  color: var(--krds-light-color-text-bolder);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-family: var(--krds-typo-font-type);
+  width: fit-content;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkCell > :global(.krds-form-check) {
+  justify-self: center;
+}
+
+.inputDimmed {
+  opacity: 0.4;
+}

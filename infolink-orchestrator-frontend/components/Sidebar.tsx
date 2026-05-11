@@ -24,7 +24,6 @@ export default function Sidebar() {
 
   return (
     <aside className={styles.aside}>
-      <div className={styles.brand}>GIMS-Link</div>
       <nav>
         <ul className={styles.list}>
           {navItems.map((item) => (

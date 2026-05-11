@@ -1,0 +1,42 @@
+.pageWrap {
+  max-width: 52rem;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  row-gap: 0.6rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  align-items: center;
+}
+
+.infoLabel {
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.infoValue {
+  color: var(--krds-light-color-text-bolder);
+}
+
+.cardFields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.errorBox {
+  margin-bottom: 1.2rem;
+}
+
+.deleteDesc {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-small);
+  margin-bottom: 1.2rem;
+  line-height: 1.5;
+}
+
+.deleteTitle {
+  color: var(--krds-light-color-text-danger);
+}

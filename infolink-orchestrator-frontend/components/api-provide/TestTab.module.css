@@ -1,0 +1,160 @@
+.wrapper {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.cardSubLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.2rem;
+}
+
+/* 파라미터 입력 */
+.paramsBlock {
+  margin-bottom: 1.4rem;
+}
+
+.paramsLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+  margin-bottom: 0.6rem;
+}
+
+.paramsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1rem;
+}
+
+.paramField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.paramHead {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.paramRequired {
+  color: var(--krds-light-color-text-danger);
+}
+
+/* 실행 컨트롤 — 페이지 크기 좌측 (파라미터와 같은 양식) + 실행 버튼 우측 */
+.runRow {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.pageSizeField {
+  width: 20rem;
+}
+
+.runButton {
+  margin-left: auto;
+}
+
+.pageSizeWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pageSizeLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  white-space: nowrap;
+}
+
+.pageSizeInput {
+  width: 8rem;
+  flex-shrink: 0;
+}
+
+.pageSizeHint {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  white-space: nowrap;
+}
+
+/* SQL 미리보기 (다크 테마 유지 — 코드 가독성) */
+.sqlPre {
+  font-size: var(--krds-pc-font-size-label-small);
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+  padding: 1.2rem 1.4rem;
+  border-radius: var(--krds-radius-medium2);
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  margin: 0;
+}
+
+.sqlKeyword { color: #89b4fa; font-weight: 700; }
+.sqlString  { color: #a6e3a1; }
+.sqlNumber  { color: #fab387; }
+.sqlText    { color: #cdd6f4; }
+
+.resultStats {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.8rem;
+}
+
+/* 페이저 */
+.pager {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.pagerLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  padding: 0 0.6rem;
+}
+
+.pagerBottom {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 1.2rem 0 0;
+  margin-top: 1.2rem;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+/* 데이터 테이블 */
+.dataTableWrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 50rem;
+  width: 100%;
+}
+
+.dataTable {
+  min-width: max-content;
+}
+
+.dataTable th {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  white-space: nowrap;
+}
+
+.dataTable td {
+  font-size: var(--krds-pc-font-size-label-small);
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nullValue {
+  color: var(--krds-light-color-text-disabled);
+}

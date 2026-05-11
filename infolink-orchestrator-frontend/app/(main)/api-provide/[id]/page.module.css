@@ -1,0 +1,47 @@
+.headerLeftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.metaLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.metaLine code {
+  font-family: var(--krds-typo-font-type);
+  font-size: inherit;
+  color: inherit;
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.lockBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.customBannerSub {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.tabsWrap {
+  margin-bottom: 1.6rem;
+}

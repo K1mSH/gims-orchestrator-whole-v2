@@ -1,0 +1,72 @@
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  padding: 2rem;
+}
+
+.card {
+  width: 42rem;
+  max-width: 100%;
+  background-color: var(--krds-light-color-background-white);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-large1);
+  padding: 1.6rem 3.6rem 2.8rem;
+  box-shadow:
+    0 1.2rem 3.2rem rgba(0, 0, 0, 0.08),
+    0 0.4rem 1.2rem rgba(0, 0, 0, 0.04);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+}
+
+.brandIcon {
+  display: inline-block;
+  width: 4rem;
+  height: 4rem;
+  background-color: var(--krds-light-color-action-primary);
+  -webkit-mask-image: url('/krds/img/component/icon/ico_login.svg');
+  mask-image: url('/krds/img/component/icon/ico_login.svg');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.title {
+  font-size: var(--krds-pc-font-size-heading-small);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-body-small);
+  margin: 0.4rem 0 0 0;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  margin-bottom: 1.4rem;
+}
+
+.errorBox {
+  margin-bottom: 1.2rem;
+}
+
+.btnFull {
+  width: 100%;
+}

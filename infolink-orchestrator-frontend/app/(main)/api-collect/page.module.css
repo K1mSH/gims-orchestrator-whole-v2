@@ -1,0 +1,487 @@
+/* api-collect 목록 페이지 — 단계 1: 헤더 + API 목록 KRDS 화 */
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.boldCell {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.successText {
+  color: var(--krds-light-color-text-success);
+}
+
+.statusCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+}
+
+.statusDotActive {
+  background-color: var(--krds-light-color-element-success);
+}
+
+.statusDotInactive {
+  background-color: var(--krds-light-color-element-disabled-light);
+}
+
+/* ---------- 등록 폼 (단계 2) ---------- */
+
+.formCard {
+  margin-bottom: 1.6rem;
+}
+
+/* 등록 폼 wrapper — 단순 div */
+.formWrap {
+  margin-bottom: 1.6rem;
+}
+
+/* 카드 안 sub-section (InfoTab 과 동일 패턴) */
+.section {
+  margin-bottom: 1.6rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+  margin-bottom: 0.8rem;
+}
+
+.gridForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem 1.6rem;
+}
+
+.fullSpan {
+  grid-column: 1 / -1;
+}
+
+/* 등록 타입 — 카드형 선택 (api-provide/new 와 같은 패턴) */
+.modeOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1.4rem 1.6rem;
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-medium2);
+  cursor: pointer;
+  background-color: var(--krds-light-color-background-white);
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.modeOption:hover {
+  border-color: var(--krds-light-color-border-primary);
+  box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.04);
+}
+
+.modeOptionActive {
+  border-color: var(--krds-light-color-border-primary);
+  background-color: var(--krds-light-color-element-primary-lighter);
+}
+
+.modeOptionRadio {
+  margin-top: 0.3rem;
+  flex-shrink: 0;
+  accent-color: var(--krds-light-color-action-primary);
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.modeOptionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.modeOptionTitle {
+  font-size: var(--krds-pc-font-size-label-large);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.modeOptionBadge {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-regular);
+  margin-left: 0.5rem;
+}
+
+.modeOptionDesc {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  line-height: 1.4;
+}
+
+/* 헤더/파라미터 그리드 */
+.paramGrid {
+  overflow-x: auto;
+}
+
+.headerGridHeader,
+.headerGridRow {
+  display: grid;
+  grid-template-columns: 16rem 11rem minmax(20rem, 1.4fr) minmax(18rem, 1fr) 4rem;
+  column-gap: 1rem;
+  align-items: center;
+  min-width: 74rem;
+}
+
+.paramGridHeader,
+.paramGridRow {
+  display: grid;
+  grid-template-columns: 16rem 17rem 12rem minmax(22rem, 1.6fr) minmax(20rem, 1fr) 4rem;
+  column-gap: 1rem;
+  align-items: center;
+  min-width: 92rem;
+}
+
+.headerGridHeader,
+.paramGridHeader {
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.8rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.headerGridHeader > div,
+.paramGridHeader > div {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.headerGridRow,
+.paramGridRow {
+  padding: 0.8rem 0;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light, var(--krds-light-color-border-gray-light));
+}
+
+.dynamicCell {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.dynamicType { width: 8rem; }
+.dynamicFormat { width: 10rem; }
+.dynamicOffset { width: 6rem; }
+
+/* 응답 트리 */
+.treeWrap {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+  max-height: 32rem;
+  overflow: auto;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  padding: 1rem;
+  border-radius: var(--krds-radius-medium2);
+}
+
+.dataRootFoot {
+  margin-top: 1rem;
+  padding: 0.8rem 1.2rem;
+  background-color: var(--krds-light-color-element-success-lighter);
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-label-small);
+}
+
+.dataRootCode {
+  font-family: var(--krds-typo-font-type);
+  font-weight: var(--krds-font-weight-bold);
+  margin-left: 0.4rem;
+}
+
+/* 적재 설정 */
+.loadRow {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.loadField {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.loadFieldLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+  white-space: nowrap;
+}
+
+.loadSelect {
+  width: 24rem;
+}
+
+.loadSelectShort {
+  width: 18rem;
+}
+
+.upsertWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* 매핑 테이블 (api-collect 의 MappingTab 과 같은 패턴) */
+.mappingTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--krds-pc-font-size-label-small);
+  min-width: 70rem;
+}
+
+.mappingTable thead th {
+  text-align: left;
+  padding: 0.8rem 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.mappingTable tbody td {
+  padding: 0.6rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light, var(--krds-light-color-border-gray-light));
+  vertical-align: middle;
+}
+
+.thCenter { text-align: center; }
+.thWidth60 { width: 6rem; }
+.thWidth120 { width: 12rem; }
+.thArrow { width: 2rem; }
+
+.arrowCell {
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.mappingRowDimmed {
+  opacity: 0.4;
+}
+
+.sourceCode {
+  font-family: var(--krds-typo-font-type);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.sectionDivider td {
+  padding: 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.derivedFixedRow td {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+.derivedDerivedRow td {
+  background-color: var(--krds-light-color-element-warning-lighter);
+}
+
+.derivedActionCell {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--krds-light-color-text-danger);
+  font-size: 1.2rem;
+  padding: 0 0.4rem;
+}
+
+.lookupPanel {
+  padding: 1rem 1.2rem 1.4rem 2rem;
+  background-color: var(--krds-light-color-element-warning-lighter);
+}
+
+.lookupGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.lookupFull {
+  grid-column: 1 / -1;
+}
+
+.lookupExtractRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+.lookupExtractInput {
+  flex: 1;
+  font-family: var(--krds-typo-font-type);
+}
+
+.lookupExtractGroup { width: 7rem; }
+
+.lookupExtractGroupLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  white-space: nowrap;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.presetRow {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* 파생 추가 버튼 */
+.addDerivedRow {
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 0 0;
+  margin-top: 1rem;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.addDerivedBtn {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border: 0.1rem dashed var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-medium2);
+  cursor: pointer;
+  color: var(--krds-light-color-text-bolder);
+  font-size: var(--krds-pc-font-size-label-medium);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.addDerivedBtn:hover {
+  background-color: var(--krds-light-color-action-secondary-hover);
+  border-color: var(--krds-light-color-border-primary);
+}
+
+.addFixedBtn {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+/* JSON Tree Node */
+.treeNode {
+  margin-left: 1.4rem;
+}
+
+.treeNodeRoot {
+  margin-left: 0;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  border-radius: var(--krds-radius-small1);
+}
+
+.treeRowSelected {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+.treeToggle {
+  cursor: pointer;
+  width: 1.6rem;
+  text-align: center;
+  user-select: none;
+}
+
+.treeBullet {
+  width: 1.6rem;
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.treeName {
+  color: var(--krds-light-color-text-bolder);
+}
+
+.treeNameExpandable {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.treeMeta {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+.treeSample {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+/* 결과/테스트 상태 */
+.testStatusRow {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+}
+
+.testErrorText {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-danger);
+}
+
+.customCompleteAlert {
+  margin: 1.4rem 0;
+}
+
+.colName {
+  font-family: var(--krds-typo-font-type);
+}
+
+.bareFieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 카드 헤더 액션 */
+.cardHeaderActions {
+  display: flex;
+  gap: 0.6rem;
+}
+

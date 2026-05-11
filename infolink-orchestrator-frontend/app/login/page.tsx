@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/authApi';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import styles from './login.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,75 +46,58 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--gray-50)',
-    }}>
-      <div style={{
-        width: '380px',
-        background: 'white',
-        padding: '2.5rem',
-        borderRadius: '0.75rem',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-      }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-          GIMS-Link
-        </h1>
-        <p style={{ color: 'var(--gray-500)', marginBottom: '1.75rem', fontSize: '0.875rem' }}>
-          운영자 로그인
-        </p>
+    <div className={styles.wrapper}>
+      <div className={styles.card}>
+        <div className={styles.brand}>
+          <span className={styles.brandIcon} aria-hidden="true" />
+          <div>
+            <h1 className={styles.title}>GIMS-Link</h1>
+            <p className={styles.subtitle}>운영자 로그인</p>
+          </div>
+        </div>
 
         <form onSubmit={onSubmit}>
-          <div className="form-group">
-            <label className="form-label" htmlFor="authUsersId">ID</label>
-            <input
-              id="authUsersId"
-              className="form-input"
-              type="text"
-              autoComplete="username"
-              value={authUsersId}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              disabled={submitting}
-              autoFocus
-            />
-          </div>
+          <div className={styles.fields}>
+            <div className="app-form-field">
+              <label className="app-form-label" htmlFor="authUsersId">ID</label>
+              <input
+                id="authUsersId"
+                className="krds-input small"
+                type="text"
+                autoComplete="username"
+                value={authUsersId}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={submitting}
+                autoFocus
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">비밀번호</label>
-            <input
-              id="password"
-              className="form-input"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={submitting}
-            />
+            <div className="app-form-field">
+              <label className="app-form-label" htmlFor="password">비밀번호</label>
+              <input
+                id="password"
+                className="krds-input small"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={submitting}
+              />
+            </div>
           </div>
 
           {error && (
-            <div style={{
-              background: '#fef2f2',
-              color: 'var(--error)',
-              padding: '0.625rem 0.75rem',
-              borderRadius: '0.375rem',
-              fontSize: '0.8125rem',
-              marginBottom: '1rem',
-            }}>
+            <div className={`app-alert app-alert--danger ${styles.errorBox}`}>
               {error}
             </div>
           )}
 
           <button
             type="submit"
-            className="btn btn-primary"
+            className={`krds-btn ${styles.btnFull}`}
             disabled={submitting}
-            style={{ width: '100%' }}
           >
             {submitting ? '로그인 중...' : '로그인'}
           </button>

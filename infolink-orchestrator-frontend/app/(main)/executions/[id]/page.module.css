@@ -1,0 +1,414 @@
+.pageWrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.headerTitleLink {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tabsWrap {
+  margin-bottom: 1.6rem;
+}
+
+/* 실행 정보 grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.4rem 1.6rem;
+}
+
+.infoCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.infoLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.infoValue {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+  word-break: break-all;
+}
+
+.infoValueCode {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-bolder);
+  word-break: break-all;
+}
+
+.infoValueBig {
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.infoValueRead   { color: var(--krds-light-color-text-primary); }
+.infoValueWrite  { color: var(--krds-light-color-text-success); }
+.infoValueSkip   { color: var(--krds-light-color-text-subtle); }
+
+.errorBox {
+  margin-top: 1.4rem;
+}
+
+.errorBoxMsg {
+  margin-top: 0.6rem;
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+  word-break: break-word;
+}
+
+/* 처리 현황 테이블 */
+.statsTableWrap {
+  overflow-x: auto;
+}
+
+.statRow {
+  cursor: pointer;
+}
+
+.statRowFailed td {
+  background-color: var(--krds-light-color-element-danger-lighter);
+}
+
+.statRowSelected td {
+  background-color: var(--krds-light-color-element-primary-lighter);
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--krds-radius-small1);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.typeBadge--source {
+  background-color: var(--krds-light-color-element-information-lighter);
+  color: var(--krds-light-color-text-information);
+}
+
+.typeBadge--target {
+  background-color: var(--krds-light-color-element-success-lighter);
+  color: var(--krds-light-color-text-success);
+}
+
+.typeBadge--other {
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.tableNameCode {
+  font-family: var(--krds-typo-font-type);
+}
+
+.tableAlias {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-left: 0.5rem;
+}
+
+.cellSuccess { color: var(--krds-light-color-text-success); font-weight: var(--krds-font-weight-bold); }
+.cellFailed  { color: var(--krds-light-color-text-danger);  font-weight: var(--krds-font-weight-bold); }
+.cellMuted   { color: var(--krds-light-color-text-subtle); }
+
+.statFootNote {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  padding: 0.6rem 0 0;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+  margin-top: 0.6rem;
+}
+
+/* ---------- 추적/데이터 조회 카드 ---------- */
+
+.selectedTableHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 1rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-small1);
+  margin-bottom: 1rem;
+}
+
+.selectedTableName {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.filterRow {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.searchGroup {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 32rem;
+  align-items: center;
+}
+
+.filterSelect {
+  width: 13rem !important;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1 !important;
+  width: auto !important;
+  min-width: 0;
+}
+
+.emptyData {
+  padding: 3rem;
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.fallbackBanner {
+  margin-bottom: 0.8rem;
+}
+
+.totalCount {
+  font-size: var(--krds-pc-font-size-label-medium);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 0.6rem;
+}
+
+.dataTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  transition: opacity 0.15s;
+}
+
+.dataTableLoading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.dataTable {
+  font-size: var(--krds-pc-font-size-label-small);
+  min-width: 120rem;
+  table-layout: auto;
+}
+
+.expandColTh {
+  width: 3rem;
+}
+
+.sortableHeader {
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortableHeaderActive {
+  background-color: var(--krds-light-color-background-gray-subtler);
+}
+
+.sortIcon {
+  margin-left: 0.25rem;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+.dataRow {
+  cursor: default;
+}
+
+.dataRowClickable {
+  cursor: pointer;
+}
+
+.dataRowExpanded td {
+  background-color: var(--krds-light-color-element-information-lighter);
+}
+
+.expandIconCell {
+  text-align: center;
+}
+
+.expandIcon {
+  display: inline-block;
+  width: 1.6rem;
+  height: 1.6rem;
+  line-height: 1.6rem;
+  text-align: center;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  transition: transform 0.2s;
+}
+
+.expandIconOpen {
+  transform: rotate(90deg);
+}
+
+.dataCell {
+  white-space: nowrap;
+  max-width: 30rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 추적 확장 행 */
+.traceExpandCell {
+  padding: 0;
+  background-color: var(--krds-light-color-background-gray-subtler);
+}
+
+.traceExpandPanel {
+  padding: 1.4rem;
+  border-left: 0.4rem solid var(--krds-light-color-border-primary);
+}
+
+.traceLoading {
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+  padding: 1rem;
+}
+
+.traceStatusRow {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.traceStatusLabel {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.traceStatusLabel code {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+.traceStatusBadge {
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--krds-radius-small1);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.traceStatusBadge--ok {
+  background-color: var(--krds-light-color-element-success-lighter);
+  color: var(--krds-light-color-text-success);
+}
+
+.traceStatusBadge--notrack {
+  background-color: var(--krds-light-color-element-gray-light);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.traceStatusBadge--fail {
+  background-color: var(--krds-light-color-element-danger-lighter);
+  color: var(--krds-light-color-text-danger);
+}
+
+.traceSubTitle {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  margin-bottom: 0.6rem;
+}
+
+.traceSubTitleSource { color: var(--krds-light-color-text-information); }
+.traceSubTitleTarget { color: var(--krds-light-color-text-success); }
+.traceSubTitleFail   { color: var(--krds-light-color-text-danger); }
+
+.traceSubTableWrap {
+  max-height: 22rem;
+  overflow: auto;
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-small1);
+}
+
+.traceSubTable {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  min-width: 80rem;
+  table-layout: auto;
+}
+
+.traceSubTable th {
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+  position: sticky;
+  top: 0;
+}
+
+.traceSubTable--source th {
+  background-color: var(--krds-light-color-element-information-lighter);
+}
+
+.traceSubTable--target th {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+.traceSubTable td {
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+}
+
+.traceSubEmpty {
+  color: var(--krds-light-color-text-subtle);
+  font-style: italic;
+  padding: 0.6rem 0;
+}
+
+.traceError {
+  color: var(--krds-light-color-text-danger);
+}
+
+/* 페이저 */
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.pagerLabel {
+  padding: 0 1rem;
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* 실행 중 카드 */
+.runningCard {
+  padding: 2.4rem;
+  text-align: center;
+  background-color: var(--krds-light-color-element-information-lighter);
+}
+
+.runningTitle {
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  color: var(--krds-light-color-text-information);
+  margin-bottom: 0.5rem;
+}
+
+.runningDesc {
+  color: var(--krds-light-color-text-information);
+}

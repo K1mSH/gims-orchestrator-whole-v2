@@ -39,21 +39,13 @@
 
 /* ---------- 앱 셸 wrapper ---------- */
 .app-layout {
-  display: flex;
   min-height: 100vh;
   background-color: var(--krds-light-color-background-gray-subtler);
 }
 
-.app-layout__body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  margin-left: 24rem; /* sidebar width */
-  min-width: 0;
-}
-
 .app-layout__main {
-  flex: 1;
+  margin-top: 5rem;       /* header height */
+  margin-left: 24rem;     /* sidebar width */
   padding: 2.4rem;
   min-width: 0;
 }
@@ -191,6 +183,24 @@
   justify-content: space-between;
 }
 
+/* ---------- select 드롭다운 chevron — KRDS .krds-input 가 select 에 적용될 때 native 의존이라
+   브라우저별로 input 과 시각적 구분이 안 되는 문제. ico_angle.svg 를 background 로 박아 통일. */
+select.krds-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url('/krds/img/component/icon/ico_angle.svg');
+  background-repeat: no-repeat;
+  background-position: right 1.2rem center;
+  background-size: 1.4rem;
+  padding-right: 3.6rem;
+}
+
+select.krds-input.small {
+  background-size: 1.2rem;
+  padding-right: 3rem;
+}
+
 /* ---------- 위험(삭제) 버튼 — KRDS .krds-btn에 danger 변형이 없어 자체 정의.
    .krds-btn 베이스가 default primary 색을 가지므로 specificity 한 단계 올림(0,2,0).
    사용: <button class="krds-btn small app-btn-danger"> */
@@ -237,191 +247,6 @@
   background-color: var(--krds-light-color-element-danger-lighter);
   border-color: var(--krds-light-color-border-danger);
   color: var(--krds-light-color-text-danger);
-}
-
-/* ---------- Legacy compat (InfoTab/MonitorTab 등 미정리 페이지 보존용 — 다음주 제거 예정) ---------- */
-.card {
-  background-color: var(--krds-light-color-background-white);
-  border: 0.1rem solid var(--krds-light-color-border-gray-light);
-  border-radius: var(--krds-radius-medium2);
-  padding: 2rem;
-  margin-bottom: 2rem;
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.6rem;
-}
-.card-title {
-  font-size: var(--krds-pc-font-size-heading-xsmall);
-  font-weight: var(--krds-font-weight-bold);
-  color: var(--krds-light-color-text-bolder);
-}
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: var(--krds-light-color-text-subtle);
-}
-.loading {
-  display: flex;
-  justify-content: center;
-  padding: 4rem;
-  color: var(--krds-light-color-text-subtle);
-}
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-.page-title {
-  font-size: var(--krds-pc-font-size-heading-medium);
-  font-weight: var(--krds-font-weight-bold);
-  color: var(--krds-light-color-text-bolder);
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 4rem;
-  padding: 0 1.6rem;
-  border-radius: var(--krds-radius-medium2);
-  font-size: var(--krds-pc-font-size-label-medium);
-  font-weight: var(--krds-font-weight-regular);
-  cursor: pointer;
-  border: 0.1rem solid transparent;
-  transition: background-color 0.15s, border-color 0.15s;
-}
-.btn-primary {
-  background-color: var(--krds-color-light-primary-50);
-  color: var(--krds-color-light-gray-0);
-  border-color: var(--krds-color-light-primary-50);
-}
-.btn-primary:hover {
-  background-color: var(--krds-color-light-primary-60);
-}
-.btn-secondary {
-  background-color: var(--krds-light-color-background-white);
-  color: var(--krds-light-color-text-bolder);
-  border-color: var(--krds-light-color-border-gray);
-}
-.btn-secondary:hover {
-  background-color: var(--krds-light-color-action-secondary-hover);
-}
-.btn-danger {
-  background-color: var(--krds-light-color-element-danger);
-  color: var(--krds-color-light-gray-0);
-  border-color: var(--krds-light-color-element-danger);
-}
-.btn-danger:hover {
-  background-color: var(--krds-color-light-danger-60);
-}
-.btn-sm {
-  height: 3.2rem;
-  padding: 0 1.2rem;
-  font-size: var(--krds-pc-font-size-label-small);
-}
-.btn[disabled],
-.btn.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.form-group {
-  margin-bottom: 1.2rem;
-}
-.form-label {
-  display: block;
-  font-size: var(--krds-pc-font-size-label-medium);
-  font-weight: var(--krds-font-weight-bold);
-  color: var(--krds-light-color-text-bolder);
-  margin-bottom: 0.6rem;
-}
-.form-input,
-.form-select {
-  width: 100%;
-  height: 4rem;
-  padding: 0 1.2rem;
-  border: 0.1rem solid var(--krds-light-color-border-gray);
-  border-radius: var(--krds-radius-medium2);
-  font-size: var(--krds-pc-font-size-body-medium);
-  background-color: var(--krds-light-color-background-white);
-  color: var(--krds-light-color-text-bolder);
-}
-.form-input:focus,
-.form-select:focus {
-  outline: none;
-  border-color: var(--krds-light-color-border-primary);
-  box-shadow: 0 0 0 0.3rem var(--krds-light-color-element-primary-lighter);
-}
-.table-container {
-  overflow-x: auto;
-}
-.table-container table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--krds-pc-font-size-body-small);
-}
-.table-container th {
-  text-align: left;
-  padding: 1rem 1.2rem;
-  background-color: var(--krds-light-color-background-gray-subtler);
-  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
-  color: var(--krds-light-color-text-subtle);
-  font-weight: var(--krds-font-weight-bold);
-}
-.table-container td {
-  padding: 1rem 1.2rem;
-  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
-}
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.8rem;
-  border-radius: var(--krds-radius-max);
-  font-size: var(--krds-pc-font-size-label-xsmall);
-}
-.status-badge.online,
-.status-badge.success,
-.status-badge.completed,
-.status-badge.status-success {
-  background-color: var(--krds-light-color-element-success-lighter);
-  color: var(--krds-light-color-text-success);
-}
-.status-badge.offline,
-.status-badge.pending,
-.status-badge.status-offline {
-  background-color: var(--krds-light-color-element-gray-light);
-  color: var(--krds-light-color-text-subtle);
-}
-.status-badge.error,
-.status-badge.failed {
-  background-color: var(--krds-light-color-element-danger-lighter);
-  color: var(--krds-light-color-text-danger);
-}
-.status-badge.running {
-  background-color: var(--krds-light-color-element-information-lighter);
-  color: var(--krds-light-color-text-information);
-}
-.trigger-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.6rem;
-  border-radius: var(--krds-radius-small1);
-  font-size: var(--krds-pc-font-size-label-xsmall);
-  text-transform: uppercase;
-}
-.trigger-badge.trigger-manual {
-  background-color: var(--krds-light-color-element-gray-light);
-  color: var(--krds-light-color-text-subtle);
-}
-.trigger-badge.trigger-schedule {
-  background-color: var(--krds-light-color-element-information-lighter);
-  color: var(--krds-light-color-text-information);
-}
-.trigger-badge.trigger-chain {
-  background-color: var(--krds-light-color-element-warning-lighter);
-  color: var(--krds-light-color-text-warning);
 }
 
 /* ---------- Zone 색상 (도메인 전용 — KRDS 토큰 차용) ---------- */

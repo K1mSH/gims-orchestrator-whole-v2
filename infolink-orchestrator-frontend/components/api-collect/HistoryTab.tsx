@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { historyApi } from '@/lib/collectorApi';
 import { ApiExecutionHistoryItem } from '@/types/api-collect';
+import styles from './HistoryTab.module.css';
 
 interface HistoryTabProps {
   endpointId: number;
@@ -15,11 +16,12 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // 날짜 검색
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [appliedStart, setAppliedStart] = useState<string | undefined>();
   const [appliedEnd, setAppliedEnd] = useState<string | undefined>();
+
+  const [selectedError, setSelectedError] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -53,16 +55,15 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
     setAppliedEnd(undefined);
   };
 
-  const statusStyle = (status: string) => {
+  const statusClass = (status: string) => {
     switch (status) {
-      case 'SUCCESS': return { background: '#dcfce7', color: '#166534' };
-      case 'FAILED': return { background: '#fee2e2', color: '#991b1b' };
-      case 'RUNNING': return { background: '#dbeafe', color: '#1d4ed8' };
-      default: return { background: 'var(--gray-100)', color: 'var(--gray-600)' };
+      case 'SUCCESS': return styles.statusSuccess;
+      case 'FAILED': return styles.statusFailed;
+      case 'RUNNING': return styles.statusRunning;
+      default: return styles.statusOther;
     }
   };
 
-  // 페이지 번호 목록 생성 (최대 5개, 현재 페이지 중심)
   const getPageNumbers = () => {
     const maxVisible = 5;
     let start = Math.max(0, page - Math.floor(maxVisible / 2));
@@ -76,39 +77,41 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
   };
 
   if (loading && history.length === 0) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>;
+    return <div className="app-loading">로딩 중...</div>;
   }
 
   return (
-    <div className="card">
-      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 className="card-title" style={{ margin: 0 }}>실행 이력</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <input type="date" className="form-input" value={startDate}
+    <div className="app-card">
+      <div className="app-card__header">
+        <h2 className="app-card__title">실행 이력</h2>
+        <div className={styles.searchRow}>
+          <input
+            type="date"
+            className={`krds-input small ${styles.dateInput}`}
+            value={startDate}
             onChange={e => setStartDate(e.target.value)}
-            style={{ fontSize: '0.8rem', padding: '3px 6px', width: '130px' }} />
-          <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>~</span>
-          <input type="date" className="form-input" value={endDate}
+          />
+          <span className={styles.dateSep}>~</span>
+          <input
+            type="date"
+            className={`krds-input small ${styles.dateInput}`}
+            value={endDate}
             onChange={e => setEndDate(e.target.value)}
-            style={{ fontSize: '0.8rem', padding: '3px 6px', width: '130px' }} />
-          <button className="btn btn-sm btn-primary" onClick={handleSearch}
-            style={{ fontSize: '0.75rem', padding: '3px 10px' }}>검색</button>
+          />
+          <button type="button" className="krds-btn small" onClick={handleSearch}>검색</button>
           {(appliedStart || appliedEnd) && (
-            <button className="btn btn-sm" onClick={handleReset}
-              style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'var(--gray-200)' }}>초기화</button>
+            <button type="button" className="krds-btn small secondary" onClick={handleReset}>초기화</button>
           )}
-          <button className="btn btn-sm" style={{ background: 'var(--gray-200)', fontSize: '0.75rem', padding: '3px 8px' }} onClick={fetchHistory}>새로고침</button>
+          <button type="button" className="krds-btn small secondary" onClick={fetchHistory}>새로고침</button>
         </div>
       </div>
 
       {history.length === 0 ? (
-        <div className="empty-state" style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-500)' }}>
-          실행 이력이 없습니다.
-        </div>
+        <div className="app-empty">실행 이력이 없습니다.</div>
       ) : (
         <>
-          <div className="table-container">
-            <table>
+          <div className={styles.tableWrap}>
+            <table className={`app-table ${styles.historyTable}`}>
               <thead>
                 <tr>
                   <th>상태</th>
@@ -127,27 +130,33 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
                 {history.map(h => (
                   <tr key={h.id}>
                     <td>
-                      <span style={{ ...statusStyle(h.status), padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                        {h.status}
-                      </span>
+                      <span className={`${styles.statusBadge} ${statusClass(h.status)}`}>{h.status}</span>
                     </td>
                     <td>{h.httpStatusCode || '-'}</td>
                     <td>{h.responseCount ?? '-'}</td>
-                    <td style={{ fontWeight: 600 }}>{h.insertCount ?? '-'}</td>
+                    <td className={styles.boldCell}>{h.insertCount ?? '-'}</td>
                     <td>{h.updateCount ?? '-'}</td>
                     <td>{h.skipCount ?? '-'}</td>
                     <td>{h.durationMs != null ? `${h.durationMs}ms` : '-'}</td>
                     <td>
-                      <span style={{ fontSize: '0.75rem', padding: '1px 6px', borderRadius: '3px', background: h.triggeredBy === 'SCHEDULE' ? '#e0e7ff' : 'var(--gray-100)' }}>
+                      <span className={`${styles.triggerBadge} ${h.triggeredBy === 'SCHEDULE' ? styles.triggerSchedule : styles.triggerManual}`}>
                         {h.triggeredBy}
                       </span>
                     </td>
-                    <td style={{ fontSize: '0.8rem' }}>
-                      {h.startedAt ? new Date(h.startedAt).toLocaleString('ko-KR') : '-'}
-                    </td>
-                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--error)', fontSize: '0.8rem' }}
-                      title={h.errorMessage || ''}>
-                      {h.errorMessage || '-'}
+                    <td>{h.startedAt ? new Date(h.startedAt).toLocaleString('ko-KR') : '-'}</td>
+                    <td className={styles.errorCell}>
+                      {h.errorMessage ? (
+                        <button
+                          type="button"
+                          className={styles.errorIconBtn}
+                          onClick={() => setSelectedError(h.errorMessage || '')}
+                          title="에러 메시지 보기"
+                        >
+                          !
+                        </button>
+                      ) : (
+                        <span className={styles.errorNone}>-</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -155,41 +164,44 @@ export default function HistoryTab({ endpointId }: HistoryTabProps) {
             </table>
           </div>
 
-          {/* 페이징 */}
-          <div style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-              총 {totalElements}건
-            </span>
+          <div className={styles.pagerFoot}>
+            <span className={styles.pagerTotal}>총 {totalElements}건</span>
             {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                <button className="btn btn-sm" disabled={page === 0}
-                  onClick={() => setPage(0)}
-                  style={{ fontSize: '0.75rem', padding: '2px 6px' }}>&laquo;</button>
-                <button className="btn btn-sm" disabled={page === 0}
-                  onClick={() => setPage(p => p - 1)}
-                  style={{ fontSize: '0.75rem', padding: '2px 6px' }}>&lsaquo;</button>
+              <div className={styles.pager}>
+                <button type="button" className="krds-btn xsmall secondary" disabled={page === 0} onClick={() => setPage(0)}>&laquo;</button>
+                <button type="button" className="krds-btn xsmall secondary" disabled={page === 0} onClick={() => setPage(p => p - 1)}>&lsaquo;</button>
                 {getPageNumbers().map(p => (
-                  <button key={p} className="btn btn-sm"
+                  <button
+                    key={p}
+                    type="button"
+                    className={`krds-btn xsmall ${p === page ? '' : 'secondary'} ${styles.pageBtn}`}
                     onClick={() => setPage(p)}
-                    style={{
-                      fontSize: '0.75rem', padding: '2px 8px', minWidth: '28px',
-                      background: p === page ? 'var(--primary)' : 'var(--gray-100)',
-                      color: p === page ? '#fff' : 'var(--gray-700)',
-                      fontWeight: p === page ? 600 : 400,
-                    }}>
+                  >
                     {p + 1}
                   </button>
                 ))}
-                <button className="btn btn-sm" disabled={page >= totalPages - 1}
-                  onClick={() => setPage(p => p + 1)}
-                  style={{ fontSize: '0.75rem', padding: '2px 6px' }}>&rsaquo;</button>
-                <button className="btn btn-sm" disabled={page >= totalPages - 1}
-                  onClick={() => setPage(totalPages - 1)}
-                  style={{ fontSize: '0.75rem', padding: '2px 6px' }}>&raquo;</button>
+                <button type="button" className="krds-btn xsmall secondary" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>&rsaquo;</button>
+                <button type="button" className="krds-btn xsmall secondary" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}>&raquo;</button>
               </div>
             )}
           </div>
         </>
+      )}
+
+      {/* 에러 상세 모달 */}
+      {selectedError !== null && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedError(null)}>
+          <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>실행 에러</h3>
+              <button type="button" className={styles.modalCloseBtn} onClick={() => setSelectedError(null)} aria-label="닫기">×</button>
+            </div>
+            <div className={styles.modalBody}>{selectedError}</div>
+            <div className={styles.modalFooter}>
+              <button type="button" className="krds-btn small secondary" onClick={() => setSelectedError(null)}>닫기</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -18,26 +18,27 @@ export default function AppHeader() {
     window.location.href = '/login';
   }
 
-  if (loading || !user) {
-    return <header className={styles.headerEmpty} />;
-  }
-
   return (
     <header className={styles.header}>
-      <span className={styles.user}>{user.name}</span>
-      <Link href="/users" title="사용자 목록" className={styles.navLink}>
-        사용자 목록
-      </Link>
-      <Link href="/users/me" title="내 정보" className={styles.navLink}>
-        내 정보
-      </Link>
-      <button
-        type="button"
-        onClick={onLogout}
-        className={`krds-btn small secondary ${styles.logoutBtn}`}
-      >
-        로그아웃
-      </button>
+      <Link href="/" className={styles.brand}>GIMS-Link</Link>
+      {!loading && user && (
+        <div className={styles.right}>
+          <span className={styles.user}>{user.name}</span>
+          <Link href="/users" title="사용자 목록" className={styles.navLink}>
+            사용자 목록
+          </Link>
+          <Link href="/users/me" title="내 정보" className={styles.navLink}>
+            내 정보
+          </Link>
+          <button
+            type="button"
+            onClick={onLogout}
+            className={`krds-btn small secondary ${styles.logoutBtn}`}
+          >
+            로그아웃
+          </button>
+        </div>
+      )}
     </header>
   );
 }

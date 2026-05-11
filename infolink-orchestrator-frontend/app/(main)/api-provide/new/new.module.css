@@ -1,0 +1,237 @@
+/* 등록 타입 — 카드형 선택 박스 (라디오 + 큰 박스) */
+.modeOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1.4rem 1.6rem;
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-medium2);
+  cursor: pointer;
+  background-color: var(--krds-light-color-background-white);
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.modeOption:hover {
+  border-color: var(--krds-light-color-border-primary);
+  box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.04);
+}
+
+.modeOptionActive {
+  border-color: var(--krds-light-color-border-primary);
+  background-color: var(--krds-light-color-element-primary-lighter);
+}
+
+.modeOptionRadio {
+  margin-top: 0.3rem;
+  flex-shrink: 0;
+  accent-color: var(--krds-light-color-action-primary);
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.modeOptionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.modeOptionTitle {
+  font-size: var(--krds-pc-font-size-label-large);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.modeOptionBadge {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-regular);
+  margin-left: 0.5rem;
+}
+
+.modeOptionDesc {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  line-height: 1.4;
+}
+
+.handlerSelectWrap {
+  margin-top: 1.2rem;
+}
+
+.handlerEmptyNote {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.4rem;
+}
+
+.handlerLockNote {
+  margin-top: 1rem;
+}
+
+.subTitle {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-regular);
+  margin-left: 0.6rem;
+}
+
+.urlPreview {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.3rem;
+  font-family: var(--krds-typo-font-type);
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.cardSubLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.2rem;
+}
+
+/* SELECT 컬럼 그리드 */
+.colGrid {
+  overflow-x: auto;
+}
+
+.colGridHeader,
+.colGridRow {
+  display: grid;
+  grid-template-columns: 3rem 1fr 8rem 1fr 16rem 14rem;
+  gap: 0.8rem;
+  align-items: center;
+  min-width: 80rem;
+}
+
+.colGridHeader {
+  margin-bottom: 0.6rem;
+}
+
+.colGridHeader > div {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.colGridRow {
+  margin-bottom: 0.4rem;
+}
+
+.colName {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.colNamePk {
+  color: var(--krds-light-color-text-primary);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  margin-left: 0.2rem;
+}
+
+.colNameRemarks {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  margin-left: 0.2rem;
+}
+
+.colMeta {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-small);
+}
+
+.inputDimmed {
+  opacity: 0.4;
+}
+
+/* WHERE 파라미터 그리드 */
+.paramAddRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+.paramAddSelect {
+  width: 28rem;
+}
+
+.paramEmpty {
+  padding: 2.4rem;
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.paramGrid {
+  overflow-x: auto;
+}
+
+.paramGridHeader,
+.paramGridRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 14rem 5rem 5rem 11rem 1fr 4rem;
+  gap: 0.6rem;
+  align-items: center;
+  min-width: 90rem;
+}
+
+.paramGridHeader {
+  margin-bottom: 0.6rem;
+}
+
+.paramGridHeader > div {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.paramGridHeaderCenter {
+  text-align: center;
+}
+
+.paramGridRow {
+  margin-bottom: 0.4rem;
+}
+
+.paramCheckCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paramColName {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.descGrid {
+  margin-top: 1.6rem;
+}
+
+/* fieldset 기본 border/padding 제거 */
+.bareFieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 정렬 / 응답 설정 그리드 */
+.formatRow {
+  display: grid;
+  grid-template-columns: 1fr 10rem 10rem 10rem 10rem;
+  gap: 1.2rem;
+}

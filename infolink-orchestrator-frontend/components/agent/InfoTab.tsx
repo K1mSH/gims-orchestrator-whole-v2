@@ -722,7 +722,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 <label className="app-form-label">이름</label>
                 <input
                   type="text"
-                  className="krds-input"
+                  className="krds-input small"
                   value={agentForm.agentName}
                   onChange={(e) => setAgentForm({ ...agentForm, agentName: e.target.value })}
                 />
@@ -730,7 +730,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
               <div className="app-form-field">
                 <label className="app-form-label">Agent 타입</label>
                 <select
-                  className="krds-form-select"
+                  className="krds-input small"
                   value={agentForm.agentType}
                   onChange={(e) => setAgentForm({ ...agentForm, agentType: e.target.value as AgentType })}
                 >
@@ -742,7 +742,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
               <div className="app-form-field">
                 <label className="app-form-label">망구분</label>
                 <select
-                  className="krds-form-select"
+                  className="krds-input small"
                   value={agentForm.zone}
                   onChange={(e) => setAgentForm({ ...agentForm, zone: e.target.value })}
                 >
@@ -756,7 +756,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 <label className="app-form-label">Endpoint URL</label>
                 <input
                   type="url"
-                  className="krds-input"
+                  className="krds-input small"
                   value={agentForm.endpointUrl}
                   onChange={(e) => setAgentForm({ ...agentForm, endpointUrl: e.target.value })}
                 />
@@ -765,7 +765,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 <label className="app-form-label">설명</label>
                 <input
                   type="text"
-                  className="krds-input"
+                  className="krds-input small"
                   value={agentForm.description}
                   onChange={(e) => setAgentForm({ ...agentForm, description: e.target.value })}
                 />
@@ -793,7 +793,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       <label className={`app-form-label ${styles.sourceLabel}`}>Source Datasource</label>
                       {dsChangeMode ? (
                         <select
-                          className="krds-form-select"
+                          className="krds-input small"
                           value={agentForm.sourceDatasourceId}
                           onChange={(e) => setAgentForm({ ...agentForm, sourceDatasourceId: e.target.value })}
                         >
@@ -807,7 +807,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       ) : (
                         <input
                           type="text"
-                          className={`krds-input ${styles.inputDisabled}`}
+                          className={`krds-input small ${styles.inputDisabled}`}
                           value={
                             sourceDatasource
                               ? `${sourceDatasource.datasourceName} (${sourceDatasource.dbType})`
@@ -833,7 +833,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       <label className={`app-form-label ${styles.targetLabel}`}>Target Datasource</label>
                       {dsChangeMode ? (
                         <select
-                          className="krds-form-select"
+                          className="krds-input small"
                           value={agentForm.targetDatasourceId}
                           onChange={(e) => setAgentForm({ ...agentForm, targetDatasourceId: e.target.value })}
                         >
@@ -847,7 +847,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       ) : (
                         <input
                           type="text"
-                          className={`krds-input ${styles.inputDisabled}`}
+                          className={`krds-input small ${styles.inputDisabled}`}
                           value={
                             targetDatasource
                               ? `${targetDatasource.datasourceName} (${targetDatasource.dbType})`
@@ -979,7 +979,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 <span className={styles.retentionToolbar__label}>Target Datasource ID:</span>
                 <input
                   type="text"
-                  className={`krds-input ${styles.retentionToolbar__input}`}
+                  className={`krds-input small ${styles.retentionToolbar__input}`}
                   value={retentionForm.targetDatasourceId || ''}
                   onChange={(e) =>
                     setRetentionForm((prev) => ({ ...prev, targetDatasourceId: e.target.value }))
@@ -1003,7 +1003,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                       <tr key={i}>
                         <td>
                           <select
-                            className="krds-form-select"
+                            className="krds-input small"
                             value={t.table}
                             onChange={(e) => handleRetentionTargetChange(i, 'table', e.target.value)}
                           >
@@ -1019,7 +1019,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                         <td>
                           <input
                             type="text"
-                            className={`krds-input ${styles.retentionDateColumnReadonly}`}
+                            className={`krds-input small ${styles.retentionDateColumnReadonly}`}
                             value={selectedCandidate?.dateColumn || t.dateColumn}
                             readOnly
                             title="yml retention-candidates 에서 자동 결정"
@@ -1028,7 +1028,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                         <td>
                           <input
                             type="number"
-                            className="krds-input"
+                            className="krds-input small"
                             min={1}
                             value={t.retentionDays}
                             onChange={(e) =>
@@ -1186,7 +1186,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                         <div className={styles.cronInputCell}>
                           <input
                             type="text"
-                            className={`krds-input ${styles.cronInputCell__input}`}
+                            className={`krds-input small ${styles.cronInputCell__input}`}
                             value={editScheduleForm.cronExpression}
                             onChange={(e) => setEditScheduleForm({ cronExpression: e.target.value })}
                             placeholder="0 0 * * * *"
@@ -1196,12 +1196,17 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <code>{schedule.cronExpression}</code>
-                          <div className={styles.muted}>
-                            {parseCronExpression(schedule.cronExpression)}
-                          </div>
-                        </div>
+                        (() => {
+                          const parsed = parseCronExpression(schedule.cronExpression);
+                          return (
+                            <div>
+                              <code>{schedule.cronExpression}</code>
+                              {parsed !== schedule.cronExpression && (
+                                <div className={styles.muted}>{parsed}</div>
+                              )}
+                            </div>
+                          );
+                        })()
                       )}
                     </td>
                     <td>
@@ -1227,7 +1232,9 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                         : <span className={styles.muted}>-</span>}
                     </td>
                     <td>
-                      <StatusBadge status={schedule.isEnabled ? 'ONLINE' : 'OFFLINE'} />
+                      <span className={`krds-badge ${schedule.isEnabled ? 'bg-light-success' : 'bg-light-gray'}`}>
+                        {schedule.isEnabled ? '활성' : '비활성'}
+                      </span>
                     </td>
                     <td>
                       <div className={styles.actionGroup}>

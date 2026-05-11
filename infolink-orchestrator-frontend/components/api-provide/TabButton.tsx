@@ -1,38 +1,21 @@
 'use client';
 
-interface Tab {
-  key: string;
-  label: string;
-}
-
+/**
+ * KRDS 탭 마크업: <li class="active"><button class="btn-tab"> ... </button></li>
+ * 부모는 반드시 <div class="krds-tab-area"><div class="tab line"><ul>...</ul></div></div> 구조여야 함.
+ */
 interface TabButtonProps {
-  tabs: Tab[];
-  active: string;
-  onChange: (key: string) => void;
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
 }
 
-export default function TabButton({ tabs, active, onChange }: TabButtonProps) {
+export default function TabButton({ active, onClick, children }: TabButtonProps) {
   return (
-    <div style={{ display: 'flex', gap: '0', borderBottom: '2px solid var(--gray-100)', marginBottom: '1rem' }}>
-      {tabs.map(tab => (
-        <button
-          key={tab.key}
-          onClick={() => onChange(tab.key)}
-          style={{
-            padding: '0.5rem 1rem',
-            fontSize: '0.85rem',
-            fontWeight: active === tab.key ? 600 : 400,
-            color: active === tab.key ? 'var(--primary)' : 'var(--gray-400)',
-            background: 'none',
-            border: 'none',
-            borderBottom: active === tab.key ? '2px solid var(--primary)' : '2px solid transparent',
-            marginBottom: '-2px',
-            cursor: 'pointer',
-          }}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
+    <li className={active ? 'active' : ''}>
+      <button type="button" className="btn-tab" onClick={onClick}>
+        {children}
+      </button>
+    </li>
   );
 }

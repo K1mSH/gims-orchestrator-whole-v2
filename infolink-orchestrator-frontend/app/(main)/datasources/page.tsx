@@ -349,7 +349,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             <label className="app-form-label">Datasource ID</label>
             <input
               type="text"
-              className="krds-input"
+              className="krds-input small"
               value={formData.datasourceId}
               onChange={(e) => setFormData({ ...formData, datasourceId: e.target.value })}
               placeholder="external-postgres-1"
@@ -361,7 +361,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             <label className="app-form-label">이름</label>
             <input
               type="text"
-              className="krds-input"
+              className="krds-input small"
               value={formData.datasourceName}
               onChange={(e) => setFormData({ ...formData, datasourceName: e.target.value })}
               placeholder="대전시 외부 DB"
@@ -371,7 +371,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
           <div className="app-form-field">
             <label className="app-form-label">DB 타입</label>
             <select
-              className="krds-form-select"
+              className="krds-input small"
               value={formData.dbType}
               onChange={(e) => handleDbTypeChange(e.target.value as DbType)}
             >
@@ -386,7 +386,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             <label className="app-form-label">호스트</label>
             <input
               type="text"
-              className="krds-input"
+              className="krds-input small"
               value={formData.host}
               onChange={(e) => handleConnectionFieldChange('host', e.target.value)}
               placeholder="192.168.1.100"
@@ -397,7 +397,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             <label className="app-form-label">포트</label>
             <input
               type="number"
-              className="krds-input"
+              className="krds-input small"
               value={formData.port}
               onChange={(e) => handleConnectionFieldChange('port', parseInt(e.target.value))}
               required
@@ -407,7 +407,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             <label className="app-form-label">데이터베이스명</label>
             <input
               type="text"
-              className="krds-input"
+              className="krds-input small"
               value={formData.databaseName}
               onChange={(e) => handleConnectionFieldChange('databaseName', e.target.value)}
               placeholder="gims"
@@ -420,7 +420,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             </label>
             <input
               type="text"
-              className="krds-input"
+              className="krds-input small"
               value={formData.username}
               onChange={(e) => handleConnectionFieldChange('username', e.target.value)}
               placeholder={editMode ? '변경하려면 입력하세요' : 'postgres'}
@@ -433,7 +433,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             </label>
             <input
               type="password"
-              className="krds-input"
+              className="krds-input small"
               value={formData.password}
               onChange={(e) => handleConnectionFieldChange('password', e.target.value)}
               required={!editMode}
@@ -444,7 +444,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
             <label className="app-form-label">설명 (선택)</label>
             <input
               type="text"
-              className="krds-input"
+              className="krds-input small"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="대전시에서 제공하는 외부 관측 데이터 DB"
@@ -453,7 +453,7 @@ function DatasourceForm({ editMode = false, initialData, onSuccess, onCancel }: 
           <div className="app-form-field">
             <label className="app-form-label">네트워크 Zone</label>
             <select
-              className="krds-form-select"
+              className="krds-input small"
               value={formData.zone}
               onChange={(e) => handleConnectionFieldChange('zone', e.target.value)}
             >
@@ -759,7 +759,7 @@ function TableManagementModal({
             <div className={styles.searchRow}>
               <input
                 type="text"
-                className={`krds-input ${styles.searchRow__input}`}
+                className={`krds-input small ${styles.searchRow__input}`}
                 placeholder="테이블명 입력 (비우면 전체 조회)"
                 value={tableSearchQuery}
                 onChange={(e) => setTableSearchQuery(e.target.value)}
@@ -784,7 +784,7 @@ function TableManagementModal({
             <div className="app-form-field" style={{ marginBottom: '1.6rem' }}>
               <label className="app-form-label">테이블 선택 ({allTables.length}개)</label>
               <select
-                className="krds-form-select"
+                className="krds-input small"
                 value={selectedTable?.tableName || ''}
                 onChange={(e) => {
                   const table = allTables.find((t) => t.tableName === e.target.value);

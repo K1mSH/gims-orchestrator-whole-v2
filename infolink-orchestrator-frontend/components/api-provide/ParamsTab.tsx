@@ -5,8 +5,8 @@ import { datasourceApi } from '@/lib/api';
 import { paramApi } from '@/lib/providerApi';
 import { ApiPrvOperation, ApiPrvOperationParam } from '@/types/api-provide';
 import { ColumnSearchResult } from '@/types/index';
+import styles from './ParamsTab.module.css';
 
-const fieldLabel: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 };
 const operators = [
   { value: 'EQ', label: '=' },
   { value: 'GT', label: '>' },
@@ -93,47 +93,43 @@ export default function ParamsTab({ operation, onUpdate }: Props) {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>컬럼 불러오는 중...</div>;
+  if (loading) return <div className="app-loading">컬럼 불러오는 중...</div>;
 
   const locked = operation.isLocked;
 
   if (locked) {
     return (
-      <div className="card">
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', fontSize: '0.85rem', fontWeight: 600 }}>
-          🔒 WHERE 파라미터 (읽기 전용 — {operation.params.length}개)
+      <div className="app-card">
+        <div className="app-card__header">
+          <h2 className="app-card__title">🔒 WHERE 파라미터 (읽기 전용 — {operation.params.length}개)</h2>
         </div>
-        <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-          시스템 내장 핸들러가 자동 등록한 메타입니다. 수정 불가.
-        </div>
+        <div className={styles.lockNote}>시스템 내장 핸들러가 자동 등록한 메타입니다. 수정 불가.</div>
         {operation.params.length === 0 ? (
-          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.85rem' }}>
-            파라미터 없음
-          </div>
+          <div className="app-empty">파라미터 없음</div>
         ) : (
-          <div style={{ padding: '0 1rem 1rem' }}>
-            <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+          <div className={styles.readonlyTableWrap}>
+            <table className="app-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--gray-100)', textAlign: 'left', color: 'var(--gray-500)' }}>
-                  <th style={{ padding: '0.4rem' }}>파라미터명</th>
-                  <th style={{ padding: '0.4rem' }}>DB 컬럼</th>
-                  <th style={{ padding: '0.4rem' }}>연산자</th>
-                  <th style={{ padding: '0.4rem' }}>타입</th>
-                  <th style={{ padding: '0.4rem', textAlign: 'center' }}>필수</th>
-                  <th style={{ padding: '0.4rem', textAlign: 'center' }}>숨김</th>
-                  <th style={{ padding: '0.4rem' }}>기본값</th>
+                <tr>
+                  <th>파라미터명</th>
+                  <th>DB 컬럼</th>
+                  <th>연산자</th>
+                  <th>타입</th>
+                  <th className={styles.readonlyCenter}>필수</th>
+                  <th className={styles.readonlyCenter}>숨김</th>
+                  <th>기본값</th>
                 </tr>
               </thead>
               <tbody>
                 {operation.params.map((p, i) => (
-                  <tr key={p.id ?? i} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-                    <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>{p.paramName}</td>
-                    <td style={{ padding: '0.4rem', fontFamily: 'monospace' }}>{p.columnName}</td>
-                    <td style={{ padding: '0.4rem' }}>{p.operator}</td>
-                    <td style={{ padding: '0.4rem' }}>{p.dataType}</td>
-                    <td style={{ padding: '0.4rem', textAlign: 'center' }}>{p.isRequired ? '✓' : '-'}</td>
-                    <td style={{ padding: '0.4rem', textAlign: 'center' }}>{p.isHidden ? '✓' : '-'}</td>
-                    <td style={{ padding: '0.4rem', color: 'var(--gray-500)' }}>{p.defaultValue || '-'}</td>
+                  <tr key={p.id ?? i}>
+                    <td className={styles.readonlyMono}>{p.paramName}</td>
+                    <td className={styles.readonlyMono}>{p.columnName}</td>
+                    <td>{p.operator}</td>
+                    <td>{p.dataType}</td>
+                    <td className={styles.readonlyCenter}>{p.isRequired ? '✓' : '-'}</td>
+                    <td className={styles.readonlyCenter}>{p.isHidden ? '✓' : '-'}</td>
+                    <td className={styles.readonlyMuted}>{p.defaultValue || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -145,23 +141,25 @@ export default function ParamsTab({ operation, onUpdate }: Props) {
   }
 
   return (
-    <div className="card">
-      <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="app-card">
+      <div className="app-card__header">
         <div>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>WHERE 파라미터</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>
-            외부 호출 시 ?paramName=value 형식으로 전달
-          </div>
+          <h2 className="app-card__title">WHERE 파라미터</h2>
+          <div className={styles.cardSubLine}>외부 호출 시 ?paramName=value 형식으로 전달</div>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-          {saving ? '저장 중...' : '저장'}
-        </button>
+        <div className={styles.cardActions}>
+          <button type="button" className="krds-btn small" onClick={handleSave} disabled={saving}>
+            {saving ? '저장 중...' : '저장'}
+          </button>
+        </div>
       </div>
 
       {/* 컬럼 추가 드롭다운 */}
-      <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
-        <select className="form-input" style={{ width: '280px' }}
-          onChange={e => { if (e.target.value) { addFromColumn(e.target.value); e.target.value = ''; } }}>
+      <div className={styles.addColumnBar}>
+        <select
+          className={`krds-input small ${styles.addColumnSelect}`}
+          onChange={e => { if (e.target.value) { addFromColumn(e.target.value); e.target.value = ''; } }}
+        >
           <option value="">+ 조건 컬럼 추가</option>
           {dbColumns
             .filter(c => !params.some(p => p.columnName === c.columnName))
@@ -174,46 +172,78 @@ export default function ParamsTab({ operation, onUpdate }: Props) {
       </div>
 
       {params.length === 0 ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.85rem' }}>
-          파라미터 없음 — WHERE 조건 없이 전체 조회
-        </div>
+        <div className="app-empty">파라미터 없음 — WHERE 조건 없이 전체 조회</div>
       ) : (
-        <div style={{ padding: '0.5rem 1rem', overflowX: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 140px 50px 50px 110px 1fr 40px', gap: '0.5rem', marginBottom: '0.5rem', minWidth: '900px', alignItems: 'center' }}>
-            <div style={fieldLabel}>파라미터명</div>
-            <div style={fieldLabel}>DB 컬럼</div>
-            <div style={fieldLabel}>연산자</div>
-            <div style={{ ...fieldLabel, textAlign: 'center' }}>필수</div>
-            <div style={{ ...fieldLabel, textAlign: 'center' }}>숨김</div>
-            <div style={fieldLabel}>타입</div>
-            <div style={fieldLabel}>기본값</div>
+        <div className={styles.paramGrid}>
+          <div className={styles.paramGridHeader}>
+            <div>파라미터명</div>
+            <div>DB 컬럼</div>
+            <div>연산자</div>
+            <div className={styles.headerCenter}>필수</div>
+            <div className={styles.headerCenter}>숨김</div>
+            <div>타입</div>
+            <div>기본값</div>
             <div></div>
           </div>
           {params.map((p, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 140px 50px 50px 110px 1fr 40px', gap: '0.5rem', marginBottom: '0.25rem', minWidth: '900px', alignItems: 'center' }}>
-              <input className="form-input" value={p.paramName} disabled={p.isHidden}
+            <div key={i} className={styles.paramGridRow}>
+              <input
+                className={`krds-input small ${p.isHidden ? styles.inputDimmed : ''}`}
+                value={p.paramName}
+                disabled={p.isHidden}
                 onChange={e => updateParam(i, 'paramName', e.target.value)}
-                style={{ opacity: p.isHidden ? 0.4 : 1 }} />
-              <div style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{p.columnName}</div>
-              <select className="form-input" value={p.operator}
-                onChange={e => updateParam(i, 'operator', e.target.value)}>
+              />
+              <span className={styles.paramColName}>{p.columnName}</span>
+              <select
+                className="krds-input small"
+                value={p.operator}
+                onChange={e => updateParam(i, 'operator', e.target.value)}
+              >
                 {operators.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
               </select>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <input type="checkbox" checked={p.isRequired} disabled={p.isHidden}
-                  onChange={e => updateParam(i, 'isRequired', e.target.checked)} />
+              <div className={styles.checkCell}>
+                <div className="krds-form-check medium">
+                  <input
+                    type="checkbox"
+                    id={`param-req-${i}`}
+                    checked={p.isRequired}
+                    disabled={p.isHidden}
+                    onChange={e => updateParam(i, 'isRequired', e.target.checked)}
+                  />
+                  <label htmlFor={`param-req-${i}`} aria-label="필수"></label>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <input type="checkbox" checked={p.isHidden}
-                  onChange={e => updateParam(i, 'isHidden', e.target.checked)} />
+              <div className={styles.checkCell}>
+                <div className="krds-form-check medium">
+                  <input
+                    type="checkbox"
+                    id={`param-hidden-${i}`}
+                    checked={p.isHidden}
+                    onChange={e => updateParam(i, 'isHidden', e.target.checked)}
+                  />
+                  <label htmlFor={`param-hidden-${i}`} aria-label="숨김"></label>
+                </div>
               </div>
-              <select className="form-input" value={p.dataType}
-                onChange={e => updateParam(i, 'dataType', e.target.value)}>
+              <select
+                className="krds-input small"
+                value={p.dataType}
+                onChange={e => updateParam(i, 'dataType', e.target.value)}
+              >
                 {dataTypes.map(dt => <option key={dt} value={dt}>{dt}</option>)}
               </select>
-              <input className="form-input" placeholder={p.isHidden ? '고정값 (필수)' : '기본값'} value={p.defaultValue || ''}
-                onChange={e => updateParam(i, 'defaultValue', e.target.value || null)} />
-              <button className="btn btn-danger btn-sm" onClick={() => removeParam(i)}>X</button>
+              <input
+                className="krds-input small"
+                placeholder={p.isHidden ? '고정값 (필수)' : '기본값'}
+                value={p.defaultValue || ''}
+                onChange={e => updateParam(i, 'defaultValue', e.target.value || null)}
+              />
+              <button
+                type="button"
+                className="krds-btn small app-btn-danger"
+                onClick={() => removeParam(i)}
+              >
+                X
+              </button>
             </div>
           ))}
         </div>

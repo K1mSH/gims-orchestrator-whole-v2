@@ -1,0 +1,50 @@
+.cardSubLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.2rem;
+}
+
+/* 메타 정보 grid (엔드포인트/인증/응답포맷/상태) */
+.metaGrid {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 1rem 1.6rem;
+  align-items: center;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.metaLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.inlineCode {
+  display: inline-block;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--krds-radius-small1);
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-bolder);
+  word-break: break-all;
+}
+
+/* 코드 블록 (다크 테마 — 호출 예시 / 응답 예시) */
+.codePre {
+  font-size: var(--krds-pc-font-size-label-small);
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+  padding: 1.2rem 1.4rem;
+  border-radius: var(--krds-radius-medium2);
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  margin: 0;
+}
+
+.paramCode {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+}

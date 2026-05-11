@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { scheduleApi } from '@/lib/collectorApi';
 import { ApiScheduleItem } from '@/types/api-collect';
+import styles from './ScheduleTab.module.css';
 
 interface ScheduleTabProps {
   endpointId: number;
@@ -88,115 +89,111 @@ export default function ScheduleTab({ endpointId }: ScheduleTabProps) {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>로딩 중...</div>;
+    return <div className="app-loading">로딩 중...</div>;
   }
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">스케줄 관리</h3>
+    <div className="app-card">
+      <div className="app-card__header">
+        <h2 className="app-card__title">스케줄 관리</h2>
       </div>
 
       {/* 새 스케줄 추가 */}
-      <div style={{ padding: '1rem', borderBottom: '1px solid var(--gray-200)' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <input
-            type="text"
-            value={newCron}
-            onChange={e => setNewCron(e.target.value)}
-            placeholder="Cron 표현식 (예: 0 */10 * * * *)"
-            style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--gray-300)', borderRadius: '4px', fontSize: '0.85rem' }}
-          />
-          <button className="btn btn-sm btn-primary" onClick={handleCreate}
-            disabled={!newCron.trim()}>
-            추가
+      <div className={styles.addRow}>
+        <input
+          type="text"
+          value={newCron}
+          onChange={e => setNewCron(e.target.value)}
+          placeholder="Cron 표현식 (예: 0 */10 * * * *)"
+          className={`krds-input small ${styles.cronInput}`}
+        />
+        <button
+          type="button"
+          className="krds-btn small"
+          onClick={handleCreate}
+          disabled={!newCron.trim()}
+        >
+          추가
+        </button>
+      </div>
+      <div className={styles.presetRow}>
+        {CRON_PRESETS.map(p => (
+          <button
+            key={p.cron}
+            type="button"
+            className="krds-btn xsmall secondary"
+            onClick={() => setNewCron(p.cron)}
+          >
+            {p.label}
           </button>
-        </div>
-        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-          {CRON_PRESETS.map(p => (
-            <button key={p.cron} className="btn btn-sm"
-              style={{ background: 'var(--gray-100)', fontSize: '0.75rem', padding: '2px 8px' }}
-              onClick={() => setNewCron(p.cron)}>
-              {p.label}
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
 
       {/* 스케줄 목록 */}
       {schedules.length === 0 ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-500)' }}>
-          등록된 스케줄이 없습니다.
-        </div>
+        <div className="app-empty">등록된 스케줄이 없습니다.</div>
       ) : (
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Cron 표현식</th>
-                <th>상태</th>
-                <th>등록일</th>
-                <th>동작</th>
+        <table className="app-table">
+          <thead>
+            <tr>
+              <th>Cron 표현식</th>
+              <th>상태</th>
+              <th>등록일</th>
+              <th>동작</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schedules.map(s => (
+              <tr key={s.id}>
+                <td>
+                  {editingId === s.id ? (
+                    <div className={styles.editRow}>
+                      <input
+                        type="text"
+                        value={editCron}
+                        onChange={e => setEditCron(e.target.value)}
+                        className={`krds-input small ${styles.editInput}`}
+                      />
+                      <button type="button" className="krds-btn small" onClick={() => handleUpdate(s.id)}>저장</button>
+                      <button type="button" className="krds-btn small secondary" onClick={() => setEditingId(null)}>취소</button>
+                    </div>
+                  ) : (
+                    <code
+                      className={styles.cronCode}
+                      onClick={() => { setEditingId(s.id); setEditCron(s.cronExpression); }}
+                      title="클릭하여 수정"
+                    >
+                      {s.cronExpression}
+                    </code>
+                  )}
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(s.id)}
+                    className={`${styles.toggleBadge} krds-badge ${s.isEnabled ? 'bg-light-success' : 'bg-light-gray'}`}
+                  >
+                    {s.isEnabled ? '활성' : '비활성'}
+                  </button>
+                </td>
+                <td className={styles.mutedCell}>{new Date(s.createdAt).toLocaleString('ko-KR')}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="krds-btn small app-btn-danger"
+                    onClick={() => handleDelete(s.id)}
+                  >
+                    삭제
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {schedules.map(s => (
-                <tr key={s.id}>
-                  <td>
-                    {editingId === s.id ? (
-                      <div style={{ display: 'flex', gap: '0.25rem' }}>
-                        <input
-                          type="text"
-                          value={editCron}
-                          onChange={e => setEditCron(e.target.value)}
-                          style={{ flex: 1, padding: '4px 8px', border: '1px solid var(--gray-300)', borderRadius: '4px', fontSize: '0.85rem' }}
-                        />
-                        <button className="btn btn-sm btn-primary" onClick={() => handleUpdate(s.id)}>저장</button>
-                        <button className="btn btn-sm" style={{ background: 'var(--gray-200)' }}
-                          onClick={() => setEditingId(null)}>취소</button>
-                      </div>
-                    ) : (
-                      <code style={{ fontSize: '0.85rem', cursor: 'pointer' }}
-                        onClick={() => { setEditingId(s.id); setEditCron(s.cronExpression); }}
-                        title="클릭하여 수정">
-                        {s.cronExpression}
-                      </code>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => handleToggle(s.id)}
-                      style={{
-                        background: s.isEnabled ? '#dcfce7' : 'var(--gray-100)',
-                        color: s.isEnabled ? '#166534' : 'var(--gray-500)',
-                        border: 'none',
-                        fontWeight: 600,
-                        fontSize: '0.75rem',
-                        padding: '2px 10px',
-                      }}>
-                      {s.isEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </td>
-                  <td style={{ fontSize: '0.8rem' }}>
-                    {new Date(s.createdAt).toLocaleString('ko-KR')}
-                  </td>
-                  <td>
-                    <button className="btn btn-sm"
-                      style={{ background: '#fee2e2', color: '#991b1b', fontSize: '0.75rem' }}
-                      onClick={() => handleDelete(s.id)}>
-                      삭제
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {/* 도움말 */}
-      <div style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', color: 'var(--gray-500)', borderTop: '1px solid var(--gray-200)' }}>
+      <div className={styles.helpFoot}>
         Spring Cron 6자리: 초 분 시 일 월 요일 | 예: <code>0 */5 * * * *</code> = 매 5분
       </div>
     </div>

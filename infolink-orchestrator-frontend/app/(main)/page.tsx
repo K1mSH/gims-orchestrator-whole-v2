@@ -72,7 +72,6 @@ export default function DashboardPage() {
   };
 
   const offlineCount = execStats ? execStats.totalAgents - execStats.onlineAgents : 0;
-  const today = new Date().toISOString().slice(0, 10);
 
   const filteredAgents = (() => {
     if (activeCard === null || activeCard === 'total') return agentStatuses;
@@ -81,10 +80,13 @@ export default function DashboardPage() {
     return [];
   })();
 
+  const today = new Date().toISOString().slice(0, 10);
+  const isToday = (dateStr: string | null | undefined) => !!dateStr && dateStr.slice(0, 10) === today;
+
   const filteredHistory = (() => {
     if (activeCard === 'running') return recentHistory.filter(h => h.status === 'RUNNING');
-    if (activeCard === 'todayExec') return recentHistory;
-    if (activeCard === 'todayFailed') return recentHistory.filter(h => h.status === 'FAILED');
+    if (activeCard === 'todayExec') return recentHistory.filter(h => isToday(h.startedAt));
+    if (activeCard === 'todayFailed') return recentHistory.filter(h => h.status === 'FAILED' && isToday(h.startedAt));
     return [];
   })();
 
@@ -132,20 +134,20 @@ export default function DashboardPage() {
             <div className={styles.statLabel}>오프라인</div>
             <div className={`${styles.statValue} ${styles.statValueError}`}>{offlineCount}</div>
           </div>
-          <Link href={`/executions?status=RUNNING&startDate=${today}`} className={cardClass('running')}>
+          <div className={cardClass('running')} onClick={() => handleCardClick('running')}>
             <div className={styles.statLabel}>실행 중</div>
             <div className={`${styles.statValue} ${execStats.currentlyRunning > 0 ? styles.statValuePrimary : ''}`}>
               {execStats.currentlyRunning}
             </div>
-          </Link>
-          <Link href={`/executions?startDate=${today}`} className={cardClass('todayExec')}>
+          </div>
+          <div className={cardClass('todayExec')} onClick={() => handleCardClick('todayExec')}>
             <div className={styles.statLabel}>오늘 실행</div>
             <div className={styles.statValue}>{execStats.todayExecutions}</div>
-          </Link>
-          <Link href={`/executions?status=FAILED&startDate=${today}`} className={cardClass('todayFailed', execStats.todayFailed > 0)}>
+          </div>
+          <div className={cardClass('todayFailed', execStats.todayFailed > 0)} onClick={() => handleCardClick('todayFailed')}>
             <div className={styles.statLabel}>오늘 실패</div>
             <div className={`${styles.statValue} ${styles.statValueError}`}>{execStats.todayFailed}</div>
-          </Link>
+          </div>
         </div>
       )}
 
@@ -153,7 +155,6 @@ export default function DashboardPage() {
         <div className="app-card">
           <div className="app-card__header">
             <h2 className="app-card__title">{activeCard ? cardTitle[activeCard] : 'Agent 상태'}</h2>
-            <Link href="/agents" className="krds-btn small secondary">전체보기</Link>
           </div>
           <div>
             <table className={`app-table ${styles.agentTable}`}>

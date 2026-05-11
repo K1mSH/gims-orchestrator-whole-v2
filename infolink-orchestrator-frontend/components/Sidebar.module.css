@@ -1,23 +1,15 @@
 /* 우리 시스템에 맞춘 사이드바 wrapper — KRDS .krds-side-navigation 톤 차용 */
 .aside {
   width: 24rem;
-  height: 100vh;
   position: fixed;
-  top: 0;
+  top: 5rem;                         /* header height 아래 */
   left: 0;
+  bottom: 0;
   background-color: var(--krds-light-color-background-white);
   border-right: 0.1rem solid var(--krds-light-color-border-gray-light);
-  padding: 2rem 1.6rem;
+  padding: 1.6rem;
   overflow-y: auto;
-}
-
-.brand {
-  font-size: var(--krds-pc-font-size-heading-small);
-  font-weight: var(--krds-font-weight-bold);
-  color: var(--krds-light-color-text-bolder);
-  padding: 0 0.8rem 1.6rem;
-  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light);
-  margin-bottom: 1.2rem;
+  z-index: 40;
 }
 
 .list {
@@ -41,6 +33,12 @@
 
 .link:hover {
   background-color: var(--krds-light-color-action-secondary-hover);
+}
+
+/* 마우스 클릭 시 focus 테두리 제거 (인접 메뉴 간 겹침 잔상 방지). 키보드는 active 강조로 커버 */
+.link:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .link.active {

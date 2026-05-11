@@ -1,0 +1,36 @@
+.codeText {
+  font-family: var(--krds-typo-font-type);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.publishBadge {
+  cursor: pointer;
+}
+
+/* 컬럼 너비: 이름 + 오퍼레이션 ID 에 비중 / 타입·활성·등록일 nowrap */
+.opTable {
+  table-layout: fixed;
+}
+.opTable th:nth-child(1), .opTable td:nth-child(1) { width: 24%; }
+.opTable th:nth-child(2), .opTable td:nth-child(2) { width: 42%; }
+.opTable th:nth-child(3), .opTable td:nth-child(3) { width: 10%; }
+.opTable th:nth-child(4), .opTable td:nth-child(4) { width: 10%; }
+.opTable th:nth-child(5), .opTable td:nth-child(5) { width: 14%; }
+.opTable td:nth-child(n+3),
+.opTable th:nth-child(n+3) {
+  white-space: nowrap;
+}

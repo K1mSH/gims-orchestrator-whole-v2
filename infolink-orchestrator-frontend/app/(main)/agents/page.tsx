@@ -5,6 +5,7 @@ import { agentApi, scheduleApi, datasourceApi } from '@/lib/api';
 import type { Agent, Zone, ScheduleCreateRequest, DatasourceSimple, DatasourceTable, AgentType, DiscoverAgent } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import Link from 'next/link';
+import styles from './page.module.css';
 
 const ZONE_LABELS: Record<Zone, string> = {
   EXTERNAL: '외부망',
@@ -25,6 +26,13 @@ const AGENT_TYPE_COLORS: Record<AgentType, string> = {
   SND: '#f59e0b',      // amber
   LOADER: '#10b981',   // emerald
   DB_CON_PROXY: '#8b5cf6', // violet
+};
+
+const AGENT_TYPE_COLOR_CLASS: Record<AgentType, string> = {
+  RCV: styles['groupColorBar--rcv'],
+  SND: styles['groupColorBar--snd'],
+  LOADER: styles['groupColorBar--loader'],
+  DB_CON_PROXY: styles['groupColorBar--proxy'],
 };
 
 const AGENT_TYPE_ORDER: AgentType[] = ['RCV', 'LOADER', 'SND', 'DB_CON_PROXY'];
@@ -67,14 +75,14 @@ export default function AgentsPage() {
   }));
 
   if (loading) {
-    return <div className="loading">로딩중...</div>;
+    return <div className="app-loading">로딩중...</div>;
   }
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Agent 관리</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+      <div className="app-page-header">
+        <h1 className="app-page-header__title">Agent 관리</h1>
+        <button className="krds-btn small" onClick={() => setShowForm(!showForm)}>
           {showForm ? '취소' : 'Agent 등록'}
         </button>
       </div>
@@ -90,48 +98,23 @@ export default function AgentsPage() {
 
       {/* 타입별 그룹 표시 */}
       {groupedAgents.map(({ type, agents: groupAgents }) => (
-        <div key={type} className="card" style={{ marginBottom: '1rem' }}>
+        <div key={type} className="app-card">
           {/* 그룹 헤더 */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              padding: '0.5rem 0',
-            }}
-            onClick={() => toggleGroup(type)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '4px',
-                  height: '24px',
-                  borderRadius: '2px',
-                  backgroundColor: AGENT_TYPE_COLORS[type],
-                }}
-              />
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-                {AGENT_TYPE_LABELS[type]}
-              </h2>
-              <span style={{
-                fontSize: '0.85rem',
-                color: 'var(--gray-500)',
-                fontWeight: 400,
-              }}>
-                ({groupAgents.length})
-              </span>
+          <div className={styles.groupHeader} onClick={() => toggleGroup(type)}>
+            <div className={styles.groupHeaderLeft}>
+              <span className={`${styles.groupColorBar} ${AGENT_TYPE_COLOR_CLASS[type]}`} />
+              <h2 className={styles.groupTitle}>{AGENT_TYPE_LABELS[type]}</h2>
+              <span className={styles.groupCount}>({groupAgents.length})</span>
             </div>
-            <span style={{ color: 'var(--gray-400)', fontSize: '0.9rem' }}>
+            <span className={styles.groupToggle}>
               {collapsedGroups.has(type) ? '▸' : '▾'}
             </span>
           </div>
 
           {/* 그룹 내용 */}
           {!collapsedGroups.has(type) && (
-            <div className="table-container" style={{ marginTop: '0.5rem' }}>
-              <table>
+            <div className={styles.tableWrap}>
+              <table className={`app-table ${styles.agentTable}`}>
                 <thead>
                   <tr>
                     <th>Agent Code</th>
@@ -145,7 +128,7 @@ export default function AgentsPage() {
                 <tbody>
                   {groupAgents.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="empty-state">
+                      <td colSpan={6} className="app-empty">
                         등록된 {AGENT_TYPE_LABELS[type]} Agent가 없습니다
                       </td>
                     </tr>
@@ -153,7 +136,7 @@ export default function AgentsPage() {
                     groupAgents.map((agent) => (
                       <tr key={agent.id}>
                         <td>
-                          <Link href={`/agents/${agent.id}`}>{agent.agentCode}</Link>
+                          <Link href={`/agents/${agent.id}`} className={styles.agentLink}>{agent.agentCode}</Link>
                         </td>
                         <td>{agent.agentName}</td>
                         <td>
@@ -424,20 +407,25 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="card">
-      <h3 className="card-title" style={{ marginBottom: '1rem' }}>
-        Agent 등록
-      </h3>
+    <div className="app-card">
+      <div className="app-card__header">
+        <h2 className="app-card__title">Agent 등록</h2>
+        {selectedAgentCode && (
+          <button type="button" className="krds-btn small" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? '등록중...' : '등록'}
+          </button>
+        )}
+      </div>
       <form onSubmit={handleSubmit}>
         {/* Step 1: Agent 프로세스 조회 */}
-        <div style={{ padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
-          <strong style={{ marginBottom: '0.75rem', display: 'block' }}>1. Agent 프로세스 조회</strong>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="form-label">Endpoint URL</label>
+        <div className={styles.panel}>
+          <div className={styles.stepTitle}>1. Agent 프로세스 조회</div>
+          <div className={styles.discoverRow}>
+            <div className={`app-form-field ${styles.discoverInput}`}>
+              <label className="app-form-label">Endpoint URL</label>
               <input
                 type="url"
-                className="form-input"
+                className="krds-input small"
                 value={endpointUrl}
                 onChange={(e) => setEndpointUrl(e.target.value)}
                 placeholder="http://localhost:8081"
@@ -446,64 +434,47 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
             <button
               type="button"
-              className="btn btn-primary"
+              className="krds-btn small"
               onClick={handleDiscover}
               disabled={discovering || !endpointUrl}
-              style={{ height: '38px', whiteSpace: 'nowrap' }}
             >
               {discovering ? '조회중...' : '에이전트 조회'}
             </button>
           </div>
 
           {discoverError && (
-            <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: '#fef2f2', color: '#dc2626', borderRadius: '0.375rem', fontSize: '0.875rem' }}>
+            <div className={`app-alert app-alert--danger ${styles.discoverErrorBox}`}>
               {discoverError}
             </div>
           )}
 
           {discoveredAgents.length > 0 && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)', marginBottom: '0.5rem' }}>
+            <div className={styles.discoveredWrap}>
+              <div className={styles.discoveredMeta}>
                 Zone: <strong>{discoveredZone}</strong> | 검색된 Agent: <strong>{discoveredAgents.length}</strong>개
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div className={styles.chipRow}>
                 {discoveredAgents.map(agent => {
                   const isSelected = selectedAgentCode === agent.agentCode;
-                  const typeColor = AGENT_TYPE_COLORS[agent.type] || '#6b7280';
+                  const dotClass = AGENT_TYPE_COLOR_CLASS[agent.type]?.replace('groupColorBar', 'agentChipDot')
+                    ?? styles['agentChipDot--rcv'];
                   return (
                     <button
                       key={agent.agentCode}
                       type="button"
                       onClick={() => handleSelectAgent(agent)}
                       disabled={agent.registered}
-                      style={{
-                        padding: '0.375rem 0.75rem',
-                        borderRadius: '0.375rem',
-                        border: isSelected ? `2px solid ${typeColor}` : '1px solid var(--border-color)',
-                        background: agent.registered ? 'var(--gray-100)' : isSelected ? `${typeColor}10` : 'white',
-                        color: agent.registered ? 'var(--gray-400)' : 'var(--text-primary)',
-                        cursor: agent.registered ? 'not-allowed' : 'pointer',
-                        fontSize: '0.85rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.375rem',
-                        opacity: agent.registered ? 0.6 : 1,
-                      }}
+                      className={`${styles.agentChip} ${isSelected ? styles.agentChipSelected : ''} ${agent.registered ? styles.agentChipDisabled : ''}`}
                     >
-                      <span style={{
-                        display: 'inline-block',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: typeColor,
-                      }} />
+                      <span className={`${styles.agentChipDot} ${
+                        agent.type === 'RCV' ? styles['agentChipDot--rcv'] :
+                        agent.type === 'SND' ? styles['agentChipDot--snd'] :
+                        agent.type === 'LOADER' ? styles['agentChipDot--loader'] :
+                        styles['agentChipDot--proxy']
+                      }`} />
                       <span>{agent.agentCode}</span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--gray-500)' }}>
-                        ({AGENT_TYPE_LABELS[agent.type]})
-                      </span>
-                      {agent.registered && (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--gray-400)' }}>등록됨</span>
-                      )}
+                      <span className={styles.agentChipType}>({AGENT_TYPE_LABELS[agent.type]})</span>
+                      {agent.registered && <span className={styles.agentChipRegistered}>등록됨</span>}
                     </button>
                   );
                 })}
@@ -512,252 +483,202 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
           )}
         </div>
 
-        {/* 임시: 폼 미리보기 버튼 */}
+        {/* [DEV] 폼 미리보기 버튼 */}
         {!selectedAgentCode && (
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            style={{ marginBottom: '1rem' }}
-            onClick={() => { setSelectedAgentCode('preview-test'); setSelectedAgentType('RCV'); setFormData(prev => ({ ...prev, agentName: '미리보기 테스트' })); }}
-          >
-            [DEV] 폼 미리보기
-          </button>
+          <div className={`${styles.section} ${styles.topGap}`}>
+            <button
+              type="button"
+              className="krds-btn small secondary"
+              onClick={() => { setSelectedAgentCode('preview-test'); setSelectedAgentType('RCV'); setFormData(prev => ({ ...prev, agentName: '미리보기 테스트' })); }}
+            >
+              [DEV] 폼 미리보기
+            </button>
+          </div>
         )}
 
         {/* Step 2: 선택된 Agent 정보 + 추가 설정 */}
         {selectedAgentCode && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Agent Code</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={selectedAgentCode}
-                  disabled
-                  style={{ background: 'var(--gray-100)' }}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Agent 타입</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={selectedAgentType ? AGENT_TYPE_LABELS[selectedAgentType] : ''}
-                  disabled
-                  style={{ background: 'var(--gray-100)' }}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">이름</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.agentName}
-                  onChange={(e) => setFormData({ ...formData, agentName: e.target.value })}
-                  placeholder="주문 추출 Agent"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">망구분</label>
-                <select className="form-select" value={formData.zone} onChange={(e) => setFormData({ ...formData, zone: e.target.value })}>
-                  <option value="">선택하세요</option>
-                  <option value="EXTERNAL">외부망</option>
-                  <option value="DMZ">DMZ</option>
-                  <option value="INTERNAL_COMMON">내부공통망</option>
-                  <option value="INTERNAL_SERVICE">내부서비스망</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Datasource Tag (선택)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.datasourceTag}
-                  onChange={(e) => setFormData({ ...formData, datasourceTag: e.target.value })}
-                  placeholder="gims_ngw"
-                />
-              </div>
-              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">설명 (선택)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="외부망에서 주문 데이터를 추출하는 Agent"
-                />
+            <div className={`${styles.section} ${styles.topGap}`}>
+              <div className={styles.gridForm}>
+                <div className="app-form-field">
+                  <label className="app-form-label">Agent Code</label>
+                  <input type="text" className={`krds-input small ${styles.disabledInput}`} value={selectedAgentCode} disabled />
+                </div>
+                <div className="app-form-field">
+                  <label className="app-form-label">Agent 타입</label>
+                  <input type="text" className={`krds-input small ${styles.disabledInput}`}
+                    value={selectedAgentType ? AGENT_TYPE_LABELS[selectedAgentType] : ''} disabled />
+                </div>
+                <div className="app-form-field">
+                  <label className="app-form-label">이름</label>
+                  <input type="text" className="krds-input small" value={formData.agentName}
+                    onChange={(e) => setFormData({ ...formData, agentName: e.target.value })}
+                    placeholder="주문 추출 Agent" required />
+                </div>
+                <div className="app-form-field">
+                  <label className="app-form-label">망구분</label>
+                  <select className="krds-input small" value={formData.zone} onChange={(e) => setFormData({ ...formData, zone: e.target.value })}>
+                    <option value="">선택하세요</option>
+                    <option value="EXTERNAL">외부망</option>
+                    <option value="DMZ">DMZ</option>
+                    <option value="INTERNAL_COMMON">내부공통망</option>
+                    <option value="INTERNAL_SERVICE">내부서비스망</option>
+                  </select>
+                </div>
+                <div className="app-form-field">
+                  <label className="app-form-label">Datasource Tag (선택)</label>
+                  <input type="text" className="krds-input small" value={formData.datasourceTag}
+                    onChange={(e) => setFormData({ ...formData, datasourceTag: e.target.value })}
+                    placeholder="gims_ngw" />
+                </div>
+                <div className={`app-form-field ${styles.fullSpan}`}>
+                  <label className="app-form-label">설명 (선택)</label>
+                  <input type="text" className="krds-input small" value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="외부망에서 주문 데이터를 추출하는 Agent" />
+                </div>
               </div>
             </div>
 
             {/* Datasource & 파이프라인 설정 (프록시 Agent는 제외) */}
             {selectedAgentType !== 'DB_CON_PROXY' && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
-              <strong style={{ marginBottom: '1rem', display: 'block' }}>Datasource & 테이블 설정</strong>
+              <div className={`${styles.panel} ${styles.topGap}`}>
+                <div className={styles.stepTitle}>Datasource & 테이블 설정</div>
 
-              {/* 파이프라인 구성 표시 (auto-discover) */}
-              {selectedAgentInfo && (
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'white', borderRadius: '0.375rem', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.5rem' }}>파이프라인 구성 (YAML 기반)</div>
-                  {(selectedAgentInfo.steps || []).map((step: any, idx: number) => (
-                    <div key={idx} style={{ marginBottom: idx < selectedAgentInfo.steps.length - 1 ? '0.75rem' : 0, padding: '0.5rem', background: 'var(--gray-50)', borderRadius: '0.25rem' }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                        [{step.stepId}] {step.stepName}
+                {/* 파이프라인 구성 표시 (auto-discover) */}
+                {selectedAgentInfo && (
+                  <div className={styles.pipelinePanel}>
+                    <div className={styles.pipelinePanelLabel}>파이프라인 구성 (YAML 기반)</div>
+                    {(selectedAgentInfo.steps || []).map((step: any, idx: number) => (
+                      <div key={idx} className={styles.pipelineStep}>
+                        <div className={styles.pipelineStepName}>[{step.stepId}] {step.stepName}</div>
+                        <div className={styles.pipelineStepLine}>
+                          <span className={styles.pipelineSourceLabel}>Source:</span> {(step.sourceTables || []).join(', ') || '-'}
+                        </div>
+                        <div className={styles.pipelineStepLine}>
+                          <span className={styles.pipelineTargetLabel}>Target:</span> {(step.targetTables || []).join(', ') || '-'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
-                        <span style={{ color: '#2563eb' }}>Source:</span> {(step.sourceTables || []).join(', ') || '-'}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
-                        <span style={{ color: '#16a34a' }}>Target:</span> {(step.targetTables || []).join(', ') || '-'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {/* Source Datasource */}
-                <div>
-                  <div className="form-group">
-                    <label className="form-label">Source Datasource</label>
-                    <select
-                      className="form-select"
-                      value={formData.sourceDatasourceId}
-                      onChange={(e) => setFormData({ ...formData, sourceDatasourceId: e.target.value })}
-                    >
+                <div className={styles.dsSubGrid}>
+                  {/* Source Datasource */}
+                  <div className="app-form-field">
+                    <label className="app-form-label">Source Datasource</label>
+                    <select className="krds-input small" value={formData.sourceDatasourceId}
+                      onChange={(e) => setFormData({ ...formData, sourceDatasourceId: e.target.value })}>
                       <option value="">선택하세요</option>
                       {datasources.map(ds => (
-                        <option key={ds.datasourceId} value={ds.datasourceId}>
-                          {ds.datasourceName} ({ds.dbType})
-                        </option>
+                        <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName} ({ds.dbType})</option>
                       ))}
                     </select>
-                  </div>
-                  {/* 테이블 검증 표시 (auto-discover) */}
-                  {selectedAgentInfo && formData.sourceDatasourceId && Object.keys(sourceTableVerify).length > 0 && (
-                    <div style={{ fontSize: '0.8rem', padding: '0.5rem', background: 'white', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}>
-                      {Object.entries(sourceTableVerify).map(([table, found]) => (
-                        <div key={table} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.125rem 0' }}>
-                          <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
-                          <span>{table}</span>
-                          {!found && <span style={{ color: '#dc2626', fontSize: '0.7rem' }}>(미발견)</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* 기존 수동 선택 (agentInfo 없을 때만) */}
-                  {!selectedAgentInfo && sourceTables.length > 0 && (
-                    <div className="form-group">
-                      <label className="form-label">Source 테이블 선택 ({selectedSourceTableIds.length}/{sourceTables.length})</label>
-                      <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                        {sourceTables.map(table => (
-                          <label key={table.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={selectedSourceTableIds.includes(table.id)}
-                              onChange={() => toggleTableSelection(table.id, 'source')}
-                            />
-                            <span>{table.tableName}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
-                          </label>
+                    {selectedAgentInfo && formData.sourceDatasourceId && Object.keys(sourceTableVerify).length > 0 && (
+                      <div className={styles.verifyBox}>
+                        {Object.entries(sourceTableVerify).map(([table, found]) => (
+                          <div key={table} className={styles.verifyRow}>
+                            <span className={found ? styles.verifyOk : styles.verifyFail}>{found ? '✓' : '✗'}</span>
+                            <span>{table}</span>
+                            {!found && <span className={styles.verifyMissing}>(미발견)</span>}
+                          </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                    {!selectedAgentInfo && sourceTables.length > 0 && (
+                      <>
+                        <label className={`app-form-label ${styles.tableSelectLabel}`}>Source 테이블 선택 ({selectedSourceTableIds.length}/{sourceTables.length})</label>
+                        <div className={styles.tableCheckList}>
+                          {sourceTables.map(table => (
+                            <div key={table.id} className={styles.tableCheckItem}>
+                              <div className="krds-form-check medium">
+                                <input type="checkbox" id={`src-tbl-${table.id}`}
+                                  checked={selectedSourceTableIds.includes(table.id)}
+                                  onChange={() => toggleTableSelection(table.id, 'source')} />
+                                <label htmlFor={`src-tbl-${table.id}`} aria-label={`${table.tableName} 선택`}></label>
+                              </div>
+                              <label htmlFor={`src-tbl-${table.id}`}>{table.tableName}</label>
+                              <span className={styles.tableCheckCount}>({table.columns.length}컬럼)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                {/* Target Datasource */}
-                <div>
-                  <div className="form-group">
-                    <label className="form-label">Target Datasource</label>
-                    <select
-                      className="form-select"
-                      value={formData.targetDatasourceId}
-                      onChange={(e) => setFormData({ ...formData, targetDatasourceId: e.target.value })}
-                    >
+                  {/* Target Datasource */}
+                  <div className="app-form-field">
+                    <label className="app-form-label">Target Datasource</label>
+                    <select className="krds-input small" value={formData.targetDatasourceId}
+                      onChange={(e) => setFormData({ ...formData, targetDatasourceId: e.target.value })}>
                       <option value="">선택하세요</option>
                       {datasources.map(ds => (
-                        <option key={ds.datasourceId} value={ds.datasourceId}>
-                          {ds.datasourceName} ({ds.dbType})
-                        </option>
+                        <option key={ds.datasourceId} value={ds.datasourceId}>{ds.datasourceName} ({ds.dbType})</option>
                       ))}
                     </select>
-                  </div>
-                  {/* 테이블 검증 표시 (auto-discover) */}
-                  {selectedAgentInfo && formData.targetDatasourceId && Object.keys(targetTableVerify).length > 0 && (
-                    <div style={{ fontSize: '0.8rem', padding: '0.5rem', background: 'white', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}>
-                      {Object.entries(targetTableVerify).map(([table, found]) => (
-                        <div key={table} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.125rem 0' }}>
-                          <span style={{ color: found ? '#16a34a' : '#dc2626' }}>{found ? '✓' : '✗'}</span>
-                          <span>{table}</span>
-                          {!found && <span style={{ color: '#dc2626', fontSize: '0.7rem' }}>(미발견)</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* 기존 수동 선택 (agentInfo 없을 때만) */}
-                  {!selectedAgentInfo && targetTables.length > 0 && (
-                    <div className="form-group">
-                      <label className="form-label">Target 테이블 선택 ({selectedTargetTableIds.length}/{targetTables.length})</label>
-                      <div style={{ maxHeight: '150px', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                        {targetTables.map(table => (
-                          <label key={table.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={selectedTargetTableIds.includes(table.id)}
-                              onChange={() => toggleTableSelection(table.id, 'target')}
-                            />
-                            <span>{table.tableName}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({table.columns.length}컬럼)</span>
-                          </label>
+                    {selectedAgentInfo && formData.targetDatasourceId && Object.keys(targetTableVerify).length > 0 && (
+                      <div className={styles.verifyBox}>
+                        {Object.entries(targetTableVerify).map(([table, found]) => (
+                          <div key={table} className={styles.verifyRow}>
+                            <span className={found ? styles.verifyOk : styles.verifyFail}>{found ? '✓' : '✗'}</span>
+                            <span>{table}</span>
+                            {!found && <span className={styles.verifyMissing}>(미발견)</span>}
+                          </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {!selectedAgentInfo && targetTables.length > 0 && (
+                      <>
+                        <label className={`app-form-label ${styles.tableSelectLabel}`}>Target 테이블 선택 ({selectedTargetTableIds.length}/{targetTables.length})</label>
+                        <div className={styles.tableCheckList}>
+                          {targetTables.map(table => (
+                            <div key={table.id} className={styles.tableCheckItem}>
+                              <div className="krds-form-check medium">
+                                <input type="checkbox" id={`tgt-tbl-${table.id}`}
+                                  checked={selectedTargetTableIds.includes(table.id)}
+                                  onChange={() => toggleTableSelection(table.id, 'target')} />
+                                <label htmlFor={`tgt-tbl-${table.id}`} aria-label={`${table.tableName} 선택`}></label>
+                              </div>
+                              <label htmlFor={`tgt-tbl-${table.id}`}>{table.tableName}</label>
+                              <span className={styles.tableCheckCount}>({table.columns.length}컬럼)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-
             )}
 
             {/* 스케줄 설정 섹션 (프록시 Agent는 제외) */}
             {selectedAgentType !== 'DB_CON_PROXY' && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
-              <strong style={{ marginBottom: '1rem', display: 'block' }}>스케줄 설정</strong>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Cron 표현식</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={scheduleData.cronExpression}
-                    onChange={(e) => setScheduleData({ ...scheduleData, cronExpression: e.target.value })}
-                    placeholder="0 0 * * * *"
-                    required
-                  />
-                  <small style={{ color: 'var(--gray-500)' }}>
-                    형식: 초 분 시 일 월 요일 (예: 매시 정각 = 0 0 * * * *)
-                  </small>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">활성화 여부</label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={scheduleData.isEnabled}
-                      onChange={(e) => setScheduleData({ ...scheduleData, isEnabled: e.target.checked })}
-                    />
-                    등록 즉시 활성화
-                  </label>
+              <div className={`${styles.panel} ${styles.topGap}`}>
+                <div className={styles.stepTitle}>스케줄 설정</div>
+                <div className={styles.dsSubGrid}>
+                  <div className="app-form-field">
+                    <label className="app-form-label">Cron 표현식</label>
+                    <input type="text" className="krds-input small" value={scheduleData.cronExpression}
+                      onChange={(e) => setScheduleData({ ...scheduleData, cronExpression: e.target.value })}
+                      placeholder="0 0 * * * *" required />
+                    <div className={styles.formHelp}>형식: 초 분 시 일 월 요일 (예: 매시 정각 = 0 0 * * * *)</div>
+                  </div>
+                  <div className="app-form-field">
+                    <label className="app-form-label">활성화 여부</label>
+                    <label className={styles.scheduleActiveLabel}>
+                      <div className="krds-form-check medium">
+                        <input type="checkbox" id="schedule-enabled"
+                          checked={scheduleData.isEnabled}
+                          onChange={(e) => setScheduleData({ ...scheduleData, isEnabled: e.target.checked })} />
+                        <label htmlFor="schedule-enabled" aria-label="활성화"></label>
+                      </div>
+                      <label htmlFor="schedule-enabled">등록 즉시 활성화</label>
+                    </label>
+                  </div>
                 </div>
               </div>
-            </div>
             )}
-
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ marginTop: '1rem' }}>
-              {submitting ? '등록중...' : '등록'}
-            </button>
           </>
         )}
       </form>

@@ -1,0 +1,357 @@
+.emptyWrap {
+  text-align: center;
+  padding: 1.6rem 0;
+}
+
+.emptyText {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-body-small);
+  margin-bottom: 1.4rem;
+}
+
+/* 테스트 호출 상태 */
+.testStatusRow {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.paramsLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.8rem;
+}
+
+.paramChip {
+  display: inline-block;
+  margin: 0.2rem 0.4rem 0.2rem 0;
+  padding: 0.1rem 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-small1);
+  font-family: var(--krds-typo-font-type);
+}
+
+/* 응답 트리 */
+.treeWrap {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+  max-height: 32rem;
+  overflow: auto;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  padding: 1rem;
+  border-radius: var(--krds-radius-medium2);
+}
+
+.dataRootFoot {
+  margin-top: 1rem;
+  padding: 0.8rem 1.2rem;
+  background-color: var(--krds-light-color-element-success-lighter);
+  border-radius: var(--krds-radius-medium2);
+  font-size: var(--krds-pc-font-size-label-small);
+}
+
+.dataRootCode {
+  font-family: var(--krds-typo-font-type);
+  font-weight: var(--krds-font-weight-bold);
+  margin-left: 0.4rem;
+}
+
+/* 적재 설정 */
+.loadSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.loadRow {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.loadLabel {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  min-width: 10rem;
+}
+
+.loadSelect {
+  max-width: 40rem;
+  flex: 1;
+}
+
+.loadCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.loadCheckboxLabel {
+  cursor: pointer;
+}
+
+/* 매핑 테이블 체크박스 cell — table-cell 안에서 inline 형태로 가운데 */
+.checkCell {
+  text-align: center;
+}
+
+.checkCell :global(.krds-form-check) {
+  display: inline-block;
+}
+
+/* 매핑 테이블 */
+.mappingTableWrap {
+  overflow-x: auto;
+}
+
+.mappingTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--krds-pc-font-size-label-small);
+  min-width: 80rem;
+}
+
+.mappingTable thead th {
+  text-align: left;
+  padding: 0.8rem 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.mappingTable tbody td {
+  padding: 0.6rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light, var(--krds-light-color-border-gray-light));
+  vertical-align: middle;
+}
+
+.mappingTable td.arrowCell {
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+  width: 2rem;
+}
+
+.thCenter {
+  text-align: center;
+}
+
+.thWidth80 { width: 8rem; }
+.thWidth60 { width: 6rem; }
+.thWidth120 { width: 12rem; }
+.thArrow { width: 2rem; }
+
+.mappingRowDimmed {
+  opacity: 0.4;
+}
+
+.sourceCode {
+  font-family: var(--krds-typo-font-type);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.muted {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.sectionDivider td {
+  padding: 0.6rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+/* 파생 행 — 약한 강조 (fixed=success / derived=warning) */
+.derivedFixedRow td {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+.derivedDerivedRow td {
+  background-color: var(--krds-light-color-element-warning-lighter);
+}
+
+.derivedActionCell {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--krds-light-color-text-danger);
+  font-size: 1.2rem;
+  padding: 0 0.4rem;
+}
+
+/* LOOKUP 확장 패널 */
+.lookupPanel {
+  padding: 1rem 1.2rem 1.4rem 2rem;
+  background-color: var(--krds-light-color-element-warning-lighter);
+}
+
+.lookupGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.lookupFull {
+  grid-column: 1 / -1;
+}
+
+.lookupExtractRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+.lookupExtractInput {
+  flex: 1;
+  font-family: var(--krds-typo-font-type);
+}
+
+.lookupExtractGroup {
+  width: 7rem;
+}
+
+.lookupExtractGroupLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  white-space: nowrap;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.presetRow {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.previewBox {
+  background-color: var(--krds-light-color-background-white);
+  border-radius: var(--krds-radius-small1);
+  padding: 0.8rem 1rem;
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.previewLabel {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 0.4rem;
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.previewTable {
+  width: 100%;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+.previewTable td {
+  padding: 0.2rem 0.4rem;
+}
+
+.previewOriginal {
+  color: var(--krds-light-color-text-subtle);
+  max-width: 30rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewArrow {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.previewExtracted {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+/* 파생 컬럼 추가 영역 */
+.addDerivedRow {
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 0 0;
+  margin-top: 1rem;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.addDerivedBtn {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border: 0.1rem dashed var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-medium2);
+  cursor: pointer;
+  color: var(--krds-light-color-text-bolder);
+  font-size: var(--krds-pc-font-size-label-medium);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.addDerivedBtn:hover {
+  background-color: var(--krds-light-color-action-secondary-hover);
+  border-color: var(--krds-light-color-border-primary);
+}
+
+.addFixedBtn {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+/* JSON 트리 뷰 */
+.treeNode {
+  margin-left: 1.4rem;
+}
+
+.treeNodeRoot {
+  margin-left: 0;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  border-radius: var(--krds-radius-small1);
+}
+
+.treeRowSelected {
+  background-color: var(--krds-light-color-element-success-lighter);
+}
+
+.treeToggle {
+  cursor: pointer;
+  width: 1.6rem;
+  text-align: center;
+  user-select: none;
+}
+
+.treeBullet {
+  width: 1.6rem;
+  text-align: center;
+  color: var(--krds-light-color-text-subtle);
+}
+
+.treeName {
+  color: var(--krds-light-color-text-bolder);
+}
+
+.treeNameExpandable {
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.treeMeta {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+.treeSample {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}

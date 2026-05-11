@@ -3,13 +3,9 @@
 import { useState, useCallback } from 'react';
 import { testApi } from '@/lib/providerApi';
 import { ApiPrvOperation, DynamicQueryResult } from '@/types/api-provide';
-
-const fieldLabel: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 };
-
-const SQL_KEYWORDS = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'ORDER BY', 'LIMIT', 'OFFSET', 'AS', 'IN', 'BETWEEN', 'LIKE', 'NOT', 'NULL', 'IS', 'COUNT', 'ROUND', 'TO_CHAR', 'COALESCE', 'SUBSTRING'];
+import styles from './TestTab.module.css';
 
 function formatSql(sql: string) {
-  // 줄바꿈 삽입
   let formatted = sql
     .replace(/\bSELECT\b/gi, '\nSELECT')
     .replace(/\bFROM\b/gi, '\nFROM')
@@ -21,28 +17,27 @@ function formatSql(sql: string) {
     .replace(/\bOFFSET\b/gi, ' OFFSET')
     .trim();
 
-  // 키워드 하이라이팅
-  const parts: { text: string; isKeyword: boolean; isString: boolean; isNumber: boolean }[] = [];
+  const parts: { text: string; kind: 'keyword' | 'string' | 'number' | 'text' }[] = [];
   const regex = /('(?:[^']|'')*'|\b\d+(?:\.\d+)?\b|\b(?:SELECT|FROM|WHERE|AND|OR|ORDER\s+BY|LIMIT|OFFSET|AS|IN|BETWEEN|LIKE|NOT|NULL|IS|COUNT|ROUND|TO_CHAR|COALESCE|SUBSTRING|ASC|DESC)\b)/gi;
 
   let lastIndex = 0;
   let match;
   while ((match = regex.exec(formatted)) !== null) {
     if (match.index > lastIndex) {
-      parts.push({ text: formatted.slice(lastIndex, match.index), isKeyword: false, isString: false, isNumber: false });
+      parts.push({ text: formatted.slice(lastIndex, match.index), kind: 'text' });
     }
     const val = match[0];
     if (val.startsWith("'")) {
-      parts.push({ text: val, isKeyword: false, isString: true, isNumber: false });
+      parts.push({ text: val, kind: 'string' });
     } else if (/^\d/.test(val)) {
-      parts.push({ text: val, isKeyword: false, isString: false, isNumber: true });
+      parts.push({ text: val, kind: 'number' });
     } else {
-      parts.push({ text: val.toUpperCase(), isKeyword: true, isString: false, isNumber: false });
+      parts.push({ text: val.toUpperCase(), kind: 'keyword' });
     }
     lastIndex = regex.lastIndex;
   }
   if (lastIndex < formatted.length) {
-    parts.push({ text: formatted.slice(lastIndex), isKeyword: false, isString: false, isNumber: false });
+    parts.push({ text: formatted.slice(lastIndex), kind: 'text' });
   }
   return parts;
 }
@@ -75,116 +70,131 @@ export default function TestTab({ operation }: Props) {
     executeTest(targetPage);
   };
 
+  const kindClass = (kind: 'keyword' | 'string' | 'number' | 'text') => {
+    switch (kind) {
+      case 'keyword': return styles.sqlKeyword;
+      case 'string': return styles.sqlString;
+      case 'number': return styles.sqlNumber;
+      default: return styles.sqlText;
+    }
+  };
+
   return (
-    <div style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
-      {/* 파라미터 입력 */}
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>테스트 호출</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>
-            10건 단위 페이징 조회
-          </div>
+    <div className={styles.wrapper}>
+      {/* 파라미터 입력 + 실행 */}
+      <div className="app-card">
+        <div className="app-card__header">
+          <h2 className="app-card__title">테스트 호출</h2>
         </div>
 
         {operation.params.filter(p => !p.isHidden).length > 0 && (
-          <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
-            <div style={fieldLabel}>파라미터</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+          <div className={styles.paramsBlock}>
+            <div className={styles.paramsLabel}>파라미터</div>
+            <div className={styles.paramsGrid}>
               {operation.params.filter(p => !p.isHidden).map(p => (
-                <div key={p.paramName}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                <div key={p.paramName} className={styles.paramField}>
+                  <div className={styles.paramHead}>
                     {p.paramName} ({p.operator}, {p.dataType})
-                    {p.isRequired && <span style={{ color: '#ef4444' }}> *</span>}
+                    {p.isRequired && <span className={styles.paramRequired}> *</span>}
                   </div>
-                  <input className="form-input" placeholder={p.defaultValue || '값 입력'}
+                  <input
+                    className="krds-input small"
+                    placeholder={p.defaultValue || '값 입력'}
                     value={paramValues[p.paramName] || ''}
-                    onChange={e => setParamValues({ ...paramValues, [p.paramName]: e.target.value })} />
+                    onChange={e => setParamValues({ ...paramValues, [p.paramName]: e.target.value })}
+                  />
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <div style={{ padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button className="btn btn-primary" onClick={() => goPage(1)} disabled={loading}>
-            {loading ? '실행 중...' : '테스트 실행'}
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>페이지 크기</span>
-            <input className="form-input" type="number" min={1} max={operation.maxPageSize}
+        <div className={styles.runRow}>
+          <div className={`${styles.paramField} ${styles.pageSizeField}`}>
+            <div className={styles.paramHead}>페이지 크기 (최대 {operation.maxPageSize})</div>
+            <input
+              className="krds-input small"
+              type="number"
+              min={1}
+              max={operation.maxPageSize}
               value={pageSize}
               onChange={e => setPageSize(Math.min(parseInt(e.target.value) || 10, operation.maxPageSize))}
-              style={{ width: '80px', fontSize: '0.8rem' }} />
-            <span style={{ fontSize: '0.7rem', color: 'var(--gray-400)' }}>최대 {operation.maxPageSize}</span>
+            />
           </div>
+          <button type="button" className={`krds-btn small ${styles.runButton}`} onClick={() => goPage(1)} disabled={loading}>
+            {loading ? '실행 중...' : '테스트 실행'}
+          </button>
         </div>
       </div>
 
       {/* 에러 */}
       {error && (
-        <div className="card" style={{ marginBottom: '1rem', padding: '1rem', background: '#fef2f2', border: '1px solid #fecaca' }}>
-          <div style={{ fontSize: '0.85rem', color: '#991b1b', fontWeight: 600 }}>실행 실패</div>
-          <div style={{ fontSize: '0.8rem', color: '#991b1b', marginTop: '0.25rem' }}>{error}</div>
+        <div className="app-alert app-alert--danger">
+          <strong>실행 실패</strong>
+          <div>{error}</div>
         </div>
       )}
 
       {/* 결과 */}
       {result && (
         <>
-          {/* SQL 미리보기 (executedSql 이 있을 때만) */}
+          {/* SQL 미리보기 */}
           {result.executedSql ? (
-            <div className="card" style={{ marginBottom: '1rem' }}>
-              <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>실행된 SQL</div>
+            <div className="app-card">
+              <div className="app-card__header">
+                <h2 className="app-card__title">실행된 SQL</h2>
               </div>
-              <div style={{ padding: '0.75rem 1rem' }}>
-                <pre style={{ fontSize: '0.8rem', background: '#1e1e2e', color: '#cdd6f4', padding: '1rem', borderRadius: '6px', overflow: 'auto', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontFamily: "'Consolas', 'Monaco', monospace" }}>
-                  {formatSql(result.executedSql).map((part, i) => (
-                    <span key={i} style={{
-                      color: part.isKeyword ? '#89b4fa' : part.isString ? '#a6e3a1' : part.isNumber ? '#fab387' : '#cdd6f4',
-                      fontWeight: part.isKeyword ? 700 : 400,
-                    }}>{part.text}</span>
-                  ))}
-                </pre>
-                <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)', marginTop: '0.5rem' }}>
-                  총 {result.pagination.totalCount}건 / {result.durationMs}ms
-                </div>
-              </div>
+              <pre className={styles.sqlPre}>
+                {formatSql(result.executedSql).map((part, i) => (
+                  <span key={i} className={kindClass(part.kind)}>{part.text}</span>
+                ))}
+              </pre>
+              <div className={styles.resultStats}>총 {result.pagination.totalCount}건 / {result.durationMs}ms</div>
             </div>
           ) : (
-            <div className="card" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-              총 {result.pagination.totalCount}건 / {result.durationMs}ms
+            <div className="app-card">
+              <div className={styles.resultStats}>총 {result.pagination.totalCount}건 / {result.durationMs}ms</div>
             </div>
           )}
 
           {/* 데이터 테이블 */}
-          <div className="card" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                결과 ({result.data.length}건)
-              </div>
-              {/* 페이징 */}
+          <div className="app-card">
+            <div className="app-card__header">
+              <h2 className="app-card__title">결과 ({result.data.length}건)</h2>
               {result.pagination.totalPages > 1 && (
-                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                  <button className="btn btn-sm" disabled={loading || result.pagination.page <= 1}
-                    onClick={() => goPage(result.pagination.page - 1)}>이전</button>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', padding: '0 0.5rem' }}>
+                <div className={styles.pager}>
+                  <button
+                    type="button"
+                    className="krds-btn small secondary"
+                    disabled={loading || result.pagination.page <= 1}
+                    onClick={() => goPage(result.pagination.page - 1)}
+                  >
+                    이전
+                  </button>
+                  <span className={styles.pagerLabel}>
                     {result.pagination.page} / {result.pagination.totalPages}
                   </span>
-                  <button className="btn btn-sm" disabled={loading || result.pagination.page >= result.pagination.totalPages}
-                    onClick={() => goPage(result.pagination.page + 1)}>다음</button>
+                  <button
+                    type="button"
+                    className="krds-btn small secondary"
+                    disabled={loading || result.pagination.page >= result.pagination.totalPages}
+                    onClick={() => goPage(result.pagination.page + 1)}
+                  >
+                    다음
+                  </button>
                 </div>
               )}
             </div>
+
             {result.data.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>데이터 없음</div>
+              <div className="app-empty">데이터 없음</div>
             ) : (
-              <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '500px', width: '100%' }}>
-                <table style={{ minWidth: 'max-content' }}>
+              <div className={styles.dataTableWrap}>
+                <table className={`app-table ${styles.dataTable}`}>
                   <thead>
                     <tr>
                       {Object.keys(result.data[0]).map(key => (
-                        <th key={key} style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{key}</th>
+                        <th key={key}>{key}</th>
                       ))}
                     </tr>
                   </thead>
@@ -192,8 +202,8 @@ export default function TestTab({ operation }: Props) {
                     {result.data.map((row, i) => (
                       <tr key={i}>
                         {Object.values(row).map((val, j) => (
-                          <td key={j} style={{ fontSize: '0.8rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {val === null ? <span style={{ color: 'var(--gray-300)' }}>NULL</span> : String(val)}
+                          <td key={j}>
+                            {val === null ? <span className={styles.nullValue}>NULL</span> : String(val)}
                           </td>
                         ))}
                       </tr>
@@ -205,18 +215,42 @@ export default function TestTab({ operation }: Props) {
 
             {/* 하단 페이징 */}
             {result.pagination.totalPages > 1 && (
-              <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'center', gap: '0.25rem', alignItems: 'center' }}>
-                <button className="btn btn-sm" disabled={loading || result.pagination.page <= 1}
-                  onClick={() => goPage(1)}>처음</button>
-                <button className="btn btn-sm" disabled={loading || result.pagination.page <= 1}
-                  onClick={() => goPage(result.pagination.page - 1)}>이전</button>
-                <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', padding: '0 0.75rem' }}>
+              <div className={styles.pagerBottom}>
+                <button
+                  type="button"
+                  className="krds-btn small secondary"
+                  disabled={loading || result.pagination.page <= 1}
+                  onClick={() => goPage(1)}
+                >
+                  처음
+                </button>
+                <button
+                  type="button"
+                  className="krds-btn small secondary"
+                  disabled={loading || result.pagination.page <= 1}
+                  onClick={() => goPage(result.pagination.page - 1)}
+                >
+                  이전
+                </button>
+                <span className={styles.pagerLabel}>
                   {result.pagination.page} / {result.pagination.totalPages} 페이지
                 </span>
-                <button className="btn btn-sm" disabled={loading || result.pagination.page >= result.pagination.totalPages}
-                  onClick={() => goPage(result.pagination.page + 1)}>다음</button>
-                <button className="btn btn-sm" disabled={loading || result.pagination.page >= result.pagination.totalPages}
-                  onClick={() => goPage(result.pagination.totalPages)}>마지막</button>
+                <button
+                  type="button"
+                  className="krds-btn small secondary"
+                  disabled={loading || result.pagination.page >= result.pagination.totalPages}
+                  onClick={() => goPage(result.pagination.page + 1)}
+                >
+                  다음
+                </button>
+                <button
+                  type="button"
+                  className="krds-btn small secondary"
+                  disabled={loading || result.pagination.page >= result.pagination.totalPages}
+                  onClick={() => goPage(result.pagination.totalPages)}
+                >
+                  마지막
+                </button>
               </div>
             )}
           </div>

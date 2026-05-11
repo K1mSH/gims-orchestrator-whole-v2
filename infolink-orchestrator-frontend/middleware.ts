@@ -32,6 +32,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // 정적 / Next 내부 / proxy rewrite path 는 가드 제외
-    '/((?!_next/static|_next/image|favicon.ico|auth/|api/|collector-api/|provider-api/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|krds/|auth/|api/|collector-api/|provider-api/).*)',
   ],
 };

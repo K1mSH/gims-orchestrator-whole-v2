@@ -1,0 +1,324 @@
+/* agents 목록 페이지 — 단계 1: 헤더 + 타입별 그룹 카드 KRDS 화 */
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.4rem 0;
+}
+
+.groupHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.groupColorBar {
+  display: inline-block;
+  width: 0.4rem;
+  height: 2.4rem;
+  border-radius: var(--krds-radius-small1);
+}
+
+.groupColorBar--rcv         { background-color: #6366f1; }
+.groupColorBar--snd         { background-color: #f59e0b; }
+.groupColorBar--loader      { background-color: #10b981; }
+.groupColorBar--proxy       { background-color: #8b5cf6; }
+
+.groupTitle {
+  margin: 0;
+  font-size: var(--krds-pc-font-size-heading-xsmall);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+
+.groupCount {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-regular);
+}
+
+.groupToggle {
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-medium);
+}
+
+.tableWrap {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+/* 컬럼 너비: Agent Code/이름 넉넉히, 망구분/상태/실행결과는 nowrap 고정 */
+.agentTable {
+  table-layout: fixed;
+  min-width: 80rem;
+}
+
+.agentTable th:nth-child(1), .agentTable td:nth-child(1) { width: 22%; }
+.agentTable th:nth-child(2), .agentTable td:nth-child(2) { width: 28%; }
+.agentTable th:nth-child(3), .agentTable td:nth-child(3) { width: 10rem; }
+.agentTable th:nth-child(4), .agentTable td:nth-child(4) { width: 8rem; }
+.agentTable th:nth-child(5), .agentTable td:nth-child(5) { width: 16rem; }
+.agentTable th:nth-child(6), .agentTable td:nth-child(6) { width: 9rem; }
+
+.agentTable td:nth-child(n+3),
+.agentTable th:nth-child(n+3) {
+  white-space: nowrap;
+}
+
+.agentLink {
+  color: var(--krds-light-color-text-primary);
+  text-decoration: none;
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.agentLink:hover {
+  text-decoration: underline;
+}
+
+/* ---------- AgentForm 등록 폼 ---------- */
+
+.section {
+  margin-bottom: 1.6rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+  margin-bottom: 0.8rem;
+}
+
+.stepTitle {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+  margin-bottom: 1rem;
+}
+
+/* 회색 패널 (Step / Datasource 설정 / 스케줄 설정) */
+.panel {
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-medium2);
+  padding: 1.4rem 1.6rem;
+}
+
+.panel + .panel {
+  margin-top: 1.4rem;
+}
+
+/* Step 1: URL 조회 */
+.discoverRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.discoverInput {
+  flex: 1;
+}
+
+.discoverErrorBox {
+  margin-top: 1rem;
+}
+
+.discoveredWrap {
+  margin-top: 1rem;
+}
+
+.discoveredMeta {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 0.6rem;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.agentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--krds-radius-medium1);
+  border: 0.1rem solid var(--krds-light-color-border-gray);
+  background-color: var(--krds-light-color-background-white);
+  color: var(--krds-light-color-text-bolder);
+  cursor: pointer;
+  font-size: var(--krds-pc-font-size-label-small);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.agentChip:hover {
+  border-color: var(--krds-light-color-border-primary);
+}
+
+.agentChipSelected {
+  border-color: var(--krds-light-color-border-primary);
+  background-color: var(--krds-light-color-element-primary-lighter);
+}
+
+.agentChipDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--krds-light-color-background-gray-subtler);
+}
+
+.agentChipDot {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+}
+
+.agentChipDot--rcv    { background-color: #6366f1; }
+.agentChipDot--snd    { background-color: #f59e0b; }
+.agentChipDot--loader { background-color: #10b981; }
+.agentChipDot--proxy  { background-color: #8b5cf6; }
+
+.agentChipType {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.agentChipRegistered {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* Step 2: 폼 그리드 */
+.gridForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem 1.6rem;
+}
+
+.fullSpan {
+  grid-column: 1 / -1;
+}
+
+.disabledInput {
+  background-color: var(--krds-light-color-background-gray-subtler);
+}
+
+/* 파이프라인 구성 표시 */
+.pipelinePanel {
+  margin-bottom: 1rem;
+  padding: 1rem 1.2rem;
+  background-color: var(--krds-light-color-background-white);
+  border-radius: var(--krds-radius-small1);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.pipelinePanelLabel {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-bottom: 0.6rem;
+}
+
+.pipelineStep {
+  padding: 0.6rem 0.8rem;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border-radius: var(--krds-radius-small1);
+  margin-bottom: 0.6rem;
+}
+
+.pipelineStep:last-child {
+  margin-bottom: 0;
+}
+
+.pipelineStepName {
+  font-weight: var(--krds-font-weight-bold);
+  font-size: var(--krds-pc-font-size-label-small);
+  margin-bottom: 0.3rem;
+}
+
+.pipelineStepLine {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.pipelineSourceLabel { color: var(--krds-light-color-text-primary); }
+.pipelineTargetLabel { color: var(--krds-light-color-text-success); }
+
+/* 테이블 검증 박스 */
+.verifyBox {
+  font-size: var(--krds-pc-font-size-label-small);
+  padding: 0.6rem 0.8rem;
+  background-color: var(--krds-light-color-background-white);
+  border-radius: var(--krds-radius-small1);
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  margin-top: 0.6rem;
+}
+
+.verifyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+}
+
+.verifyOk { color: var(--krds-light-color-text-success); }
+.verifyFail { color: var(--krds-light-color-text-danger); }
+.verifyMissing {
+  color: var(--krds-light-color-text-danger);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+}
+
+/* 수동 테이블 선택 (체크박스 목록) */
+.tableCheckList {
+  max-height: 16rem;
+  overflow: auto;
+  border: 0.1rem solid var(--krds-light-color-border-gray-light);
+  border-radius: var(--krds-radius-small1);
+  padding: 0.6rem;
+  background-color: var(--krds-light-color-background-white);
+}
+
+.tableCheckItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+}
+
+.tableCheckCount {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* 스케줄 활성 체크박스 */
+.scheduleActiveLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--krds-pc-font-size-body-small);
+}
+
+.formHelp {
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+  margin-top: 0.3rem;
+}
+
+.dsSubGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem;
+}
+
+.topGap {
+  margin-top: 1.4rem;
+}
+
+.tableSelectLabel {
+  margin-top: 0.8rem;
+}

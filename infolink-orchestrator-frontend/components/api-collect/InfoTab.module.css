@@ -1,0 +1,118 @@
+.section {
+  margin-bottom: 1.6rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionLabel {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+  margin-bottom: 0.8rem;
+}
+
+/* 그리드 폼 (대칭 1fr 1fr) — URL 같은 긴 필드는 fullSpan 으로 한 줄 전체 차지 */
+.gridForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem 1.6rem;
+}
+
+.fullSpan {
+  grid-column: 1 / -1;
+}
+
+/* 기타 (설명 + 체크박스 + 저장 버튼) */
+.metaRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1.2rem;
+  align-items: end;
+}
+
+.activeToggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--krds-pc-font-size-body-small);
+  cursor: pointer;
+  padding-bottom: 0.6rem;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* CUSTOM 테스트 결과 박스 */
+.testResultBox {
+  margin-top: 1rem;
+}
+
+/* 헤더/파라미터 그리드 */
+.paramGrid {
+  overflow-x: auto;
+}
+
+.headerGridHeader,
+.headerGridRow {
+  display: grid;
+  grid-template-columns: 16rem 11rem minmax(20rem, 1.4fr) minmax(18rem, 1fr) 4rem;
+  column-gap: 1rem;
+  align-items: center;
+  min-width: 74rem;
+}
+
+.paramGridHeader,
+.paramGridRow {
+  display: grid;
+  grid-template-columns: 16rem 17rem 12rem minmax(22rem, 1.6fr) minmax(20rem, 1fr) 4rem;
+  column-gap: 1rem;
+  align-items: center;
+  min-width: 92rem;
+}
+
+.headerGridHeader,
+.paramGridHeader {
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.8rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+}
+
+.headerGridHeader > div,
+.paramGridHeader > div {
+  font-size: var(--krds-pc-font-size-label-small);
+  color: var(--krds-light-color-text-subtle);
+  font-weight: var(--krds-font-weight-bold);
+}
+
+.headerGridRow,
+.paramGridRow {
+  padding: 0.8rem 0;
+  border-bottom: 0.1rem solid var(--krds-light-color-divider-gray-light, var(--krds-light-color-border-gray-light));
+}
+
+.dynamicCell {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.dynamicType {
+  width: 8rem;
+}
+
+.dynamicFormat {
+  width: 10rem;
+}
+
+.dynamicOffset {
+  width: 6rem;
+}
+
+.saveRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.4rem;
+}

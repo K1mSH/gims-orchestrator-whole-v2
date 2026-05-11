@@ -1,0 +1,66 @@
+/* 새 스케줄 추가 영역 */
+.addRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.cronInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.presetRow {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.2rem;
+  border-bottom: 0.1rem solid var(--krds-light-color-border-gray-light);
+  margin-bottom: 1.4rem;
+}
+
+/* 스케줄 목록 */
+.cronCode {
+  font-family: var(--krds-typo-font-type);
+  font-size: var(--krds-pc-font-size-label-small);
+  cursor: pointer;
+  color: var(--krds-light-color-text-bolder);
+}
+
+.editRow {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggleBadge {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.mutedCell {
+  color: var(--krds-light-color-text-subtle);
+}
+
+.helpFoot {
+  margin-top: 1.6rem;
+  padding-top: 1rem;
+  border-top: 0.1rem solid var(--krds-light-color-border-gray-light);
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+.helpFoot code {
+  font-family: var(--krds-typo-font-type);
+  background-color: var(--krds-light-color-background-gray-subtler);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--krds-radius-small1);
+}
