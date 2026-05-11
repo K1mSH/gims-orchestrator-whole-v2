@@ -1,6 +1,8 @@
 # 03 — 보조관측망 (BOJO) 파이프라인 기능 테스트 문서
 
 > 작성일: 2026-05-07 (5/7 리네이밍 반영 + Auth/ApiKeyFilter soft-mode 신규 항목 추가)
+> **검증 baseline**: `d887aa2` (2026-05-11 — KRDS 디자인 전면 적용 + api-collect sourceFieldType 직후). 통과 시 신규 stable tag.
+> **검증 회차**: 2026-05-11 클린 재수행 (5/8 Step 5 PASS 이후 KRDS·sourceFieldType 변경분 회귀 포함)
 
 > 보조관측망 시스템의 전체 기능을 검증하기 위한 재사용 가능 테스트 문서.
 > 기능 추가/수정 시 해당 섹션을 업데이트하여 반복 사용한다.

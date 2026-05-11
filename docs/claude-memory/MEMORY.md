@@ -44,6 +44,7 @@
 - [feedback_delete_action_placement.md](feedback_delete_action_placement.md) - 위험 액션(삭제/비활성)은 상세 페이지가 있는 도메인은 상세에, 모달 상세는 목록에 둬도 됨
 - [feedback_schedule_drives_active.md](feedback_schedule_drives_active.md) - 운영 도메인 entity 의 isActive UI 노출 X, 실행 여부는 스케줄이 제어
 - [feedback_krds_checkbox_pattern.md](feedback_krds_checkbox_pattern.md) - KRDS 체크박스/라디오는 .krds-form-check medium 패턴 필수 (KRDS !important 로 input 숨김)
+- [feedback_test_no_unrequested_clean.md](feedback_test_no_unrequested_clean.md) - 테스트 추가 검증 요청 시 임의 DB 클린(TRUNCATE) 금지 — 기존 상태 위에 추가 실행만
 
 ## 작업 규칙
 
