@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
-import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable } from '@/types';
+import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable, WhereFilterDef } from '@/types';
 import { CONDITION_OPERATORS } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
@@ -37,6 +37,7 @@ export default function AgentDetailPage() {
   const [conditions, setConditions] = useState<ExecutionCondition[]>([]);
   const [condTableSelections, setCondTableSelections] = useState<string[]>([]);
   const [sourceTables, setSourceTables] = useState<DatasourceTable[]>([]);
+  const [whereFilters, setWhereFilters] = useState<WhereFilterDef[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -56,6 +57,12 @@ export default function AgentDetailPage() {
         setSourceTables(tables.filter((t) => t.columns && t.columns.length > 0));
       } catch {
         // 테이블 정보 로드 실패 시 무시 (수동 입력 fallback)
+      }
+      try {
+        const wf = await agentApi.getWhereFilters(agentId);
+        setWhereFilters(Array.isArray(wf) ? wf : []);
+      } catch {
+        setWhereFilters([]);
       }
     } catch (error) {
       console.error('데이터 조회 실패:', error);
@@ -96,7 +103,7 @@ export default function AgentDetailPage() {
   const handleTriggerExecution = async (withOptions: boolean = false) => {
     const validConditions: ExecutionCondition[] = withOptions
       ? conditions
-          .map((c, idx) => ({ ...c, tableName: condTableSelections[idx] || undefined }))
+          .map((c, idx) => ({ ...c, tableName: c.tableName || condTableSelections[idx] || undefined }))
           .filter(
             (c) =>
               c.column.trim() &&
@@ -160,6 +167,23 @@ export default function AgentDetailPage() {
   }
 
   const isProxy = agent.agentType === 'DB_CON_PROXY';
+  // where-filters 가 선언된 Agent 면 큐레이션 모드 (지정된 테이블/컬럼 필터만 노출)
+  const useCurated = whereFilters.length > 0;
+
+  // 큐레이션 모드에서 새 조건 추가 시 첫 번째 필터로 초기화
+  const addCuratedCondition = () => {
+    const f = whereFilters[0];
+    const firstOp = (f.operators && f.operators[0]) || 'EQ';
+    setConditions([
+      ...conditions,
+      { tableName: f.table, column: f.column === '*' ? '' : (f.column || ''), operator: firstOp as ExecutionCondition['operator'], value: '' },
+    ]);
+    setCondTableSelections([...condTableSelections, f.table || '']);
+  };
+  const addGenericCondition = () => {
+    setConditions([...conditions, { column: '', operator: 'EQ', value: '' }]);
+    setCondTableSelections([...condTableSelections, sourceTables[0]?.tableName || '']);
+  };
 
   return (
     <div>
@@ -209,15 +233,148 @@ export default function AgentDetailPage() {
               <button
                 type="button"
                 className="krds-btn xsmall secondary"
-                onClick={() => {
-                  setConditions([...conditions, { column: '', operator: 'EQ', value: '' }]);
-                  setCondTableSelections([...condTableSelections, sourceTables[0]?.tableName || '']);
-                }}
+                onClick={() => (useCurated ? addCuratedCondition() : addGenericCondition())}
               >
                 + 조건 추가
               </button>
             </div>
             {conditions.map((cond, idx) => {
+              if (useCurated) {
+                // ── 큐레이션 모드: yml where-filters 로 정의된 (테이블,컬럼) 필터만 ──
+                const activeFilter =
+                  whereFilters.find(
+                    (f) => f.table === cond.tableName && (f.column === cond.column || f.column === '*')
+                  ) || whereFilters[0];
+                const isAllCols = activeFilter?.column === '*';
+                const filterTableMeta = sourceTables.find((t) => t.tableName === activeFilter?.table);
+                const allColsList = filterTableMeta?.columns || [];
+                const vt = (activeFilter?.valueType || 'STRING').toUpperCase();
+                const curatedInputType =
+                  vt === 'DATE' ? 'date' : vt === 'DATETIME' ? 'datetime-local' : vt === 'NUMBER' ? 'number' : 'text';
+                const allowedOps =
+                  activeFilter?.operators && activeFilter.operators.length > 0
+                    ? CONDITION_OPERATORS.filter((o) => activeFilter!.operators!.includes(o.value))
+                    : CONDITION_OPERATORS;
+                const curOp = allowedOps.some((o) => o.value === cond.operator) ? cond.operator : allowedOps[0]?.value || 'EQ';
+                const filterKeyOf = (f: WhereFilterDef) => `${f.table ?? ''}::${f.column ?? ''}`;
+                return (
+                  <div key={idx} className={styles.conditionRow}>
+                    <select
+                      className={`${styles.conditionInput} ${styles['conditionInput--table']}`}
+                      value={activeFilter ? filterKeyOf(activeFilter) : ''}
+                      onChange={(e) => {
+                        const f = whereFilters.find((x) => filterKeyOf(x) === e.target.value);
+                        if (!f) return;
+                        const firstOp = (f.operators && f.operators[0]) || 'EQ';
+                        const updated = [...conditions];
+                        updated[idx] = {
+                          tableName: f.table,
+                          column: f.column === '*' ? '' : (f.column || ''),
+                          operator: firstOp as ExecutionCondition['operator'],
+                          value: '',
+                          value2: undefined,
+                        };
+                        setConditions(updated);
+                        const sel = [...condTableSelections];
+                        sel[idx] = f.table || '';
+                        setCondTableSelections(sel);
+                      }}
+                    >
+                      {whereFilters.map((f, i) => (
+                        <option key={i} value={filterKeyOf(f)}>
+                          {f.label || `${f.table}.${f.column}`}
+                          {f.column === '*' ? ' (전체 컬럼)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {isAllCols &&
+                      (allColsList.length > 0 ? (
+                        <select
+                          className={`${styles.conditionInput} ${styles['conditionInput--column']}`}
+                          value={cond.column}
+                          onChange={(e) => {
+                            const updated = [...conditions];
+                            updated[idx] = { ...cond, column: e.target.value, operator: 'EQ', value: '', value2: undefined };
+                            setConditions(updated);
+                          }}
+                        >
+                          <option value="">컬럼 선택</option>
+                          {allColsList.map((c) => (
+                            <option key={c.columnName} value={c.columnName}>
+                              {c.columnAlias ? `${c.columnName} (${c.columnAlias})` : c.columnName}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          className={`${styles.conditionInput} ${styles['conditionInput--column']}`}
+                          value={cond.column}
+                          onChange={(e) => {
+                            const updated = [...conditions];
+                            updated[idx] = { ...cond, column: e.target.value };
+                            setConditions(updated);
+                          }}
+                          placeholder="컬럼명"
+                        />
+                      ))}
+                    <select
+                      className={`${styles.conditionInput} ${styles['conditionInput--operator']}`}
+                      value={curOp}
+                      onChange={(e) => {
+                        const updated = [...conditions];
+                        updated[idx] = { ...cond, operator: e.target.value as ExecutionCondition['operator'], value: '', value2: undefined };
+                        setConditions(updated);
+                      }}
+                    >
+                      {allowedOps.map((op) => (
+                        <option key={op.value} value={op.value}>
+                          {op.label}
+                        </option>
+                      ))}
+                    </select>
+                    {curOp !== 'IS_NULL' && curOp !== 'IS_NOT_NULL' && (
+                      <input
+                        type={curOp === 'IN' ? 'text' : curatedInputType}
+                        className={`${styles.conditionInput} ${styles['conditionInput--value']}`}
+                        value={cond.value || ''}
+                        onChange={(e) => {
+                          const updated = [...conditions];
+                          updated[idx] = { ...cond, value: e.target.value };
+                          setConditions(updated);
+                        }}
+                        placeholder={
+                          activeFilter?.hint ||
+                          (curOp === 'IN' ? '값1,값2,...' : curOp === 'LIKE' ? '%값%' : '값')
+                        }
+                      />
+                    )}
+                    {curOp === 'BETWEEN' && (
+                      <input
+                        type={curatedInputType}
+                        className={`${styles.conditionInput} ${styles['conditionInput--value2']}`}
+                        value={cond.value2 || ''}
+                        onChange={(e) => {
+                          const updated = [...conditions];
+                          updated[idx] = { ...cond, value2: e.target.value };
+                          setConditions(updated);
+                        }}
+                        placeholder="종료 값"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="krds-btn xsmall app-btn-danger"
+                      onClick={() => {
+                        setConditions(conditions.filter((_, i) => i !== idx));
+                        setCondTableSelections(condTableSelections.filter((_, i) => i !== idx));
+                      }}
+                    >
+                      X
+                    </button>
+                  </div>
+                );
+              }
               const selectedTableName = condTableSelections[idx] || '';
               const selectedTable = sourceTables.find((t) => t.tableName === selectedTableName);
               const columns = selectedTable?.columns || [];

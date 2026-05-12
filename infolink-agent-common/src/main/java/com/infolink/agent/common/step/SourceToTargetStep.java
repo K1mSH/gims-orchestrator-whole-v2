@@ -871,18 +871,31 @@ public class SourceToTargetStep implements StepExecutor {
                 sourceJdbc.getDataSource(), sourceDsId, config.getSourceTable());
 
         ExecutionOptions execOptions = context.getExecutionOptions();
+        boolean execHasConditions = execOptions != null && execOptions.hasConditions();
 
-        // tableName 필터링: 이 Step의 source-table에 해당하는 조건만 추출
+        // tableName 필터링 + 컬럼 존재 필터링: 이 Step의 source-table에 적용 가능한 조건만 추출
+        // - tableName 명시된 조건은 해당 테이블에만 적용
+        // - 이 source-table 에 없는 컬럼을 가리키는 조건은 제외 (jewon 전용 컬럼 sigungu 등이 obsvdata step 에 새지 않게)
         List<ExecutionCondition> execConditions = null;
         if (execOptions != null && execOptions.getConditions() != null) {
             String sourceTable = config.getSourceTable();
             execConditions = execOptions.getConditions().stream()
                     .filter(c -> c.getTableName() == null || c.getTableName().isEmpty()
                             || c.getTableName().equalsIgnoreCase(sourceTable))
+                    .filter(c -> columns.stream().anyMatch(col -> col.equalsIgnoreCase(c.getColumn())))
                     .toList();
         }
-        // 필터링 후 이 Step 대상 조건이 있는지 판단 (tableName 필터링 결과 기준)
+        // 필터링 후 이 Step 대상 조건이 있는지 판단 (tableName + 컬럼 존재 필터링 결과 기준)
         boolean hasConditions = execConditions != null && !execConditions.isEmpty();
+
+        // conditions 실행인데 이 step 의 source-table 에 적용될 조건이 하나도 없으면 → step skip (0건 SUCCESS)
+        // 디폴트 link_status 필터로 폴백하지 않음 — obsvdata 소스 뷰처럼 link_status 컬럼 없는 테이블에서의 크래시 방지.
+        // (DMZ Loader 의 "조건은 있지만 이 테이블 대상 조건 없으면 skip" 과 동일 시맨틱)
+        if (execHasConditions && !hasConditions) {
+            log.info("[{}] Conditions execution but no applicable condition for source '{}' — skipping step",
+                    getStepId(), config.getSourceTable());
+            return new ArrayList<>();
+        }
 
         // 디폴트 조건 결정
         Map<String, ExecutionCondition> defaults = new LinkedHashMap<>();

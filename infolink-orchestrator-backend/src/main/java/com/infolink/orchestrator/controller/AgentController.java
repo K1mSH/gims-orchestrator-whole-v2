@@ -105,6 +105,16 @@ public class AgentController {
     }
 
     /**
+     * Agent YML의 where-filters 조회 (수동 실행 WHERE 조건 UI 큐레이션).
+     * 빈 배열 = 미선언 Agent → 프론트는 select-tables 기반 범용 UI 유지.
+     * dev_plan/2026_05/12/yml-declared-where-filters.md
+     */
+    @GetMapping("/{id}/where-filters")
+    public ResponseEntity<?> getWhereFilters(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getWhereFilters(id));
+    }
+
+    /**
      * Retention 자동 cleanup 즉시 트리거 — DataRetentionScheduler.executeRetentionCleanup() 동일.
      * 운영자 수동 호출 + 검증 시나리오용.
      */

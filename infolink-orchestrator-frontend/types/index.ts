@@ -65,6 +65,18 @@ export interface ExecutionCondition {
   value2?: string;  // BETWEEN 전용
 }
 
+// Agent yml where-filters — 수동 실행 WHERE 조건 UI 큐레이션 항목
+// dev_plan/2026_05/12/yml-declared-where-filters.md
+export interface WhereFilterDef {
+  key?: string;
+  label?: string;
+  table?: string;
+  column?: string;       // "*" 면 그 테이블 전체 컬럼 허용 (범용 모드)
+  operators?: string[];  // 허용 연산자 (ExecutionCondition['operator'] 이름들). 없으면 전체 허용
+  valueType?: string;    // STRING | DATE | DATETIME | NUMBER — 입력 위젯 선택용
+  hint?: string;         // 값 입력 placeholder
+}
+
 export const CONDITION_OPERATORS = [
   { value: 'EQ', label: '=' },
   { value: 'NEQ', label: '!=' },

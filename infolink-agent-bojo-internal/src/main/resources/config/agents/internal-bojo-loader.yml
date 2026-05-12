@@ -12,6 +12,23 @@ steps:
     source-table: IF_RSV_SEC_OBSVDATA
     target-table: [PM_GD970201, TM_GD970101, TM_GD980002]
 
+# 수동 실행 시 노출/허용할 WHERE 필터. 이 로더는 IF_RSV_SEC_OBSVDATA 만 읽으므로 (tm_gd970001 은 READ ONLY 룩업) 그 테이블 컬럼만.
+# dev_plan/2026_05/12/yml-declared-where-filters.md
+where-filters:
+  - key: region
+    label: 지역(관측코드)
+    table: IF_RSV_SEC_OBSVDATA
+    column: OBSV_CODE
+    operators: [LIKE, IN]
+    valueType: STRING
+    hint: "예: GN-SAC-G1%  /  GN-%  /  코드목록(쉼표 구분)"
+  - key: period
+    label: 기간
+    table: IF_RSV_SEC_OBSVDATA
+    column: OBSV_DATE
+    operators: [BETWEEN]
+    valueType: DATE
+
 # Retention 룰: Agent 는 자기 target 만 후보 (이중 설정 방지).
 # IF_RSV_SEC_OBSVDATA 는 internal-bojo-rcv 의 target 이라 거기서만 박힘.
 retention-candidates:

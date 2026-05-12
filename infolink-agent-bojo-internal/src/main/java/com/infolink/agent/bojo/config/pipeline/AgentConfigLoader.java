@@ -103,6 +103,23 @@ public class AgentConfigLoader {
             }
         }
 
+        // where-filters: 수동 실행 WHERE 큐레이션. 누락 = 기존 동작 (select-tables 기반 범용)
+        List<Map<String, Object>> wfList = (List<Map<String, Object>>) data.get("where-filters");
+        if (wfList != null) {
+            for (Map<String, Object> wfMap : wfList) {
+                com.infolink.agent.common.model.WhereFilterDef wf = new com.infolink.agent.common.model.WhereFilterDef();
+                wf.setKey((String) wfMap.get("key"));
+                wf.setLabel((String) wfMap.get("label"));
+                wf.setTable((String) wfMap.get("table"));
+                wf.setColumn((String) wfMap.get("column"));
+                Object ops = wfMap.get("operators");
+                if (ops instanceof List) wf.setOperators((List<String>) ops);
+                wf.setValueType((String) wfMap.get("valueType"));
+                wf.setHint((String) wfMap.get("hint"));
+                def.getWhereFilters().add(wf);
+            }
+        }
+
         return def;
     }
 

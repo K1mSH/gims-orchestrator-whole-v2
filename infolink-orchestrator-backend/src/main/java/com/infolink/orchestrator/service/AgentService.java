@@ -609,6 +609,26 @@ public class AgentService {
         }
     }
 
+    /**
+     * Agent yml 의 where-filters 조회 (수동 실행 WHERE 조건 UI 큐레이션).
+     * Agent 가 자기 yml 의 where-filters 를 그대로 응답. 빈 배열 = 미선언 → 프론트는 select-tables 기반 범용 UI.
+     * dev_plan/2026_05/12/yml-declared-where-filters.md
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getWhereFilters(Long agentId) {
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + agentId));
+        try {
+            String url = agent.getEndpointUrl() + "/api/pipeline/" + agent.getAgentCode() + "/where-filters";
+            log.info("Agent에서 where-filters 조회 중: {}", url);
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            log.warn("Agent {} where-filters 조회 실패: {}", agent.getAgentCode(), e.getMessage());
+            return List.of();
+        }
+    }
+
     public List<DatasourceDto.TableResponse> getSelectTables(Long agentId) {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new IllegalArgumentException("Agent를 찾을 수 없습니다: " + agentId));

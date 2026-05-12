@@ -8,8 +8,8 @@ steps:
   - id: dmz-bojo-load
     name: DMZ 적재
     factory-key: dmz-bojo-load
-    source-table: if_rsv_sec_jewon, if_rsv_sec_obsvdata
-    target-table: sec_jewon, sec_obsvdata
+    source-table: [if_rsv_sec_jewon, if_rsv_sec_obsvdata]
+    target-table: [sec_jewon, sec_obsvdata]
 
 retention-candidates:
   - table: sec_obsvdata

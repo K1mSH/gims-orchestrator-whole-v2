@@ -199,6 +199,24 @@ public class PipelineController {
         return ResponseEntity.ok(List.of());
     }
 
+    /**
+     * where-filters 응답 — 수동 실행 WHERE 조건 UI 의 큐레이션 목록.
+     * 빈 배열 = 미선언 Agent → 프론트는 기존 select-tables 기반 범용 UI 유지.
+     * dev_plan/2026_05/12/yml-declared-where-filters.md
+     */
+    @GetMapping("/{agentCode}/where-filters")
+    public ResponseEntity<List<com.infolink.agent.common.model.WhereFilterDef>> getWhereFilters(@PathVariable String agentCode) {
+        if (!pipelineRegistry.getRegisteredAgentCodes().contains(agentCode)) {
+            return ResponseEntity.badRequest().build();
+        }
+        for (AgentDefinition def : agentConfigLoader.getAgentDefinitions()) {
+            if (agentCode.equals(def.getAgentCode())) {
+                return ResponseEntity.ok(def.getWhereFilters());
+            }
+        }
+        return ResponseEntity.ok(List.of());
+    }
+
     @GetMapping("/{agentCode}/tables")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> getPipelineTables(@PathVariable String agentCode) {

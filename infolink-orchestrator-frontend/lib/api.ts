@@ -27,6 +27,7 @@ import type {
   ExecutionDashboardStats,
   ExecutionHistorySearchParams,
   ExecutionCondition,
+  WhereFilterDef,
   PageResponse,
 } from '@/types';
 
@@ -73,6 +74,11 @@ export const agentApi = {
   // WHERE 조건 대상 테이블 (Agent YML select-tables)
   getSelectTables: (id: number) =>
     api.get<DatasourceTable[]>(`/agents/${id}/select-tables`).then((res) => res.data),
+
+  // WHERE 조건 큐레이션 (Agent YML where-filters). 빈 배열 = 미선언 → select-tables 기반 범용 UI
+  // dev_plan/2026_05/12/yml-declared-where-filters.md
+  getWhereFilters: (id: number) =>
+    api.get<WhereFilterDef[]>(`/agents/${id}/where-filters`).then((res) => res.data),
 
   // Retention(자동삭제) 설정 조회/수정
   getRetentionConfig: (id: number) =>
