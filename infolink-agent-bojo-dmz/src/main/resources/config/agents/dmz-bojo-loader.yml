@@ -11,6 +11,30 @@ steps:
     source-table: [if_rsv_sec_jewon, if_rsv_sec_obsvdata]
     target-table: [sec_jewon, sec_obsvdata]
 
+# 수동 실행 시 노출/허용할 WHERE 필터. DMZ Loader 는 jewon + obsvdata 둘 다 읽음 (둘 다 obsv_code 보유, obsv_date 는 obsvdata 만).
+# dev_plan/2026_05/12/yml-declared-where-filters.md
+where-filters:
+  - key: region_jewon
+    label: 지역(제원, 관측코드)
+    table: if_rsv_sec_jewon
+    column: obsv_code
+    operators: [LIKE, IN]
+    valueType: STRING
+    hint: "예: DJ-%  /  GN-SAC-G1%  /  코드목록(쉼표 구분)"
+  - key: region_obsvdata
+    label: 지역(관측데이터, 관측코드)
+    table: if_rsv_sec_obsvdata
+    column: obsv_code
+    operators: [LIKE, IN]
+    valueType: STRING
+    hint: "예: DJ-%  /  GN-SAC-G1%  /  코드목록(쉼표 구분)"
+  - key: period
+    label: 기간
+    table: if_rsv_sec_obsvdata
+    column: obsv_date
+    operators: [BETWEEN]
+    valueType: DATE
+
 retention-candidates:
   - table: sec_obsvdata
     dateColumn: obsv_date

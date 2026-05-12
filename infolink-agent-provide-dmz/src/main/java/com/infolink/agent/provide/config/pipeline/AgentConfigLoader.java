@@ -103,18 +103,44 @@ public class AgentConfigLoader {
             }
         }
 
+        // where-filters: 수동 실행 WHERE 큐레이션. 누락 = 기존 동작 (select-tables 기반 범용)
+        List<Map<String, Object>> wfList = (List<Map<String, Object>>) data.get("where-filters");
+        if (wfList != null) {
+            for (Map<String, Object> wfMap : wfList) {
+                com.infolink.agent.common.model.WhereFilterDef wf = new com.infolink.agent.common.model.WhereFilterDef();
+                wf.setKey((String) wfMap.get("key"));
+                wf.setLabel((String) wfMap.get("label"));
+                wf.setTable((String) wfMap.get("table"));
+                wf.setColumn((String) wfMap.get("column"));
+                Object ops = wfMap.get("operators");
+                if (ops instanceof List) wf.setOperators((List<String>) ops);
+                wf.setValueType((String) wfMap.get("valueType"));
+                wf.setHint((String) wfMap.get("hint"));
+                def.getWhereFilters().add(wf);
+            }
+        }
+
         return def;
     }
 
     /**
      * 단일값 또는 리스트를 리스트로 정규화
-     * "TABLE_A" → ["TABLE_A"], ["TABLE_A", "TABLE_B"] → 그대로
+     * "TABLE_A" → ["TABLE_A"], ["TABLE_A", "TABLE_B"] → 그대로, "A, B" (쉼표 문자열) → ["A","B"]
      */
     @SuppressWarnings("unchecked")
     private List<String> normalizeToList(Object value) {
         if (value == null) return new ArrayList<>();
         if (value instanceof List) return (List<String>) value;
-        return new ArrayList<>(List.of(value.toString()));
+        String s = value.toString();
+        if (s.contains(",")) {
+            List<String> out = new ArrayList<>();
+            for (String part : s.split(",")) {
+                String t = part.trim();
+                if (!t.isEmpty()) out.add(t);
+            }
+            return out;
+        }
+        return new ArrayList<>(List.of(s));
     }
 
     /**
