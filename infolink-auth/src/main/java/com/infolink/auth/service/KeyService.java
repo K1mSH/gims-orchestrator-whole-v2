@@ -125,6 +125,29 @@ public class KeyService {
         return newKey;
     }
 
+    /**
+     * 기동 시 호출 — 유효한(만료 안 된) active 키가 있도록 보장한다.
+     * <ul>
+     *   <li>active 키 없음 → 새로 생성 (첫 부팅)</li>
+     *   <li>active 키 있지만 만료됨 → 회전 (모듈이 만료 시점 넘겨서 다운돼 있던 경우 자가 복구)</li>
+     *   <li>유효한 active 키 있음 → 그대로 반환 (정상)</li>
+     * </ul>
+     */
+    @Transactional
+    public AuthRsaKey ensureValidActiveKey() {
+        Optional<AuthRsaKey> active = keyRepository.findByActiveTrue();
+        if (active.isEmpty()) {
+            log.info("[KeyService] no active RSA key — generating");
+            return generateAndSave(true);
+        }
+        if (active.get().isExpired()) {
+            log.warn("[KeyService] active RSA key expired (kid={}, expiresAt={}) — rotating",
+                active.get().getKid(), active.get().getExpiresAt());
+            return rotate();
+        }
+        return active.get();
+    }
+
     // ============================================================
     // 내부 유틸
     // ============================================================

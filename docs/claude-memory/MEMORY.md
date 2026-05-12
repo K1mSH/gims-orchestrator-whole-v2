@@ -1,6 +1,7 @@
 # GIMS Orchestrator v2 - 작업 메모리
-<!-- 최종 동기화: 2026-04-28 -->
+<!-- 최종 동기화: 2026-05-12 -->
 
+- [feedback_plan_not_approval.md](feedback_plan_not_approval.md) - 계획서 작성 ≠ 진행 승인. 사용자가 검토하고 명시적으로 진행하라 한 뒤에만 코드/빌드/재기동
 - [feedback_run_without_jar.md](feedback_run_without_jar.md) - JAR 대신 gradlew bootRun으로 실행
 - [feedback_module_specific_stays.md](feedback_module_specific_stays.md) - 모듈 전용 로직은 common으로 올리지 않기
 - [feedback_memory_git_sync.md](feedback_memory_git_sync.md) - 메모리 업데이트 시 docs/claude-memory/에 동기화 + 커밋
