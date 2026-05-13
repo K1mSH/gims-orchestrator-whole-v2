@@ -366,13 +366,7 @@ public class SaeolLinkPlanSndStep implements StepExecutor {
                     Object val = row.get(pkCols[p].trim());
                     pkValues[p] = val != null ? val.toString().trim() : "";
                 }
-                String sourceRef;
-                if (pkCols.length == 1) {
-                    sourceRef = SourceRefUtils.build(context, mapping.getSourceTable(), pkValues[0]);
-                } else {
-                    sourceRef = SourceRefUtils.buildComposite(context, mapping.getSourceTable(), pkValues);
-                }
-                String sourceRefsJson = SourceRefUtils.toJsonSingle(sourceRef);
+                String sourceRefsJson = SourceRefUtils.buildJson(context, mapping.getSourceTable(), pkValues);
                 params.add(sourceRefsJson);
 
                 // link_status

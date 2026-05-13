@@ -135,6 +135,38 @@ public final class ExecutionDataReader {
         }, executionId);
     }
 
+    // ==================== datasource_table 레지스트리 조회 ====================
+    // source_refs 의 tableId 는 datasource_table.id — 추적 시 이름 추측 대신 이걸로 정확히 해석.
+
+    /** datasource_table.id → table_name. 없거나 조회 실패면 null. */
+    public static String findTableNameById(JdbcTemplate jdbc, long datasourceTableId) {
+        try {
+            List<String> r = jdbc.query("SELECT table_name FROM datasource_table WHERE id = ?",
+                    (rs, n) -> rs.getString(1), datasourceTableId);
+            return r.isEmpty() ? null : r.get(0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** (table_name, datasourceId) → datasource_table.id. datasourceId 없으면 이름만으로 first. 없거나 실패면 null. */
+    public static Long findTableIdByName(JdbcTemplate jdbc, String tableName, String datasourceId) {
+        if (tableName == null || tableName.isBlank()) return null;
+        try {
+            List<Long> r;
+            if (datasourceId != null && !datasourceId.isBlank()) {
+                r = jdbc.query("SELECT id FROM datasource_table WHERE lower(table_name) = lower(?) AND datasource_id = ? ORDER BY id",
+                        (rs, n) -> rs.getLong(1), tableName, datasourceId);
+            } else {
+                r = jdbc.query("SELECT id FROM datasource_table WHERE lower(table_name) = lower(?) ORDER BY id",
+                        (rs, n) -> rs.getLong(1), tableName);
+            }
+            return r.isEmpty() ? null : r.get(0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // ==================== Helper ====================
 
     private static Long getLong(ResultSet rs, String col) throws SQLException {

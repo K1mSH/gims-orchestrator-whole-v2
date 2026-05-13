@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infolink.agent.common.step.StepContext;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,15 +34,27 @@ public class SourceRefUtils {
     }
 
     /**
-     * 단일 sourceRef 생성
+     * sourceRef 생성 (단일/복합 PK 통합)
+     *
+     * <p>호출쪽은 복합키 여부를 알 필요 없이 PK 구성요소를 그대로 넘기면 된다.
+     * 인자가 1개면 단일 PK, 2개 이상이면 {@code |} 로 연결한 복합 PK.</p>
      *
      * @param context StepContext (zone, dsId, tableIds 정보 포함)
      * @param tableName 테이블명 (tableIds에서 tbId 조회용)
-     * @param pk 원본 레코드 PK 값
-     * @return "zone:dsId:tbId:pk" 형식 문자열
+     * @param pkValues 원본 레코드 PK 값(들)
+     * @return "zone:dsId:tbId:pk" (또는 "...:pk1|pk2|...") 형식 문자열, 정보 없으면 fallback, pk 없으면 null
      */
-    public static String build(StepContext context, String tableName, Object pk) {
-        if (context == null || pk == null) {
+    public static String build(StepContext context, String tableName, Object... pkValues) {
+        if (context == null || pkValues == null || pkValues.length == 0) {
+            return null;
+        }
+
+        String pk = (pkValues.length == 1)
+                ? (pkValues[0] != null ? String.valueOf(pkValues[0]) : null)
+                : Arrays.stream(pkValues)
+                        .map(v -> v != null ? v.toString() : "")
+                        .collect(Collectors.joining("|"));
+        if (pk == null) {
             return null;
         }
 
@@ -53,33 +66,20 @@ public class SourceRefUtils {
         if (zone == null || dsId == null || tbId == null) {
             log.warn("SourceRef 필수 정보 누락 - zone:{}, dsId:{}, tbId:{}, fallback 사용",
                     zone, dsId, tbId);
-            return buildFallback(context, tableName, pk);
+            return buildFallback(context, pk);
         }
 
         return zone + DELIMITER + dsId + DELIMITER + tbId + DELIMITER + pk;
     }
 
     /**
-     * 복합 PK용 sourceRef 생성
+     * sourceRef 를 단일 원소 JSON 배열 문자열로 바로 생성 (build + toJsonSingle).
+     * <p>단건 source_refs JSON 의 단일 진입점 — 손코딩 금지.</p>
      *
-     * @param context StepContext
-     * @param tableName 테이블명
-     * @param pkValues 복합 PK 값들 (순서대로)
-     * @return "zone:dsId:tbId:pk1|pk2|pk3" 형식 문자열
+     * @return ["zone:dsId:tbId:pk"] 형식, 정보 없으면 null
      */
-    public static String buildComposite(StepContext context, String tableName, Object... pkValues) {
-        if (context == null || pkValues == null || pkValues.length == 0) {
-            return null;
-        }
-
-        // 복합 PK는 | 로 연결
-        StringBuilder pkBuilder = new StringBuilder();
-        for (int i = 0; i < pkValues.length; i++) {
-            if (i > 0) pkBuilder.append("|");
-            pkBuilder.append(pkValues[i] != null ? pkValues[i].toString() : "");
-        }
-
-        return build(context, tableName, pkBuilder.toString());
+    public static String buildJson(StepContext context, String tableName, Object... pkValues) {
+        return toJsonSingle(build(context, tableName, pkValues));
     }
 
     /**
@@ -204,7 +204,7 @@ public class SourceRefUtils {
      * 예시: "D:3:0:GPM-3050-001"
      * - tbId를 못 찾은 경우 0으로 표시 (추적 시 테이블 미식별 상태)
      */
-    private static String buildFallback(StepContext context, String tableName, Object pk) {
+    private static String buildFallback(StepContext context, String pk) {
         // 약어 우선 사용
         String zone = context.getSourceZoneShortCode();
         if (zone == null) zone = "U"; // 알 수 없음

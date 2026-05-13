@@ -216,12 +216,19 @@ export default function ExecutionDetailPage() {
       let result;
 
       if (tableType === 'SOURCE') {
-        // SOURCE 행 클릭 → backend trace API 로 정확한 매칭 target 1건 조회
+        // SOURCE 행 클릭 → backend trace API 로 정확한 매칭 target 조회
         // (이전: target 1000건 fetch + frontend Object.values.some 매칭 — 컬럼 무관 false positive)
         const sourceTableName = tableData.tableName;
-        const pkCol = tableData.columns[0];
-        const pkValue = String(row[pkCol] ?? '');
-        result = await executionApi.traceBySourcePk(executionId, pkValue, pkCol, sourceTableName);
+        // PK 컬럼 = backend 가 준 pkColumns (DB 제약조건 순). 없으면 첫 컬럼 fallback.
+        // 복합 PK 면 컬럼·값을 콤마로 묶어 전송 → backend 가 토큰 독립매칭 (순서 무관)
+        const pkColsRaw = (tableData.pkColumns && tableData.pkColumns.length > 0)
+          ? tableData.pkColumns : [tableData.columns[0]];
+        // 표시 row 의 키 대소문자가 컬럼명과 다를 수 있어 대소문자 무시 매칭
+        const pkColsResolved = pkColsRaw.map(c =>
+          Object.keys(row).find(k => k.toLowerCase() === c.toLowerCase()) ?? c);
+        const pkColParam = pkColsResolved.join(',');
+        const pkValueParam = pkColsResolved.map(c => String(row[c] ?? '')).join(',');
+        result = await executionApi.traceBySourcePk(executionId, pkValueParam, pkColParam, sourceTableName);
       } else {
         // TARGET 행 클릭 → Source 데이터 조회 (역추적)
         const sourceRefs = row.sourceRefs as string || row.source_refs as string || row.SOURCE_REFS as string;

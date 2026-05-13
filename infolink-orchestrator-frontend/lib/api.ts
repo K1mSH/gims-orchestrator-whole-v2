@@ -128,6 +128,8 @@ export interface ExecutionDataSummary {
 export interface TableData {
   tableName: string;
   columns: string[];
+  /** PK 컬럼 (DB 제약조건 KEY_SEQ 순) — 정방향 추적 시 이 컬럼들의 값을 전부 전송. 없으면 columns[0] fallback. */
+  pkColumns?: string[];
   data: Record<string, unknown>[];
   totalCount: number;
   successCount?: number;

@@ -3,7 +3,6 @@ package com.infolink.agent.bojo.loader.step;
 import com.infolink.agent.bojo.config.DynamicEntityManagerService;
 import com.infolink.agent.bojo.entity.iftable.saeol.IfRsvRgetstgms01;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.ConditionBuilder;
@@ -11,6 +10,9 @@ import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
 import com.infolink.agent.common.step.Status;
+import com.infolink.agent.common.sync.SyncLogWriter;
+import com.infolink.agent.common.sync.TableCountTracker;
+import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
@@ -36,6 +38,8 @@ import java.util.Map;
  */
 @Slf4j
 public class JejuFacilityLoadStep implements StepExecutor {
+
+    private static final String TARGET_TM_GD111010 = "TM_GD111010";
 
     private final String stepId;
     private final String stepName;
@@ -75,8 +79,8 @@ public class JejuFacilityLoadStep implements StepExecutor {
     public StepResult execute(StepContext context) {
         long startTime = System.currentTimeMillis();
         int readCount = 0;
-        int writeCount = 0;
         int failedCount = 0;
+        TableCountTracker targets = new TableCountTracker(TARGET_TM_GD111010);
         List<String> failedKeys = new ArrayList<>();
         String firstError = null;
 
@@ -86,7 +90,7 @@ public class JejuFacilityLoadStep implements StepExecutor {
             JdbcTemplate targetJdbc = dataSourceProvider.getJdbcTemplate(targetDsId);
             String executionId = context.getExecutionId();
 
-            // 0. 룩업 맵 로딩 (TC_GD00002, TC_GD00100)
+            // 0. 룩업 맵 로딩 (TC_GD000002, TC_GD000100)
             Map<String, String> usageMap = loadUsageMap(targetJdbc);           // NGW_0003: 용도코드→명칭
             Map<String, String> detailUsageMap = loadDetailUsageMap(targetJdbc); // NGW_0013: 상세용도코드→명칭
             Map<String, Map<String, String>> addrMap = loadAddrMap(targetJdbc);  // 법정동코드→주소
@@ -136,7 +140,7 @@ public class JejuFacilityLoadStep implements StepExecutor {
                 String permNtNo = getString(row, "PERM_NT_NO");
                 try {
                     Object ifId = row.get("ID");
-                    String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifTable, ifId);
+                    String sourceRef = SourceRefUtils.buildJson(context, ifTable, ifId);
 
                     // TM_GD111010 MERGE ON PRMSN_DCLR_NO
                     // PM_GD111022는 I5(UseLoadStep)가 USE_JEJU_DAY 소스로 별도 적재
@@ -144,7 +148,7 @@ public class JejuFacilityLoadStep implements StepExecutor {
                             usageMap, detailUsageMap, addrMap);
 
                     successIds.add(ifId);
-                    writeCount++;
+                    targets.inc(TARGET_TM_GD111010);
                 } catch (Exception e) {
                     log.error("[{}] 이용시설 처리 실패: perm_nt_no={}", stepId, permNtNo, e);
                     failedCount++;
@@ -163,17 +167,18 @@ public class JejuFacilityLoadStep implements StepExecutor {
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
+            long writeCount = targets.total();
             log.info("[{}] 완료: read={}, write={}, failed={}, duration={}ms",
                     stepId, readCount, writeCount, failedCount, durationMs);
 
             // 4. SyncLog 기록
-            saveSyncLog(executionId, readCount, writeCount, failedCount, failedKeys, firstError);
+            saveSyncLog(executionId, readCount, failedCount, targets, failedKeys, firstError);
 
             return StepResult.builder()
                     .stepId(stepId)
                     .status(failedCount > 0 && writeCount == 0 ? Status.FAILED : Status.SUCCESS)
                     .readCount(readCount)
-                    .writeCount(writeCount)
+                    .writeCount((int) writeCount)
                     .skipCount(0)
                     .durationMs(durationMs)
                     .errorMessage(firstError)
@@ -181,7 +186,7 @@ public class JejuFacilityLoadStep implements StepExecutor {
 
         } catch (Exception e) {
             log.error("[{}] Step 실행 실패", stepId, e);
-            saveSyncLog(context.getExecutionId(), readCount, writeCount, failedCount, failedKeys, e.getMessage());
+            saveSyncLog(context.getExecutionId(), readCount, failedCount, targets, failedKeys, e.getMessage());
             return StepResult.failed(stepId, e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
@@ -193,9 +198,9 @@ public class JejuFacilityLoadStep implements StepExecutor {
      * 레거시 insertTmGd31010Gms 이식 — PRMSN_DCLR_NO 기준 MERGE
      *
      * 룩업 변환 (레거시 select_rgetstgms01 JOIN 재현):
-     *   - UWATER_SRV_CODE → TC_GD00002(NGW_0003) → 용도명
-     *   - UWATER_DTL_SRV_CODE → TC_GD00002(NGW_0013) → 상세용도명
-     *   - REGN_CODE → TC_GD00100 → 시도/시군구/읍면동/리
+     *   - UWATER_SRV_CODE → TC_GD000002(NGW_0003) → 용도명
+     *   - UWATER_DTL_SRV_CODE → TC_GD000002(NGW_0013) → 상세용도명
+     *   - REGN_CODE → TC_GD000100 → 시도/시군구/읍면동/리
      *   - USE_AT: LNHO_RAISE_YN='0' AND END_NT_YN='0' → 'Y', else 'N'
      */
     private void mergeGd111010(JdbcTemplate jdbc, Map<String, Object> row,
@@ -269,7 +274,7 @@ public class JejuFacilityLoadStep implements StepExecutor {
     private Map<String, String> loadUsageMap(JdbcTemplate jdbc) {
         Map<String, String> map = new HashMap<>();
         jdbc.query(
-            "SELECT TRIM(UGWTR_COM_CD) AS CD, CD_CN FROM TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0003'",
+            "SELECT TRIM(UGWTR_COM_CD) AS CD, CD_CN FROM TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0003'",
             (RowCallbackHandler) rs -> {
                 String code = rs.getString("CD");
                 // SUBSTR(code, 2) → '01'의 두번째 문자부터 = '1'
@@ -286,19 +291,19 @@ public class JejuFacilityLoadStep implements StepExecutor {
     private Map<String, String> loadDetailUsageMap(JdbcTemplate jdbc) {
         Map<String, String> map = new HashMap<>();
         jdbc.query(
-            "SELECT TRIM(UGWTR_COM_CD) AS CD, CD_CN FROM TC_GD00002 WHERE GROUP_CD_SN = 'NGW_0013'",
+            "SELECT TRIM(UGWTR_COM_CD) AS CD, CD_CN FROM TC_GD000002 WHERE GROUP_CD_SN = 'NGW_0013'",
             (RowCallbackHandler) rs -> map.put(rs.getString("CD"), rs.getString("CD_CN")));
         return map;
     }
 
     /**
-     * TC_GD00100 (법정동코드) 룩업 맵
+     * TC_GD000100 (법정동코드) 룩업 맵
      * 레거시: REGN_CODE = LEGALDONG_CODE → BRTC_NM, SIGUN_NM, EMD_NM, LI_NM
      */
     private Map<String, Map<String, String>> loadAddrMap(JdbcTemplate jdbc) {
         Map<String, Map<String, String>> map = new HashMap<>();
         jdbc.query(
-            "SELECT STDG_CD, CTPV_NM, SGG_NM, EMD_NM, LI_NM FROM TC_GD00100",
+            "SELECT STDG_CD, CTPV_NM, SGG_NM, EMD_NM, LI_NM FROM TC_GD000100",
             (RowCallbackHandler) rs -> {
                 Map<String, String> addr = new HashMap<>();
                 addr.put("CTPV_NM", rs.getString("CTPV_NM"));
@@ -360,29 +365,9 @@ public class JejuFacilityLoadStep implements StepExecutor {
         return map;
     }
 
-    private void saveSyncLog(String executionId, int readCount, int writeCount,
-                              int failedCount, List<String> failedKeys, String errorSummary) {
-        try {
-            String sourceJson = "[" + configSourceTables.stream()
-                    .map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + configTargetTables.stream()
-                    .map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(stepId)
-                    .mappingName(stepId)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount((long) readCount)
-                    .writeCount((long) writeCount)
-                    .failedCount((long) failedCount)
-                    .skipCount(0L)
-                    .failedKeys(failedKeys.isEmpty() ? null : String.join(",", failedKeys))
-                    .errorSummary(errorSummary)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("[{}] SyncLog 저장 실패: {}", stepId, e.getMessage());
-        }
+    private void saveSyncLog(String executionId, int readCount, int failedCount,
+                              TableCountTracker targets, List<String> failedKeys, String errorSummary) {
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, stepId,
+                configSourceTables, targets, readCount, failedCount, 0L, failedKeys, errorSummary);
     }
 }

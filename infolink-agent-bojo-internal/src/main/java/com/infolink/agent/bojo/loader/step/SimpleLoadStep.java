@@ -2,7 +2,6 @@ package com.infolink.agent.bojo.loader.step;
 
 import com.infolink.agent.bojo.config.DynamicEntityManagerService;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.ConditionBuilder;
@@ -10,6 +9,9 @@ import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
 import com.infolink.agent.common.step.Status;
+import com.infolink.agent.common.sync.SyncLogWriter;
+import com.infolink.agent.common.sync.TableCountTracker;
+import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -78,8 +80,8 @@ public class SimpleLoadStep implements StepExecutor {
     public StepResult execute(StepContext context) {
         long startTime = System.currentTimeMillis();
         int readCount = 0;
-        int writeCount = 0;
         int failedCount = 0;
+        TableCountTracker targets = new TableCountTracker(targetTable);
         List<String> failedKeys = new ArrayList<>();
         String firstError = null;
 
@@ -152,12 +154,12 @@ public class SimpleLoadStep implements StepExecutor {
                         .map(k -> k + "=" + getStr(row, k))
                         .collect(Collectors.joining(","));
                 try {
-                    String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifTable, ifId);
+                    String sourceRef = SourceRefUtils.buildJson(context, ifTable, ifId);
                     Object[] mergeParams = buildMergeParams(
                             row, bizColumns, insertColumns, mergeKeys, sourceRef, executionId);
                     targetJdbc.update(mergeSql, mergeParams);
                     successIds.add(ifId);
-                    writeCount++;
+                    targets.inc(targetTable);
                 } catch (Exception e) {
                     log.error("[{}] MERGE 실패: {}", stepId, keyValue, e);
                     failedCount++;
@@ -176,17 +178,18 @@ public class SimpleLoadStep implements StepExecutor {
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
+            long writeCount = targets.total();
             log.info("[{}] 완료: read={}, write={}, failed={}, duration={}ms",
                     stepId, readCount, writeCount, failedCount, durationMs);
 
             // 5. SyncLog
-            saveSyncLog(executionId, readCount, writeCount, failedCount, failedKeys, firstError);
+            saveSyncLog(executionId, readCount, failedCount, targets, failedKeys, firstError);
 
             return StepResult.builder()
                     .stepId(stepId)
                     .status(failedCount > 0 && writeCount == 0 ? Status.FAILED : Status.SUCCESS)
                     .readCount(readCount)
-                    .writeCount(writeCount)
+                    .writeCount((int) writeCount)
                     .skipCount(0)
                     .durationMs(durationMs)
                     .errorMessage(firstError)
@@ -194,7 +197,7 @@ public class SimpleLoadStep implements StepExecutor {
 
         } catch (Exception e) {
             log.error("[{}] Step 실행 실패", stepId, e);
-            saveSyncLog(context.getExecutionId(), readCount, writeCount, failedCount, failedKeys, e.getMessage());
+            saveSyncLog(context.getExecutionId(), readCount, failedCount, targets, failedKeys, e.getMessage());
             return StepResult.failed(stepId, e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
@@ -279,30 +282,10 @@ public class SimpleLoadStep implements StepExecutor {
 
     // ==================== SyncLog ====================
 
-    private void saveSyncLog(String executionId, int readCount, int writeCount,
-                             int failedCount, List<String> failedKeys, String errorMessage) {
-        try {
-            String sourceJson = "[" + configSourceTables.stream()
-                    .map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + configTargetTables.stream()
-                    .map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            SyncLog syncLog = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(stepId)
-                    .mappingName(stepId)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount((long) readCount)
-                    .writeCount((long) writeCount)
-                    .failedCount((long) failedCount)
-                    .skipCount(0L)
-                    .failedKeys(failedKeys.isEmpty() ? null : String.join(",", failedKeys))
-                    .errorSummary(errorMessage)
-                    .build();
-            syncLogRepository.save(syncLog);
-        } catch (Exception e) {
-            log.error("[{}] SyncLog 저장 실패", stepId, e);
-        }
+    private void saveSyncLog(String executionId, int readCount, int failedCount,
+                             TableCountTracker targets, List<String> failedKeys, String errorMessage) {
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, stepId,
+                configSourceTables, targets, readCount, failedCount, 0L, failedKeys, errorMessage);
     }
 
     // ==================== 유틸리티 ====================

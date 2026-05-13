@@ -210,8 +210,10 @@ public class ExecutionDataController {
                 log.debug("Source 필터: {}건 (executionId={}, mode={})", sourceFilter.params.size(), executionId, sourceFilter.mode);
             } else if (sourceFilter != null) {
                 // 매핑은 있지만 해당 실행의 데이터가 없음
-                return ResponseEntity.ok(buildPageResult(tableName, getTableColumns(sourceJdbc, actualTableName),
-                        List.of(), 0, page, size));
+                Map<String, Object> emptyRes = buildPageResult(tableName, getTableColumns(sourceJdbc, actualTableName),
+                        List.of(), 0, page, size);
+                emptyRes.put("pkColumns", findPkColumns(sourceJdbc, actualTableName, srcDbType));
+                return ResponseEntity.ok(emptyRes);
             }
             // sourceFilter == null: 매핑을 찾지 못한 경우 → 전체 데이터 표시 (fallback)
 
@@ -234,7 +236,9 @@ public class ExecutionDataController {
 
             List<String> columns = data.isEmpty() ? getTableColumns(sourceJdbc, actualTableName) : new ArrayList<>(data.get(0).keySet());
 
-            return ResponseEntity.ok(buildPageResult(tableName, columns, data, totalCount, page, size));
+            Map<String, Object> pageRes = buildPageResult(tableName, columns, data, totalCount, page, size);
+            pageRes.put("pkColumns", findPkColumns(sourceJdbc, actualTableName, srcDbType));
+            return ResponseEntity.ok(pageRes);
         } catch (Exception e) {
             log.error("Failed to get source data for execution: {}", executionId, e);
             return ResponseEntity.ok(buildEmptyPageResultWithMessage(tableName, page, size,
@@ -815,14 +819,50 @@ public class ExecutionDataController {
             result.put("pkValue", pkValue);
             result.put("executionId", executionId);
 
+            // 복합 PK 지원: pkValue/pkColumn 을 콤마 다중값으로 받을 수 있음 (단일이면 1개 — 기존과 동치)
+            List<String> pkVals = splitCsv(pkValue);
+            List<String> pkCols = splitCsv(pkColumn);
+            boolean compositePk = pkVals.size() > 1;
+
             List<Map<String, Object>> targetRecords = new ArrayList<>();
             String matchedTable = null;
+
+            // sourceTable 의 datasource_table.id — source_refs 는 "{zone}:{dsId}:{tableId}:{pk}" 라 tableId 로 정밀 매칭
+            String srcDsIdForLookup = (execution != null && execution.getSourceDatasourceId() != null)
+                    ? execution.getSourceDatasourceId() : null;
+            Long srcTableId = ExecutionDataReader.findTableIdByName(mgmtJdbc, sourceTable, srcDsIdForLookup);
 
             // ─── Step 1: source_refs에 PK가 임베딩된 경우 ───
             // RCV, SND, Internal RCV, Internal Loader에서 target이 source_refs를 새로 생성
             for (String candidateTable : targetTables) {
                 try {
-                    // Pattern A (정밀): sourceTable:pkValue 패턴
+                    // 복합 PK: pk 세그먼트가 "v1|v2|..." 라 — 받은 PK 값들이 각각 |-토큰으로 들어있는지 매칭 (순서 무관)
+                    if (compositePk) {
+                        List<Map<String, Object>> rowsC = queryByCompositePkTokens(
+                                targetJdbc, candidateTable, executionId, pkVals);
+                        if (!rowsC.isEmpty()) {
+                            targetRecords.addAll(rowsC);
+                            matchedTable = candidateTable;
+                            log.debug("Step 1(composite) matched: {} -> {} ({} rows)", sourceTable, candidateTable, rowsC.size());
+                            break;
+                        }
+                        continue; // 복합 PK 면 단일값 패턴은 의미 없음
+                    }
+                    // Pattern A0 (정밀, tableId 기반): "%:{tableId}:{pkValue}"]" — D/E:dsId:tableId:pk 형식
+                    if (srcTableId != null) {
+                        String patternA0 = "%:" + srcTableId + ":" + pkValue + "\"]";
+                        List<Map<String, Object>> rows0 = targetJdbc.queryForList(String.format(
+                                "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ?", candidateTable),
+                                patternA0, executionId);
+                        if (!rows0.isEmpty()) {
+                            targetRecords.addAll(rows0);
+                            matchedTable = candidateTable;
+                            log.debug("Step 1A0 (tableId={}) matched: {} -> {} ({} rows)", srcTableId, sourceTable, candidateTable, rows0.size());
+                            break;
+                        }
+                    }
+
+                    // Pattern A (이름 기반 — I:dsId:tableName:pk 형식 호환): "%:{sourceTable}:{pkValue}"]"
                     String patternA = "%:" + sourceTable + ":" + pkValue + "\"]";
                     String sqlA = String.format(
                             "SELECT * FROM %s WHERE source_refs LIKE ? AND execution_id = ?",
@@ -878,14 +918,23 @@ public class ExecutionDataController {
                         actualSourceTable = findActualTableName(targetJdbc, sourceTable);
                     }
                     if (actualSourceTable != null) {
-                        Object pkTyped = typedValue(pkValue);
                         String srcDbType = detectDbType(sourceReadJdbc);
-                        List<String> srcPkCols = findPkColumns(sourceReadJdbc, actualSourceTable, srcDbType);
-                        String srcPkCol = srcPkCols.isEmpty() ? pkColumn : srcPkCols.get(0);
-
-                        String readSql = String.format("SELECT source_refs FROM %s WHERE %s = ?",
-                                qi(actualSourceTable, srcDbType), qi(srcPkCol, srcDbType));
-                        List<Map<String, Object>> srcRows = sourceReadJdbc.queryForList(readSql, pkTyped);
+                        // WHERE 절: 복합 PK 면 받은 pkCols/pkVals 쌍 전부, 단일이면 첫 PK 컬럼(metadata) 또는 pkColumn
+                        List<String> whereCols;
+                        List<Object> whereVals = new ArrayList<>();
+                        if (compositePk && pkCols.size() == pkVals.size()) {
+                            whereCols = pkCols;
+                            for (String v : pkVals) whereVals.add(typedValue(v));
+                        } else {
+                            List<String> srcPkCols = findPkColumns(sourceReadJdbc, actualSourceTable, srcDbType);
+                            whereCols = List.of(srcPkCols.isEmpty() ? pkColumn : srcPkCols.get(0));
+                            whereVals.add(typedValue(pkValue));
+                        }
+                        String whereSql = String.join(" AND ", whereCols.stream()
+                                .map(c -> qi(c, srcDbType) + " = ?").toList());
+                        String readSql = String.format("SELECT source_refs FROM %s WHERE %s",
+                                qi(actualSourceTable, srcDbType), whereSql);
+                        List<Map<String, Object>> srcRows = sourceReadJdbc.queryForList(readSql, whereVals.toArray());
 
                         if (!srcRows.isEmpty()) {
                             Object refsObj = findValueIgnoreCase(srcRows.get(0), "source_refs");
@@ -922,13 +971,19 @@ public class ExecutionDataController {
 
             // ─── Step 3: 직접 PK fallback (최후 수단) ───
             if (targetRecords.isEmpty()) {
-                Object pkTyped = typedValue(pkValue);
+                List<String> whereCols = (compositePk && pkCols.size() == pkVals.size()) ? pkCols : List.of(pkColumn);
+                List<String> whereRaw  = (compositePk && pkCols.size() == pkVals.size()) ? pkVals : List.of(pkValue);
+                Object[] whereParams = whereRaw.stream().map(this::typedValue).toArray();
+                String whereSql = String.join(" AND ", whereCols.stream().map(c -> c + " = ?").toList());
                 for (String candidateTable : targetTables) {
                     try {
                         String sql = String.format(
-                                "SELECT * FROM %s WHERE %s = ? AND execution_id = ?",
-                                candidateTable, pkColumn);
-                        List<Map<String, Object>> rows = targetJdbc.queryForList(sql, pkTyped, executionId);
+                                "SELECT * FROM %s WHERE %s AND execution_id = ?",
+                                candidateTable, whereSql);
+                        Object[] params = new Object[whereParams.length + 1];
+                        System.arraycopy(whereParams, 0, params, 0, whereParams.length);
+                        params[whereParams.length] = executionId;
+                        List<Map<String, Object>> rows = targetJdbc.queryForList(sql, params);
                         if (!rows.isEmpty()) {
                             targetRecords.addAll(rows);
                             matchedTable = candidateTable;
@@ -936,8 +991,8 @@ public class ExecutionDataController {
                             break;
                         }
                     } catch (Exception e) {
-                        log.debug("Step 3 failed for {} (column '{}' may not exist): {}",
-                                candidateTable, pkColumn, e.getMessage());
+                        log.debug("Step 3 failed for {} (columns '{}' may not exist): {}",
+                                candidateTable, whereCols, e.getMessage());
                     }
                 }
             }
@@ -996,27 +1051,26 @@ public class ExecutionDataController {
             if (sourceTable != null && !sourceTable.isBlank()) {
                 String lowerTable = sourceTable.toLowerCase();
                 if (lowerTable.startsWith("if_rsv_") || lowerTable.startsWith("if_snd_")) {
-                    // IF 테이블명에서 SOURCE 테이블명 추론
-                    String baseName = lowerTable
-                            .replaceFirst("^if_rsv_", "")
-                            .replaceFirst("^if_snd_", "");
-
-                    // SyncLog에서 해당 base를 포함하는 SOURCE 테이블 찾기
-                    List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
-                    String finalBaseName = baseName;
-                    // 정확 매칭 우선, 없으면 contains 매칭
-                    List<String> allSourceTables = allLogs.stream()
-                            .map(SyncLog::getSourceTables)
-                            .filter(Objects::nonNull)
-                            .flatMap(json -> parseJsonArray(json).stream())
-                            .toList();
-                    sourceTable = allSourceTables.stream()
-                            .filter(t -> t.toLowerCase().equals(finalBaseName))
-                            .findFirst()
-                            .or(() -> allSourceTables.stream()
-                                    .filter(t -> t.toLowerCase().contains(finalBaseName))
-                                    .findFirst())
-                            .orElse(sourceTable);  // 못 찾으면 원본 유지
+                    // 1순위: source_refs 의 tableId(datasource_table.id) 로 upstream 소스 테이블 정확 조회
+                    //   (IF 이름에서 접두사 떼고 contains 로 추측하면 if_snd_tb_jeju ⊂ if_snd_tb_jeju_jewon 같은 충돌 발생 — 금지)
+                    String byId = resolveSourceTableByRefsTableId(mgmtJdbc, sourceRefs);
+                    if (byId != null) {
+                        sourceTable = byId;
+                    } else {
+                        // fallback: SyncLog source_tables 에서 baseName 정확 매칭만 (substring/contains 금지)
+                        String baseName = lowerTable
+                                .replaceFirst("^if_rsv_", "")
+                                .replaceFirst("^if_snd_", "");
+                        List<SyncLog> allLogs = ExecutionDataReader.findSyncLogsByExecutionId(mgmtJdbc, executionId);
+                        String finalBaseName = baseName;
+                        sourceTable = allLogs.stream()
+                                .map(SyncLog::getSourceTables)
+                                .filter(Objects::nonNull)
+                                .flatMap(json -> parseJsonArray(json).stream())
+                                .filter(t -> t.toLowerCase().equals(finalBaseName))
+                                .findFirst()
+                                .orElse(sourceTable);  // 못 찾으면 원본 유지
+                    }
                     log.debug("Resolved sourceTable from IF table: {} -> {}", lowerTable, sourceTable);
                 } else {
                     // Loader TARGET 대응: sourceTable이 TARGET 테이블인 경우
@@ -1039,32 +1093,19 @@ public class ExecutionDataController {
                             }
                         }
                     }
-                    // 2순위: 양방향 contains
+                    // 2순위: source_refs 의 tableId(datasource_table.id) 로 upstream 소스 테이블 정확 조회 (이름 contains 추측 금지)
                     if (resolvedSource == null) {
-                        resolvedSource = allLogs.stream()
-                                .map(SyncLog::getSourceTables)
-                                .filter(Objects::nonNull)
-                                .flatMap(json -> parseJsonArray(json).stream())
-                                .filter(t -> {
-                                    String tLower = t.toLowerCase();
-                                    return tLower.contains(lowerTable) || lowerTable.contains(tLower);
-                                })
-                                .findFirst()
-                                .orElse(null);
+                        resolvedSource = resolveSourceTableByRefsTableId(mgmtJdbc, sourceRefs);
+                    }
+                    // 3순위: I:dsId:tableName:pk 형식이면 거기서 직접
+                    if (resolvedSource == null) {
+                        resolvedSource = parseSourceRefsTableName(sourceRefs);
                     }
 
                     if (resolvedSource != null) {
                         log.debug("Loader trace: resolved TARGET {} -> SOURCE {}", sourceTable, resolvedSource);
                         sourceTable = resolvedSource;
                         isLoaderTarget = true;
-                    } else {
-                        // 3순위: source_refs에서 직접 테이블명 추출 (I:dsId:tableName:pk)
-                        String refsTable = parseSourceRefsTableName(sourceRefs);
-                        if (refsTable != null) {
-                            log.debug("Resolved sourceTable from source_refs: {} -> {}", sourceTable, refsTable);
-                            sourceTable = refsTable;
-                            isLoaderTarget = true;
-                        }
                     }
                 }
             }
@@ -1444,6 +1485,46 @@ public class ExecutionDataController {
         return pkColumns;
     }
 
+    /** 콤마 구분 문자열 → trim 된 비어있지 않은 토큰 리스트 (null/빈문자열 → 빈 리스트) */
+    private List<String> splitCsv(String s) {
+        if (s == null || s.isBlank()) return new ArrayList<>();
+        List<String> out = new ArrayList<>();
+        for (String t : s.split(",")) {
+            String v = t.trim();
+            if (!v.isEmpty()) out.add(v);
+        }
+        return out;
+    }
+
+    /**
+     * 복합 PK 정방향 매칭: candidateTable 의 source_refs 의 pk 세그먼트("...:{tableId}:{v1|v2|...}"])에
+     * 주어진 pkVals 가 각각 "|"-구분 토큰으로 들어있는 행을 조회 (값 순서 무관).
+     * 한 값 v 의 토큰 매칭 = v 가 pk 세그먼트의 (전체 / 첫 / 끝 / 중간) 토큰인 4가지 LIKE 패턴 OR.
+     * (tableId/이름 prefix 에 의존하지 않음 — execution_id 필터 + candidate 테이블 한정으로 충분히 정밀.
+     *  prefix 에 의존하면 tableId 해석 실패 시(예: mgmtJdbc 가 datasource_table 없는 DB) 매칭이 깨짐.)
+     */
+    private List<Map<String, Object>> queryByCompositePkTokens(JdbcTemplate targetJdbc, String candidateTable,
+            String executionId, List<String> pkVals) {
+        if (pkVals == null || pkVals.isEmpty()) return List.of();
+        StringBuilder sql = new StringBuilder("SELECT * FROM ").append(candidateTable)
+                .append(" WHERE execution_id = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(executionId);
+        for (String v : pkVals) {
+            sql.append(" AND (source_refs LIKE ? OR source_refs LIKE ? OR source_refs LIKE ? OR source_refs LIKE ?)");
+            params.add("%:" + v + "\"]");   // pk 세그먼트 전체 = v (단일 토큰; ':' 는 tableId 뒤 콜론)
+            params.add("%:" + v + "|%");    // v 가 첫 토큰
+            params.add("%|" + v + "\"]");   // v 가 끝 토큰
+            params.add("%|" + v + "|%");    // v 가 중간 토큰
+        }
+        try {
+            return targetJdbc.queryForList(sql.toString(), params.toArray());
+        } catch (Exception e) {
+            log.debug("composite-PK token query failed for {}: {}", candidateTable, e.getMessage());
+            return List.of();
+        }
+    }
+
     /**
      * sourceRefs에서 PK 값들 추출
      * 형식: ["E:1:4:26"] 또는 ["D:1:4:26", "D:1:4:27"] 또는 레거시 JSON
@@ -1487,6 +1568,38 @@ public class ExecutionDataController {
         }
 
         return pks;
+    }
+
+    /**
+     * source_refs에서 tableId 추출 (datasource_table.id).
+     * D/E:dsId:tableId:pk 형식 → tableId(Long). I: 형식이거나 숫자 아니면 null.
+     */
+    private Long parseSourceRefsTableId(String sourceRefs) {
+        if (sourceRefs == null || sourceRefs.isBlank()) return null;
+        try {
+            String content = sourceRefs.startsWith("[")
+                    ? sourceRefs.substring(1, sourceRefs.length() - 1)
+                    : sourceRefs;
+            String trimmed = content.split(",")[0].trim().replace("\"", "");
+            String[] parts = trimmed.split(":", 4);
+            if (parts.length >= 4 && ("D".equals(parts[0]) || "E".equals(parts[0]))) {
+                try { return Long.parseLong(parts[2]); } catch (NumberFormatException e) { return null; }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to parse tableId from sourceRefs: {}", sourceRefs);
+        }
+        return null;
+    }
+
+    /**
+     * source_refs 의 tableId 로 그 소스 테이블명을 관리 DB(datasource_table) 에서 정확히 조회.
+     * 추적 시 IF 테이블명에서 접두사 떼고 substring/contains 로 추측하던 것을 대체 — tableId 가 그 테이블을 유일하게 특정함.
+     * tableId 가 없거나(0/숫자아님) 조회 실패면 null.
+     */
+    private String resolveSourceTableByRefsTableId(JdbcTemplate mgmtJdbc, String sourceRefs) {
+        Long tableId = parseSourceRefsTableId(sourceRefs);
+        if (tableId == null || tableId == 0L) return null;
+        return ExecutionDataReader.findTableNameById(mgmtJdbc, tableId);
     }
 
     /**
@@ -1689,7 +1802,9 @@ public class ExecutionDataController {
                 ? getTableColumns(sourceJdbc, actualTableName)
                 : new ArrayList<>(pageData.get(0).keySet());
 
-        return ResponseEntity.ok(buildPageResult(actualTableName, columns, pageData, totalCount, page, size));
+        Map<String, Object> res = buildPageResult(actualTableName, columns, pageData, totalCount, page, size);
+        res.put("pkColumns", findPkColumns(sourceJdbc, actualTableName, dbType));
+        return ResponseEntity.ok(res);
     }
 
     private Map<String, Object> buildPageResult(String tableName, List<String> columns,

@@ -1,9 +1,9 @@
 package com.infolink.agent.bojo.loader.step;
 
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.StepContext;
+import com.infolink.agent.common.sync.SyncLogWriter;
 import com.infolink.agent.common.util.SourceRefUtils;
 import com.infolink.agent.bojo.entity.iftable.rsv.IfRsvSecJewon;
 import com.infolink.agent.bojo.entity.iftable.rsv.IfRsvSecObsvdata;
@@ -64,8 +64,7 @@ public class LoaderStepHelper {
                 SecJewon secJewon = TargetRepositoryService.convertToSecJewon(ifJewon, executionId);
                 // Loader: source_refs를 IF 테이블 기준으로 새로 생성 (역추적용)
                 if (context != null) {
-                    String sourceRef = SourceRefUtils.build(context, ifTableName, ifJewon.getId());
-                    secJewon.setSourceRefs(SourceRefUtils.toJsonSingle(sourceRef));
+                    secJewon.setSourceRefs(SourceRefUtils.buildJson(context, ifTableName, ifJewon.getId()));
                 }
                 toSave.add(secJewon);
                 successIds.add(ifJewon.getId());
@@ -124,8 +123,7 @@ public class LoaderStepHelper {
                 SecObsvdata secData = TargetRepositoryService.convertToSecObsvdata(ifData, executionId);
                 // Loader: source_refs를 IF 테이블 기준으로 새로 생성 (역추적용)
                 if (context != null) {
-                    String sourceRef = SourceRefUtils.build(context, ifTableName, ifData.getId());
-                    secData.setSourceRefs(SourceRefUtils.toJsonSingle(sourceRef));
+                    secData.setSourceRefs(SourceRefUtils.buildJson(context, ifTableName, ifData.getId()));
                 }
                 toSave.add(secData);
                 successIds.add(ifData.getId());
@@ -162,23 +160,8 @@ public class LoaderStepHelper {
                              List<String> sourceTables, List<String> targetTables,
                              long readCount, long writeCount, long failedCount, long skipCount,
                              List<String> failedKeys, String errorSummary) {
-        String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-        String targetJson = "[" + targetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-
-        SyncLog logEntry = SyncLog.builder()
-                .executionId(executionId)
-                .stepId(stepId)
-                .mappingName(mappingName)
-                .sourceTables(sourceJson)
-                .targetTables(targetJson)
-                .readCount(readCount)
-                .writeCount(writeCount)
-                .failedCount(failedCount)
-                .skipCount(skipCount)
-                .failedKeys(failedKeys != null && !failedKeys.isEmpty() ? String.join(",", failedKeys) : null)
-                .errorSummary(errorSummary)
-                .build();
-        syncLogRepository.save(logEntry);
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, mappingName,
+                sourceTables, targetTables, readCount, writeCount, failedCount, skipCount, failedKeys, errorSummary);
     }
 
     /**

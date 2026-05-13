@@ -3,7 +3,6 @@ package com.infolink.agent.bojo.loader.step;
 import com.infolink.agent.bojo.config.DynamicEntityManagerService;
 import com.infolink.agent.bojo.entity.iftable.IfRsvTbJeju;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.ConditionBuilder;
@@ -11,6 +10,9 @@ import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
 import com.infolink.agent.common.step.Status;
+import com.infolink.agent.common.sync.SyncLogWriter;
+import com.infolink.agent.common.sync.TableCountTracker;
+import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -41,6 +43,10 @@ public class JejuObsvdataLoadStep implements StepExecutor {
     private static final int IEM_WTEMP = 163;    // 수온
     private static final int IEM_EC = 52;        // 전기전도도
     private static final int QLT_DEFAULT = 1;    // 품질 기본값
+
+    // Target 테이블명 (per-target 처리건수 집계용)
+    private static final String T_970201 = "PM_GD970201";  // 단일심도
+    private static final String T_970202 = "PM_GD970202";  // 다심도
 
     private final String stepId;
     private final String stepName;
@@ -85,8 +91,8 @@ public class JejuObsvdataLoadStep implements StepExecutor {
     public StepResult execute(StepContext context) {
         long startTime = System.currentTimeMillis();
         int readCount = 0;
-        int writeCount = 0;
         int failedCount = 0;
+        TableCountTracker targets = new TableCountTracker(T_970201, T_970202);
         List<String> failedKeys = new ArrayList<>();
         String firstError = null;
 
@@ -141,7 +147,7 @@ public class JejuObsvdataLoadStep implements StepExecutor {
                 String msn = getString(row, "MSN");
 
                 try {
-                    String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifTable, ifId);
+                    String sourceRef = SourceRefUtils.buildJson(context, ifTable, ifId);
 
                     // BRNCH_ID 조회 (캐시)
                     Long brnchId = resolveBrnchId(targetJdbc, obsvtrId);
@@ -180,7 +186,7 @@ public class JejuObsvdataLoadStep implements StepExecutor {
                             dtStr, isMultiDepth, pstnSn, sourceRef, executionId);
 
                     successIds.add(ifId);
-                    writeCount += inserted;
+                    targets.add(isMultiDepth ? T_970202 : T_970201, inserted);
                 } catch (Exception e) {
                     log.error("[{}] 관측데이터 처리 실패: obsrvt_id={}, msn={}", stepId, obsvtrId, msn, e);
                     failedCount++;
@@ -199,16 +205,17 @@ public class JejuObsvdataLoadStep implements StepExecutor {
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
+            long writeCount = targets.total();
             log.info("[{}] 완료: read={}, write={}, failed={}, duration={}ms",
                     stepId, readCount, writeCount, failedCount, durationMs);
 
-            saveSyncLog(executionId, readCount, writeCount, failedCount, failedKeys, firstError);
+            saveSyncLog(executionId, readCount, failedCount, targets, failedKeys, firstError);
 
             return StepResult.builder()
                     .stepId(stepId)
                     .status(failedCount > 0 && writeCount == 0 ? Status.FAILED : Status.SUCCESS)
                     .readCount(readCount)
-                    .writeCount(writeCount)
+                    .writeCount((int) writeCount)
                     .skipCount(0)
                     .durationMs(durationMs)
                     .errorMessage(firstError)
@@ -216,7 +223,7 @@ public class JejuObsvdataLoadStep implements StepExecutor {
 
         } catch (Exception e) {
             log.error("[{}] Step 실행 실패", stepId, e);
-            saveSyncLog(context.getExecutionId(), readCount, writeCount, failedCount, failedKeys, e.getMessage());
+            saveSyncLog(context.getExecutionId(), readCount, failedCount, targets, failedKeys, e.getMessage());
             return StepResult.failed(stepId, e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
@@ -305,27 +312,9 @@ public class JejuObsvdataLoadStep implements StepExecutor {
         return map;
     }
 
-    private void saveSyncLog(String executionId, int readCount, int writeCount,
-                              int failedCount, List<String> failedKeys, String errorSummary) {
-        try {
-            String sourceJson = "[" + configSourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + configTargetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(stepId)
-                    .mappingName(stepId)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount((long) readCount)
-                    .writeCount((long) writeCount)
-                    .failedCount((long) failedCount)
-                    .skipCount(0L)
-                    .failedKeys(failedKeys.isEmpty() ? null : String.join(",", failedKeys))
-                    .errorSummary(errorSummary)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("[{}] SyncLog 저장 실패: {}", stepId, e.getMessage());
-        }
+    private void saveSyncLog(String executionId, int readCount, int failedCount,
+                              TableCountTracker targets, List<String> failedKeys, String errorSummary) {
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, stepId,
+                configSourceTables, targets, readCount, failedCount, 0L, failedKeys, errorSummary);
     }
 }

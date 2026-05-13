@@ -5,7 +5,6 @@ import com.infolink.agent.bojo.entity.iftable.IfRsvUseLegacyData;
 import com.infolink.agent.bojo.entity.iftable.IfRsvUseStatusData;
 import com.infolink.agent.bojo.entity.target.TmGd111010;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.ConditionBuilder;
@@ -13,6 +12,9 @@ import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
 import com.infolink.agent.common.step.Status;
+import com.infolink.agent.common.sync.SyncLogWriter;
+import com.infolink.agent.common.sync.TableCountTracker;
+import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -39,6 +41,12 @@ public class UseLoadStep implements StepExecutor {
 
     private static final String IF_LEGACY = "IF_RSV_USE_LEGACY_DATA";
     private static final String IF_STATUS = "IF_RSV_USE_STATUS_DATA";
+
+    // Target 테이블명 (per-target 처리건수 집계용)
+    private static final String T_111021 = "PM_GD111021";  // 시간자료
+    private static final String T_111022 = "PM_GD111022";  // 일집계
+    private static final String T_111024 = "TM_GD111024";  // 최근수신현황
+    private static final String T_111025 = "TM_GD111025";  // 관측데이터
 
     private final String stepId;
     private final String stepName;
@@ -115,7 +123,7 @@ public class UseLoadStep implements StepExecutor {
 
             if (!legacyRows.isEmpty()) {
                 LegacyResult lr = processLegacyData(legacyRows, targetJdbc,
-                        sourceDsId, executionId);
+                        context, executionId);
                 totalWrite += lr.writeCount;
                 totalSkip += lr.skipCount;
                 totalFailed += lr.failedCount;
@@ -134,19 +142,23 @@ public class UseLoadStep implements StepExecutor {
                 int dailyCount = 0;
                 if (!lr.affectedBrnchDates.isEmpty()) {
                     dailyCount = updateDailyAggregation(targetJdbc, lr.affectedBrnchDates, executionId);
-                    totalWrite += dailyCount;
                     log.info("[{}] PM_GD111022 일집계 {} 건 처리", stepId, dailyCount);
                 }
+                int lastReceiveCount = 0;
                 if (!lr.affectedBrnchIds.isEmpty()) {
-                    updateLastReceive(targetJdbc, executionId);
-                    log.info("[{}] TM_GD111024 최근수신현황 갱신 완료", stepId);
+                    lastReceiveCount = updateLastReceive(targetJdbc, executionId);
+                    log.info("[{}] TM_GD111024 최근수신현황 {} 건 갱신", stepId, lastReceiveCount);
                 }
+                totalWrite += dailyCount + lastReceiveCount;
 
-                // SyncLog: Legacy 매핑
-                saveSyncLogMapping(executionId, "use-legacy",
-                        List.of(IF_LEGACY), List.of("PM_GD111021", "PM_GD111022", "TM_GD111024"),
-                        legacyRows.size(), lr.writeCount + dailyCount, lr.skipCount, lr.failedCount,
-                        lr.failedKeys, lr.firstError);
+                // SyncLog: Legacy 매핑 (per-target 처리건수 포함)
+                TableCountTracker legacyTargets = new TableCountTracker(T_111021, T_111022, T_111024);
+                legacyTargets.add(T_111021, lr.writeCount);
+                legacyTargets.add(T_111022, dailyCount);
+                legacyTargets.add(T_111024, lastReceiveCount);
+                SyncLogWriter.save(syncLogRepository, executionId, stepId, "use-legacy",
+                        List.of(IF_LEGACY), legacyTargets,
+                        legacyRows.size(), lr.failedCount, lr.skipCount, lr.failedKeys, lr.firstError);
             }
 
             // ===== Phase 2: Status Data → TM_GD111025 =====
@@ -169,7 +181,7 @@ public class UseLoadStep implements StepExecutor {
             log.info("[{}] Status 데이터 {} 건 조회", stepId, statusRows.size());
 
             if (!statusRows.isEmpty()) {
-                StatusResult sr = processStatusData(statusRows, targetJdbc, sourceDsId, executionId);
+                StatusResult sr = processStatusData(statusRows, targetJdbc, context, executionId);
                 totalWrite += sr.writeCount;
                 totalFailed += sr.failedCount;
                 failedKeys.addAll(sr.failedKeys);
@@ -183,10 +195,11 @@ public class UseLoadStep implements StepExecutor {
                 }
 
                 // SyncLog: Status 매핑
-                saveSyncLogMapping(executionId, "use-status",
-                        List.of(IF_STATUS), List.of("TM_GD111025"),
-                        statusRows.size(), sr.writeCount, 0, sr.failedCount,
-                        sr.failedKeys, sr.firstError);
+                TableCountTracker statusTargets = new TableCountTracker(T_111025);
+                statusTargets.add(T_111025, sr.writeCount);
+                SyncLogWriter.save(syncLogRepository, executionId, stepId, "use-status",
+                        List.of(IF_STATUS), statusTargets,
+                        statusRows.size(), sr.failedCount, 0L, sr.failedKeys, sr.firstError);
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
@@ -205,9 +218,9 @@ public class UseLoadStep implements StepExecutor {
 
         } catch (Exception e) {
             log.error("[{}] Step 실행 실패", stepId, e);
-            saveSyncLogMapping(context.getExecutionId(), stepId,
-                    List.of(IF_LEGACY, IF_STATUS), List.of("PM_GD111021", "PM_GD111022", "TM_GD111024", "TM_GD111025"),
-                    totalRead, totalWrite, totalSkip, totalFailed, failedKeys, e.getMessage());
+            SyncLogWriter.save(syncLogRepository, context.getExecutionId(), stepId, stepId,
+                    List.of(IF_LEGACY, IF_STATUS), List.of(T_111021, T_111022, T_111024, T_111025),
+                    totalRead, totalWrite, totalFailed, totalSkip, failedKeys, e.getMessage());
             return StepResult.failed(stepId, e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
@@ -216,7 +229,7 @@ public class UseLoadStep implements StepExecutor {
 
     private LegacyResult processLegacyData(List<IfRsvUseLegacyData> rows,
                                             JdbcTemplate targetJdbc,
-                                            String sourceDsId, String executionId) {
+                                            StepContext context, String executionId) {
         LegacyResult result = new LegacyResult();
 
         for (IfRsvUseLegacyData row : rows) {
@@ -232,7 +245,7 @@ public class UseLoadStep implements StepExecutor {
                     continue;
                 }
 
-                String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, IF_LEGACY, ifId);
+                String sourceRef = SourceRefUtils.buildJson(context, IF_LEGACY, ifId);
 
                 // 음수 → 0 변환
                 Number lastMeasure = row.getLastMeasureValue();
@@ -308,8 +321,8 @@ public class UseLoadStep implements StepExecutor {
 
     // ==================== 최근수신현황 후처리 ====================
 
-    private void updateLastReceive(JdbcTemplate jdbc, String executionId) {
-        jdbc.update(
+    private int updateLastReceive(JdbcTemplate jdbc, String executionId) {
+        return jdbc.update(
             "MERGE INTO TM_GD111024 t " +
             "USING (SELECT BRNCH_ID, MAX(OBSRVN_DT) AS OBSRVN_DT FROM PM_GD111021 GROUP BY BRNCH_ID) s " +
             "ON (t.BRNCH_ID = s.BRNCH_ID) " +
@@ -323,7 +336,7 @@ public class UseLoadStep implements StepExecutor {
 
     private StatusResult processStatusData(List<IfRsvUseStatusData> rows,
                                             JdbcTemplate targetJdbc,
-                                            String sourceDsId, String executionId) {
+                                            StepContext context, String executionId) {
         StatusResult result = new StatusResult();
 
         for (IfRsvUseStatusData row : rows) {
@@ -331,7 +344,7 @@ public class UseLoadStep implements StepExecutor {
             Long sn = row.getSn();
 
             try {
-                String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, IF_STATUS, ifId);
+                String sourceRef = SourceRefUtils.buildJson(context, IF_STATUS, ifId);
 
                 targetJdbc.update(
                     "INSERT INTO TM_GD111025 (SN, TELNO, OBSRVN_DT, LAST_CHG_DT, EXECUTION_ID, SOURCE_REFS) " +
@@ -377,32 +390,6 @@ public class UseLoadStep implements StepExecutor {
         if (val == null) return null;
         String str = val.toString().replace("-", "").replace("/", "");
         return str.length() >= 8 ? str.substring(0, 8) : null;
-    }
-
-    private void saveSyncLogMapping(String executionId, String mappingName,
-                                      List<String> sourceTables, List<String> targetTables,
-                                      int readCount, int writeCount, int skipCount, int failedCount,
-                                      List<String> failedKeys, String errorSummary) {
-        try {
-            String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + targetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(stepId)
-                    .mappingName(mappingName)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount((long) readCount)
-                    .writeCount((long) writeCount)
-                    .failedCount((long) failedCount)
-                    .skipCount((long) skipCount)
-                    .failedKeys(failedKeys == null || failedKeys.isEmpty() ? null : String.join(",", failedKeys))
-                    .errorSummary(errorSummary)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("[{}] SyncLog 저장 실패: {}", stepId, e.getMessage());
-        }
     }
 
     // ==================== 결과 클래스 ====================

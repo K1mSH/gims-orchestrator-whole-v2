@@ -4,7 +4,6 @@ import com.infolink.agent.bojo.config.DynamicEntityManagerService;
 import com.infolink.agent.bojo.entity.iftable.IfRsvSecObsvdata;
 import com.infolink.agent.bojo.loader.repository.GimsTargetRepository;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.ConditionBuilder;
@@ -12,6 +11,9 @@ import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
 import com.infolink.agent.common.step.Status;
+import com.infolink.agent.common.sync.SyncLogWriter;
+import com.infolink.agent.common.sync.TableCountTracker;
+import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -210,9 +212,9 @@ public class InternalBojoLoadStep implements StepExecutor {
                         long rsltGwtemp = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_GWTEMP, executionId);
                         long rsltEc = targetRepo.ensureResultId(targetResultTable, rsltIdMap, brnchId, IEM_EC, executionId);
 
-                        // source_refs: IF 레코드의 id 참조
+                        // source_refs: IF 레코드의 id 참조 (표준 양식 zone:dsId:tbId:pk)
                         Object ifId = row.get("id");
-                        String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifObsvdataTable, ifId);
+                        String sourceRef = SourceRefUtils.buildJson(context, ifObsvdataTable, ifId);
 
                         // 3행 생성 (값이 있는 항목만)
                         if (gwdep != null) {
@@ -299,16 +301,16 @@ public class InternalBojoLoadStep implements StepExecutor {
             // ===== 4. SyncLog 요약 저장 (Agent 정의 정합: 1 mapping, 3 target — per-target count 메타 포함) =====
             // write=inserted (실 INSERT 행, EAV 1:3 팽창 포함). Link 도 같은 mapping 의 target 으로 표시.
             // target_tables JSON 형식: [{"name":"...","count":N}] — 각 target 별 실 적재 카운트 분리.
-            java.util.LinkedHashMap<String, Long> targetCounts = new java.util.LinkedHashMap<>();
-            targetCounts.put(targetObsvdataTable, (long) inserted);     // PM_GD970201
-            targetCounts.put(targetResultTable, (long) rsltInserted);    // TM_GD970101
-            targetCounts.put(targetLinkTable, (long) linkUpdated);       // TM_GD980002
+            TableCountTracker targetCounts = new TableCountTracker(targetObsvdataTable, targetResultTable, targetLinkTable);
+            targetCounts.add(targetObsvdataTable, inserted);     // PM_GD970201
+            targetCounts.add(targetResultTable, rsltInserted);    // TM_GD970101
+            targetCounts.add(targetLinkTable, linkUpdated);       // TM_GD980002
 
-            saveSyncLogMappingWithCounts(executionId, "obsvdata",
+            SyncLogWriter.save(syncLogRepository, executionId, getStepId(), "obsvdata",
                     configSourceTables != null ? configSourceTables : List.of(ifObsvdataTable),
                     targetCounts,
-                    (long) obsvReadCount, (long) inserted, (long) obsvFailed, 0L,
-                    obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
+                    obsvReadCount, obsvFailed, 0L,
+                    obsvFailedKeys.isEmpty() ? null : obsvFailedKeys,
                     obsvFirstError);
 
             // read>0인데 write=0이면 실패 처리 (제원 매칭 실패 등)
@@ -343,11 +345,10 @@ public class InternalBojoLoadStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            saveSyncLogMapping(context.getExecutionId(), "obsvdata",
-                    List.of(ifObsvdataTable),
-                    List.of(targetObsvdataTable),
-                    (long) obsvReadCount, (long) inserted, (long) obsvFailed, 0L,
-                    obsvFailedKeys.isEmpty() ? null : String.join(",", obsvFailedKeys),
+            SyncLogWriter.save(syncLogRepository, context.getExecutionId(), getStepId(), "obsvdata",
+                    List.of(ifObsvdataTable), List.of(targetObsvdataTable),
+                    obsvReadCount, inserted, obsvFailed, 0L,
+                    obsvFailedKeys.isEmpty() ? null : obsvFailedKeys,
                     errorMessage);
 
             return StepResult.failed(getStepId(), e.getMessage(), System.currentTimeMillis() - startTime);
@@ -448,65 +449,4 @@ public class InternalBojoLoadStep implements StepExecutor {
         }
     }
 
-    private void saveSyncLogMapping(String executionId, String mappingName,
-                                     List<String> sourceTables, List<String> targetTables,
-                                     Long readCount, Long writeCount, Long failedCount, Long skipCount,
-                                     String failedKeys, String errorSummary) {
-        try {
-            String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + targetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(getStepId())
-                    .mappingName(mappingName)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount(readCount != null ? readCount : 0L)
-                    .writeCount(writeCount != null ? writeCount : 0L)
-                    .failedCount(failedCount != null ? failedCount : 0L)
-                    .skipCount(skipCount != null ? skipCount : 0L)
-                    .failedKeys(failedKeys)
-                    .errorSummary(errorSummary)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("[{}] SyncLog 저장 실패 (매핑: {}): {}", getStepId(), mappingName, e.getMessage());
-        }
-    }
-
-    /**
-     * SyncLog 저장 — per-target count 메타 포함.
-     * target_tables JSON = [{"name":"...","count":N}, ...] 형식.
-     * frontend 가 각 target 별 실 적재 카운트 분리 표시 가능.
-     */
-    private void saveSyncLogMappingWithCounts(String executionId, String mappingName,
-                                                List<String> sourceTables,
-                                                java.util.LinkedHashMap<String, Long> targetCounts,
-                                                Long readCount, Long writeCount, Long failedCount, Long skipCount,
-                                                String failedKeys, String errorSummary) {
-        try {
-            String sourceJson = "[" + sourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + targetCounts.entrySet().stream()
-                    .map(e -> "{\"name\":\"" + e.getKey() + "\",\"count\":" + e.getValue() + "}")
-                    .reduce((a, b) -> a + "," + b).orElse("") + "]";
-
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(getStepId())
-                    .mappingName(mappingName)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount(readCount != null ? readCount : 0L)
-                    .writeCount(writeCount != null ? writeCount : 0L)
-                    .failedCount(failedCount != null ? failedCount : 0L)
-                    .skipCount(skipCount != null ? skipCount : 0L)
-                    .failedKeys(failedKeys)
-                    .errorSummary(errorSummary)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("[{}] SyncLog 저장 실패 (매핑: {}): {}", getStepId(), mappingName, e.getMessage());
-        }
-    }
 }

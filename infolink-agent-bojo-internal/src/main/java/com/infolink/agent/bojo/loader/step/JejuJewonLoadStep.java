@@ -3,7 +3,6 @@ package com.infolink.agent.bojo.loader.step;
 import com.infolink.agent.bojo.config.DynamicEntityManagerService;
 import com.infolink.agent.bojo.entity.iftable.IfRsvTbJejuJewon;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.ConditionBuilder;
@@ -11,6 +10,9 @@ import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
 import com.infolink.agent.common.step.Status;
+import com.infolink.agent.common.sync.SyncLogWriter;
+import com.infolink.agent.common.sync.TableCountTracker;
+import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -45,6 +47,13 @@ public class JejuJewonLoadStep implements StepExecutor {
     private static final String V6_OBSRVN_ARTCL = "수위, 온도, 전기전도도";
     private static final String V7_OBSRVN_CYCL = "1시간 간격";
     private static final String V8_CNST_INST = "제주도지자체";
+
+    // Target 테이블명 (per-target 처리건수 집계용)
+    private static final String T_970001 = "TM_GD970001";
+    private static final String T_120001 = "TM_GD120001";
+    private static final String T_970130 = "TM_GD970130";
+    private static final String T_970002 = "TM_GD970002";
+    private static final String T_970101 = "TM_GD970101";
 
     // EAV 항목 ID / 단위 ID
     private static final int IEM_GL = 5;         // 수위
@@ -92,8 +101,8 @@ public class JejuJewonLoadStep implements StepExecutor {
     public StepResult execute(StepContext context) {
         long startTime = System.currentTimeMillis();
         int readCount = 0;
-        int writeCount = 0;
         int failedCount = 0;
+        TableCountTracker targets = new TableCountTracker(T_970001, T_120001, T_970130, T_970002, T_970101);
         List<String> failedKeys = new ArrayList<>();
         String firstError = null;
 
@@ -106,6 +115,7 @@ public class JejuJewonLoadStep implements StepExecutor {
 
             // 1. 조건실행 판별 + IF 테이블 조회 (JPA native query)
             String sourceDbType = dataSourceProvider.getDbType(sourceDsId);
+            // (source_refs 는 SourceRefUtils.buildJson(context, ifTable, ifId) 로 — DMZ Loader 와 동일 양식)
             boolean isResync = ConditionBuilder.isResyncExecution(context.getExecutionOptions());
             ConditionBuilder.WhereClause where = ConditionBuilder.buildIfTableQuery(
                     context.getExecutionOptions(), ifTable, sourceDbType);
@@ -146,29 +156,33 @@ public class JejuJewonLoadStep implements StepExecutor {
             for (Map<String, Object> row : pendingRows) {
                 String obsvtrId = getString(row, "OBSRVT_ID");
                 try {
-                    // source_refs 생성
+                    // source_refs 생성 (표준 양식: zone:dsId:tbId:pk — pk = IF행 서러게이트 id)
                     Object ifId = row.get("ID");
-                    String sourceRef = String.format("[\"I:%s:%s:%s\"]", sourceDsId, ifTable, ifId);
+                    String sourceRef = SourceRefUtils.buildJson(context, ifTable, ifId);
 
                     // (1) TM_GD970001 MERGE → BRNCH_ID 확보
                     long brnchId = mergeGd970001(targetJdbc, row, sourceRef, executionId);
+                    targets.inc(T_970001);
 
                     // (2) TM_GD120001 MERGE → GWEL_NO 확보
                     long gwelNo = mergeGd120001(targetJdbc, row, brnchId, sourceRef, executionId);
+                    targets.inc(T_120001);
 
                     // (3) TM_GD970130 MERGE
                     mergeGd970130(targetJdbc, row, gwelNo, brnchId, sourceRef, executionId);
+                    targets.inc(T_970130);
 
                     // (4) TM_GD970002 MERGE
                     mergeGd970002(targetJdbc, brnchId, sourceRef, executionId);
+                    targets.inc(T_970002);
 
                     // (5) TM_GD970101 MERGE × 3
                     mergeGd970101(targetJdbc, brnchId, gwelNo, IEM_GL, UNIT_GL, sourceRef, executionId);
                     mergeGd970101(targetJdbc, brnchId, gwelNo, IEM_WTEMP, UNIT_WTEMP, sourceRef, executionId);
                     mergeGd970101(targetJdbc, brnchId, gwelNo, IEM_EC, UNIT_EC, sourceRef, executionId);
+                    targets.add(T_970101, 3);
 
                     successIds.add(ifId);
-                    writeCount++;
                 } catch (Exception e) {
                     log.error("[{}] 제원 처리 실패: obsvtr_id={}", stepId, obsvtrId, e);
                     failedCount++;
@@ -187,17 +201,18 @@ public class JejuJewonLoadStep implements StepExecutor {
             }
 
             long durationMs = System.currentTimeMillis() - startTime;
+            long writeCount = targets.total();
             log.info("[{}] 완료: read={}, write={}, failed={}, duration={}ms",
                     stepId, readCount, writeCount, failedCount, durationMs);
 
-            // 4. SyncLog 기록
-            saveSyncLog(executionId, readCount, writeCount, failedCount, failedKeys, firstError);
+            // 4. SyncLog 기록 (per-target 처리건수 포함)
+            saveSyncLog(executionId, readCount, failedCount, targets, failedKeys, firstError);
 
             return StepResult.builder()
                     .stepId(stepId)
                     .status(failedCount > 0 && writeCount == 0 ? Status.FAILED : Status.SUCCESS)
                     .readCount(readCount)
-                    .writeCount(writeCount)
+                    .writeCount((int) writeCount)
                     .skipCount(0)
                     .durationMs(durationMs)
                     .errorMessage(firstError)
@@ -205,7 +220,7 @@ public class JejuJewonLoadStep implements StepExecutor {
 
         } catch (Exception e) {
             log.error("[{}] Step 실행 실패", stepId, e);
-            saveSyncLog(context.getExecutionId(), readCount, writeCount, failedCount, failedKeys, e.getMessage());
+            saveSyncLog(context.getExecutionId(), readCount, failedCount, targets, failedKeys, e.getMessage());
             return StepResult.failed(stepId, e.getMessage(), System.currentTimeMillis() - startTime);
         }
     }
@@ -440,27 +455,9 @@ public class JejuJewonLoadStep implements StepExecutor {
         return map;
     }
 
-    private void saveSyncLog(String executionId, int readCount, int writeCount,
-                              int failedCount, List<String> failedKeys, String errorSummary) {
-        try {
-            String sourceJson = "[" + configSourceTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            String targetJson = "[" + configTargetTables.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
-            SyncLog logEntry = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(stepId)
-                    .mappingName(stepId)
-                    .sourceTables(sourceJson)
-                    .targetTables(targetJson)
-                    .readCount((long) readCount)
-                    .writeCount((long) writeCount)
-                    .failedCount((long) failedCount)
-                    .skipCount(0L)
-                    .failedKeys(failedKeys.isEmpty() ? null : String.join(",", failedKeys))
-                    .errorSummary(errorSummary)
-                    .build();
-            syncLogRepository.save(logEntry);
-        } catch (Exception e) {
-            log.warn("[{}] SyncLog 저장 실패: {}", stepId, e.getMessage());
-        }
+    private void saveSyncLog(String executionId, int readCount, int failedCount,
+                              TableCountTracker targets, List<String> failedKeys, String errorSummary) {
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, stepId,
+                configSourceTables, targets, readCount, failedCount, 0L, failedKeys, errorSummary);
     }
 }

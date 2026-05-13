@@ -2,8 +2,8 @@ package com.infolink.agent.common.step;
 
 import com.infolink.agent.common.config.JdbcTableNameResolver;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
+import com.infolink.agent.common.sync.SyncLogWriter;
 import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -329,18 +329,11 @@ public class SourceToTargetStep implements StepExecutor {
                     params.add(convertParamForTarget(record.get(column), targetDbType));
                 }
 
-                // source_refs 생성: "zone:dsId:tbId:pk" 형식 JSON 배열
-                String sourceRef;
-                if (sourceRefPkCols.size() == 1) {
-                    Object pkValue = getRecordValue(record, sourceRefPkCols.get(0));
-                    sourceRef = SourceRefUtils.build(context, config.getSourceTable(), pkValue);
-                } else {
-                    Object[] pkValues = sourceRefPkCols.stream()
-                            .map(col -> getRecordValue(record, col))
-                            .toArray();
-                    sourceRef = SourceRefUtils.buildComposite(context, config.getSourceTable(), pkValues);
-                }
-                String sourceRefsJson = SourceRefUtils.toJsonSingle(sourceRef);
+                // source_refs 생성: "zone:dsId:tbId:pk" 형식 JSON 배열 (단일/복합 PK 통합)
+                Object[] pkValues = sourceRefPkCols.stream()
+                        .map(col -> getRecordValue(record, col))
+                        .toArray();
+                String sourceRefsJson = SourceRefUtils.buildJson(context, config.getSourceTable(), pkValues);
 
                 // link_status 결정 (타겟에 없어도 변수만 계산 — 실제 INSERT 여부는 metaColumns 따라)
                 Object sourceLinkStatus = getRecordValue(record, "link_status");
@@ -1046,26 +1039,15 @@ public class SourceToTargetStep implements StepExecutor {
                                      Long readCount, Long writeCount, Long skipCount,
                                      String failedKeys, String errorSummary, String sourcePkColumn) {
         String resolvedMappingName = mappingName != null ? mappingName : config.getStepId();
-        String sourceJson = "[\"" + config.getSourceTable() + "\"]";
-        String targetJson = "[\"" + config.getTargetIfTable() + "\"]";
+        long read = readCount != null ? readCount : 0L;
+        long write = writeCount != null ? writeCount : 0L;
+        long skip = skipCount != null ? skipCount : 0L;
         long failedCount = readCount != null && writeCount != null && skipCount != null
-                ? Math.max(0, readCount - writeCount - skipCount) : 0L;
-
-        SyncLog logEntry = SyncLog.builder()
-                .executionId(executionId)
-                .stepId(getStepId())
-                .mappingName(resolvedMappingName)
-                .sourceTables(sourceJson)
-                .targetTables(targetJson)
-                .readCount(readCount != null ? readCount : 0L)
-                .writeCount(writeCount != null ? writeCount : 0L)
-                .failedCount(failedCount)
-                .skipCount(skipCount != null ? skipCount : 0L)
-                .failedKeys(failedKeys)
-                .errorSummary(errorSummary)
-                .sourcePkColumn(sourcePkColumn)
-                .build();
-        syncLogRepository.save(logEntry);
+                ? Math.max(0, read - write - skip) : 0L;
+        SyncLogWriter.save(syncLogRepository, executionId, getStepId(), resolvedMappingName,
+                List.of(config.getSourceTable()), List.of(config.getTargetIfTable()),
+                read, write, failedCount, skip,
+                failedKeys != null ? List.of(failedKeys) : null, errorSummary, sourcePkColumn);
     }
 
     // ==================== 메타데이터 / PK 감지 ====================
