@@ -12,6 +12,8 @@ steps:
     target-table: IF_RSV_USE_LEGACY_DATA
     primary-key: sn
     conflict-key: source_refs
+    # source(if_snd)의 sn 이 비즈니스 PK — target 에도 보존 (UseLoadStep 이 SN 으로 TM_GD111025 적재)
+    exclude-insert-columns: [id]
 
   - id: use-status-rcv
     name: 이용량 상태 수신
@@ -20,6 +22,7 @@ steps:
     target-table: IF_RSV_USE_STATUS_DATA
     primary-key: sn
     conflict-key: source_refs
+    exclude-insert-columns: [id]
 
   - id: use-jejuday-rcv
     name: 제주 일일이용량 수신

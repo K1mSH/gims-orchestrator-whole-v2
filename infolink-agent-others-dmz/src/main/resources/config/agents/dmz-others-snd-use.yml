@@ -13,6 +13,8 @@ steps:
     target-table: if_snd_use_legacy_data
     primary-key: sn
     conflict-key: source_refs
+    # source 의 sn 이 비즈니스 PK — target 에도 보존되어야 함 (default ["id","sn"] 가 sn 제외하는 거 override)
+    exclude-insert-columns: [id]
 
   - id: use-status-snd
     name: 이용량 상태 송신
@@ -21,6 +23,7 @@ steps:
     target-table: if_snd_use_status_data
     primary-key: sn
     conflict-key: source_refs
+    exclude-insert-columns: [id]
 
   - id: use-jejuday-snd
     name: 제주 일일이용량 송신
