@@ -227,50 +227,70 @@ public class ExecutionService {
     }
 
     /**
-     * Source PK로 데이터 추적 (Source → IF → Target, 프록시 Agent 경유)
+     * Source PK로 데이터 추적 (Source 행 → Target 행, 프록시 Agent 경유).
+     * **정의기반 정확 동등성** 매칭만 (cf. feedback_trace_definition_only). LIKE/contains 일체 없음.
+     *
+     * 흐름:
+     *   1. agent.agentTables 에서 sourceTable 정확매칭(equalsIgnoreCase) SOURCE DatasourceTable 검색
+     *   2. Datasource → zone shortCode, datasource.id, datasource_table.id 해석
+     *   3. exactSourceRefs = ["{zone}:{dsId}:{tableId}:{pk}"] 빌드 (writer 가 작성한 형식과 문자 단위 동일)
+     *      - pk = pkValue 콤마구분 split → "|" join (frontend 가 DB 제약조건 순으로 보냄)
+     *   4. proxy 로 exactSourceRefs 전달 → proxy 가 `WHERE source_refs = ?` 정확 동등 매칭
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> traceBySourcePk(String executionId, String pkValue, String pkColumn, String sourceTable, String ifTableName, String targetTableName) {
         Agent agent = findAgentByExecutionId(executionId);
 
-        // ifTableName, targetTableName이 없으면 Agent의 테이블 매핑에서 자동으로 찾기
-        String resolvedIfTableName = ifTableName;
-        String resolvedTargetTableName = targetTableName;
+        if (sourceTable == null || sourceTable.isBlank()) {
+            return Map.of("error", "sourceTable 파라미터가 필요합니다.");
+        }
 
-        if ((resolvedIfTableName == null || resolvedIfTableName.isBlank()) && agent.getAgentTables() != null) {
+        // 1. agent SOURCE DatasourceTable 정확매칭
+        DatasourceTable srcDt = null;
+        if (agent.getAgentTables() != null) {
             for (AgentTable at : agent.getAgentTables()) {
-                if (at.getTableType() == AgentTable.TableType.TARGET) {
-                    DatasourceTable dt = datasourceTableRepository.findById(at.getDatasourceTableId()).orElse(null);
-                    if (dt != null && sourceTable != null) {
-                        String tableName2 = dt.getTableName();
-                        String sourceBase = sourceTable.toLowerCase().replace("_view", "");
-                        if (tableName2.toLowerCase().contains(sourceBase)) {
-                            resolvedIfTableName = tableName2;
-                            break;
-                        }
-                    }
+                if (at.getTableType() != AgentTable.TableType.SOURCE) continue;
+                DatasourceTable dt = datasourceTableRepository.findById(at.getDatasourceTableId()).orElse(null);
+                if (dt != null && sourceTable.equalsIgnoreCase(dt.getTableName())) {
+                    srcDt = dt;
+                    break;
                 }
             }
         }
+        if (srcDt == null) {
+            return Map.of("error", "agent '" + agent.getAgentCode() + "' 의 SOURCE 테이블에 '" + sourceTable + "' 등록 없음 (정의기반 추적 — agent_tables 정의 확인 필요)");
+        }
+
+        // 2. Datasource → zone shortCode + dsId
+        Datasource srcDs = datasourceRepository.findById(srcDt.getDatasourceId()).orElse(null);
+        if (srcDs == null) {
+            return Map.of("error", "Source datasource(id=" + srcDt.getDatasourceId() + ") 등록 없음");
+        }
+        String zoneShortCode = zoneConfigRepository.findShortCodeByZone(srcDs.getZone());
+        if (zoneShortCode == null || zoneShortCode.isBlank()) {
+            return Map.of("error", "Source datasource zone '" + srcDs.getZone() + "' 의 shortCode 등록 없음 (zone_config)");
+        }
+        Long dsId = srcDs.getId();
+        Long tableId = srcDt.getId();
+
+        // 3. exactSourceRefs 빌드 — SourceRefUtils.build 와 동일 형식
+        //    pkValue 콤마구분 → "|" join (frontend 의 findPkColumns 순서 = DB 제약조건 순서)
+        String pk = pkValue == null ? "" : pkValue.replace(",", "|");
+        String exactSourceRefs = "[\"" + zoneShortCode + ":" + dsId + ":" + tableId + ":" + pk + "\"]";
 
         try {
             String proxyUrl = getProxyUrlForAgent(agent);
             UriComponentsBuilder builder = UriComponentsBuilder
                     .fromHttpUrl(proxyUrl)
                     .path("/api/execution-data/{executionId}/trace")
+                    .queryParam("exactSourceRefs", exactSourceRefs)
+                    .queryParam("sourceTable", sourceTable)
+                    // 진단·표시용 (proxy 의 결정 로직엔 안 쓰임)
                     .queryParam("pkValue", pkValue)
-                    .queryParam("pkColumn", pkColumn)
-                    .queryParam("sourceTable", sourceTable);
-
-            if (resolvedIfTableName != null && !resolvedIfTableName.isBlank()) {
-                builder.queryParam("ifTableName", resolvedIfTableName);
-            }
-            if (resolvedTargetTableName != null && !resolvedTargetTableName.isBlank()) {
-                builder.queryParam("targetTableName", resolvedTargetTableName);
-            }
+                    .queryParam("pkColumn", pkColumn);
 
             String url = builder.buildAndExpand(executionId).toUriString();
-            log.info("Agent에서 데이터 추적 중: {}", url);
+            log.info("Agent에서 데이터 추적 중: {} (exactSourceRefs={})", url, exactSourceRefs);
 
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, buildHeaders(agent), Map.class);
             return response.getBody();

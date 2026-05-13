@@ -100,13 +100,6 @@ public class SyncLog {
         return failedCount == null || failedCount == 0L;
     }
 
-    /** source_tables JSON 문자열에 특정 테이블명이 포함되어 있는지 */
-    public boolean containsSourceTable(String tableName) {
-        return sourceTables != null && sourceTables.toLowerCase().contains("\"" + tableName.toLowerCase() + "\"");
-    }
-
-    /** target_tables JSON 문자열에 특정 테이블명이 포함되어 있는지 */
-    public boolean containsTargetTable(String tableName) {
-        return targetTables != null && targetTables.toLowerCase().contains("\"" + tableName.toLowerCase() + "\"");
-    }
+    // (제거됨) containsSourceTable / containsTargetTable — JSON 문자열 contains 는 substring 충돌 위험.
+    // ExecutionDataController.containsSourceTable(SyncLog,String) / containsTargetTable(SyncLog,String) 사용 (parseJsonArray + equalsIgnoreCase 정확매칭).
 }
