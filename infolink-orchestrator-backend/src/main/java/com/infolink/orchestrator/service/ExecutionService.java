@@ -622,10 +622,28 @@ public class ExecutionService {
      */
     private HttpEntity<Void> buildHeaders(Agent agent) {
         HttpHeaders headers = new HttpHeaders();
-        if (agent != null && agent.getTargetDatasourceId() != null) {
-            headers.set("X-Manage-Datasource-Id", agent.getTargetDatasourceId());
+        String mgmtDs = resolveManagementDatasource(agent);
+        if (mgmtDs != null) {
+            headers.set("X-Manage-Datasource-Id", mgmtDs);
         }
         return new HttpEntity<>(headers);
+    }
+
+    /**
+     * Agent 의 zone 기반 management DB(sync_log/execution 적재 위치) 결정.
+     * agent.target 이 외부 DB(e.g. saeol-oracle) 인 케이스는 sync_log 가 module default 에 있어
+     * target 그대로 보내면 호출이 잘못된 datasource 를 봄. zone 단일 진실원으로 매핑.
+     *
+     * - DMZ zone → dmz (PG 29001 dev)
+     * - INTERNAL_COMMON zone → internal (Oracle 29004)
+     * - EXTERNAL / unknown → target fallback
+     */
+    private String resolveManagementDatasource(Agent agent) {
+        if (agent == null) return null;
+        String zone = agent.getZone();
+        if ("DMZ".equals(zone)) return "dmz";
+        if ("INTERNAL_COMMON".equals(zone)) return "internal";
+        return agent.getTargetDatasourceId();
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================
