@@ -42,7 +42,7 @@
 | dmz-others-snd-api-collect            | SND    | `[]`                                           | 외부 API 수집 — TBD ⚠️ |
 | dmz-others-snd-jeju                   | SND    | `[]`                                           | jeju (수위/제원/시설 혼합) — TBD ⚠️ |
 | dmz-others-snd-saeol                  | SND    | 16 IF_SND_RGET\* × (EXTRACTED_AT + UPDATED_AT) = **32 후보** | 새올 SND transit — 우리 메타 시각 기준만 (원본 시각 영구 보존) |
-| dmz-others-snd-yaksoter               | SND    | `[]`                                           | 약수터 시설 등록 — 비대상 OK |
+| dmz-others-snd-yaksoter               | SND    | 2 if_snd × (extracted_at + updated_at) = **4 후보** | 약수터 SND transit (Loader target 은 환경부 표준 마스터라 메타 X) |
 | dmz-others-snd-use                    | SND    | (legacy/status × obsr_dt+extracted_at) + (jeju_day × extracted_at) = **5 후보** | 이용량 SND transit 시계열 |
 | provide-tm-gd000203                   | LOADER | 필드 없음                                       | provide-* 전수 누락 ⚠️ |
 | provide-tm-gd110301                   | LOADER | 필드 없음                                       | 〃 |
@@ -65,8 +65,8 @@
 | internal-saeol-loader       | LOADER | 16 RGET\* × (EXTRACTED_AT + UPDATED_AT) = **32 후보** | 새올 GIMS 마스터 — 우리 메타만 |
 | internal-use-rcv            | RCV    | (LEGACY/STATUS × OBSR_DT+EXTRACTED_AT) + (JEJU_DAY × EXTRACTED_AT) = **5 후보** | 이용량 RCV transit 시계열 |
 | internal-use-loader         | LOADER | (PM_GD111021 × OBSRVN_DT) + (TM_GD111025 × OBSRVN_DT+LAST_CHG_DT) = **3 후보** | 이용량 GIMS 통합 시계열 |
-| internal-yaksoter-rcv       | RCV    | `[]`                                               | 약수터 시설 — 비대상 OK |
-| internal-yaksoter-loader    | LOADER | `[]`                                               | 〃 |
+| internal-yaksoter-rcv       | RCV    | 2 IF_RSV × (EXTRACTED_AT + UPDATED_AT) = **4 후보** | 약수터 RCV transit |
+| internal-yaksoter-loader    | LOADER | `[]`                                               | target(TM/TD_GD010310) = 환경부 표준 마스터, 메타 컬럼 없음 (DDL 추가 X) |
 | internal-api-collect-rcv    | RCV    | `[]`                                               | 외부 API 수집 — TBD ⚠️ |
 | internal-api-collect-loader | LOADER | `[]`                                               | 〃 |
 

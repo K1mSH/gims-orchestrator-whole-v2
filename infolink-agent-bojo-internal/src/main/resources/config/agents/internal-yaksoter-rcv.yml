@@ -24,6 +24,11 @@ steps:
     full-copy: true
     skip-source-status-update: true
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# Retention 후보 — 약수터 IF_RSV transit 의 우리 메타 시각 기준만.
+# 운영 정책: target(TM/TD_GD010310)은 환경부 표준 GIMS 마스터라 메타 컬럼 추가 불가 → Loader 비대상.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - { table: IF_RSV_TM_GD010310, dateColumn: EXTRACTED_AT, description: 약수터 제원 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_TM_GD010310, dateColumn: UPDATED_AT,   description: 약수터 제원 RCV transit — 마지막 변경 }
+  - { table: IF_RSV_TD_GD010310, dateColumn: EXTRACTED_AT, description: 약수터 수질 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_TD_GD010310, dateColumn: UPDATED_AT,   description: 약수터 수질 RCV transit — 마지막 변경 }
