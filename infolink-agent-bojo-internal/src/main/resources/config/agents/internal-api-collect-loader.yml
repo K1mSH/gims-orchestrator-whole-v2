@@ -19,6 +19,8 @@ steps:
     target-table: TM_GD014000
     merge-key: BID_PBANC_NO
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
+# Retention 비대상 — target(TM_GD014001/TM_GD014000)이 환경부 표준 컬럼만 있고
+# 우리 메타(EXTRACTED_AT/UPDATED_AT) 없음. 비즈니스 시각(BID_DDLN_DT/PSTG_YMD)도 varchar 라
+# RetentionCandidate 미지원 (5/13 별 트랙 enhancement). (SND/RCV transit 만 retention 박음)
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
 retention-candidates: []

@@ -39,7 +39,7 @@
 | dmz-bojo-rcv-keunsan                  | RCV    | (if_rsv_sec_obsvdata, obsv_date)              | 〃 |
 | dmz-bojo-snd                          | SND    | (if_snd_sec_obsvdata, obsv_date)              | DMZ → Internal 송신용 시계열 |
 | dmz-bojo-loader                       | LOADER | (sec_obsvdata, obsv_date)                     | DMZ 통합 시계열 |
-| dmz-others-snd-api-collect            | SND    | `[]`                                           | 외부 API 수집 — TBD ⚠️ |
+| dmz-others-snd-api-collect            | SND    | 2 if_snd × (extracted_at + updated_at) = **4 후보** | 뉴스/나라장터 SND transit (Loader target 은 환경부 표준 + varchar 비즈니스 시각이라 retention 미지원) |
 | dmz-others-snd-jeju                   | SND    | `[]`                                           | jeju (수위/제원/시설 혼합) — TBD ⚠️ |
 | dmz-others-snd-saeol                  | SND    | 16 IF_SND_RGET\* × (EXTRACTED_AT + UPDATED_AT) = **32 후보** | 새올 SND transit — 우리 메타 시각 기준만 (원본 시각 영구 보존) |
 | dmz-others-snd-yaksoter               | SND    | 2 if_snd × (extracted_at + updated_at) = **4 후보** | 약수터 SND transit (Loader target 은 환경부 표준 마스터라 메타 X) |
@@ -67,8 +67,8 @@
 | internal-use-loader         | LOADER | (PM_GD111021 × OBSRVN_DT) + (TM_GD111025 × OBSRVN_DT+LAST_CHG_DT) = **3 후보** | 이용량 GIMS 통합 시계열 |
 | internal-yaksoter-rcv       | RCV    | 2 IF_RSV × (EXTRACTED_AT + UPDATED_AT) = **4 후보** | 약수터 RCV transit |
 | internal-yaksoter-loader    | LOADER | `[]`                                               | target(TM/TD_GD010310) = 환경부 표준 마스터, 메타 컬럼 없음 (DDL 추가 X) |
-| internal-api-collect-rcv    | RCV    | `[]`                                               | 외부 API 수집 — TBD ⚠️ |
-| internal-api-collect-loader | LOADER | `[]`                                               | 〃 |
+| internal-api-collect-rcv    | RCV    | 2 IF_RSV × (EXTRACTED_AT + UPDATED_AT) = **4 후보** | 뉴스/나라장터 RCV transit |
+| internal-api-collect-loader | LOADER | `[]`                                               | target = 환경부 표준 + varchar 비즈니스 시각, 우리 메타 X → 미적용 |
 
 ---
 

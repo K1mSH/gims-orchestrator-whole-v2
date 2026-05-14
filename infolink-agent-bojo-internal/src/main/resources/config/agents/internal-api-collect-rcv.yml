@@ -25,6 +25,11 @@ steps:
     full-copy: true
     skip-source-status-update: true
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# Retention 후보 — api-collector 수집 IF_RSV transit 의 우리 메타 시각 기준만.
+# 운영 정책: target(TM_GD014001/014000)은 환경부 표준이라 메타 컬럼 없음 → Loader 비대상.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - { table: IF_RSV_TM_GD014001, dateColumn: EXTRACTED_AT, description: 뉴스 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_TM_GD014001, dateColumn: UPDATED_AT,   description: 뉴스 RCV transit — 마지막 변경 }
+  - { table: IF_RSV_TM_GD014000, dateColumn: EXTRACTED_AT, description: 나라장터 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_TM_GD014000, dateColumn: UPDATED_AT,   description: 나라장터 RCV transit — 마지막 변경 }
