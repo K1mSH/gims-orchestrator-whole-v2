@@ -110,7 +110,21 @@ public class SyncDataSourceService implements DataSourceProvider {
             return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
         }
 
-        // 2. Spring 기본 DataSource fallback (Agent 로컬 DB = IF/Target DB)
+        // 2. 캐시 miss — Proxy 경유 lazy resolve 시도.
+        //   Retention cleanup 흐름은 파이프라인 ThreadLocal 외부(스케줄러)에서 호출되어 캐시가 비어있다.
+        //   resolveFromProxy 가 datasource info 를 가져와 cache 에 채우면 정상 jdbc 사용.
+        if (datasourceId != null && !datasourceId.isBlank() && proxyUrl != null && !proxyUrl.isEmpty()) {
+            try {
+                resolveFromProxy(datasourceId);
+                if (findDataSourceInfo(datasourceId) != null) {
+                    return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);
+                }
+            } catch (Exception e) {
+                log.warn("[Others] datasource '{}' Proxy 해석 실패, fallback: {}", datasourceId, e.getMessage());
+            }
+        }
+
+        // 3. Spring 기본 DataSource fallback (Agent 로컬 DB = IF/Target DB)
         log.debug("[Others] 데이터소스 '{}' 해석 불가, 기본 JdbcTemplate 사용 (로컬 DB)", datasourceId);
         return defaultJdbcTemplate;
     }
