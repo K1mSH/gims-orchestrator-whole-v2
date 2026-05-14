@@ -149,6 +149,39 @@ steps:
           sf_team_code: REL_TRANS_CGG_CODE
           list_code: MW_TAKE_NO
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# Retention 후보 — 새올 마스터 IF_SND transit 의 우리 메타 시각 기준.
+# 운영 정책: 외부 새올 마스터(FIRST_REG_DTHR 등)는 영구 보존, 우리 시스템 통해 적재된 transit 만 정리.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - { table: IF_SND_RGETSTGMS01,  dateColumn: EXTRACTED_AT, description: 이용실태 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETSTGMS01,  dateColumn: UPDATED_AT,   description: 이용실태 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNPMMS01,  dateColumn: EXTRACTED_AT, description: 허가신고 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNPMMS01,  dateColumn: UPDATED_AT,   description: 허가신고 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNWAVI05,  dateColumn: EXTRACTED_AT, description: 수질검사 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNWAVI05,  dateColumn: UPDATED_AT,   description: 수질검사 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNWAVI06,  dateColumn: EXTRACTED_AT, description: 수질검사내역 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNWAVI06,  dateColumn: UPDATED_AT,   description: 수질검사내역 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNMNFE01,  dateColumn: EXTRACTED_AT, description: 인력장비 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNMNFE01,  dateColumn: UPDATED_AT,   description: 인력장비 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNOPMS01,  dateColumn: EXTRACTED_AT, description: 이용신고 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNOPMS01,  dateColumn: UPDATED_AT,   description: 이용신고 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNTGMS02,  dateColumn: EXTRACTED_AT, description: 지표수수질 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNTGMS02,  dateColumn: UPDATED_AT,   description: 지표수수질 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNKCNO01,  dateColumn: EXTRACTED_AT, description: 케이싱 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNKCNO01,  dateColumn: UPDATED_AT,   description: 케이싱 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNWAMS01,  dateColumn: EXTRACTED_AT, description: 지표수환경기준 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNWAMS01,  dateColumn: UPDATED_AT,   description: 지표수환경기준 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNSIMS01,  dateColumn: EXTRACTED_AT, description: 심화조사 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNSIMS01,  dateColumn: UPDATED_AT,   description: 심화조사 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNYYMS01,  dateColumn: EXTRACTED_AT, description: 용년 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNYYMS01,  dateColumn: UPDATED_AT,   description: 용년 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNJHMS01,  dateColumn: EXTRACTED_AT, description: 정화조 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNJHMS01,  dateColumn: UPDATED_AT,   description: 정화조 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNSCKT01,  dateColumn: EXTRACTED_AT, description: 스케치 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNSCKT01,  dateColumn: UPDATED_AT,   description: 스케치 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNKMTB01,  dateColumn: EXTRACTED_AT, description: 공간매체 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNKMTB01,  dateColumn: UPDATED_AT,   description: 공간매체 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETHKMIR01,  dateColumn: EXTRACTED_AT, description: 현황 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETHKMIR01,  dateColumn: UPDATED_AT,   description: 현황 SND transit — 마지막 변경 }
+  - { table: IF_SND_RGETNYCSG01,  dateColumn: EXTRACTED_AT, description: 연락처 SND transit — 시스템 입수 }
+  - { table: IF_SND_RGETNYCSG01,  dateColumn: UPDATED_AT,   description: 연락처 SND transit — 마지막 변경 }
