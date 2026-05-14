@@ -33,6 +33,22 @@ steps:
     primary-key: obsrvt_id,obsr_de
     conflict-key: source_refs
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# Retention 후보 — 이용량 transit (SND target) 시계열. obsr_dt(관측시각) / extracted_at(시스템 입수) 둘 다 후보 (운영자 선택).
+# jeju_day 의 obsr_de(varchar YYYYMMDD)는 별 트랙 enhancement 대기 — extracted_at 만 후보.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - table: if_snd_use_legacy_data
+    dateColumn: obsr_dt
+    description: 이용량 시간자료 SND transit — 관측시각 기준
+  - table: if_snd_use_legacy_data
+    dateColumn: extracted_at
+    description: 이용량 시간자료 SND transit — 시스템 입수 기준
+  - table: if_snd_use_status_data
+    dateColumn: obsr_dt
+    description: 이용량 관측데이터 SND transit — 관측시각 기준
+  - table: if_snd_use_status_data
+    dateColumn: extracted_at
+    description: 이용량 관측데이터 SND transit — 시스템 입수 기준
+  - table: if_snd_use_jeju_day
+    dateColumn: extracted_at
+    description: 제주 일일이용량 SND transit — 시스템 입수 기준 (obsr_de varchar 는 별 트랙)

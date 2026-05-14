@@ -11,6 +11,53 @@ steps:
     source-table: [IF_RSV_USE_LEGACY_DATA, IF_RSV_USE_STATUS_DATA]
     target-table: [PM_GD111021, PM_GD111022, TM_GD111024, TM_GD111025]
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# 수동 실행 시 노출/허용할 WHERE 필터. Loader 의 source = IF_RSV_USE_LEGACY_DATA + IF_RSV_USE_STATUS_DATA.
+# 비즈니스 컬럼만 큐레이션 (메타 컬럼 ID/SOURCE_REFS/LINK_STATUS/EXTRACTED_AT/UPDATED_AT/EXECUTION_ID 숨김).
+# dev_plan/2026_05/12/yml-declared-where-filters.md
+where-filters:
+  - key: telno-legacy
+    label: 전화번호
+    table: IF_RSV_USE_LEGACY_DATA
+    column: TELNO
+    operators: [LIKE, IN]
+    valueType: STRING
+    hint: "예: 010-1234-%  /  번호목록(쉼표 구분)"
+  - key: period-legacy
+    label: 측정시간
+    table: IF_RSV_USE_LEGACY_DATA
+    column: OBSR_DT
+    operators: [BETWEEN]
+    valueType: DATETIME
+  - key: telno-status
+    label: 전화번호
+    table: IF_RSV_USE_STATUS_DATA
+    column: TELNO
+    operators: [LIKE, IN]
+    valueType: STRING
+    hint: "예: 010-1234-%  /  번호목록(쉼표 구분)"
+  - key: period-status
+    label: 측정시간
+    table: IF_RSV_USE_STATUS_DATA
+    column: OBSR_DT
+    operators: [BETWEEN]
+    valueType: DATETIME
+  - key: stat
+    label: 상태
+    table: IF_RSV_USE_STATUS_DATA
+    column: STAT
+    operators: [IN, "="]
+    valueType: STRING
+
+# Retention 후보 — 이용량 GIMS 통합 시계열. PM_GD111021/TM_GD111025 는 메타 컬럼이 없어 비즈니스 시각 기반.
+# PM_GD111022(일집계, OBSRVN_YMD varchar) / TM_GD111024(스냅샷) 는 retention 비대상.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - table: PM_GD111021
+    dateColumn: OBSRVN_DT
+    description: 이용량 시간자료 (GIMS 통합) — 관측시각 기준
+  - table: TM_GD111025
+    dateColumn: OBSRVN_DT
+    description: 이용량 관측데이터 (GIMS 통합) — 관측시각 기준
+  - table: TM_GD111025
+    dateColumn: LAST_CHG_DT
+    description: 이용량 관측데이터 (GIMS 통합) — 마지막 변경 기준

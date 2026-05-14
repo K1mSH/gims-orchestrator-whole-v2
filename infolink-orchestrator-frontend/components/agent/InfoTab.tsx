@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { agentApi, scheduleApi, datasourceApi } from '@/lib/api';
 import type {
   Agent,
@@ -219,6 +219,17 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
   type RetentionCandidate = { table: string; dateColumn: string; description?: string };
   const [retentionCandidates, setRetentionCandidates] = useState<RetentionCandidate[]>([]);
 
+  // 같은 테이블에 dateColumn 후보가 여러 개일 수 있어 테이블 기준으로 그룹핑.
+  // 테이블 dropdown 은 unique table, dateColumn dropdown 은 선택된 테이블의 후보들.
+  const candidatesByTable = useMemo(() => {
+    const m = new Map<string, RetentionCandidate[]>();
+    retentionCandidates.forEach((c) => {
+      if (!m.has(c.table)) m.set(c.table, []);
+      m.get(c.table)!.push(c);
+    });
+    return m;
+  }, [retentionCandidates]);
+
   const fetchRetention = useCallback(async () => {
     if (agent.agentType === 'DB_CON_PROXY') return;
     try {
@@ -312,13 +323,14 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
 
   const handleRetentionAddTarget = () => {
     const usedTables = retentionForm.targets.map((t) => t.table);
-    const firstAvailable = retentionCandidates.find((c) => !usedTables.includes(c.table));
+    const availableTable = Array.from(candidatesByTable.keys()).find((t) => !usedTables.includes(t));
+    const firstDateColumn = availableTable ? candidatesByTable.get(availableTable)![0]?.dateColumn : '';
     setRetentionForm((prev) => ({
       ...prev,
       enabled: true,
       targets: [...prev.targets, {
-        table: firstAvailable?.table || '',
-        dateColumn: firstAvailable?.dateColumn || '',
+        table: availableTable || '',
+        dateColumn: firstDateColumn || '',
         retentionDays: 365,
       }],
     }));
@@ -337,8 +349,9 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
       targets: prev.targets.map((t, i) => {
         if (i !== index) return t;
         if (field === 'table') {
-          const selected = retentionCandidates.find((c) => c.table === value);
-          return { ...t, table: value as string, dateColumn: selected?.dateColumn || '' };
+          // 테이블 변경 시 dateColumn 도 그 테이블의 첫 후보로 reset
+          const candidates = candidatesByTable.get(value as string) || [];
+          return { ...t, table: value as string, dateColumn: candidates[0]?.dateColumn || '' };
         }
         return { ...t, [field]: value };
       }),
@@ -976,16 +989,11 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
           {retentionEditMode ? (
             <div style={{ marginTop: '1.6rem' }}>
               <div className={styles.retentionToolbar}>
-                <span className={styles.retentionToolbar__label}>Target Datasource ID:</span>
-                <input
-                  type="text"
-                  className={`krds-input small ${styles.retentionToolbar__input}`}
-                  value={retentionForm.targetDatasourceId || ''}
-                  onChange={(e) =>
-                    setRetentionForm((prev) => ({ ...prev, targetDatasourceId: e.target.value }))
-                  }
-                  placeholder={agent.targetDatasourceId || ''}
-                />
+                <span className={styles.retentionToolbar__label}>보존 정책 적용 대상:</span>
+                <span style={{ fontWeight: 500 }}>
+                  {targetDatasource?.datasourceName ?? agent.targetDatasourceId ?? '-'}
+                  {targetDatasource?.dbType ? ` (${targetDatasource.dbType})` : ''}
+                </span>
               </div>
               <table className="app-table">
                 <thead>
@@ -998,7 +1006,7 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 </thead>
                 <tbody>
                   {retentionForm.targets.map((t, i) => {
-                    const selectedCandidate = retentionCandidates.find((c) => c.table === t.table);
+                    const dateColumnsForTable = candidatesByTable.get(t.table) ?? [];
                     return (
                       <tr key={i}>
                         <td>
@@ -1008,22 +1016,25 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                             onChange={(e) => handleRetentionTargetChange(i, 'table', e.target.value)}
                           >
                             <option value="">-- 테이블 선택 --</option>
-                            {retentionCandidates.map((c) => (
-                              <option key={c.table} value={c.table}>
-                                {c.table}
-                                {c.description ? ` (${c.description})` : ''}
+                            {Array.from(candidatesByTable.keys()).map((table) => (
+                              <option key={table} value={table}>
+                                {table}
                               </option>
                             ))}
                           </select>
                         </td>
                         <td>
-                          <input
-                            type="text"
-                            className={`krds-input small ${styles.retentionDateColumnReadonly}`}
-                            value={selectedCandidate?.dateColumn || t.dateColumn}
-                            readOnly
-                            title="yml retention-candidates 에서 자동 결정"
-                          />
+                          <select
+                            className="krds-input small"
+                            value={t.dateColumn}
+                            onChange={(e) => handleRetentionTargetChange(i, 'dateColumn', e.target.value)}
+                          >
+                            {dateColumnsForTable.map((c) => (
+                              <option key={c.dateColumn} value={c.dateColumn}>
+                                {c.dateColumn}{c.description ? ` — ${c.description}` : ''}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td>
                           <input
@@ -1075,8 +1086,8 @@ export default function InfoTab({ agent, schedules, onUpdate }: InfoTabProps) {
                 <tbody>
                   {retentionConfig.targets.map((t, i) => (
                     <tr key={i}>
-                      <td><code>{t.table}</code></td>
-                      <td><code>{t.dateColumn}</code></td>
+                      <td>{t.table}</td>
+                      <td>{t.dateColumn}</td>
                       <td>
                         {t.retentionDays}일 (
                         {Math.floor(t.retentionDays / 365) > 0

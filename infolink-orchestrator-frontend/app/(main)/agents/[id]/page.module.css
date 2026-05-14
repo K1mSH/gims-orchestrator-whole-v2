@@ -62,7 +62,7 @@
   color: var(--krds-light-color-text-bolder);
 }
 
-.conditionInput--table { width: 18rem; }
+.conditionInput--table { width: 36rem; }
 .conditionInput--column { width: 16rem; }
 .conditionInput--operator { width: 11rem; }
 .conditionInput--value { width: 18rem; }

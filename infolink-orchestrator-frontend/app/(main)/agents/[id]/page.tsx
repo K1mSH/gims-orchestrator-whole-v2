@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { agentApi, scheduleApi, executionHistoryApi, executionApi } from '@/lib/api';
-import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable, WhereFilterDef } from '@/types';
+import { agentApi, scheduleApi, executionHistoryApi, executionApi, datasourceApi } from '@/lib/api';
+import type { Agent, Schedule, ExecutionHistory, ExecutionCondition, DatasourceTable, WhereFilterDef, Datasource } from '@/types';
 import { CONDITION_OPERATORS } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import TabButton from '@/components/agent/TabButton';
@@ -38,6 +38,7 @@ export default function AgentDetailPage() {
   const [condTableSelections, setCondTableSelections] = useState<string[]>([]);
   const [sourceTables, setSourceTables] = useState<DatasourceTable[]>([]);
   const [whereFilters, setWhereFilters] = useState<WhereFilterDef[]>([]);
+  const [sourceDatasource, setSourceDatasource] = useState<Datasource | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -63,6 +64,14 @@ export default function AgentDetailPage() {
         setWhereFilters(Array.isArray(wf) ? wf : []);
       } catch {
         setWhereFilters([]);
+      }
+      if (agentData.sourceDatasourceId) {
+        try {
+          const ds = await datasourceApi.getById(agentData.sourceDatasourceId);
+          setSourceDatasource(ds);
+        } catch {
+          setSourceDatasource(null);
+        }
       }
     } catch (error) {
       console.error('데이터 조회 실패:', error);
@@ -238,6 +247,11 @@ export default function AgentDetailPage() {
                 + 조건 추가
               </button>
             </div>
+            {useCurated && sourceDatasource && (
+              <div style={{ marginTop: '0.4rem', marginBottom: '0.6rem', fontSize: '0.92em', color: 'var(--krds-text-tertiary, #666)' }}>
+                조건 적용 대상: <span style={{ fontWeight: 500 }}>{sourceDatasource.datasourceName} ({sourceDatasource.dbType})</span>
+              </div>
+            )}
             {conditions.map((cond, idx) => {
               if (useCurated) {
                 // ── 큐레이션 모드: yml where-filters 로 정의된 (테이블,컬럼) 필터만 ──
@@ -282,8 +296,9 @@ export default function AgentDetailPage() {
                     >
                       {whereFilters.map((f, i) => (
                         <option key={i} value={filterKeyOf(f)}>
-                          {f.label || `${f.table}.${f.column}`}
-                          {f.column === '*' ? ' (전체 컬럼)' : ''}
+                          {f.column === '*'
+                            ? `${f.label ? f.label + ' ' : ''}(전체 컬럼) - ${f.table}`
+                            : f.label ? `${f.column}(${f.label}) - ${f.table}` : `${f.column} - ${f.table}`}
                         </option>
                       ))}
                     </select>

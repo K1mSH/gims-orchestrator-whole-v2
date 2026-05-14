@@ -32,6 +32,22 @@ steps:
     primary-key: id
     conflict-key: source_refs
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# Retention 후보 — 이용량 transit (RCV target) 시계열. OBSR_DT(관측시각) / EXTRACTED_AT(시스템 입수) 둘 다 후보 (운영자 선택).
+# JEJU_DAY 의 OBSR_DE(varchar YYYYMMDD)는 별 트랙 enhancement 대기 — EXTRACTED_AT 만 후보.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - table: IF_RSV_USE_LEGACY_DATA
+    dateColumn: OBSR_DT
+    description: 이용량 시간자료 RCV (Internal 수신) — 관측시각 기준
+  - table: IF_RSV_USE_LEGACY_DATA
+    dateColumn: EXTRACTED_AT
+    description: 이용량 시간자료 RCV — 시스템 입수 기준
+  - table: IF_RSV_USE_STATUS_DATA
+    dateColumn: OBSR_DT
+    description: 이용량 관측데이터 RCV — 관측시각 기준
+  - table: IF_RSV_USE_STATUS_DATA
+    dateColumn: EXTRACTED_AT
+    description: 이용량 관측데이터 RCV — 시스템 입수 기준
+  - table: IF_RSV_USE_JEJU_DAY
+    dateColumn: EXTRACTED_AT
+    description: 제주 일일이용량 RCV — 시스템 입수 기준 (OBSR_DE varchar 는 별 트랙)
