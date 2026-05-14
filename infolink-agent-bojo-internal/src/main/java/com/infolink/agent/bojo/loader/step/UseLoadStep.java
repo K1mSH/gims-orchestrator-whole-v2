@@ -144,10 +144,10 @@ public class UseLoadStep implements StepExecutor {
                     dailyCount = updateDailyAggregation(targetJdbc, lr.affectedBrnchDates, executionId);
                     log.info("[{}] PM_GD111022 일집계 {} 건 처리", stepId, dailyCount);
                 }
-                int lastReceiveCount = 0;
-                if (!lr.affectedBrnchIds.isEmpty()) {
-                    lastReceiveCount = updateLastReceive(targetJdbc, executionId);
-                    log.info("[{}] TM_GD111024 최근수신현황 {} 건 갱신", stepId, lastReceiveCount);
+                // TM_GD111024 는 행단위로 이미 갱신됨. 카운트는 영향받은 BRNCH 수 (fan-in 반영).
+                int lastReceiveCount = lr.affectedBrnchIds.size();
+                if (lastReceiveCount > 0) {
+                    log.info("[{}] TM_GD111024 최근수신현황 {} 건 갱신 (행단위 GREATEST, BRNCH 기준)", stepId, lastReceiveCount);
                 }
                 totalWrite += dailyCount + lastReceiveCount;
 
@@ -267,6 +267,19 @@ public class UseLoadStep implements StepExecutor {
                     brnchId, row.getObsrDt(), lastMeasure, usgqty, executionId, sourceRef
                 );
 
+                // TM_GD111024 최근수신현황 — 행단위 단조 증가 갱신.
+                // GREATEST 로 들어온 OBSRVN_DT 가 기존 값보다 클 때만 UPDATE.
+                // → conditions 실행 시 IN 한계 무관 / retention 거꾸로 문제 방어.
+                targetJdbc.update(
+                    "MERGE INTO TM_GD111024 t " +
+                    "USING (SELECT ? AS BRNCH_ID, CAST(? AS DATE) AS OBSRVN_DT FROM DUAL) s " +
+                    "ON (t.BRNCH_ID = s.BRNCH_ID) " +
+                    "WHEN MATCHED THEN UPDATE SET OBSRVN_DT = GREATEST(t.OBSRVN_DT, s.OBSRVN_DT), EXECUTION_ID = ? " +
+                    "WHEN NOT MATCHED THEN INSERT (BRNCH_ID, OBSRVN_DT, EXECUTION_ID) VALUES (?, ?, ?)",
+                    brnchId, row.getObsrDt(), executionId,
+                    brnchId, row.getObsrDt(), executionId
+                );
+
                 // 영향받은 (BRNCH_ID, 날짜) 기록 — 일집계용
                 String ymd = toYmd(row.getObsrDt());
                 if (ymd != null) {
@@ -319,19 +332,6 @@ public class UseLoadStep implements StepExecutor {
         return count;
     }
 
-    // ==================== 최근수신현황 후처리 ====================
-
-    private int updateLastReceive(JdbcTemplate jdbc, String executionId) {
-        return jdbc.update(
-            "MERGE INTO TM_GD111024 t " +
-            "USING (SELECT BRNCH_ID, MAX(OBSRVN_DT) AS OBSRVN_DT FROM PM_GD111021 GROUP BY BRNCH_ID) s " +
-            "ON (t.BRNCH_ID = s.BRNCH_ID) " +
-            "WHEN MATCHED THEN UPDATE SET OBSRVN_DT = s.OBSRVN_DT, EXECUTION_ID = ? " +
-            "WHEN NOT MATCHED THEN INSERT (BRNCH_ID, OBSRVN_DT, EXECUTION_ID) VALUES (s.BRNCH_ID, s.OBSRVN_DT, ?)",
-            executionId, executionId
-        );
-    }
-
     // ==================== Status 처리 ====================
 
     private StatusResult processStatusData(List<IfRsvUseStatusData> rows,
@@ -346,9 +346,17 @@ public class UseLoadStep implements StepExecutor {
             try {
                 String sourceRef = SourceRefUtils.buildJson(context, IF_STATUS, ifId);
 
+                // SN(외부 비즈니스 PK)이 그대로 들어오므로 외부 갱신/운영자 재처리 시 UPDATE.
+                // PM_GD111021/22 의 MERGE 패턴과 일관성.
                 targetJdbc.update(
-                    "INSERT INTO TM_GD111025 (SN, TELNO, OBSRVN_DT, LAST_CHG_DT, EXECUTION_ID, SOURCE_REFS) " +
+                    "MERGE INTO TM_GD111025 t " +
+                    "USING (SELECT ? AS SN FROM DUAL) s " +
+                    "ON (t.SN = s.SN) " +
+                    "WHEN MATCHED THEN UPDATE SET TELNO = ?, OBSRVN_DT = ?, LAST_CHG_DT = ?, EXECUTION_ID = ?, SOURCE_REFS = ? " +
+                    "WHEN NOT MATCHED THEN INSERT (SN, TELNO, OBSRVN_DT, LAST_CHG_DT, EXECUTION_ID, SOURCE_REFS) " +
                     "VALUES (?, ?, ?, ?, ?, ?)",
+                    sn,
+                    row.getTelno(), row.getObsrDt(), row.getLastChangeDt(), executionId, sourceRef,
                     sn, row.getTelno(), row.getObsrDt(), row.getLastChangeDt(), executionId, sourceRef
                 );
 
