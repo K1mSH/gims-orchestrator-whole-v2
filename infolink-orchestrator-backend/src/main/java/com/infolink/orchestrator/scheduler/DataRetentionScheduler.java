@@ -66,7 +66,11 @@ public class DataRetentionScheduler {
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
-                HttpEntity<String> request = new HttpEntity<>(agent.getRetentionConfig(), headers);
+                // agent.targetDatasourceId 를 body 에 자동 inject (운영자 입력 누락 방어).
+                // bojo-internal 같은 multi-agent 모듈은 module-default fallback 이 잘못된 datasource 잡을 수 있어
+                // 항상 명시적으로 박아 보냄. dev_plan/2026_05/08/retention-candidates-safety.md
+                String enrichedConfig = enrichTargetDatasourceId(agent.getRetentionConfig(), agent.getTargetDatasourceId());
+                HttpEntity<String> request = new HttpEntity<>(enrichedConfig, headers);
 
                 ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
 
@@ -82,5 +86,24 @@ public class DataRetentionScheduler {
         }
 
         log.info("[Retention] cleanup 완료: 성공={}, 실패={}", successCount, failCount);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String enrichTargetDatasourceId(String json, String agentTargetDsId) {
+        if (json == null || json.isBlank() || agentTargetDsId == null || agentTargetDsId.isBlank()) {
+            return json;
+        }
+        try {
+            Map<String, Object> config = objectMapper.readValue(json, Map.class);
+            Object existing = config.get("targetDatasourceId");
+            if (existing == null || (existing instanceof String && ((String) existing).isBlank())) {
+                config.put("targetDatasourceId", agentTargetDsId);
+                return objectMapper.writeValueAsString(config);
+            }
+            return json;
+        } catch (Exception e) {
+            log.warn("[Retention] targetDatasourceId inject 실패, 원본 그대로 전송: {}", e.getMessage());
+            return json;
+        }
     }
 }
