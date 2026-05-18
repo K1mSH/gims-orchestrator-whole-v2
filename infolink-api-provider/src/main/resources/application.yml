@@ -37,9 +37,9 @@ app:
     url: ENC(k3/EmYLK5qyNyPbGmVrWhqy9/w/Axnzgi/IVbs3pWpgy/K6/4rcN/10m2bwrFLaEU/VFuU6IB7nmJf7sGLUgfQ==)
     api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
 
-# Auth (JWT — auth 모듈 8096 검증자, 운영자 호출용)
+# Auth (JWT — auth 모듈 9096 검증자, 운영자 호출용)
 auth:
-  jwks-url: http://localhost:8096/.well-known/jwks.json
+  jwks-url: http://localhost:9096/.well-known/jwks.json
   issuer: orchestrator-auth
   audience: orchestrator
 

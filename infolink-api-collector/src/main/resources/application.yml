@@ -20,9 +20,9 @@ spring:
         format_sql: true
     show-sql: true
 
-# Auth (JWT — auth 모듈 8096 검증자, 운영자 호출용)
+# Auth (JWT — auth 모듈 9096 검증자, 운영자 호출용)
 auth:
-  jwks-url: http://localhost:8096/.well-known/jwks.json
+  jwks-url: http://localhost:9096/.well-known/jwks.json
   issuer: orchestrator-auth
   audience: orchestrator
 

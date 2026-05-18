@@ -1,5 +1,5 @@
 ---
-name: Auth 시스템 (infolink-auth, port 8096) + 시스템 간 인증 통합 모델
+name: Auth 시스템 (infolink-auth, port 9096) + 시스템 간 인증 통합 모델
 description: 운영자 JWT + 시스템 간 X-API-Key 양 인증 모델. Phase 1~5 완료 + Backend 비대칭 보완 (2026-05-06 오후)
 type: project
 originSessionId: 307dc124-c3af-418f-8267-eebf68533c7f
@@ -9,7 +9,7 @@ orchestrator 시스템 인증 — 운영자(JWT cookie) + 시스템 간(X-API-Ke
 
 ## 인증 매트릭스 (호출자 → 수신자)
 
-- **운영자 → Backend/api-provider/api-collector** = JWT cookie (infolink-auth 8096 발급, RS256 + JWKS)
+- **운영자 → Backend/api-provider/api-collector** = JWT cookie (infolink-auth 9096 발급, RS256 + JWKS)
 - **Frontend → 외부 모든 호출** = JWT cookie. Frontend 는 X-API-Key 박지 X (브라우저 노출 위험)
 - **시스템 간 (Backend↔Agent↔Proxy↔api-provider)** = X-API-Key (`JASYPT_PASSWORD` Docker env → jasypt → 모든 모듈 동일 평문)
 - **외부 사용자 → api-provider `/api/provide/**`** = Provide API Key (자체 ApiKeyValidationService — `?apiKey=...` 쿼리 파라미터)
@@ -59,7 +59,7 @@ Agent → Proxy → Backend
 - SWR / react-hot-toast 등 추가 패키지 0건. 기존 axios + useState/useEffect만
 - `useCurrentUser` = 모듈 단위 캐시 + subscribe pattern (자체 구현)
 - ⚠️ login 페이지에서 반드시 `mutate()` 호출 — cached=null+fetched=true 박힌 상태 stale 회피
-- `/auth/*` rewrite (3000→8096), `/api`(8080), `/provider-api`(8095), `/collector-api`(8084) — same-origin proxy 통해 cookie 자동 전송
+- `/auth/*` rewrite (3000→9096), `/api`(8080), `/provider-api`(8095), `/collector-api`(8084) — same-origin proxy 통해 cookie 자동 전송
 - middleware 1차 가드 = accessToken cookie 존재만 확인
 
 ## Mock 정책 (5/6 정정)

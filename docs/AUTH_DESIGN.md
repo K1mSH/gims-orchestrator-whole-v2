@@ -3,7 +3,7 @@
 > 작성일: 2026-04-28
 > 범위: orchestrator 시스템 전체 (Backend / Frontend / api-provider / api-collector / agents) 에 통합 인증 적용
 > 분류: 보안 — 운영자 인증 누락 (현재 누구나 접근 가능)
-> 결과물: 신규 마이크로서비스 `infolink-auth` (port 8096) + 기존 모든 모듈 보호
+> 결과물: 신규 마이크로서비스 `infolink-auth` (port 9096) + 기존 모든 모듈 보호
 
 ---
 
@@ -36,7 +36,7 @@
 | 항목 | 결정 |
 |---|---|
 | **인증 모듈 위치** | 별도 마이크로서비스 `infolink-auth` |
-| **포트** | 8096 (api-provider 8095 옆) |
+| **포트** | 9096 (api-provider 8095 옆) |
 | **알고리즘** | RS256 (RSA 비대칭) |
 | **키 회전** | 매일 자정 (자동) |
 | **이전 키 보관** | 8일치 (refresh 7일 + 1일 여유) |
@@ -66,7 +66,7 @@
 
 | 모듈 | 포트 | 인증 적용 |
 |---|:--:|---|
-| **`infolink-auth` (신규)** | **8096** | 로그인 / refresh / 로그아웃 / JWKS endpoint 제공 |
+| **`infolink-auth` (신규)** | **9096** | 로그인 / refresh / 로그아웃 / JWKS endpoint 제공 |
 | **`infolink-orchestrator-backend`** | 8080 | 모든 운영 REST API JWT 필수 (resource server) |
 | **`infolink-orchestrator-frontend`** | 3000 | 로그인 페이지 + 미인증 redirect + axios cookie 자동 전송 |
 | **`infolink-api-provider`** | 8095 | `/api/manage/**` JWT 필수 / `/api/provide/**` API key 유지 |
@@ -348,7 +348,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:8096/.well-known/jwks.json
+          jwk-set-uri: http://localhost:9096/.well-known/jwks.json
 ```
 → 코드 추가 없이 회전 자동 반영 (캐시 TTL 5분).
 
@@ -477,7 +477,7 @@ dependencies {
 
 ```yaml
 server:
-  port: 8096
+  port: 9096
 
 spring:
   application:
@@ -651,7 +651,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:8096/.well-known/jwks.json
+          jwk-set-uri: http://localhost:9096/.well-known/jwks.json
           issuer-uri: orchestrator-auth          # iss 검증
 ```
 
@@ -848,7 +848,7 @@ Phase 1~5 와 별개로 검증자 모듈에 박힐 변경:
 
 ### 10.1 로그인 화면
 - 신규 페이지: `app/login/page.tsx`
-- POST `http://localhost:8096/api/auth/login` (또는 next.config proxy 통해)
+- POST `http://localhost:9096/api/auth/login` (또는 next.config proxy 통해)
 - 성공 시 redirect to `/`
 
 ### 10.2 미인증 가드 — Next.js middleware (1차 가드)
@@ -966,7 +966,7 @@ export default client;
 ```js
 async rewrites() {
   return [
-    { source: '/auth/:path*', destination: 'http://localhost:8096/api/auth/:path*' },
+    { source: '/auth/:path*', destination: 'http://localhost:9096/api/auth/:path*' },
     { source: '/orch-api/:path*', destination: 'http://localhost:8080/api/:path*' },
     { source: '/provider-api/:path*', destination: 'http://localhost:8095/api/:path*' },
     { source: '/collector-api/:path*', destination: 'http://localhost:8084/api/:path*' },
@@ -1058,7 +1058,7 @@ export default function RootLayout({ children }) {
 
 ## 11. 단계별 작업 (Phase 1~6)
 
-### Phase 1 — Auth 모듈 신규 (`infolink-auth` 8096)
+### Phase 1 — Auth 모듈 신규 (`infolink-auth` 9096)
 - [ ] 모듈 생성 + build.gradle (Spring Security 5, **jjwt 0.11.5 + Nimbus JOSE 9.x**, JPA, jasypt) — Spring OAuth2 starter 미사용 (Boot 2.7 호환)
 - [ ] application.yml + jasypt ENC
 - [ ] DB 스키마 3 테이블 ddl-auto=update (auth_users 에 `name` 컬럼 포함, auth_refresh_tokens, auth_rsa_keys)
@@ -1359,7 +1359,7 @@ Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth;
 
 ### 14.2 배포 순서
 1. PG 스키마 migration (4 테이블)
-2. auth 모듈 배포 (8096) — 첫 부팅 시 RSA 키만 자동 생성, 사용자 row 0
+2. auth 모듈 배포 (9096) — 첫 부팅 시 RSA 키만 자동 생성, 사용자 row 0
 3. **UserGeneratorCli 로 첫 사용자 발급** (개발자가 username/password 입력)
 4. 다른 모듈 oauth2 resource server 설정 + 재배포
 5. Frontend 로그인 페이지 + middleware 배포

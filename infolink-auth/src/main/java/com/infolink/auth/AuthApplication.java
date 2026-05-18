@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Auth 모듈 — 운영자 인증/인가 마이크로서비스 (port 8096)
+ * Auth 모듈 — 운영자 인증/인가 마이크로서비스 (port 9096)
  *
  * 책임:
  * - 로그인 / refresh / 로그아웃 (JWT RS256)
