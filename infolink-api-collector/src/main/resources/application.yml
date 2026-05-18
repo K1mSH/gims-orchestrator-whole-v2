@@ -43,9 +43,12 @@ jasypt:
     algorithm: PBEWithHMACSHA512AndAES_256
     iv-generator-classname: org.jasypt.iv.RandomIvGenerator
 
-# Orchestrator 연결 (외부 Datasource 조회용)
-orchestrator:
-  url: ENC(xnxfkstDgp9riQKlSListH6OelTJ2wApZe1KoKpTflTGSVjEfbji9sEwXDzStFew8wJgPEhKP+yawGahOCubqw==)
+# Agent 공통 설정 — datasource connection-info 는 Proxy 경유 + X-API-Key 로 단일화 (다른 6 모듈과 키 일관)
+# 옛 orchestrator.url 직접 호출은 5/18 폐기 (참고: dev_plan/2026_05/18/api-collector-proxy-routing-fix.md)
+agent:
+  proxy-url: ENC(ZdOrUviyTKn8YvU+Vs725joK12w5RyS01fYyA5p8zN0jPVJVpDxiZjRRQWf3AnkWQQ2R7wKjhM6AScv+OveAaQ==)
+  api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
+  zone: DMZ
 
 # LOOKUP 공통코드 API (GIMS 내부)
 lookup:
