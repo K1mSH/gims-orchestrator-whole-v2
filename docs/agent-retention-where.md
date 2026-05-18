@@ -40,7 +40,7 @@
 | dmz-bojo-snd                          | SND    | (if_snd_sec_obsvdata, obsv_date)              | DMZ → Internal 송신용 시계열 |
 | dmz-bojo-loader                       | LOADER | (sec_obsvdata, obsv_date)                     | DMZ 통합 시계열 |
 | dmz-others-snd-api-collect            | SND    | 2 if_snd × (extracted_at + updated_at) = **4 후보** | 뉴스/나라장터 SND transit (Loader target 은 환경부 표준 + varchar 비즈니스 시각이라 retention 미지원) |
-| dmz-others-snd-jeju                   | SND    | `[]`                                           | jeju (수위/제원/시설 혼합) — TBD ⚠️ |
+| dmz-others-snd-jeju                   | SND    | 3 if_snd × (extracted_at + updated_at) = **6 후보** | 제주 SND transit (Loader target 은 환경부 표준 마스터 + EAV fan-out 이라 별 yml 비대상) |
 | dmz-others-snd-saeol                  | SND    | 16 IF_SND_RGET\* × (EXTRACTED_AT + UPDATED_AT) = **32 후보** | 새올 SND transit — 우리 메타 시각 기준만 (원본 시각 영구 보존) |
 | dmz-others-snd-yaksoter               | SND    | 2 if_snd × (extracted_at + updated_at) = **4 후보** | 약수터 SND transit (Loader target 은 환경부 표준 마스터라 메타 X) |
 | dmz-others-snd-use                    | SND    | (legacy/status × obsr_dt+extracted_at) + (jeju_day × extracted_at) = **5 후보** | 이용량 SND transit 시계열 |
@@ -59,8 +59,8 @@
 |-----------------------------|--------|---------------------------------------------------|------|
 | internal-bojo-rcv           | RCV    | (IF_RSV_SEC_OBSVDATA, OBSV_DATE)                  | Internal 수신 시계열 |
 | internal-bojo-loader        | LOADER | (PM_GD970201, OBSRVN_DT)                          | GIMS 관측 시계열 (EAV 1:3) |
-| internal-jeju-rcv           | RCV    | `[]`                                               | jeju 혼합 — 수위 데이터 시계열 가능성 ⚠️ |
-| internal-jeju-loader        | LOADER | `[]`                                               | 〃 |
+| internal-jeju-rcv           | RCV    | 3 IF_RSV × (EXTRACTED_AT + UPDATED_AT) = **6 후보** | 제주 RCV transit |
+| internal-jeju-loader        | LOADER | `[]`                                               | target = 환경부 표준 GIMS + EAV fan-out, 메타 컬럼 없음. PM_GD970201·OBSRVN_DT 는 bojo-internal-loader 에 후보 등록 (단일 진실원) |
 | internal-saeol-rcv          | RCV    | 16 IF_RSV_RGET\* × (EXTRACTED_AT + UPDATED_AT) = **32 후보** | 새올 RCV transit |
 | internal-saeol-loader       | LOADER | 16 RGET\* × (EXTRACTED_AT + UPDATED_AT) = **32 후보** | 새올 GIMS 마스터 — 우리 메타만 |
 | internal-use-rcv            | RCV    | (LEGACY/STATUS × OBSR_DT+EXTRACTED_AT) + (JEJU_DAY × EXTRACTED_AT) = **5 후보** | 이용량 RCV transit 시계열 |
@@ -85,7 +85,7 @@
 | internal-bojo-rcv                     | RCV    | (없음) |
 | **internal-bojo-loader**              | LOADER | `region: IF_RSV_SEC_OBSVDATA.OBSV_CODE / LIKE,IN / STRING`<br>`period: IF_RSV_SEC_OBSVDATA.OBSV_DATE / BETWEEN / DATE` |
 | internal-jeju-rcv                     | RCV    | (없음) |
-| internal-jeju-loader                  | LOADER | (없음) — TBD ⚠️ |
+| internal-jeju-loader                  | LOADER | (없음) — 자동화 운영 중심, 운영자 수동실행 의미 약함 |
 | internal-saeol-rcv                    | RCV    | (없음) |
 | internal-saeol-loader                 | LOADER | (없음) — TBD ⚠️ |
 | internal-use-rcv                      | RCV    | (없음) |
@@ -111,11 +111,11 @@
 - frontend UI 정합: retention dropdown unique table + dateColumn select, conditions UI label 형식 + datasource 안내
 - 자세히: `dev_plan/2026_05/14/use-retention-where-merge-fix.md`
 
-### ⚠️ 2. jeju 4 agent retention 검토 필요
-- `dmz-others-snd-jeju` / `internal-jeju-rcv` / `internal-jeju-loader`
-- 안에 시계열 (`if_snd_tb_jeju` 수위 관측) + 마스터 (`if_snd_tb_jeju_jewon` 제원 / `if_snd_rgetstgms01` 시설) 혼합.
-- 수위 테이블은 retention 후보 가능, 제원/시설은 비대상. 분류 후 후보 등록.
-- 별 todo — 본 사이클 외.
+### ✅ 2. jeju retention/where (2026-05-18 완료)
+- `dmz-others-snd-jeju` / `internal-jeju-rcv` retention 6 후보씩 등록 (IF transit × extracted_at + updated_at)
+- `internal-jeju-loader` 는 `[]` 유지 — target = 환경부 표준 GIMS + EAV fan-out, 메타 컬럼 없음. PM_GD970201·OBSRVN_DT 는 bojo-internal-loader 단일 진실원
+- Loader where-filters 미적용 — 제주는 자동화 운영, 수동실행 conditions 의미 약함
+- 자세히: `dev_plan/2026_05/18/jeju-retention-yml.md`
 
 ### ⚠️ 3. api-collect 4 agent retention 검토 필요
 - `dmz-others-snd-api-collect` / `internal-api-collect-rcv` / `internal-api-collect-loader`
@@ -150,3 +150,4 @@
 | 일자       | 변경 |
 |------------|------|
 | 2026-05-14 | 신규 작성. 36 agent 전수 스캔 (Explore 서브에이전트). 이용량 정정 대상 + jeju/api-collect/provide 갭 명시. |
+| 2026-05-18 | jeju 3 yml 정합. SND/RCV 6 후보씩 등록, Loader `[]` 유지(의도 주석). 매트릭스 ⚠️ 제거. |

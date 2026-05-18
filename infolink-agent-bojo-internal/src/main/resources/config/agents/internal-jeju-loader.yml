@@ -23,6 +23,9 @@ steps:
     source-table: IF_RSV_RGETSTGMS01
     target-table: [TM_GD111010]
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
+# Retention 비대상 — target 8개 모두 환경부 표준 GIMS 마스터 + EAV fan-out 패턴.
+# 운영 정책: MERGE SQL 이 EXECUTION_ID/SOURCE_REFS 만 박고 우리 메타 시각 컬럼 미적용 (DDL 표준 위반 회피).
+# PM_GD970201/202 의 OBSRVN_DT 비즈니스 시각은 bojo-internal-loader 에 후보 등록 (단일 진실원).
+# Where-filters 도 비대상 — 제주는 자동화 운영 중심, 운영자 수동실행 의미 약함.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
 retention-candidates: []

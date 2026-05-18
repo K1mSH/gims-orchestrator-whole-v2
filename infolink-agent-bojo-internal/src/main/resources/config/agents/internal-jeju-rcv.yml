@@ -30,6 +30,15 @@ steps:
     primary-key: perm_nt_no
     conflict-key: source_refs
 
-# Retention 비대상 — 마스터 / Link / 시설 등록 데이터 (등록 후 영구 보존)
-# dev_plan/2026_05/08/retention-candidates-safety.md
-retention-candidates: []
+# Retention 후보 — 제주 IF_RSV transit 의 우리 메타 시각 기준만.
+# 운영 정책: 외부 원본 (비즈니스 컬럼) 은 영구 보존, 우리 시스템 통해 적재된 row 만
+# EXTRACTED_AT/UPDATED_AT 기준으로 정리 가능.
+# Loader target 은 환경부 표준 GIMS 마스터 + EAV fan-out 이라 메타 컬럼 없음 → 별 yml 비대상.
+# 정책: dev_plan/2026_05/08/retention-candidates-safety.md, 매트릭스: docs/agent-retention-where.md
+retention-candidates:
+  - { table: IF_RSV_TB_JEJU_JEWON, dateColumn: EXTRACTED_AT, description: 제주 관측점 마스터 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_TB_JEJU_JEWON, dateColumn: UPDATED_AT,   description: 제주 관측점 마스터 RCV transit — 마지막 변경 }
+  - { table: IF_RSV_TB_JEJU,       dateColumn: EXTRACTED_AT, description: 제주 수위 관측 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_TB_JEJU,       dateColumn: UPDATED_AT,   description: 제주 수위 관측 RCV transit — 마지막 변경 }
+  - { table: IF_RSV_RGETSTGMS01,   dateColumn: EXTRACTED_AT, description: 제주 이용실태 RCV transit — 시스템 입수 }
+  - { table: IF_RSV_RGETSTGMS01,   dateColumn: UPDATED_AT,   description: 제주 이용실태 RCV transit — 마지막 변경 }
