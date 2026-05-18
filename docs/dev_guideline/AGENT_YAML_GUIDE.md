@@ -46,7 +46,7 @@
 | DMZ 통합 Agent (bojo) | `infolink-agent-bojo-dmz/src/main/resources/config/agents/` |
 | Internal 통합 Agent (bojo-internal) | `infolink-agent-bojo-internal/src/main/resources/config/agents/` |
 | DMZ Others SND | `infolink-agent-others-dmz/src/main/resources/config/agents/` |
-| API 제공 Agent (provide) | `infolink-agent-provide-dmz/src/main/resources/config/agents/` |
+| API 제공 Agent (provide) | `infolink-agent-provide/src/main/resources/config/agents/` |
 
 ### 1.3 파일명 규칙 (관례)
 
@@ -590,7 +590,7 @@ steps:
 ### 6.3 Provide Agent 추가
 
 ```yaml
-# infolink-agent-provide-dmz/src/main/resources/config/agents/provide-<테이블명>.yml
+# infolink-agent-provide/src/main/resources/config/agents/provide-<테이블명>.yml
 
 # ──────────────────────────────────────
 # 패턴: 단순 복사 (Oracle 원본 → PG 제공 테이블 1:1)

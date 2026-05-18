@@ -25,7 +25,7 @@
 | A4 | Agent IF DB URL (bojo-internal) | `jdbc:postgresql://localhost:29001/dev` | `infolink-agent-bojo-internal/.../application.yml` | 환경변수 | | | |
 | A5 | Agent IF DB URL (others) | `jdbc:postgresql://localhost:29001/dev` | `infolink-agent-others-dmz/.../application.yml` | 환경변수 | | | |
 | A6 | API Collector DB URL | `jdbc:postgresql://localhost:29001/api_collector` | `infolink-api-collector/.../application.yml` | 환경변수 | | | |
-| A7 | API Provider DB URL | `jdbc:postgresql://localhost:29006/api_provider` | `infolink-api-provider/.../application.yml` / `infolink-agent-provide-dmz/.../application.yml` | `SPRING_DATASOURCE_URL` 환경변수 (PoC 검증) | (PoC) `host.docker.internal:29006` 으로 override 작동 확인 | docker-poc | 2026-04-29 |
+| A7 | API Provider DB URL | `jdbc:postgresql://localhost:29006/api_provider` | `infolink-api-provider/.../application.yml` / `infolink-agent-provide/.../application.yml` | `SPRING_DATASOURCE_URL` 환경변수 (PoC 검증) | (PoC) `host.docker.internal:29006` 으로 override 작동 확인 | docker-poc | 2026-04-29 |
 
 ## B. 외부 원본 DB (Orchestrator DB 등록으로 관리)
 

@@ -31,7 +31,7 @@ uniqueConstraints = @UniqueConstraint(
     columnNames = {"source_refs"}
 )
 
-// infolink-agent-provide-dmz/entity/target/ApiPrvTmGd000203.java
+// infolink-agent-provide/entity/target/ApiPrvTmGd000203.java
 @UniqueConstraint(name = "uk_api_prv_tm_gd000203_source_refs", columnNames = {"source_refs"})
 ```
 

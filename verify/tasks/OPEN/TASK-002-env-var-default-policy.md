@@ -61,7 +61,7 @@ infolink-api-provider/src/main/resources/application.yml:43      password: ${JAS
 infolink-agent-bojo-dmz/src/main/resources/application.yml:61        password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 infolink-agent-bojo-internal/src/main/resources/application.yml:49    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 infolink-agent-others-dmz/src/main/resources/application.yml:49      password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
-infolink-agent-provide-dmz/src/main/resources/application.yml:49     password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
+infolink-agent-provide/src/main/resources/application.yml:49     password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 infolink-orchestrator-backend/src/main/resources/application.yml:39  password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 infolink-proxy-dmz/src/main/resources/application.yml:42         password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
 infolink-proxy-internal/src/main/resources/application.yml:42    password: ${JASYPT_PASSWORD:sync-pipeline-secret-key-2024}
@@ -74,7 +74,7 @@ infolink-api-collector/src/main/resources/application.yml:26 password: ${JASYPT_
 infolink-agent-bojo-dmz/.../config/SyncDataSourceService.java:43            ${agent.orchestrator-url:http://localhost:8080}
 infolink-agent-bojo-internal/.../config/SyncDataSourceService.java:33        ${agent.orchestrator-url:http://localhost:8080}
 infolink-agent-others-dmz/.../config/SyncDataSourceService.java:43          ${agent.orchestrator-url:http://localhost:8080}
-infolink-agent-provide-dmz/.../config/SyncDataSourceService.java:33         ${agent.orchestrator-url:http://localhost:8080}
+infolink-agent-provide/.../config/SyncDataSourceService.java:33         ${agent.orchestrator-url:http://localhost:8080}
 infolink-proxy-dmz/.../config/ProxyDataSourceService.java:35            ${agent.orchestrator-url:http://localhost:8080}
 infolink-proxy-dmz/.../controller/ConnectionInfoController.java:33      ${agent.orchestrator-url:http://localhost:8080}
 infolink-proxy-internal/.../config/ProxyDataSourceService.java:35       ${agent.orchestrator-url:http://localhost:8080}

@@ -74,7 +74,7 @@ orchestrator_v2/
 ├── infolink-agent-bojo-dmz/          # DMZ Agent (12개 논리적 Agent, port 8082)
 ├── infolink-agent-bojo-internal/      # Internal Agent (port 8092)
 ├── infolink-agent-others-dmz/        # Others DMZ Agent (yaksoter/nara/news/use 등, port 8085)
-├── infolink-agent-provide-dmz/       # Provide Agent
+├── infolink-agent-provide/       # Provide Agent
 ├── infolink-proxy-dmz/           # DMZ Proxy (port 8083)
 ├── infolink-proxy-internal/      # Internal Proxy (port 8093)
 ├── infolink-orchestrator-backend/  # Spring Boot (port 8080)

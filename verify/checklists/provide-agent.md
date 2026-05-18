@@ -1,6 +1,6 @@
 # 체크리스트 — provide Agent (Internal, 8096)
 
-> **대상**: infolink-agent-provide-dmz (Oracle 29004 → PG 29006)
+> **대상**: infolink-agent-provide (Oracle 29004 → PG 29006)
 > **최신 리스크** (4/22): 헤더 기반 관리 DB 라우팅, /target 통합, trace-source 분기 3 개선, TM_GD130001 파일럿, 16개 엔티티 @Comment 추가
 > **필수 의존**: P1 (common), P3 (proxy-internal), P10 (Orchestrator backend), P9 (api-provider)
 > **사용법**: 체크 항목은 **재실행 가능한 절차** 기준. 실패 시 `runs/YYYY-MM-DD.md` + `issues/OPEN/VER-*.md` 로 기록.
@@ -77,7 +77,7 @@
 
 ## 5. 16 개 엔티티 @Comment 일괄 반영 (회귀)
 
-- [ ] 모든 provide 엔티티(`infolink-agent-provide-dmz/src/.../entity/target/*.java`) 에 `@org.hibernate.annotations.Table(comment=)` + 컬럼 `@Comment` 있음
+- [ ] 모든 provide 엔티티(`infolink-agent-provide/src/.../entity/target/*.java`) 에 `@org.hibernate.annotations.Table(comment=)` + 컬럼 `@Comment` 있음
 - [ ] 임의 샘플 엔티티 3개: PG 에 테이블/컬럼 코멘트 실제 반영됨
 - [ ] 아직 생성되지 않은 테이블(DDL 없음) 은 엔티티만 존재 — 기동 시 ddl-auto update 실패/경고 없음
 

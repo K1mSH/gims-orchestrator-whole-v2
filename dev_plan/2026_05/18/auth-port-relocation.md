@@ -13,7 +13,7 @@
 | 모듈 | port | 비고 |
 |------|:----:|------|
 | `infolink-auth` | **8096** | 5/4 신규 (project_auth_system) — `application.yml:2 server.port: 8096` |
-| `infolink-agent-provide-dmz` | **8096** | 자체 `application.yml:2` + agent 테이블 endpoint_url 등록 |
+| `infolink-agent-provide` | **8096** | 자체 `application.yml:2` + agent 테이블 endpoint_url 등록 |
 
 → 두 모듈 동시 기동 불가. 현재는 사용자 환경에서 auth 만 떠있음 (8096), provide-dmz 미가동.
 
@@ -128,7 +128,7 @@ refactor(auth): port 8096 → 9096 (provide-dmz 와 충돌 해소)
 - docs (AUTH_DESIGN/AUTH_FLOW/메모리) + MEMORY.md 서버 포트표 갱신
 - provide-dmz(8096) 운영 등록 데이터 보호 (agent.endpoint_url 6 row 무변경)
 
-원인: infolink-agent-provide-dmz 도 port 8096 박혀있어 동시 기동 불가.
+원인: infolink-agent-provide 도 port 8096 박혀있어 동시 기동 불가.
 사용자 결정: 등록 무게 적은 auth 가 양보. 새 port = 9096 (옛 8096 자리 매칭).
 ```
 

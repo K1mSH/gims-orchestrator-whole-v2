@@ -27,7 +27,7 @@ ERROR ... 실행 실패 [...]: 401 : "{"error":"AUTH_REQUIRED"}"
 | infolink-agent-others-dmz | Proxy 경유 (`SyncDataSourceService.fetchConnectionInfoFromProxy`) | ✅ | OK |
 | infolink-agent-bojo-internal | Proxy 경유 (동일 메서드) | ✅ | OK |
 | infolink-agent-bojo-dmz | Proxy 경유 (동일 메서드) | ✅ | OK |
-| infolink-agent-provide-dmz | Proxy 경유 (동일 메서드) | ✅ | OK |
+| infolink-agent-provide | Proxy 경유 (동일 메서드) | ✅ | OK |
 | infolink-api-provider | Proxy 경유 (`ProviderDataSourceService.createDataSource`) | ✅ | OK |
 
 **관찰** — 7 모듈에 같은 connection-info 호출 코드가 7번 복제됨. 6개는 같은 양식 (Proxy + X-API-Key) 복제, api-collector 만 다른 양식 (Orchestrator 직접). git 히스토리 확인 (c0660cf) — api-collector 가 3월 중순 첫 등장 시 다른 agent 패턴 차용 안 함. 5/6 Phase 4 JWT 통합 때 backend 보호 시작 → 6 모듈은 동시에 정정됐고 api-collector 만 호출 양식이 달라 누락.
@@ -287,7 +287,7 @@ Phase 2 (별 사이클) — 다른 6 모듈 (others-dmz/bojo-internal/bojo-dmz/p
 - `infolink-agent-others-dmz/.../SyncDataSourceService.fetchConnectionInfoFromProxy`
 - `infolink-agent-bojo-internal/.../SyncDataSourceService.fetchConnectionInfoFromProxy`
 - `infolink-agent-bojo-dmz/.../SyncDataSourceService.fetchConnectionInfoFromProxy`
-- `infolink-agent-provide-dmz/.../SyncDataSourceService.fetchConnectionInfoFromProxy`
+- `infolink-agent-provide/.../SyncDataSourceService.fetchConnectionInfoFromProxy`
 - `infolink-api-provider/.../ProviderDataSourceService.createDataSource` (의 HTTP 호출 부분)
 
 회귀 검증 범위 — 04-others 5종 (use/saeol/yaksoter/api-collect/jeju) + bojo + api-provider. 점진 적용 (1개씩) 권장.

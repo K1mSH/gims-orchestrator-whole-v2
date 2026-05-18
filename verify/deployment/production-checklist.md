@@ -60,7 +60,7 @@
 5. [ ] infolink-agent-bojo-dmz (DMZ, 8082)
 6. [ ] infolink-agent-others-dmz (DMZ, 8085)
 7. [ ] infolink-agent-bojo-internal (Internal, 8092)
-8. [ ] infolink-agent-provide-dmz (Internal, 8096)
+8. [ ] infolink-agent-provide (Internal, 8096)
 9. [ ] API Collector DMZ (8084)
 10. [ ] API Collector Internal (8094)
 11. [ ] Frontend (3000)

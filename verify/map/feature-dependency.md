@@ -15,7 +15,7 @@
 | P4 | infolink-agent-bojo-dmz (DMZ, 8082) | `infolink-agent-bojo-dmz/` | DMZ 10 RCV + Loader + SND |
 | P5 | infolink-agent-others-dmz (DMZ, 8085) | `infolink-agent-others-dmz/` | 기타 Agent 해당 모듈만 |
 | P6 | infolink-agent-bojo-internal (Internal, 8092) | `infolink-agent-bojo-internal/` | Internal RCV + Loader |
-| P7 | infolink-agent-provide-dmz (Internal, 8096) | `infolink-agent-provide-dmz/` | provide 파이프 (Oracle 29004 → PG 29006) |
+| P7 | infolink-agent-provide (Internal, 8096) | `infolink-agent-provide/` | provide 파이프 (Oracle 29004 → PG 29006) |
 | P8 | infolink-api-collector (8084/8094) | `infolink-api-collector/` | 독립 모듈 (api_collector DB) |
 | P9 | infolink-api-provider (8095) | `infolink-api-provider/` | 독립 읽기 모듈 (PG 29006) |
 | P10 | **infolink-orchestrator-backend** (8080) | `infolink-orchestrator-backend/` | 전 Agent 통신 → **광범위 회귀** |

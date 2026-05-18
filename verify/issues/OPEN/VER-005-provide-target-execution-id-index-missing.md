@@ -11,14 +11,14 @@ related: [VER-004]
 
 ## 증상
 
-`infolink-agent-provide-dmz/**/entity/**/*.java` 전체에 `@Index(columnList = "execution_id")` 미적용 (**0 건**).
+`infolink-agent-provide/**/entity/**/*.java` 전체에 `@Index(columnList = "execution_id")` 미적용 (**0 건**).
 
 4/22 작업에서 16 개 엔티티에 `@Comment` 는 추가했으나 **인덱스는 빠짐**.
 
 ## 증거
 
 ```
-grep "@Index|indexes" infolink-agent-provide-dmz/**/entity/**/*.java
+grep "@Index|indexes" infolink-agent-provide/**/entity/**/*.java
 → 0 건
 ```
 

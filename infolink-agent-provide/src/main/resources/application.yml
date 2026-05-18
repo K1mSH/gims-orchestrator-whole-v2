@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: infolink-agent-provide-dmz
+    name: infolink-agent-provide
 
   # Agent 자체 DB — PG api_provider (29006)
   datasource:
