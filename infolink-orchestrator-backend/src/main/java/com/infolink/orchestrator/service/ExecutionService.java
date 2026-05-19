@@ -630,20 +630,12 @@ public class ExecutionService {
     }
 
     /**
-     * Agent 의 zone 기반 management DB(sync_log/execution 적재 위치) 결정.
-     * agent.target 이 외부 DB(e.g. saeol-oracle) 인 케이스는 sync_log 가 module default 에 있어
-     * target 그대로 보내면 호출이 잘못된 datasource 를 봄. zone 단일 진실원으로 매핑.
-     *
-     * - DMZ zone → dmz (PG 29001 dev)
-     * - INTERNAL_COMMON zone → internal (Oracle 29004)
-     * - EXTERNAL / unknown → target fallback
+     * Agent 의 management DB(sync_log/execution 적재 위치) 결정.
+     * 룰: sync_log 적재 위치 = agent.target_datasource_id ([[feedback_agent_at_target]]).
+     * agent 측 SyncLogWriter 도 같은 룰로 target 에 적재하므로 36 agent 일관 통용.
      */
     private String resolveManagementDatasource(Agent agent) {
-        if (agent == null) return null;
-        String zone = agent.getZone();
-        if ("DMZ".equals(zone)) return "dmz";
-        if ("INTERNAL_COMMON".equals(zone)) return "internal";
-        return agent.getTargetDatasourceId();
+        return agent != null ? agent.getTargetDatasourceId() : null;
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================

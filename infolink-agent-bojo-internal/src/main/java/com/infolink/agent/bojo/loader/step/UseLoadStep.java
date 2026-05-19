@@ -156,7 +156,7 @@ public class UseLoadStep implements StepExecutor {
                 legacyTargets.add(T_111021, lr.writeCount);
                 legacyTargets.add(T_111022, dailyCount);
                 legacyTargets.add(T_111024, lastReceiveCount);
-                SyncLogWriter.save(syncLogRepository, executionId, stepId, "use-legacy",
+                SyncLogWriter.save(dataSourceProvider, executionId, stepId, "use-legacy",
                         List.of(IF_LEGACY), legacyTargets,
                         legacyRows.size(), lr.failedCount, lr.skipCount, lr.failedKeys, lr.firstError);
             }
@@ -197,7 +197,7 @@ public class UseLoadStep implements StepExecutor {
                 // SyncLog: Status 매핑
                 TableCountTracker statusTargets = new TableCountTracker(T_111025);
                 statusTargets.add(T_111025, sr.writeCount);
-                SyncLogWriter.save(syncLogRepository, executionId, stepId, "use-status",
+                SyncLogWriter.save(dataSourceProvider, executionId, stepId, "use-status",
                         List.of(IF_STATUS), statusTargets,
                         statusRows.size(), sr.failedCount, 0L, sr.failedKeys, sr.firstError);
             }
@@ -218,7 +218,7 @@ public class UseLoadStep implements StepExecutor {
 
         } catch (Exception e) {
             log.error("[{}] Step 실행 실패", stepId, e);
-            SyncLogWriter.save(syncLogRepository, context.getExecutionId(), stepId, stepId,
+            SyncLogWriter.save(dataSourceProvider, context.getExecutionId(), stepId, stepId,
                     List.of(IF_LEGACY, IF_STATUS), List.of(T_111021, T_111022, T_111024, T_111025),
                     totalRead, totalWrite, totalFailed, totalSkip, failedKeys, e.getMessage());
             return StepResult.failed(stepId, e.getMessage(), System.currentTimeMillis() - startTime);

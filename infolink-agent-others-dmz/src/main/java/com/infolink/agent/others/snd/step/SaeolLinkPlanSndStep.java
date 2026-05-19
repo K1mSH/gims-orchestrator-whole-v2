@@ -2,11 +2,11 @@ package com.infolink.agent.others.snd.step;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infolink.agent.common.controller.DataSourceProvider;
-import com.infolink.agent.common.entity.SyncLog;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.step.StepContext;
 import com.infolink.agent.common.step.StepExecutor;
 import com.infolink.agent.common.step.StepResult;
+import com.infolink.agent.common.sync.SyncLogWriter;
 import com.infolink.agent.common.util.SourceRefUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -414,24 +414,8 @@ public class SaeolLinkPlanSndStep implements StepExecutor {
 
     private void saveSyncLog(String executionId, String sourceTable, String targetTable,
                               int readCount, int writeCount) {
-        try {
-            String sourceTablesJson = objectMapper.writeValueAsString(
-                    List.of(Map.of("name", sourceTable)));
-            String targetTablesJson = objectMapper.writeValueAsString(
-                    List.of(Map.of("name", targetTable)));
-
-            SyncLog syncLog = SyncLog.builder()
-                    .executionId(executionId)
-                    .stepId(stepId)
-                    .mappingName(sourceTable.toLowerCase())
-                    .sourceTables(sourceTablesJson)
-                    .targetTables(targetTablesJson)
-                    .readCount((long) readCount)
-                    .writeCount((long) writeCount)
-                    .build();
-            syncLogRepository.save(syncLog);
-        } catch (Exception e) {
-            log.warn("[새올SND] SyncLog 저장 실패: {}", e.getMessage());
-        }
+        SyncLogWriter.save(dataSourceProvider, executionId, stepId, sourceTable.toLowerCase(),
+                List.of(sourceTable), List.of(targetTable),
+                readCount, writeCount, 0L, 0L, null, null);
     }
 }

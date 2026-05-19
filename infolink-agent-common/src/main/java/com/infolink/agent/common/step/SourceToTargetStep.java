@@ -1044,7 +1044,7 @@ public class SourceToTargetStep implements StepExecutor {
         long skip = skipCount != null ? skipCount : 0L;
         long failedCount = readCount != null && writeCount != null && skipCount != null
                 ? Math.max(0, read - write - skip) : 0L;
-        SyncLogWriter.save(syncLogRepository, executionId, getStepId(), resolvedMappingName,
+        SyncLogWriter.save(dataSourceProvider, executionId, getStepId(), resolvedMappingName,
                 List.of(config.getSourceTable()), List.of(config.getTargetIfTable()),
                 read, write, failedCount, skip,
                 failedKeys != null ? List.of(failedKeys) : null, errorSummary, sourcePkColumn);

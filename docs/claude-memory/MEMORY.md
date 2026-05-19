@@ -48,6 +48,7 @@
 - [feedback_krds_checkbox_pattern.md](feedback_krds_checkbox_pattern.md) - KRDS 체크박스/라디오는 .krds-form-check medium 패턴 필수 (KRDS !important 로 input 숨김)
 - [feedback_test_no_unrequested_clean.md](feedback_test_no_unrequested_clean.md) - 테스트 추가 검증 요청 시 임의 DB 클린(TRUNCATE) 금지 — 기존 상태 위에 추가 실행만
 - [feedback_where_filter_scoping.md](feedback_where_filter_scoping.md) - WHERE(conditions)는 step별 행 필터일 뿐; 로더는 yml where-filters로 의미있는 컬럼만 노출; 조건 N/A step은 skip(link_status 폴백 금지)
+- [feedback_service_boot_one_by_one.md](feedback_service_boot_one_by_one.md) - 서비스 bootRun = 한 번에 한 모듈씩 (동시 부팅 경합 = PC 렉 원인). 사용자 명시 시만 그룹 동시
 
 ## 작업 규칙
 
