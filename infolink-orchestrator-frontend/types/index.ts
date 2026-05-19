@@ -10,9 +10,9 @@ export interface Agent {
   zone: string;
   isActive: boolean;
   agentType: AgentType;
-  datasourceTag: string | null;
   sourceDatasourceId: string | null;
   targetDatasourceId: string | null;
+  historyDatasourceId: string | null;  // sync_log + execution 적재 위치 (readonly, agent /health 자동)
   description: string | null;
   status: AgentStatus;
   createdAt: string | null;
@@ -30,10 +30,10 @@ export interface AgentCreateRequest {
   endpointUrl: string;
   zone: string;
   agentType: AgentType;
-  datasourceTag?: string;
   isActive?: boolean;
   sourceDatasourceId?: string;
   targetDatasourceId?: string;
+  historyDatasourceId?: string;  // agent /health 자동 추출, readonly UI 표시
   description?: string;
   sourceTableIds?: number[];
   targetTableIds?: number[];
@@ -51,6 +51,7 @@ export interface DiscoverAgent {
 export interface DiscoverResponse {
   endpointUrl: string;
   zone: string;
+  historyDatasourceId?: string | null;  // agent /health 의 history-datasource-id (readonly 표시용)
   agents: DiscoverAgent[];
   agentInfo?: Array<{ agentCode: string; [key: string]: unknown }>;
   error?: string;

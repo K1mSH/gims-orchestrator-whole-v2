@@ -1,6 +1,5 @@
 package com.infolink.agent.bojo.loader.step;
 
-import com.infolink.agent.common.controller.DataSourceProvider;
 import com.infolink.agent.common.repository.SyncLogRepository;
 import com.infolink.agent.common.service.IfTableService;
 import com.infolink.agent.common.step.StepContext;
@@ -35,7 +34,6 @@ public class LoaderStepHelper {
     private final TargetRepositoryService targetRepository;
     private final SyncLogRepository syncLogRepository;
     private final IfTableService ifTableService;
-    private final DataSourceProvider dataSourceProvider;
 
     /**
      * 제원 데이터 변환 + batch UPSERT + IF 상태 업데이트
@@ -162,7 +160,7 @@ public class LoaderStepHelper {
                              List<String> sourceTables, List<String> targetTables,
                              long readCount, long writeCount, long failedCount, long skipCount,
                              List<String> failedKeys, String errorSummary) {
-        SyncLogWriter.save(dataSourceProvider, executionId, stepId, mappingName,
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, mappingName,
                 sourceTables, targetTables, readCount, writeCount, failedCount, skipCount, failedKeys, errorSummary);
     }
 

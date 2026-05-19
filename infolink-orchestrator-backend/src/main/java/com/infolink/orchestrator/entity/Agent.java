@@ -53,10 +53,6 @@ public class Agent {
     @Comment("에이전트 유형 (RCV/LOADER/SND/DB_CON_PROXY)")
     private AgentType agentType;
 
-    @Column(name = "datasource_tag", length = 50)
-    @Comment("데이터소스 태그")
-    private String datasourceTag;
-
     @Column(name = "source_datasource_id", length = 50)
     @Comment("소스 데이터소스 ID")
     private String sourceDatasourceId;
@@ -64,6 +60,10 @@ public class Agent {
     @Column(name = "target_datasource_id", length = 50)
     @Comment("타겟 데이터소스 ID")
     private String targetDatasourceId;
+
+    @Column(name = "history_datasource_id", length = 50)
+    @Comment("sync_log + execution 이력 적재 위치 (agent JPA primary = module default). agent /health 로 자동 추출, 운영자 UI 노출 X")
+    private String historyDatasourceId;
 
     @Column(name = "description", columnDefinition = "TEXT")
     @Comment("설명")

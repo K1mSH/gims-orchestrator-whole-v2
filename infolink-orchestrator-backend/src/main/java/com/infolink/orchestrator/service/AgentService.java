@@ -78,9 +78,10 @@ public class AgentService {
                 .zone(request.getZone())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .agentType(request.getAgentType())
-                .datasourceTag(request.getDatasourceTag())
                 .sourceDatasourceId(request.getSourceDatasourceId())
                 .targetDatasourceId(request.getTargetDatasourceId())
+                // history_datasource_id: agent /health 의 historyDatasourceId 필드 (discover 응답에서 전달받음, readonly UI 표시)
+                .historyDatasourceId(request.getHistoryDatasourceId())
                 .description(request.getDescription())
                 .build();
 
@@ -148,6 +149,10 @@ public class AgentService {
 
             String zone = (String) healthData.get("zone");
             result.put("zone", zone);
+
+            // historyDatasourceId — sync_log + execution 적재 위치 (모듈 단위). 프론트 등록 폼 readonly 표시 + createAgent 전달.
+            Object historyDsId = healthData.get("historyDatasourceId");
+            result.put("historyDatasourceId", historyDsId);
 
             // 이미 등록된 agentCode 목록 조회
             Set<String> registeredCodes = agentRepository.findAll().stream()
@@ -260,9 +265,6 @@ public class AgentService {
         }
         if (request.getAgentType() != null) {
             agent.setAgentType(request.getAgentType());
-        }
-        if (request.getDatasourceTag() != null) {
-            agent.setDatasourceTag(request.getDatasourceTag());
         }
         if (request.getSourceDatasourceId() != null) {
             agent.setSourceDatasourceId(request.getSourceDatasourceId());

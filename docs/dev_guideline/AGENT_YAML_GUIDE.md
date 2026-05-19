@@ -82,6 +82,20 @@ steps:                           # 필수 (배열, 1개 이상)
 - Orchestrator DB `agents` 테이블의 `agent_code` 와 **정확히 일치** 해야 함
 - 관례: 파일명과 동일하게 (`provide-tm-gd000203`, `dmz-bojo-rcv-daejeon`)
 
+#### prefix 작명 규약 (모듈 식별)
+
+`agent-code` 의 **첫 단어 = module 식별자** 로 박는다. orchestrator DB 의 `datasource_id` (등록된 데이터소스 식별자) 와 1:1 매칭되는 module default 의미.
+
+| prefix | module | 기본 datasource_id | 등록 위치 |
+|--------|--------|-------------------|----------|
+| `dmz-` | DMZ 망 (bojo / others) | `dmz` | DMZ PG |
+| `internal-` | 내부망 (bojo / others) | `internal` | Internal Oracle |
+| `provide-` | API 제공 | `api-provider` | api-provider PG |
+
+> **현재** sync_log + execution 적재 위치는 agent JPA primary (= module default) — backend 가 datasource 헤더 안 보내고 agent fallback 활용하므로 prefix 가 routing 에 직접 영향 X. 단 향후 backend 가 prefix 매핑으로 동작 분기하는 케이스 도입 시 안전망 + module 가시성 차원에서 **prefix 작명 규약을 반드시 지킬 것**. 어기면 향후 routing 매핑이 깨질 수 있음 (critical).
+
+- 새 module 신규 도입 시 위 표 갱신 + backend `ExecutionService` 휴리스틱 매핑 (도입 시) 동시 갱신.
+
 ### 2.2 `type` (필수)
 
 | 값 | 의미 | 파이프라인 방향 |

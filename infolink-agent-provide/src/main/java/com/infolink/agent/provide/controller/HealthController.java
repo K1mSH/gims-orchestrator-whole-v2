@@ -28,6 +28,9 @@ public class HealthController {
     @Value("${agent.zone}")
     private String zone;
 
+    @Value("${agent.history-datasource-id:}")
+    private String historyDatasourceId;
+
     private final PipelineRegistry pipelineRegistry;
     private final PipelineService pipelineService;
 
@@ -37,6 +40,7 @@ public class HealthController {
         result.put("status", "UP");
         result.put("appName", "infolink-agent-provide");
         result.put("zone", zone);
+        result.put("historyDatasourceId", historyDatasourceId);
         result.put("registeredAgents", pipelineRegistry.size());
 
         Set<String> rcvAgents = pipelineRegistry.getAgentCodesByType("RCV");

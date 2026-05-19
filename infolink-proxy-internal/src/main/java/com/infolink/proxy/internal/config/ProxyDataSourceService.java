@@ -77,12 +77,17 @@ public class ProxyDataSourceService implements DataSourceProvider {
 
     @Override
     public String getDbType(String datasourceId) {
+        if (datasourceId == null) return null;
         DataSourceInfo info = cachedDataSourceInfos.get(datasourceId);
         return info != null ? info.getDbType() : null;
     }
 
     @Override
     public JdbcTemplate getJdbcTemplate(String datasourceId) {
+        // null/blank → 기본 DataSource fallback (backend 가 X-Manage 헤더 안 보내는 경우 — sync_log + execution = JPA primary 룰)
+        if (datasourceId == null || datasourceId.isBlank()) {
+            return defaultJdbcTemplate;
+        }
         // 1. 캐시에 있으면 전용 JdbcTemplate 사용
         if (cachedDataSourceInfos.containsKey(datasourceId)) {
             return jdbcTemplates.computeIfAbsent(datasourceId, this::createJdbcTemplate);

@@ -154,6 +154,7 @@
   font-size: var(--krds-pc-font-size-label-medium);
   font-weight: var(--krds-font-weight-bold);
   color: var(--krds-light-color-text-bolder);
+  cursor: default;    /* KRDS 의 글로벌 label { cursor: pointer } 오버라이드 */
 }
 
 .app-form-label__hint {

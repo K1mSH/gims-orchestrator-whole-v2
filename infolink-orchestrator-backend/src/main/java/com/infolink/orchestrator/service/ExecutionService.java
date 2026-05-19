@@ -614,28 +614,18 @@ public class ExecutionService {
     }
 
     /**
-     * Proxy 경유 관리 테이블 조회용 헤더 빌더
-     * Agent의 target DB = 관리 DB 규약에 따라 targetDatasourceId를 헤더로 전달
-     * (feedback_agent_at_target.md 참조)
+     * Agent 호출용 헤더 빌더.
      *
-     * 기존 Agent(target = Proxy 기본 DB)는 풀 중복이 생기지만 Proxy는 경량 조회라 실질 영향 없음
+     * sync_log + execution 적재 위치 = agent.history_datasource_id (모듈 단위 정보, agent /health 자동 추출).
+     * proxy ExecutionDataController 가 X-Manage-Datasource-Id 헤더 값으로 동적 JdbcTemplate 생성 →
+     * 정확한 위치 (= agent JPA primary) 봄. 36 agent 일관, hardcoded 매핑 0.
      */
     private HttpEntity<Void> buildHeaders(Agent agent) {
         HttpHeaders headers = new HttpHeaders();
-        String mgmtDs = resolveManagementDatasource(agent);
-        if (mgmtDs != null) {
-            headers.set("X-Manage-Datasource-Id", mgmtDs);
+        if (agent != null && agent.getHistoryDatasourceId() != null && !agent.getHistoryDatasourceId().isBlank()) {
+            headers.set("X-Manage-Datasource-Id", agent.getHistoryDatasourceId());
         }
         return new HttpEntity<>(headers);
-    }
-
-    /**
-     * Agent 의 management DB(sync_log/execution 적재 위치) 결정.
-     * 룰: sync_log 적재 위치 = agent.target_datasource_id ([[feedback_agent_at_target]]).
-     * agent 측 SyncLogWriter 도 같은 룰로 target 에 적재하므로 36 agent 일관 통용.
-     */
-    private String resolveManagementDatasource(Agent agent) {
-        return agent != null ? agent.getTargetDatasourceId() : null;
     }
 
     // ==================== ExecutionHistory 관련 메서드 ====================

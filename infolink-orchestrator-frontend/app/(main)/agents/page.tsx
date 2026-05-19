@@ -193,9 +193,9 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
     agentName: '',
     zone: '' as string,
     description: '',
-    datasourceTag: '',
     sourceDatasourceId: '',
     targetDatasourceId: '',
+    historyDatasourceId: '',  // agent /health 자동 추출 (readonly 표시)
   });
   const [scheduleData, setScheduleData] = useState({
     cronExpression: '0 0 * * * *',
@@ -304,7 +304,11 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
       } else {
         setDiscoveredAgents(result.agents || []);
         setDiscoveredZone(result.zone || '');
-        setFormData(prev => ({ ...prev, zone: result.zone || '' }));
+        setFormData(prev => ({
+          ...prev,
+          zone: result.zone || '',
+          historyDatasourceId: result.historyDatasourceId || '',  // agent /health 자동 추출
+        }));
         // agentInfo를 agentCode 기준 Map으로 저장
         const infoList = result.agentInfo || [];
         const infoMap: Record<string, any> = {};
@@ -365,9 +369,9 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
         agentType: selectedAgentType,
         endpointUrl: endpointUrl,
         description: formData.description || undefined,
-        datasourceTag: formData.datasourceTag || undefined,
         sourceDatasourceId: formData.sourceDatasourceId || undefined,
         targetDatasourceId: formData.targetDatasourceId || undefined,
+        historyDatasourceId: formData.historyDatasourceId || undefined,  // agent /health 자동
         sourceTableIds: sourceTableNames.length > 0 ? undefined : selectedSourceTableIds,
         targetTableIds: targetTableNames.length > 0 ? undefined : selectedTargetTableIds,
         sourceTableNames: sourceTableNames.length > 0 ? sourceTableNames : undefined,
@@ -527,10 +531,10 @@ function AgentForm({ onSuccess }: { onSuccess: () => void }) {
                   </select>
                 </div>
                 <div className="app-form-field">
-                  <label className="app-form-label">Datasource Tag (선택)</label>
-                  <input type="text" className="krds-input small" value={formData.datasourceTag}
-                    onChange={(e) => setFormData({ ...formData, datasourceTag: e.target.value })}
-                    placeholder="gims_ngw" />
+                  <label className="app-form-label">이력 DB <span className="app-form-label__hint">(자동)</span></label>
+                  <input type="text" className="krds-input small" value={formData.historyDatasourceId}
+                    readOnly tabIndex={-1}
+                    placeholder="Agent 조회 시 자동" />
                 </div>
                 <div className={`app-form-field ${styles.fullSpan}`}>
                   <label className="app-form-label">설명 (선택)</label>

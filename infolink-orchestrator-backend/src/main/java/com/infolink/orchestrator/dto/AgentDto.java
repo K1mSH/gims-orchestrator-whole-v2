@@ -29,10 +29,11 @@ public class AgentDto {
         private String zone;
         @NotNull
         private AgentType agentType;
-        private String datasourceTag;
         private Boolean isActive;
         private String sourceDatasourceId;
         private String targetDatasourceId;
+        // agent /health 의 historyDatasourceId — sync_log + execution 적재 위치. discover 응답에서 전달받음 (readonly).
+        private String historyDatasourceId;
         private String description;
         // 선택된 테이블 ID 목록 (기존 방식, 하위호환)
         private List<Long> sourceTableIds;
@@ -53,7 +54,6 @@ public class AgentDto {
         private String zone;
         private Boolean isActive;
         private AgentType agentType;
-        private String datasourceTag;
         private String sourceDatasourceId;
         private String targetDatasourceId;
         private String description;
@@ -76,9 +76,9 @@ public class AgentDto {
         private String zone;
         private Boolean isActive;
         private AgentType agentType;
-        private String datasourceTag;
         private String sourceDatasourceId;
         private String targetDatasourceId;
+        private String historyDatasourceId;    // sync_log + execution 적재 위치 (readonly UI 표시)
         private String description;
         private AgentStatus status;
         private LocalDateTime lastExecutedAt;
@@ -108,9 +108,9 @@ public class AgentDto {
                     .zone(agent.getZone())
                     .isActive(agent.getIsActive())
                     .agentType(agent.getAgentType())
-                    .datasourceTag(agent.getDatasourceTag())
                     .sourceDatasourceId(agent.getSourceDatasourceId())
                     .targetDatasourceId(agent.getTargetDatasourceId())
+                    .historyDatasourceId(agent.getHistoryDatasourceId())
                     .description(agent.getDescription())
                     .status(agent.getStatus())
                     .lastExecutedAt(agent.getLastExecutedAt())

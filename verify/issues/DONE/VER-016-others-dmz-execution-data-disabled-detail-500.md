@@ -1,13 +1,32 @@
 ---
 id: VER-016
 title: agent-others-dmz `execution-data.enabled: false` — detail/source/target/trace API 전체 500
-status: OPEN
+status: CLOSED
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-19 (closed)
 parts: [agent-others-dmz, tracing, execution-data-controller, frontend-detail]
 parallel_safe: true
 assignee: forward
-related: [sync-log-target-rule-fix]
+related: [sync-log-target-rule-fix, sync-log-rollback-to-local]
+---
+
+## Closure (2026-05-19 오후)
+
+`sync-log-rollback-to-local` 사이클 Phase A~F 후 회귀 검증 통과:
+- others-dmz `execution-data.enabled: true` 변경 (Phase C) — controller bean 활성화
+- agent.history_datasource_id 컬럼 + 자동 등록 흐름 (Phase F)
+- backend `buildHeaders` 가 history_datasource_id 헤더 송신
+- proxy ProxyDataSourceService.null guard + 동적 datasource 라우팅
+
+검증 결과:
+- 새올 detail/source/target/trace 모두 정상 ✅
+- provide-tm-gd000203 detail 정상 ✅
+- dmz-bojo-loader detail 정상 ✅
+
+부수 발견 (별 트랙):
+- 4 agent 모듈 (others-dmz/bojo-dmz/bojo-internal/provide) 의 yml 변경 후 재기동 — 새 agent 등록 시 health 응답에 historyDatasourceId 노출 필요. 본 사이클 통과 후속 작업.
+- frontend 등록 폼에 historyDatasourceId readonly 표시 — 별 트랙.
+
 ---
 
 ## 발견 경로

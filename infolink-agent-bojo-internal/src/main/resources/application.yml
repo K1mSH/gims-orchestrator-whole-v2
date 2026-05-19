@@ -38,6 +38,7 @@ agent:
   proxy-url: ENC(GRtON1jZVP+jUZGRd5nOGYX2J8Qg1El8K/c34XrjAtD+H25i30qHZxNG44OQDqDsfgHH8rFNfcblA3iU0EzFLw==)
   api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
   zone: INTERNAL
+  history-datasource-id: internal    # sync_log + execution 적재 위치 (= module default JPA primary). 운영자 노출 X.
   debug:
     step-delay-ms: 0
   batch:

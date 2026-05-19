@@ -26,7 +26,7 @@ spring:
 common:
   controller:
     cleanup.enabled: true
-    execution-data.enabled: false
+    execution-data.enabled: true
     datasource.enabled: true
     execution-params.enabled: true
   filter:
@@ -38,6 +38,7 @@ agent:
   proxy-url: ENC(ZdOrUviyTKn8YvU+Vs725joK12w5RyS01fYyA5p8zN0jPVJVpDxiZjRRQWf3AnkWQQ2R7wKjhM6AScv+OveAaQ==)
   api-key: ENC(YzTJ0UGnUBS+pOEw5EEu7jEp/rRjAANV95og3onvTTuV4bsTdh7jWP/RUx/jv2vTLojWfJ8QltB9oknwS63RXA==)
   zone: DMZ
+  history-datasource-id: dmz    # sync_log + execution 적재 위치 (= module default JPA primary). 운영자 노출 X.
   debug:
     step-delay-ms: 0
   batch:

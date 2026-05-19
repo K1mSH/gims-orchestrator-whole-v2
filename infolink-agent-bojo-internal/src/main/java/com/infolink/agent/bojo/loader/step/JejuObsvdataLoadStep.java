@@ -314,7 +314,7 @@ public class JejuObsvdataLoadStep implements StepExecutor {
 
     private void saveSyncLog(String executionId, int readCount, int failedCount,
                               TableCountTracker targets, List<String> failedKeys, String errorSummary) {
-        SyncLogWriter.save(dataSourceProvider, executionId, stepId, stepId,
+        SyncLogWriter.save(syncLogRepository, executionId, stepId, stepId,
                 configSourceTables, targets, readCount, failedCount, 0L, failedKeys, errorSummary);
     }
 }

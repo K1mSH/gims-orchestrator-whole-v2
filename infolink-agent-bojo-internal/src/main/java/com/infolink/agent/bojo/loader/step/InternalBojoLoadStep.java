@@ -306,7 +306,7 @@ public class InternalBojoLoadStep implements StepExecutor {
             targetCounts.add(targetResultTable, rsltInserted);    // TM_GD970101
             targetCounts.add(targetLinkTable, linkUpdated);       // TM_GD980002
 
-            SyncLogWriter.save(dataSourceProvider, executionId, getStepId(), "obsvdata",
+            SyncLogWriter.save(syncLogRepository, executionId, getStepId(), "obsvdata",
                     configSourceTables != null ? configSourceTables : List.of(ifObsvdataTable),
                     targetCounts,
                     obsvReadCount, obsvFailed, 0L,
@@ -345,7 +345,7 @@ public class InternalBojoLoadStep implements StepExecutor {
                 errorMessage = errorMessage.substring(0, 500) + "...";
             }
 
-            SyncLogWriter.save(dataSourceProvider, context.getExecutionId(), getStepId(), "obsvdata",
+            SyncLogWriter.save(syncLogRepository, context.getExecutionId(), getStepId(), "obsvdata",
                     List.of(ifObsvdataTable), List.of(targetObsvdataTable),
                     obsvReadCount, inserted, obsvFailed, 0L,
                     obsvFailedKeys.isEmpty() ? null : obsvFailedKeys,

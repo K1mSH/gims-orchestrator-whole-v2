@@ -28,6 +28,9 @@ public class HealthController {
     @Value("${agent.zone}")
     private String zone;
 
+    @Value("${agent.history-datasource-id:}")
+    private String historyDatasourceId;
+
     private final PipelineRegistry pipelineRegistry;
     private final PipelineService pipelineService;
 
@@ -37,6 +40,7 @@ public class HealthController {
         result.put("status", "UP");
         result.put("appName", "infolink-agent-bojo-dmz");
         result.put("zone", zone);
+        result.put("historyDatasourceId", historyDatasourceId);
         result.put("registeredAgents", pipelineRegistry.size());
 
         // Agent 목록 (타입별)
